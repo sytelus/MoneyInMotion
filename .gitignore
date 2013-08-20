@@ -1,0 +1,36 @@
+#Project specific files
+Web.Release.Config
+External Stuff/
+
+#OS junk files
+[Tt]humbs.db
+*.DS_Store
+
+#Visual Studio files
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.sln.DotSettings.user
+[Oo]bj/
+[Bb]in
+[Dd]ebug*/
+[Rr]elease*/
+
+#Tooling
+_ReSharper*/
+*.resharper
+[Tt]est[Rr]esult*
+
+#Project files
+[Bb]uild/
+TestResults/
+
+#Subversion files
+.svn
+
+# Office Temp Files
+~$*
