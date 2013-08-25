@@ -4,40 +4,48 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using CommonUtils;
+using System.Runtime.Serialization;
 
 namespace MoneyInMotion
 {
+    [DataContract]
     public class AccountConfig
     {
-        public enum ConfigName
+        [DataMember] private AccountInfo accountInfo;
+        [DataMember] private string[] fileFilters = new[] { "*.csv" };
+        [DataMember] private bool scanSubFolders = true;
+
+        public AccountConfig(AccountInfo accountInfo)
         {
-            AccountType,
-            FileFilters,
-            ScanSubFolders,
-            AccountName
+            this.accountInfo = accountInfo;
         }
 
-        private IDictionary<string,string> values;
-
-        public static AccountConfig Load(string configFilePath)
+        public AccountInfo AccountInfo
         {
-            var config = new AccountConfig();
-            config.values = File.ReadAllLines(configFilePath)
-                .RemoveNullOrEmpty()
-                .Select(l => l.Split(Utils.TabDelimiter, StringSplitOptions.None))
-                .ToDictionary(cs => cs[0], cs => cs[1]);
-
-            return config;
+            get { return accountInfo; }
+            set { accountInfo = value; }
         }
 
-        public string GetValue(ConfigName name, string defaultValue)
+        public string[] FileFilters
         {
-            return this.values.GetValueOrDefault(name.ToString(), defaultValue);
+            get { return fileFilters; }
+            set { fileFilters = value; }
         }
 
-        public string GetValue(ConfigName name)
+        public bool ScanSubFolders
         {
-            return this.values[name.ToString()];
+            get { return scanSubFolders; }
+            set { scanSubFolders = value; }
+        }
+
+        public static AccountConfig DeserializeFromJson(string serializedAccountConfig)
+        {
+            return JsonSerializer<AccountConfig>.Deserialize(serializedAccountConfig);
+        }
+
+        public string SerializeToJson()
+        {
+            return JsonSerializer<AccountConfig>.Serialize(this);
         }
     }
 }

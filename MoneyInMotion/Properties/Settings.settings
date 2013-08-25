@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="RootFolder" Type="System.String" Scope="User">
-      <Value Profile="(Default)">C:\Dropbox\Dropbox\Per\Finances</Value>
+      <Value Profile="(Default)" />
     </Setting>
   </Settings>
 </SettingsFile>

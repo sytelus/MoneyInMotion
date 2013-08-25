@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -8,58 +9,99 @@ using CommonUtils;
 
 namespace MoneyInMotion
 {
-    public class Transactions
+    public class Transactions : ICollection<Transaction>
     {
-        private readonly IList<Transaction> transactions = new List<Transaction>();
-        private readonly HashSet<string> transactionIDs = new HashSet<string>();
+        private readonly IList<Transaction> items = new List<Transaction>();
+        private readonly HashSet<string> uniqueIDs = new HashSet<string>();
+        private readonly HashSet<string> locationHashes = new HashSet<string>();
 
-        public ICollection<Transaction> Items
+        public Transactions(ICollection<Transaction> other = null)
         {
-            get { return transactions; }
+            if (other != null)
+                this.Merge(other);
         }
 
-        public bool AddFromConfigFile(string accountConfigFilePath)
+        public IEnumerable<string> SerializeToJson()
         {
-            var accountConfig = AccountConfig.Load(accountConfigFilePath);
-
-            var fileFilters = accountConfig.GetValue(AccountConfig.ConfigName.ScanSubFolders, "*.csv")
-                .Split(Utils.SemiColonDelimiter, StringSplitOptions.RemoveEmptyEntries);
-
-            var accountName = accountConfig.GetValue(AccountConfig.ConfigName.AccountName);
-
-            var configPath = Path.GetDirectoryName(accountConfigFilePath);
-
-            foreach (var fileFilter in fileFilters)
-            {
-                var files = Directory.GetFiles(configPath, fileFilter, SearchOption.TopDirectoryOnly);
-                foreach (var file in files)
-                {
-                    var transactionsFromFile = GetTransactionsFromFile(file, accountName).ToList();
-                    var oldTransactionCount = this.transactions.Count;
-                    this.transactions.AddRange(transactionsFromFile.Where(s => !this.transactionIDs.Contains(s.ID)));
-                    this.transactionIDs.AddRange(transactionsFromFile.Select(s => s.ID));
-
-                    MessagePipe<int, int, string>.SendMessage("Loaded {1} transactions ({2} new) from {0}".FormatEx(accountConfigFilePath, transactionsFromFile.Count, this.transactions.Count - oldTransactionCount));
-                }
-            }
-
-            return bool.Parse(accountConfig.GetValue(AccountConfig.ConfigName.ScanSubFolders, bool.FalseString));
+            return items.Select(item => item.SerializeToJson());
         }
 
-        private IEnumerable<Transaction> GetTransactionsFromFile(string file, string accountName)
+        public static Transactions DeserializeFromJson(IEnumerable<string> serializedTransactions)
         {
-            var lines = File.ReadAllLines(file).RemoveNullOrEmpty();
-            var headerColumns = (string[])null;
-            foreach (var line in lines)
+            var transactionList = serializedTransactions.Select(Transaction.DeserializeFromJson).ToList();
+            return new Transactions(transactionList);
+        }
+
+        public void Merge(ICollection<Transaction> itemsToAdd)
+        {
+            //First add transaction without updating IDs. THEN add IDs.
+            this.items.AddRange(itemsToAdd.Where(i => !this.uniqueIDs.Contains(i.Id)));
+            this.uniqueIDs.AddRange(itemsToAdd.Select(i => i.Id));
+            this.locationHashes.AddRange(itemsToAdd.Select(i => i.LocationHash));
+        }
+
+        public IEnumerator<Transaction> GetEnumerator()
+        {
+            return items.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return items.GetEnumerator();
+        }
+
+        public void Add(Transaction item)
+        {
+            Add(item, false);
+        }
+
+        public bool Add(Transaction item, bool allowDuplicate)
+        {
+            if (allowDuplicate || !uniqueIDs.Contains(item.Id))
             {
-                if (headerColumns == null)
-                    headerColumns = Utils.ParseCsvLine(line).ToArray();
-                else
-                {
-                    var transaction = new Transaction(headerColumns, line, accountName);
-                    yield return transaction;
-                }
+                items.Add(item);
+                uniqueIDs.Add(item.Id);
+                locationHashes.Add(item.LocationHash);
+                return true;
             }
+            else return false;
+        }
+
+        public void Clear()
+        {
+            items.Clear();
+            uniqueIDs.Clear();
+            locationHashes.Clear();
+        }
+
+        public ICollection<string> LocationHashses
+        {
+            get { return this.locationHashes; }
+        }
+
+        public bool Contains(Transaction item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void CopyTo(Transaction[] array, int arrayIndex)
+        {
+            items.CopyTo(array, arrayIndex);
+        }
+
+        public int Count
+        {
+            get { return items.Count; }
+        }
+
+        public bool IsReadOnly
+        {
+            get { return items.IsReadOnly; }
+        }
+
+        public bool Remove(Transaction item)
+        {
+            throw new NotSupportedException();
         }
     }
 }

@@ -973,6 +973,11 @@ namespace CommonUtils
             }
         }
 
+        public static string EmptyIfNull(this string value)
+        {
+            return value ?? string.Empty;
+        }
+
         public static string NullIfEmpty(this string value)
         {
             if (string.IsNullOrEmpty(value))

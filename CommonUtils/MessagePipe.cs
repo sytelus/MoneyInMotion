@@ -7,30 +7,29 @@ using System.Threading.Tasks;
 
 namespace CommonUtils
 {
-    public static class MessagePipe<TListnerKey, TChannel, TMessage> where TChannel : IComparable
+    public static class MessagePipe
     {
         private class Listner
         {
-            public TChannel Channel { get; set; }
-            public Func<TMessage, bool> Callback { get; set; }
+            public int Channel { get; set; }
+            public Action<object> Callback { get; set; }
         }
 
-        private static readonly ConcurrentDictionary<TListnerKey, Listner> listeners = new ConcurrentDictionary<TListnerKey, Listner>();
-        public static bool AddListner(TListnerKey listnerKey, Func<TMessage, bool> callback, TChannel channel = default(TChannel))
+        private static readonly ConcurrentDictionary<string, Listner> listeners = new ConcurrentDictionary<string, Listner>();
+        public static bool AddListner(Action<object> callback, int channel = -1, string listnerKey = null)
         {
-            return listeners.TryAdd(listnerKey, new Listner() {Channel = channel, Callback = callback});
+            return listeners.TryAdd(listnerKey ?? (Guid.NewGuid().ToString()), new Listner() {Channel = channel, Callback = callback});
         }
 
-        public static void SendMessage(TMessage message, TChannel channel = default(TChannel))
+        public static void SendMessage(object message, int channel = -1)
         {
             foreach (var listener in listeners.Values.Where(l => l.Channel.CompareTo(channel) == 0))
             {
-                if (!listener.Callback(message))
-                    break;
+                listener.Callback(message);
             }
         }
 
-        public static bool RemoveListner(TListnerKey listnerKey)
+        public static bool RemoveListner(string listnerKey)
         {
             Listner listner;
             return listeners.TryRemove(listnerKey, out listner);

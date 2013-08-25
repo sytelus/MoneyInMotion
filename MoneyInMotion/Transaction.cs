@@ -1,50 +1,117 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using CommonUtils;
 
 namespace MoneyInMotion
 {
+    public enum TransactionReason
+    {
+        Purchase, Adjustment, Fee, Payment, Return
+    }
+
+    [DataContract]
     public class Transaction
     {
-        public string TransactionType { get; private set; }
-        public DateTime? TransactionDate { get; private set; }
-        public DateTime? PostDate { get; private set; }
-        public string EntityName { get; private set; }
-        public decimal Amount { get; private set; }
-        public string ID { get; private set; }
-        public string RawLine { get; private set; }
-        public string AccountName { get; private set; }
-    
-        public Transaction(string[] headerColumns, string line, string accountName)
+        [DataMember] public TransactionReason TransactionReason { get; private set; }
+        [DataMember] public DateTime? TransactionDate { get; private set; }
+        [DataMember] public DateTime? PostDate { get; private set; }
+        [DataMember] public string EntityName { get; private set; }
+        [DataMember] public decimal? Amount { get; private set; }
+        [DataMember] public string Id { get; private set; }
+        [DataMember] public string RawData { get; private set; }
+        [DataMember] public AccountInfo AccountInfo { get; private set; }
+        [DataMember] public string LocationHash { get; private set; }
+
+        private Transaction()
         {
-            this.RawLine = line;
-            AccountName = accountName;
+            
+        }
+
+        public static Transaction CreateFromCsvLine(string[] headerColumns, string line, AccountInfo accountInfo, string locationHash)
+        {
+            var transaction = new Transaction();
+            transaction.RawData = line;
+            transaction.LocationHash = locationHash;
+            transaction.AccountInfo = accountInfo;
             var columns = Utils.ParseCsvLine(line).ToArray();
             for (var columnIndex = 0; columnIndex < headerColumns.Length; columnIndex++)
             {
                 var headerColumn = headerColumns[columnIndex];
-                string columnValue = columns[columnIndex];
+                var columnValue = columns[columnIndex];
                 switch (headerColumn)
                 {
                     case "Type":
-                        this.TransactionType = columnValue; break;
+                        transaction.TransactionReason = GetTransactionType(columnValue); break;
                     case "Trans Date":
-                        this.TransactionDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
+                        transaction.TransactionDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
                     case "Post Date":
-                        this.PostDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
+                        transaction.PostDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
                     case "Description":
-                        this.EntityName = columnValue; break;
+                        transaction.EntityName = columnValue; break;
                     case "Amount":
-                        this.Amount = Decimal.Parse(columnValue, NumberStyles.Currency); break;
+                        transaction.Amount = Decimal.Parse(columnValue, NumberStyles.Currency); break;
                     default:
                         throw new Exception("Heade column '{0}' is not recognized".FormatEx(headerColumn));
                 }
             }
 
-            this.ID = Utils.GetMD5HashString(string.Join("\t", accountName.Trim().ToUpperInvariant(), line.Trim().ToUpperInvariant()));
+            transaction.Id = Utils.GetMD5HashString(string.Join("\t", transaction.AccountInfo.Id, transaction.TransactionReason.ToString(),
+                transaction.Amount.ToString(), transaction.EntityName.EmptyIfNull().ToUpperInvariant()
+                , transaction.PostDate.ToStringNullSafe(), transaction.TransactionDate.ToStringNullSafe()));
+
+            transaction.Validate();
+            return transaction;
+        }
+
+        private void Validate()
+        {
+            var errors = string.Empty;
+            if (string.IsNullOrEmpty(this.LocationHash))
+                errors += "LocationHash must have value.";
+            if (string.IsNullOrEmpty(this.AccountInfo.Id))
+                errors += "AccountInfo.Id must have value.";
+            if (this.Amount == null)
+                errors += "Amount must have value.";
+            if (this.PostDate == null && this.TransactionDate == null)
+                errors += "Either PostDate Or TransactionDate must have value.";
+            if (string.IsNullOrEmpty(this.EntityName))
+                errors += "EntityName must have value.";
+
+            if (!string.IsNullOrEmpty(errors))
+                throw new InvalidDataException(errors);
+        }
+
+        private static TransactionReason GetTransactionType(string rawTransactionType)
+        {
+            switch (rawTransactionType.ToUpperInvariant())
+            {
+                case "SALE":
+                    return TransactionReason.Purchase;
+                case "PAYMENT":
+                    return TransactionReason.Payment;
+                case "ADJUSTMENT":
+                    return TransactionReason.Adjustment;
+                case "RETURN":
+                    return TransactionReason.Return;
+                case "FEE":
+                    return TransactionReason.Fee;
+                default:
+                    throw new ArgumentException("rawTransactionType {0} is not known".FormatEx(rawTransactionType), "rawTransactionType");
+            }
+        }
+
+        public string SerializeToJson()
+        {
+            return JsonSerializer<Transaction>.Serialize(this);
+        }
+        public static Transaction DeserializeFromJson(string serializedTransaction)
+        {
+            return JsonSerializer<Transaction>.Deserialize(serializedTransaction);
         }
     }
 }
