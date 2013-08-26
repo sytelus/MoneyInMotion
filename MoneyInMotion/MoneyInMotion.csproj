@@ -76,6 +76,7 @@
     <Compile Include="DiskTransactionRepository.cs" />
     <Compile Include="FileLocation.cs" />
     <Compile Include="ILocation.cs" />
+    <Compile Include="ImportLocation.cs" />
     <Compile Include="ITransactionsRepository.cs" />
     <Compile Include="AccountConfig.cs" />
     <Compile Include="MainForm.cs">

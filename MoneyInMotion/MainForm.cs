@@ -74,7 +74,7 @@ namespace MoneyInMotion
             var statementLocations = repository.GetStatementLocations();
             foreach (var statementLocation in statementLocations)
             {
-                if (latestMerged.LocationHashses.Contains(statementLocation.ContentHash))
+                if (latestMerged.LocationHashses.Contains(statementLocation.ImportInfo.ContentHash))
                     MessagePipe.SendMessage("Location {0} skipped".FormatEx(statementLocation.Address));
                 else
                 {

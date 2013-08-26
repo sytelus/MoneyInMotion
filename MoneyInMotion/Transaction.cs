@@ -25,18 +25,17 @@ namespace MoneyInMotion
         [DataMember] public string Id { get; private set; }
         [DataMember] public string RawData { get; private set; }
         [DataMember] public AccountInfo AccountInfo { get; private set; }
-        [DataMember] public string LocationHash { get; private set; }
-
+        [DataMember] public ImportInfo ImportInfo { get; private set; }
         private Transaction()
         {
             
         }
 
-        public static Transaction CreateFromCsvLine(string[] headerColumns, string line, AccountInfo accountInfo, string locationHash)
+        public static Transaction CreateFromCsvLine(string[] headerColumns, string line, AccountInfo accountInfo, ImportInfo importInfo)
         {
             var transaction = new Transaction();
             transaction.RawData = line;
-            transaction.LocationHash = locationHash;
+            transaction.ImportInfo = importInfo;
             transaction.AccountInfo = accountInfo;
             var columns = Utils.ParseCsvLine(line).ToArray();
             for (var columnIndex = 0; columnIndex < headerColumns.Length; columnIndex++)
@@ -71,7 +70,7 @@ namespace MoneyInMotion
         private void Validate()
         {
             var errors = string.Empty;
-            if (string.IsNullOrEmpty(this.LocationHash))
+            if (this.ImportInfo == null)
                 errors += "LocationHash must have value.";
             if (string.IsNullOrEmpty(this.AccountInfo.Id))
                 errors += "AccountInfo.Id must have value.";

@@ -37,7 +37,7 @@ namespace MoneyInMotion
             //First add transaction without updating IDs. THEN add IDs.
             this.items.AddRange(itemsToAdd.Where(i => !this.uniqueIDs.Contains(i.Id)));
             this.uniqueIDs.AddRange(itemsToAdd.Select(i => i.Id));
-            this.locationHashes.AddRange(itemsToAdd.Select(i => i.LocationHash));
+            this.locationHashes.AddRange(itemsToAdd.Select(i => i.ImportInfo.ContentHash));
         }
 
         public IEnumerator<Transaction> GetEnumerator()
@@ -61,7 +61,7 @@ namespace MoneyInMotion
             {
                 items.Add(item);
                 uniqueIDs.Add(item.Id);
-                locationHashes.Add(item.LocationHash);
+                locationHashes.Add(item.ImportInfo.ContentHash);
                 return true;
             }
             else return false;

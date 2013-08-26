@@ -118,7 +118,7 @@ namespace MoneyInMotion
             switch (location.ContentType)
             {
                 case ContentType.Csv:
-                    var transactionsFromFile = GetTransactionsFromCsvFile(location.Address, location.AccountConfig.AccountInfo, location.ContentHash).ToList();
+                    var transactionsFromFile = GetTransactionsFromCsvFile(location.Address, location.AccountConfig.AccountInfo, location.ImportInfo).ToList();
                     return new Transactions(transactionsFromFile);
                 case ContentType.Json:
                     var jsonLines = File.ReadLines(location.Address);
@@ -131,7 +131,7 @@ namespace MoneyInMotion
             
         }
 
-        private static IEnumerable<Transaction> GetTransactionsFromCsvFile(string file, AccountInfo accountInfo, string locationHash)
+        private static IEnumerable<Transaction> GetTransactionsFromCsvFile(string file, AccountInfo accountInfo, ImportInfo importInfo)
         {
             var lines = File.ReadAllLines(file).RemoveNullOrEmpty();
             var headerColumns = (string[])null;
@@ -141,7 +141,7 @@ namespace MoneyInMotion
                     headerColumns = Utils.ParseCsvLine(line).ToArray();
                 else
                 {
-                    var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo, locationHash);
+                    var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo, importInfo);
                     yield return transaction;
                 }
             }
