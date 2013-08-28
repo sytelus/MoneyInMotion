@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using CommonUtils;
 
 namespace MoneyInMotion
 {
