@@ -4,6 +4,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Security.Claims;
+using System.Security.Principal;
 using System.Text;
 using CommonUtils;
 
@@ -26,9 +28,15 @@ namespace MoneyInMotion
         [DataMember] public string RawData { get; private set; }
         [DataMember] public AccountInfo AccountInfo { get; private set; }
         [DataMember] public ImportInfo ImportInfo { get; private set; }
+        [DataMember] public DateTime CreateDate { get; private set; }
+        [DataMember] public string CreatedBy { get; private set; }
+        [DataMember] public DateTime? UpdateDate { get; private set; }
+        [DataMember] public string UpdatedBy { get; private set; }        
+        
         private Transaction()
         {
-            
+            this.CreateDate = DateTime.UtcNow;
+            this.CreatedBy = WindowsIdentity.GetCurrent().IfNotNull(i => i.Name);
         }
 
         public static Transaction CreateFromCsvLine(string[] headerColumns, string line, AccountInfo accountInfo, ImportInfo importInfo)

@@ -62,37 +62,16 @@ namespace MoneyInMotion
 
         private void buttonScanStatements_Click(object sender, EventArgs e)
         {
-            if (this.latestMerged == null)
-            {
-                var latestMergedLocation = repository.GetNamedLocation(repository.LastestMergedTransactionsName);
-                if (repository.TransactionsExists(latestMergedLocation))
-                    latestMerged = repository.Load(latestMergedLocation);
-                else
-                    latestMerged = new Transactions();
-            }
+            this.latestMerged = this.latestMerged ?? MiMUtils.GetLatestMerged(this.repository);
 
-            var statementLocations = repository.GetStatementLocations();
-            foreach (var statementLocation in statementLocations)
-            {
-                if (latestMerged.LocationHashses.Contains(statementLocation.ImportInfo.ContentHash))
-                    MessagePipe.SendMessage("Location {0} skipped".FormatEx(statementLocation.Address));
-                else
-                {
-                    var statementTransactions = repository.Load(statementLocation);
-
-                    var oldCount = latestMerged.Count;
-                    latestMerged.Merge(statementTransactions);
-
-                    MessagePipe.SendMessage("{0} transactions found ({1} new) in {2}".FormatEx(statementTransactions.Count, latestMerged.Count - oldCount, statementLocation.Address));
-                }
-            }
-
+            MiMUtils.MergeNewStatements(this.repository, this.latestMerged);
         }
+
+
 
         private void buttonSaveLatestMerged_Click(object sender, EventArgs e)
         {
-            var latestMergedLocation = repository.GetNamedLocation(repository.LastestMergedTransactionsName);
-            repository.Save(latestMerged, latestMergedLocation);
+            MiMUtils.SaveLatestMerged(this.repository, this.latestMerged);
         }
     }
 }

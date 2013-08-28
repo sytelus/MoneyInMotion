@@ -14,7 +14,7 @@ namespace MoneyInMotion
         private readonly string rootFolderPath, importFolderPath, namedTransactionsFolderPath, namedLocationsFilePath;
         private readonly IDictionary<string, ILocation> namedLocations;
 
-        const string DefaultRelativeDropBoxFolder = "WalletWolf", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
+        const string DefaultRelativeDropBoxFolder = "MiM", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
             , DefaultLatestMergedFileName = "LatestMerged.json", DropBoxHostFileName = "Dropbox\\host.db";
         const string AccountConfigFileName = @"AccountConfig.json", NamedLocationsFileName = @"NamedLocations.json";
 
@@ -154,6 +154,8 @@ namespace MoneyInMotion
                 foreach (var transactionSerialized in transactions.SerializeToJson())
                     textFileWriter.WriteLine(transactionSerialized);
             }
+
+            MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
         }
 
         public bool TransactionsExists(ILocation location)

@@ -10,7 +10,7 @@ namespace MoneyInMotion
     {
 
 
-        IEnumerable<ILocation> GetStatementLocations(ILocation startLocation, AccountConfig parentAccountConfig = null);
+        IEnumerable<ILocation> GetStatementLocations(ILocation startLocation = null, AccountConfig parentAccountConfig = null);
 
         ILocation GetNamedLocation(string name);
         void SaveNamedLocation(string name, ILocation location);
