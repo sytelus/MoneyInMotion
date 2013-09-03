@@ -11,11 +11,16 @@ namespace MoneyAI
     [DataContract]
     public class ImportInfo
     {
-        [DataMember] public string PortableAddress { get; private set; }
-        [DataMember] public DateTime UpdateDate { get; private set; }
-        [DataMember] public DateTime CreateDate { get; private set; }
-        [DataMember] public string ContentHash { get; private set; }
-        [DataMember] public string Id { get; private set; }
+        [DataMember(IsRequired = true)] 
+        public string PortableAddress { get; private set; }
+        [DataMember(EmitDefaultValue = false)]
+        public DateTime? UpdateDate { get; private set; }
+        [DataMember(EmitDefaultValue = false)]
+        public DateTime? CreateDate { get; private set; }
+        [DataMember(IsRequired = true)]
+        public string ContentHash { get; private set; }
+        [DataMember(IsRequired = true)]
+        public string Id { get; private set; }
 
         public ImportInfo(string id, string portableAddress, DateTime updateDate, DateTime createDate, string contentHash)
         {

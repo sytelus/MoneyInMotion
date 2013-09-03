@@ -13,10 +13,15 @@ namespace MoneyAI
             CreditCard = 1, BankChecking = 2, BankSavings = 4, Bank = BankChecking | BankSavings
         }
 
-        [DataMember] public string InstituteName { get; private set; }
-        [DataMember] public string Title { get; private set; }
-        [DataMember] public AccountType Type { get; private set; }
-        [DataMember] public string Id { get; private set; }
+        [DataMember(IsRequired = true)] 
+        public string InstituteName { get; private set; }
+        [DataMember(EmitDefaultValue = false)] 
+        public string Title { get; private set; }
+        [DataMember(IsRequired = true)]
+        public AccountType Type { get; private set; }
+        [DataMember(IsRequired = true)]
+        public string Id { get; private set; }
+
         public AccountInfo(AccountType type, string id, string title, string instituteName)
         {
             if (string.IsNullOrEmpty(id))
