@@ -11,7 +11,7 @@ namespace MoneyAI
 {
     public class DiskTransactionRepository : ITransactionsRepository
     {
-        private readonly string rootFolderPath, importFolderPath, namedTransactionsFolderPath, namedLocationsFilePath;
+        private readonly string rootFolderPath, importFolderPath, namedLocationsFilePath;
         private readonly IDictionary<string, ILocation> namedLocations;
 
         const string DefaultRelativeDropBoxFolder = "MoneyAI", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
@@ -23,7 +23,7 @@ namespace MoneyAI
             this.rootFolderPath = rootFolderPath ?? Path.Combine(GetDropBoxPath(), DefaultRelativeDropBoxFolder);
 
             importFolderPath = Path.Combine(this.rootFolderPath, DefaultRelativeImportFolder);
-            namedTransactionsFolderPath = Path.Combine(this.rootFolderPath, DefaultRelativeNamedTransactionsFolder);
+            var namedTransactionsFolderPath = Path.Combine(this.rootFolderPath, DefaultRelativeNamedTransactionsFolder);
 
             namedLocationsFilePath = Path.Combine(namedTransactionsFolderPath, NamedLocationsFileName);
             namedLocations = File.Exists(namedLocationsFilePath)
@@ -76,8 +76,8 @@ namespace MoneyAI
             {
                 foreach (var fileFilter in accountConfig.FileFilters)
                 {
-                    var fileNames = Directory.EnumerateFiles(startLocation.Address, fileFilter,
-                        SearchOption.TopDirectoryOnly);
+                    var fileNames = Directory.EnumerateFiles(startLocation.Address, fileFilter, SearchOption.TopDirectoryOnly)
+                        .Select(Path.GetFileName);
                     foreach (var fileName in fileNames)
                         yield return new FileLocation(startLocation.Address, fileName, accountConfig, true);
                 }
@@ -119,10 +119,15 @@ namespace MoneyAI
             {
                 case ContentType.Csv:
                     var transactionsFromFile = GetTransactionsFromCsvFile(location.Address, location.AccountConfig.AccountInfo, location.ImportInfo).ToList();
-                    return new Transactions(transactionsFromFile);
+                    return new Transactions(transactionsFromFile, location.AccountConfig.AccountInfo.AsEnumerable(), location.ImportInfo.AsEnumerable());
                 case ContentType.Json:
-                    var jsonLines = File.ReadLines(location.Address);
-                    return Transactions.DeserializeFromJson(jsonLines);
+                    var serializedComponents = new Transactions.SerializedComponents()
+                    {
+                        SerializedTransactions = File.ReadLines(location.Address),
+                        SerializedAccountInfos = File.ReadLines(GetAddressInfosFilePath(location.Address)),
+                        SerializedImportInfos = File.ReadLines(GetImportInfosFilePath(location.Address))
+                    };
+                    return Transactions.DeserializeFromJson(serializedComponents);
                 case ContentType.None:
                 default:
                     throw new ArgumentException("location.ContentType value {0} is not supported for loading transaction".FormatEx(location.ContentType));
@@ -133,15 +138,16 @@ namespace MoneyAI
 
         private static IEnumerable<Transaction> GetTransactionsFromCsvFile(string file, AccountInfo accountInfo, ImportInfo importInfo)
         {
-            var lines = File.ReadAllLines(file).RemoveNullOrEmpty();
+            var lines = File.ReadLines(file).RemoveNullOrEmpty().ToList();
             var headerColumns = (string[])null;
-            foreach (var line in lines)
+            for(var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
             {
+                var line = lines[lineNumber];
                 if (headerColumns == null)
                     headerColumns = Utils.ParseCsvLine(line).ToArray();
                 else
                 {
-                    var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo, importInfo);
+                    var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo.Id, importInfo.Id, lineNumber);
                     yield return transaction;
                 }
             }
@@ -149,13 +155,21 @@ namespace MoneyAI
         
         public void Save(Transactions transactions, ILocation location)
         {
-            using (var textFileWriter = File.CreateText(location.Address))
-            {
-                foreach (var transactionSerialized in transactions.SerializeToJson())
-                    textFileWriter.WriteLine(transactionSerialized);
-            }
+            var serializedComponents = transactions.SerializeToJson();
+            Utils.SaveLines(location.Address, serializedComponents.SerializedTransactions);
+            Utils.SaveLines(GetAddressInfosFilePath(location.Address), serializedComponents.SerializedAccountInfos);
+            Utils.SaveLines(GetImportInfosFilePath(location.Address), serializedComponents.SerializedImportInfos);
 
             MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
+        }
+
+        private static string GetAddressInfosFilePath(string transactionsFilePath)
+        {
+            return Path.ChangeExtension(transactionsFilePath, "AddressInfo.json");
+        }
+        private static string GetImportInfosFilePath(string transactionsFilePath)
+        {
+            return Path.ChangeExtension(transactionsFilePath, "ImportInfo.json");
         }
 
         public bool TransactionsExists(ILocation location)

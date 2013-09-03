@@ -32,7 +32,7 @@ namespace MoneyAI
             var statementLocations = repository.GetStatementLocations();
             foreach (var statementLocation in statementLocations)
             {
-                if (latestMerged.LocationHashses.Contains(statementLocation.ImportInfo.ContentHash))
+                if (latestMerged.ImportInfos.ContainsKey(statementLocation.ImportInfo.Id))
                     MessagePipe.SendMessage("Location {0} skipped".FormatEx(statementLocation.Address));
                 else
                 {

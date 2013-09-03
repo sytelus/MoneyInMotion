@@ -785,7 +785,7 @@ namespace CommonUtils
             return GetMD5Hash(bytes);
         }
 
-        public static IEnumerable<T> AsEnumerable<T>(T value)
+        public static IEnumerable<T> AsEnumerable<T>(this T value)
         {
             return Enumerable.Repeat(value, 1);
         }
@@ -1329,6 +1329,15 @@ namespace CommonUtils
             }
         }
 
+        public static void SaveLines(string saveFilePath, IEnumerable<string> lines)
+        {
+            using (var textFileWriter = File.CreateText(saveFilePath))
+            {
+                foreach (var line in lines)
+                    textFileWriter.WriteLine(line);
+            }
+        }
+
         public static void AddRange<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, IEnumerable<TKey> keys, IEnumerable<TValue> values)
         {
             if (keys == null)
@@ -1767,7 +1776,7 @@ namespace CommonUtils
                 throw new ArgumentOutOfRangeException(String.Format("intValue is expected to be either 0 or 1 but it's {0}", intValue));
         }
 
-        public static bool AddIfNotExist<TKey,TValue>(this Dictionary<TKey, TValue> dictionary, TKey key, TValue value, bool updateExistingValue, IComparer<TValue> valueComparer)
+        public static bool AddIfNotExist<TKey,TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value, bool updateExistingValue = false, IComparer<TValue> valueComparer = null)
         {
             TValue existingValue;
             var exist = dictionary.TryGetValue(key, out existingValue);

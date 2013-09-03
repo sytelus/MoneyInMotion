@@ -12,32 +12,74 @@ namespace MoneyAI
     public class Transactions : ICollection<Transaction>
     {
         private readonly IList<Transaction> items = new List<Transaction>();
-        private readonly HashSet<string> uniqueIDs = new HashSet<string>();
-        private readonly HashSet<string> locationHashes = new HashSet<string>();
+        private readonly HashSet<string> uniqueIds = new HashSet<string>();
+        private readonly IDictionary<string, AccountInfo> accountInfos = new Dictionary<string, AccountInfo>();
+        private readonly IDictionary<string, ImportInfo> importInfos = new Dictionary<string, ImportInfo>();
 
-        public Transactions(ICollection<Transaction> other = null)
+        public Transactions() : this(null, null, null)
         {
-            if (other != null)
-                this.Merge(other);
+            
         }
 
-        public IEnumerable<string> SerializeToJson()
+        public Transactions(ICollection<Transaction> others, IEnumerable<AccountInfo> accountInfos, IEnumerable<ImportInfo> importInfos)
         {
-            return items.Select(item => item.SerializeToJson());
+            if (others != null)
+                this.Merge(others, accountInfos, importInfos);
         }
 
-        public static Transactions DeserializeFromJson(IEnumerable<string> serializedTransactions)
+        //FUTURE: Should be readonly dictionary
+        public IDictionary<string, AccountInfo> AccountInfos
         {
-            var transactionList = serializedTransactions.Select(Transaction.DeserializeFromJson).ToList();
-            return new Transactions(transactionList);
+            get { return this.accountInfos; } 
+        }
+        //FUTURE: Should be readonly dictionary
+        public IDictionary<string, ImportInfo> ImportInfos
+        {
+            get { return this.importInfos; }
         }
 
-        public void Merge(ICollection<Transaction> itemsToAdd)
+        public class  SerializedComponents 
+        {
+            public IEnumerable<string> SerializedTransactions { get; set; }
+            public IEnumerable<string> SerializedAccountInfos { get; set; }
+            public IEnumerable<string> SerializedImportInfos { get; set; }
+        }
+
+        public SerializedComponents SerializeToJson()
+        {
+            var components = new SerializedComponents()
+            {
+                SerializedTransactions = this.items.Select(item => item.SerializeToJson()),
+                SerializedAccountInfos = this.accountInfos.Values.Select(a => a.SerializeToJson()),
+                SerializedImportInfos = this.importInfos.Values.Select(i => i.SerializeToJson())
+            };
+            return components;
+        }
+
+        public static Transactions DeserializeFromJson(SerializedComponents serializedComponents)
+        {
+            var transactionList = serializedComponents.SerializedTransactions.Select(Transaction.DeserializeFromJson).ToList();
+            var accountInfosDeserialized = serializedComponents.SerializedAccountInfos.Select(AccountInfo.DeserializeFromJson);
+            var importInfosDeserialized = serializedComponents.SerializedImportInfos.Select(ImportInfo.DeserializeFromJson);
+            return new Transactions(transactionList, accountInfosDeserialized, importInfosDeserialized);
+        }
+
+        public void Merge(ICollection<Transaction> others, IEnumerable<AccountInfo> otherAccountInfos, IEnumerable<ImportInfo> otherImportInfos)
         {
             //First add transaction without updating IDs. THEN add IDs.
-            this.items.AddRange(itemsToAdd.Where(i => !this.uniqueIDs.Contains(i.Id)));
-            this.uniqueIDs.AddRange(itemsToAdd.Select(i => i.Id));
-            this.locationHashes.AddRange(itemsToAdd.Select(i => i.ImportInfo.ContentHash));
+            this.items.AddRange(others.Where(i => !this.uniqueIds.Contains(i.ContentHash)));
+            this.uniqueIds.AddRange(others.Select(i => i.ContentHash));
+            this.accountInfos.AddRange(otherAccountInfos
+                .Where(a => !this.accountInfos.ContainsKey(a.Id))
+                .Select(a => new KeyValuePair<string, AccountInfo>(a.Id, a)), false);
+            this.importInfos.AddRange(otherImportInfos
+                .Where(i => !this.importInfos.ContainsKey(i.Id))
+                .Select(i => new KeyValuePair<string, ImportInfo>(i.Id, i)), false);
+        }
+
+        public void Merge(Transactions other)
+        {
+            this.Merge(other.items, other.AccountInfos.Values, other.ImportInfos.Values);
         }
 
         public IEnumerator<Transaction> GetEnumerator()
@@ -50,18 +92,14 @@ namespace MoneyAI
             return items.GetEnumerator();
         }
 
-        public void Add(Transaction item)
+        public bool Add(Transaction item, bool allowDuplicate, AccountInfo accountInfo, ImportInfo importInfo)
         {
-            Add(item, false);
-        }
-
-        public bool Add(Transaction item, bool allowDuplicate)
-        {
-            if (allowDuplicate || !uniqueIDs.Contains(item.Id))
+            if (allowDuplicate || !uniqueIds.Contains(item.ContentHash))
             {
-                items.Add(item);
-                uniqueIDs.Add(item.Id);
-                locationHashes.Add(item.ImportInfo.ContentHash);
+                this.items.Add(item);
+                this.uniqueIds.Add(item.ContentHash);
+                this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
+                this.importInfos.AddIfNotExist(importInfo.Id, importInfo);
                 return true;
             }
             else return false;
@@ -69,14 +107,10 @@ namespace MoneyAI
 
         public void Clear()
         {
-            items.Clear();
-            uniqueIDs.Clear();
-            locationHashes.Clear();
-        }
-
-        public ICollection<string> LocationHashses
-        {
-            get { return this.locationHashes; }
+            this.items.Clear();
+            this.uniqueIds.Clear();
+            this.accountInfos.Clear();
+            this.importInfos.Clear();
         }
 
         public bool Contains(Transaction item)
@@ -102,6 +136,11 @@ namespace MoneyAI
         public bool Remove(Transaction item)
         {
             throw new NotSupportedException();
+        }
+
+        public void Add(Transaction item)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -25,13 +25,8 @@ namespace MoneyAI
             if (isImportInfo)
             {
                 var updateDate = File.GetLastWriteTimeUtc(this.Address);
-                this.ImportInfo = new ImportInfo()
-                    {
-                        UpdateDate = updateDate,
-                        CreateDate = File.GetCreationTimeUtc(this.Address),
-                        ContentHash = Utils.GetMD5HashString(string.Join("\t", fileRelativePath, updateDate.ToString("u"))),
-                        PortableAddress = fileRelativePath
-                    };
+                var importId = Utils.GetMD5HashString(string.Join("\t", fileRelativePath, updateDate.ToString("u")));
+                this.ImportInfo = new ImportInfo(importId, relativeFilePath, updateDate, File.GetCreationTimeUtc(this.Address), importId);
             }
             this.AccountConfig = accountConfig;
 
