@@ -5,9 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
 
-namespace MoneyInMotion
+namespace MoneyAI
 {
-    public static class MiMUtils
+    public static class MoneyAIUtils
     {
         public static void SaveLatestMerged(ITransactionsRepository repository, Transactions latestMerged)
         {

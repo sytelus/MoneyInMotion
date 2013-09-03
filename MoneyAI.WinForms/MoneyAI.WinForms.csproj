@@ -7,8 +7,8 @@
     <ProjectGuid>{8632502B-63AC-4745-BCC5-3DF0712D2696}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MoneyInMotion.WinForms</RootNamespace>
-    <AssemblyName>MoneyInMotion</AssemblyName>
+    <RootNamespace>MoneyAI.WinForms</RootNamespace>
+    <AssemblyName>MoneyAI.WinForms</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <PublishUrl>publish\</PublishUrl>
@@ -50,7 +50,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>MoneyInMotion.Program</StartupObject>
+    <StartupObject>MoneyAI.WinForms.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -105,11 +105,6 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings1.Designer.cs</LastGenOutput>
     </None>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -136,9 +131,9 @@
       <Project>{d60b2856-0341-4481-afdd-de70532b6884}</Project>
       <Name>CommonUtils</Name>
     </ProjectReference>
-    <ProjectReference Include="..\MoneyInMotionLib\MoneyInMotionLib.csproj">
+    <ProjectReference Include="..\MoneyAI\MoneyAI.csproj">
       <Project>{49E1703C-6F0E-4791-8037-39769AC6A0E4}</Project>
-      <Name>MoneyInMotionLib</Name>
+      <Name>MoneyAI</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

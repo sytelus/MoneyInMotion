@@ -9,7 +9,7 @@ using System.Security.Principal;
 using System.Text;
 using CommonUtils;
 
-namespace MoneyInMotion
+namespace MoneyAI
 {
     public enum TransactionReason
     {

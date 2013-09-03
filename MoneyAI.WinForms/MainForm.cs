@@ -1,17 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using CommonUtils;
-using MoneyInMotion.Properties;
+using MoneyAI.WinForms.Properties;
 
-namespace MoneyInMotion
+namespace MoneyAI.WinForms
 {
     public partial class FormMain : Form
     {
@@ -62,16 +54,16 @@ namespace MoneyInMotion
 
         private void buttonScanStatements_Click(object sender, EventArgs e)
         {
-            this.latestMerged = this.latestMerged ?? MiMUtils.GetLatestMerged(this.repository);
+            this.latestMerged = this.latestMerged ?? MoneyAIUtils.GetLatestMerged(this.repository);
 
-            MiMUtils.MergeNewStatements(this.repository, this.latestMerged);
+            MoneyAIUtils.MergeNewStatements(this.repository, this.latestMerged);
         }
 
 
 
         private void buttonSaveLatestMerged_Click(object sender, EventArgs e)
         {
-            MiMUtils.SaveLatestMerged(this.repository, this.latestMerged);
+            MoneyAIUtils.SaveLatestMerged(this.repository, this.latestMerged);
         }
     }
 }

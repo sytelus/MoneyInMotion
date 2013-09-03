@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 using System.IO;
 using CommonUtils;
 
-namespace MoneyInMotion
+namespace MoneyAI
 {
     public class DiskTransactionRepository : ITransactionsRepository
     {
         private readonly string rootFolderPath, importFolderPath, namedTransactionsFolderPath, namedLocationsFilePath;
         private readonly IDictionary<string, ILocation> namedLocations;
 
-        const string DefaultRelativeDropBoxFolder = "MiM", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
+        const string DefaultRelativeDropBoxFolder = "MoneyAI", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
             , DefaultLatestMergedFileName = "LatestMerged.json", DropBoxHostFileName = "Dropbox\\host.db";
         const string AccountConfigFileName = @"AccountConfig.json", NamedLocationsFileName = @"NamedLocations.json";
 

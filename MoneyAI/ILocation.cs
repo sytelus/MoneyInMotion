@@ -1,4 +1,4 @@
-﻿namespace MoneyInMotion
+﻿namespace MoneyAI
 {
     public enum ContentType
     {

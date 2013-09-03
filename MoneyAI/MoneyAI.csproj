@@ -7,8 +7,8 @@
     <ProjectGuid>{49E1703C-6F0E-4791-8037-39769AC6A0E4}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MoneyInMotionLib</RootNamespace>
-    <AssemblyName>MoneyInMotionLib</AssemblyName>
+    <RootNamespace>MoneyAI</RootNamespace>
+    <AssemblyName>MoneyAI</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -49,7 +49,7 @@
     <Compile Include="ILocation.cs" />
     <Compile Include="ImportLocation.cs" />
     <Compile Include="ITransactionsRepository.cs" />
-    <Compile Include="MiMUtils.cs" />
+    <Compile Include="MoneyAIUtils.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Transaction.cs" />
     <Compile Include="Transactions.cs" />

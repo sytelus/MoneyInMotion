@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace MoneyInMotion
+namespace MoneyAI
 {
     [DataContract]
     public class AccountInfo

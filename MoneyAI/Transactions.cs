@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using CommonUtils;
 
-namespace MoneyInMotion
+namespace MoneyAI
 {
     public class Transactions : ICollection<Transaction>
     {

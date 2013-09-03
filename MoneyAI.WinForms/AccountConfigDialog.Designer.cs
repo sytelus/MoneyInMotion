@@ -1,4 +1,4 @@
-﻿namespace MoneyInMotion
+﻿namespace MoneyAI.WinForms
 {
     partial class AccountConfigDialog
     {

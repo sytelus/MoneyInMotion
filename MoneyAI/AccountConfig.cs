@@ -6,7 +6,7 @@ using System.Linq;
 using CommonUtils;
 using System.Runtime.Serialization;
 
-namespace MoneyInMotion
+namespace MoneyAI
 {
     [DataContract]
     public class AccountConfig

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
 
-namespace MoneyInMotion
+namespace MoneyAI
 {
     public class FileLocation : ILocation
     {
