@@ -85,6 +85,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="TreeNodeFilter.cs" />
     <EmbeddedResource Include="AccountConfigDialog.resx">
       <DependentUpon>AccountConfigDialog.cs</DependentUpon>
     </EmbeddedResource>

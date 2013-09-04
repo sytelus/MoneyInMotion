@@ -15,11 +15,14 @@ namespace MoneyAI.WinForms
 
         private string defaultRootPath;
         private AppState appState;
+        System.Globalization.DateTimeFormatInfo dateTimeFormatInfo = new System.Globalization.DateTimeFormatInfo();
         private void FormMain_Load(object sender, EventArgs e)
         {
             MessagePipe.AddListner(UpdateLog, listnerKey: "FormMain");
             defaultRootPath = Settings.Default.RootFolder.NullIfEmpty();
             textBoxRootFolder.Text = defaultRootPath;
+
+            buttonScanStatements_Click(sender, e);
         }
 
         private void FormMain_FormClosed(object sender, FormClosedEventArgs e)
@@ -69,26 +72,38 @@ namespace MoneyAI.WinForms
         private void RefreshExplorer()
         {
             this.treeView.Nodes.Clear();
-            var rootNode = CreateTreeNode("root", "All");
+            var rootNode = CreateTreeNode("All", new TreeNodeFilter() {Type = TreeNodeFilter.FilterType.None, Value = null} );
             this.treeView.Nodes.Add(rootNode);
 
-            var yearNodes = this.appState.LatestMerged.GroupBy(t => t.TransactionDate.Year)
-                .Select(g => new Tuple<int, int[]>(g.Key, g.Select(gt => gt.TransactionDate.Month).Distinct().OrderByDescending(m => m).ToArray()))
-                .OrderByDescending(tp => tp.Item1)
-                .Select(tp => CreateTreeNode(
-                      tp.Item1.ToString()
-                    , tp.Item1.ToString()
-                    , tp.Item2.Select(m => CreateTreeNode(m.ToString(), m.ToString())).ToArray()))
-                .ToArray();
+            var dateGroups = this.appState.LatestMerged
+                .GroupBy(t => t.TransactionDate.Year)
+                .OrderByDescending(g => g.Key)
+                .Select(g => 
+                    Tuple.Create(g.Key
+                        , g.GroupBy(yt => yt.TransactionDate.Month)
+                            .OrderByDescending(mg => mg.Key)
+                            .Select(mg => Tuple.Create(mg.Key, mg.ToArray()))
+                        .ToArray()));
 
-            rootNode.Nodes.AddRange(yearNodes);
-            rootNode.ExpandAll();
+            foreach (var dateGroup in dateGroups)
+            {
+                var yearNode = CreateTreeNode(dateGroup.Item1.ToString(), new TreeNodeFilter() {Type = TreeNodeFilter.FilterType.Year, Value = dateGroup.Item1});
+                rootNode.Nodes.Add(yearNode);
+
+                foreach (var monthGroup in dateGroup.Item2)
+                {
+                    var monthNode = CreateTreeNode(monthGroup.Item1.ToString(), new TreeNodeFilter() { Type = TreeNodeFilter.FilterType.Month, Value = monthGroup.Item1 });
+                    yearNode.Nodes.Add(monthNode);
+                    
+
+                }
+            }
         }
 
-        private static TreeNode CreateTreeNode(string name, string text, TreeNode[] children = null, TreeNode parentNode = null, bool collapse = false)
+        private static TreeNode CreateTreeNode(string text, TreeNodeFilter filter, TreeNode[] children = null, TreeNode parentNode = null, bool collapse = false)
         {
             var node = new TreeNode(text);
-            node.Name = name;
+            node.Tag = filter;
 
             if (parentNode != null)
                 parentNode.Nodes.Add(node);
