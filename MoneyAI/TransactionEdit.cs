@@ -19,15 +19,19 @@ namespace MoneyAI
     {
         [DataMember(IsRequired = true)]
         public TransactionEditScope Scope { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public string[] ScopeParameters { get; private set; }
 
         [DataMember(EmitDefaultValue = false)]
         public string[] CategoryPath { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public Transaction.Correction UserCorrection { get; private set; }
+
         [DataMember(IsRequired = true)]
         public AuditInfo AuditInfo { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string ContentHash { get; private set; }
 
@@ -49,7 +53,7 @@ namespace MoneyAI
             return edit;
         }
 
-        public void Apply(Transactions transactions)
+        internal void Apply(Transactions transactions)
         {
             var filteredTransactions = FilterTransactions(transactions);
             foreach (var filteredTransaction in filteredTransactions)
@@ -91,6 +95,15 @@ namespace MoneyAI
                 default:
                     throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported".FormatEx(this.Scope.ToString()));
             }
+        }
+
+        public string SerializeToJson()
+        {
+            return JsonSerializer<TransactionEdit>.Serialize(this);
+        }
+        public static TransactionEdit DeserializeFromJson(string serializedData)
+        {
+            return JsonSerializer<TransactionEdit>.Deserialize(serializedData);
         }
     }
 }

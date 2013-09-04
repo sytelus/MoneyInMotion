@@ -49,8 +49,9 @@
     <Compile Include="FileLocation.cs" />
     <Compile Include="ILocation.cs" />
     <Compile Include="ImportInfo.cs" />
+    <Compile Include="IStorageOperations.cs" />
     <Compile Include="ITransactionsRepository.cs" />
-    <Compile Include="MoneyAIUtils.cs" />
+    <Compile Include="AppState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Transaction.cs" />
     <Compile Include="TransactionEdit.cs" />

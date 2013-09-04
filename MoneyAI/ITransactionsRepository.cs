@@ -17,11 +17,11 @@ namespace MoneyAI
         bool NamedLocationExists(string name);
         IEnumerable<KeyValuePair<string, ILocation>> NamedLocations { get; }
 
-        Transactions Load(ILocation location);
-        void Save(Transactions transactions, ILocation location);
-        bool TransactionsExists(ILocation location);
+        IStorageOperations<Transactions> TransactionsStorage { get; }
+        IStorageOperations<TransactionEdits> TransactionEditsStorage { get; }
 
-        string LastestMergedTransactionsName { get; }
+        string LastestMergedLocationName { get; }
+        string TransactionEditsLocationName { get; }
 
         void AddAccountConfig(AccountConfig accountConfig);
     }

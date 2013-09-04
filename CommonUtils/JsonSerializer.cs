@@ -7,7 +7,7 @@ using System.Runtime.Serialization.Json;
 
 namespace CommonUtils
 {
-    public static class JsonSerializer<T> where T:class
+    public static class JsonSerializer<T> 
     {
         private static DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T)); 
 

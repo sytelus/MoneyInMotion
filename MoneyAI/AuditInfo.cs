@@ -14,10 +14,13 @@ namespace MoneyAI
     {
         [DataMember(IsRequired = true)]
         public DateTime CreateDate { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string CreatedBy { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public DateTime? UpdateDate { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public string UpdatedBy { get; private set; }
 

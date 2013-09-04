@@ -21,32 +21,47 @@ namespace MoneyAI
     {
         [DataMember(IsRequired = true)]
         public TransactionReason TransactionReason { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public DateTime? TransactionDate { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public DateTime? PostDate { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string EntityName { get; private set; }
+
         [DataMember(IsRequired = true)]
         public decimal? Amount { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string ContentHash { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string AccountId { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string ImportId { get; private set; }
+
         [DataMember(IsRequired = true)]
         public AuditInfo AuditInfo { get; private set; }
+
         [DataMember(IsRequired = true)] 
         public string Id { get; private set; }       
+
         [DataMember(IsRequired = true)] 
         public int LineNumber { get; private set; }     
+
         [DataMember(EmitDefaultValue = false)] 
         public string[] CategoryPath { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public Correction UserCorrection { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
-        public ICollection<string> Edits { get; private set; }
+        public IDictionary<int,string> Edits { get; private set; }
+
+        [DataMember(EmitDefaultValue = false)] private int editSequenceNumber;
 
         private string cachedEntityNameNormalized = null;
         public string EntityNameNormalized
@@ -125,8 +140,9 @@ namespace MoneyAI
 
         private void AddEdit(TransactionEdit edit)
         {
-            this.Edits = this.Edits ?? new HashSet<string>();
-            this.Edits.Add(edit.ContentHash);
+            this.Edits = this.Edits ?? new Dictionary<int, string>();
+            this.editSequenceNumber += 1;
+            this.Edits.Add(this.editSequenceNumber, edit.ContentHash);
         }
 
         private Transaction()
@@ -217,9 +233,9 @@ namespace MoneyAI
         {
             return JsonSerializer<Transaction>.Serialize(this);
         }
-        public static Transaction DeserializeFromJson(string serializedTransaction)
+        public static Transaction DeserializeFromJson(string serializedData)
         {
-            return JsonSerializer<Transaction>.Deserialize(serializedTransaction);
+            return JsonSerializer<Transaction>.Deserialize(serializedData);
         }
     }
 }

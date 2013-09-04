@@ -15,10 +15,13 @@ namespace MoneyAI
 
         [DataMember(IsRequired = true)] 
         public string InstituteName { get; private set; }
+
         [DataMember(EmitDefaultValue = false)] 
         public string Title { get; private set; }
+
         [DataMember(IsRequired = true)]
         public AccountType Type { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string Id { get; private set; }
 

@@ -13,12 +13,16 @@ namespace MoneyAI
     {
         [DataMember(IsRequired = true)] 
         public string PortableAddress { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public DateTime? UpdateDate { get; private set; }
+
         [DataMember(EmitDefaultValue = false)]
         public DateTime? CreateDate { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string ContentHash { get; private set; }
+
         [DataMember(IsRequired = true)]
         public string Id { get; private set; }
 
@@ -31,9 +35,9 @@ namespace MoneyAI
             this.ContentHash = contentHash;
         }
 
-        public static ImportInfo DeserializeFromJson(string serializedImportInfo)
+        public static ImportInfo DeserializeFromJson(string serializedData)
         {
-            return JsonSerializer<ImportInfo>.Deserialize(serializedImportInfo);
+            return JsonSerializer<ImportInfo>.Deserialize(serializedData);
         }
 
         internal string SerializeToJson()

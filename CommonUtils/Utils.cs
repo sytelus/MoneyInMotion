@@ -1512,10 +1512,10 @@ namespace CommonUtils
             }
         }
 
-        public static T DeserializeFromJson<T>(DataContractJsonSerializer serializer, string jsonToDeserialize) where T:class 
+        public static T DeserializeFromJson<T>(DataContractJsonSerializer serializer, string jsonToDeserialize)  
         {
             if (String.IsNullOrEmpty(jsonToDeserialize))
-                return null;
+                return default(T);
             MemoryStream buffer = null;
             try
             {
@@ -1529,7 +1529,7 @@ namespace CommonUtils
                     buffer.Flush();
 
                     buffer.Position = 0;
-                    var deserializedObject = serializer.ReadObject(buffer) as T;
+                    var deserializedObject = (T) serializer.ReadObject(buffer);
 
                     return deserializedObject;
                 }

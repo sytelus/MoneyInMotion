@@ -59,6 +59,7 @@
     <Compile Include="JsonSerializer.cs" />
     <Compile Include="LinkedListSet.cs" />
     <Compile Include="KeyValuePairEqualityComparer.cs" />
+    <Compile Include="ListSet.cs" />
     <Compile Include="LruCache.cs" />
     <Compile Include="MessagePipe.cs" />
     <Compile Include="Phrase.cs" />

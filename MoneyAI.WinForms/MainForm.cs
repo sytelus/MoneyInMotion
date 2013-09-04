@@ -12,16 +12,12 @@ namespace MoneyAI.WinForms
             InitializeComponent();
         }
 
-        private Transactions latestMerged = null;
         private string defaultRootPath;
-        private DiskTransactionRepository repository;
+        private AppState appState;
         private void FormMain_Load(object sender, EventArgs e)
         {
             MessagePipe.AddListner(UpdateLog, listnerKey: "FormMain");
-
-            repository = new DiskTransactionRepository(Settings.Default.RootFolder.NullIfEmpty());
-            defaultRootPath = repository.RootFolderPath;
-
+            defaultRootPath = Settings.Default.RootFolder.NullIfEmpty();
             textBoxRootFolder.Text = defaultRootPath;
         }
 
@@ -45,25 +41,26 @@ namespace MoneyAI.WinForms
 
         private void buttonAddAccount_Click(object sender, EventArgs e)
         {
-            var accountInfo = AccountConfigDialog.GetNewAccountInfo(this);
-            if (accountInfo != null)
-            {
-                repository.AddAccountConfig(accountInfo);
-            }
+            var accountConfig = AccountConfigDialog.GetNewAccountInfo(this);
+            if (accountConfig != null)
+                appState.AddAccountConfig(accountConfig);
         }
 
         private void buttonScanStatements_Click(object sender, EventArgs e)
         {
-            this.latestMerged = this.latestMerged ?? MoneyAIUtils.GetLatestMerged(this.repository);
+            if (appState == null)
+            {
+                var repository = new DiskTransactionRepository(defaultRootPath);
+                appState = new AppState(repository);
+                appState.Load();
+            }
 
-            MoneyAIUtils.MergeNewStatements(this.repository, this.latestMerged);
+            appState.MergeNewStatements();
         }
-
-
-
+        
         private void buttonSaveLatestMerged_Click(object sender, EventArgs e)
         {
-            MoneyAIUtils.SaveLatestMerged(this.repository, this.latestMerged);
+            appState.Save();
         }
     }
 }

@@ -13,9 +13,12 @@ namespace MoneyAI
     {
         private readonly string rootFolderPath, importFolderPath, namedLocationsFilePath;
         private readonly IDictionary<string, ILocation> namedLocations;
+        private readonly IStorageOperations<Transactions> transactionsStorage = new TransactionsStorageOperations();
+        private readonly IStorageOperations<TransactionEdits> transactionEditsStorage = new TransactionEditsStorageOperations();
 
         const string DefaultRelativeDropBoxFolder = "MoneyAI", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
-            , DefaultLatestMergedFileName = "LatestMerged.json", DropBoxHostFileName = "Dropbox\\host.db";
+            , DefaultLatestMergedFileName = "LatestMerged.json", DefaultTransactionEditsFileName = "TransactionEdits.json"
+            , DropBoxHostFileName = "Dropbox\\host.db";
         const string AccountConfigFileName = @"AccountConfig.json", NamedLocationsFileName = @"NamedLocations.json";
 
         public DiskTransactionRepository(string rootFolderPath = null)
@@ -30,7 +33,8 @@ namespace MoneyAI
                 ? Utils.DeserializeDictionaryFromJson<string, ILocation>(File.ReadAllText(namedLocationsFilePath)).ToDictionary()
                 : new Dictionary<string, ILocation>()
                 {
-                    { LastestMergedTransactionsName, new FileLocation(namedTransactionsFolderPath, DefaultLatestMergedFileName) }
+                    { LastestMergedLocationName, new FileLocation(namedTransactionsFolderPath, DefaultLatestMergedFileName) },
+                    { TransactionEditsLocationName, new FileLocation(namedTransactionsFolderPath, DefaultTransactionEditsFileName) }
                 } ;
         }
 
@@ -39,15 +43,29 @@ namespace MoneyAI
             get { return rootFolderPath; }
         }
 
-        public string LastestMergedTransactionsName
+        public string LastestMergedLocationName
         {
             get { return DefaultLatestMergedFileName; }
         }
 
+        public string TransactionEditsLocationName
+        {
+            get { return DefaultTransactionEditsFileName; }
+        }
+
+        public IStorageOperations<TransactionEdits> TransactionEditsStorage
+        {
+            get { return transactionEditsStorage; }
+        }
+
+        public IStorageOperations<Transactions> TransactionsStorage
+        {
+            get { return transactionsStorage; }
+        }
+
         private static string GetDropBoxPath()
         {
-            var appDataPath = Environment.GetFolderPath(
-                                               Environment.SpecialFolder.ApplicationData);
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var dbPath = Path.Combine(appDataPath, DropBoxHostFileName);
 
             if (!File.Exists(dbPath))
@@ -113,71 +131,6 @@ namespace MoneyAI
             get { return namedLocations; }
         }
 
-        public Transactions Load(ILocation location)
-        {
-            switch (location.ContentType)
-            {
-                case ContentType.Csv:
-                    var transactionsFromFile = GetTransactionsFromCsvFile(location.Address, location.AccountConfig.AccountInfo, location.ImportInfo).ToList();
-                    return new Transactions(transactionsFromFile, location.AccountConfig.AccountInfo.AsEnumerable(), location.ImportInfo.AsEnumerable());
-                case ContentType.Json:
-                    var serializedComponents = new Transactions.SerializedComponents()
-                    {
-                        SerializedTransactions = File.ReadLines(location.Address),
-                        SerializedAccountInfos = File.ReadLines(GetAddressInfosFilePath(location.Address)),
-                        SerializedImportInfos = File.ReadLines(GetImportInfosFilePath(location.Address))
-                    };
-                    return Transactions.DeserializeFromJson(serializedComponents);
-                case ContentType.None:
-                default:
-                    throw new ArgumentException("location.ContentType value {0} is not supported for loading transaction".FormatEx(location.ContentType));
-            }
-            
-            
-        }
-
-        private static IEnumerable<Transaction> GetTransactionsFromCsvFile(string file, AccountInfo accountInfo, ImportInfo importInfo)
-        {
-            var lines = File.ReadLines(file).RemoveNullOrEmpty().ToList();
-            var headerColumns = (string[])null;
-            for(var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
-            {
-                var line = lines[lineNumber];
-                if (headerColumns == null)
-                    headerColumns = Utils.ParseCsvLine(line).ToArray();
-                else
-                {
-                    var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo.Id, importInfo.Id, lineNumber);
-                    yield return transaction;
-                }
-            }
-        }
-        
-        public void Save(Transactions transactions, ILocation location)
-        {
-            var serializedComponents = transactions.SerializeToJson();
-            Utils.SaveLines(location.Address, serializedComponents.SerializedTransactions);
-            Utils.SaveLines(GetAddressInfosFilePath(location.Address), serializedComponents.SerializedAccountInfos);
-            Utils.SaveLines(GetImportInfosFilePath(location.Address), serializedComponents.SerializedImportInfos);
-
-            MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
-        }
-
-        private static string GetAddressInfosFilePath(string transactionsFilePath)
-        {
-            return Path.ChangeExtension(transactionsFilePath, "AddressInfo.json");
-        }
-        private static string GetImportInfosFilePath(string transactionsFilePath)
-        {
-            return Path.ChangeExtension(transactionsFilePath, "ImportInfo.json");
-        }
-
-        public bool TransactionsExists(ILocation location)
-        {
-            return File.Exists(location.Address);
-        }
-
-
         public void AddAccountConfig(AccountConfig accountConfig)
         {
             var accountFolder = Path.Combine(this.importFolderPath, accountConfig.AccountInfo.Id);
@@ -191,5 +144,96 @@ namespace MoneyAI
 
             File.WriteAllText(accountConfigFilePath, accountConfig.SerializeToJson());
         }
+
+
+        public class TransactionsStorageOperations : IStorageOperations<Transactions>
+        {
+
+            public Transactions Load(ILocation location)
+            {
+                switch (location.ContentType)
+                {
+                    case ContentType.Csv:
+                        var transactionsFromFile = GetTransactionsFromCsvFile(location.Address, location.AccountConfig.AccountInfo, location.ImportInfo).ToList();
+                        return new Transactions(transactionsFromFile, location.AccountConfig.AccountInfo.AsEnumerable(), location.ImportInfo.AsEnumerable());
+                    case ContentType.Json:
+                        var serializedComponents = new Transactions.SerializedComponents()
+                        {
+                            SerializedTransactions = File.ReadLines(location.Address),
+                            SerializedAccountInfos = File.ReadLines(GetAddressInfosFilePath(location.Address)),
+                            SerializedImportInfos = File.ReadLines(GetImportInfosFilePath(location.Address))
+                        };
+                        return Transactions.DeserializeFromJson(serializedComponents);
+                    case ContentType.None:
+                    default:
+                        throw new ArgumentException("location.ContentType value {0} is not supported for loading transaction".FormatEx(location.ContentType));
+                }
+            }
+
+            public void Save(ILocation location, Transactions transactions)
+            {
+                var serializedComponents = transactions.SerializeToJson();
+                Utils.SaveLines(location.Address, serializedComponents.SerializedTransactions);
+                Utils.SaveLines(GetAddressInfosFilePath(location.Address), serializedComponents.SerializedAccountInfos);
+                Utils.SaveLines(GetImportInfosFilePath(location.Address), serializedComponents.SerializedImportInfos);
+
+                MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
+            }
+
+            public bool Exists(ILocation location)
+            {
+                return File.Exists(location.Address);
+            }
+
+            private static string GetAddressInfosFilePath(string transactionsFilePath)
+            {
+                return Path.ChangeExtension(transactionsFilePath, "AddressInfo.json");
+            }
+            private static string GetImportInfosFilePath(string transactionsFilePath)
+            {
+                return Path.ChangeExtension(transactionsFilePath, "ImportInfo.json");
+            }
+
+            private static IEnumerable<Transaction> GetTransactionsFromCsvFile(string file, AccountInfo accountInfo, ImportInfo importInfo)
+            {
+                var lines = File.ReadLines(file).RemoveNullOrEmpty().ToList();
+                var headerColumns = (string[])null;
+                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+                {
+                    var line = lines[lineNumber];
+                    if (headerColumns == null)
+                        headerColumns = Utils.ParseCsvLine(line).ToArray();
+                    else
+                    {
+                        var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo.Id, importInfo.Id, lineNumber);
+                        yield return transaction;
+                    }
+                }
+            }
+        }
+
+
+        public class TransactionEditsStorageOperations : IStorageOperations<TransactionEdits>
+        {
+
+            public TransactionEdits Load(ILocation location)
+            {
+                return TransactionEdits.DeserializeFromJson(File.ReadLines(location.Address));
+            }
+
+            public void Save(ILocation location, TransactionEdits transactions)
+            {
+                var serializedData = transactions.SerializeToJson();
+                Utils.SaveLines(location.Address, serializedData);
+
+                MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
+            }
+
+            public bool Exists(ILocation location)
+            {
+                return File.Exists(location.Address);
+            }
+        }
+
     }
 }
