@@ -36,12 +36,12 @@
             this.buttonAddAccount = new System.Windows.Forms.Button();
             this.splitter1 = new System.Windows.Forms.Splitter();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.richTextBoxLog = new System.Windows.Forms.RichTextBox();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
+            this.treeView = new System.Windows.Forms.TreeView();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.listView = new System.Windows.Forms.ListView();
             this.statusStrip2 = new System.Windows.Forms.StatusStrip();
-            this.treeView1 = new System.Windows.Forms.TreeView();
-            this.listView1 = new System.Windows.Forms.ListView();
+            this.richTextBoxLog = new System.Windows.Forms.RichTextBox();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -56,19 +56,17 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(4, 11);
-            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.label1.Location = new System.Drawing.Point(3, 9);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(82, 17);
+            this.label1.Size = new System.Drawing.Size(62, 13);
             this.label1.TabIndex = 0;
             this.label1.Text = "Root Folder";
             // 
             // textBoxRootFolder
             // 
-            this.textBoxRootFolder.Location = new System.Drawing.Point(95, 11);
-            this.textBoxRootFolder.Margin = new System.Windows.Forms.Padding(4);
+            this.textBoxRootFolder.Location = new System.Drawing.Point(71, 9);
             this.textBoxRootFolder.Name = "textBoxRootFolder";
-            this.textBoxRootFolder.Size = new System.Drawing.Size(452, 22);
+            this.textBoxRootFolder.Size = new System.Drawing.Size(340, 20);
             this.textBoxRootFolder.TabIndex = 1;
             // 
             // panel1
@@ -81,16 +79,16 @@
             this.panel1.Controls.Add(this.label1);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Margin = new System.Windows.Forms.Padding(4);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1393, 48);
+            this.panel1.Size = new System.Drawing.Size(1045, 39);
             this.panel1.TabIndex = 2;
             // 
             // buttonSaveLatestMerged
             // 
-            this.buttonSaveLatestMerged.Location = new System.Drawing.Point(735, 11);
+            this.buttonSaveLatestMerged.Location = new System.Drawing.Point(551, 9);
+            this.buttonSaveLatestMerged.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.buttonSaveLatestMerged.Name = "buttonSaveLatestMerged";
-            this.buttonSaveLatestMerged.Size = new System.Drawing.Size(168, 23);
+            this.buttonSaveLatestMerged.Size = new System.Drawing.Size(126, 19);
             this.buttonSaveLatestMerged.TabIndex = 7;
             this.buttonSaveLatestMerged.Text = "Save Latest Merged";
             this.buttonSaveLatestMerged.UseVisualStyleBackColor = true;
@@ -98,9 +96,10 @@
             // 
             // buttonScanStatements
             // 
-            this.buttonScanStatements.Location = new System.Drawing.Point(554, 11);
+            this.buttonScanStatements.Location = new System.Drawing.Point(416, 9);
+            this.buttonScanStatements.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.buttonScanStatements.Name = "buttonScanStatements";
-            this.buttonScanStatements.Size = new System.Drawing.Size(165, 23);
+            this.buttonScanStatements.Size = new System.Drawing.Size(124, 19);
             this.buttonScanStatements.TabIndex = 6;
             this.buttonScanStatements.Text = "Scan Statements";
             this.buttonScanStatements.UseVisualStyleBackColor = true;
@@ -108,9 +107,10 @@
             // 
             // buttonAddAccount
             // 
-            this.buttonAddAccount.Location = new System.Drawing.Point(1159, 10);
+            this.buttonAddAccount.Location = new System.Drawing.Point(869, 8);
+            this.buttonAddAccount.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.buttonAddAccount.Name = "buttonAddAccount";
-            this.buttonAddAccount.Size = new System.Drawing.Size(169, 23);
+            this.buttonAddAccount.Size = new System.Drawing.Size(127, 19);
             this.buttonAddAccount.TabIndex = 5;
             this.buttonAddAccount.Text = "Add Account...";
             this.buttonAddAccount.UseVisualStyleBackColor = true;
@@ -118,10 +118,9 @@
             // 
             // splitter1
             // 
-            this.splitter1.Location = new System.Drawing.Point(0, 48);
-            this.splitter1.Margin = new System.Windows.Forms.Padding(4);
+            this.splitter1.Location = new System.Drawing.Point(0, 39);
             this.splitter1.Name = "splitter1";
-            this.splitter1.Size = new System.Drawing.Size(4, 703);
+            this.splitter1.Size = new System.Drawing.Size(3, 571);
             this.splitter1.TabIndex = 3;
             this.splitter1.TabStop = false;
             // 
@@ -129,8 +128,7 @@
             // 
             this.splitContainer1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Location = new System.Drawing.Point(4, 48);
-            this.splitContainer1.Margin = new System.Windows.Forms.Padding(4);
+            this.splitContainer1.Location = new System.Drawing.Point(3, 39);
             this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
@@ -141,82 +139,85 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.richTextBoxLog);
-            this.splitContainer1.Size = new System.Drawing.Size(1389, 703);
-            this.splitContainer1.SplitterDistance = 588;
-            this.splitContainer1.SplitterWidth = 5;
+            this.splitContainer1.Size = new System.Drawing.Size(1042, 571);
+            this.splitContainer1.SplitterDistance = 477;
             this.splitContainer1.TabIndex = 4;
-            // 
-            // richTextBoxLog
-            // 
-            this.richTextBoxLog.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.richTextBoxLog.Location = new System.Drawing.Point(0, 0);
-            this.richTextBoxLog.Margin = new System.Windows.Forms.Padding(4);
-            this.richTextBoxLog.Name = "richTextBoxLog";
-            this.richTextBoxLog.Size = new System.Drawing.Size(1387, 108);
-            this.richTextBoxLog.TabIndex = 0;
-            this.richTextBoxLog.Text = "";
             // 
             // splitContainer2
             // 
             this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer2.Location = new System.Drawing.Point(0, 0);
+            this.splitContainer2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.splitContainer2.Name = "splitContainer2";
             // 
             // splitContainer2.Panel1
             // 
-            this.splitContainer2.Panel1.Controls.Add(this.treeView1);
+            this.splitContainer2.Panel1.Controls.Add(this.treeView);
             this.splitContainer2.Panel1.Controls.Add(this.statusStrip1);
             // 
             // splitContainer2.Panel2
             // 
-            this.splitContainer2.Panel2.Controls.Add(this.listView1);
+            this.splitContainer2.Panel2.Controls.Add(this.listView);
             this.splitContainer2.Panel2.Controls.Add(this.statusStrip2);
-            this.splitContainer2.Size = new System.Drawing.Size(1387, 586);
-            this.splitContainer2.SplitterDistance = 462;
+            this.splitContainer2.Size = new System.Drawing.Size(1040, 475);
+            this.splitContainer2.SplitterDistance = 346;
+            this.splitContainer2.SplitterWidth = 3;
             this.splitContainer2.TabIndex = 0;
+            // 
+            // treeView
+            // 
+            this.treeView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.treeView.Location = new System.Drawing.Point(0, 0);
+            this.treeView.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.treeView.Name = "treeView";
+            this.treeView.Size = new System.Drawing.Size(346, 453);
+            this.treeView.TabIndex = 1;
             // 
             // statusStrip1
             // 
-            this.statusStrip1.Location = new System.Drawing.Point(0, 564);
+            this.statusStrip1.Location = new System.Drawing.Point(0, 453);
             this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(462, 22);
+            this.statusStrip1.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
+            this.statusStrip1.Size = new System.Drawing.Size(346, 22);
             this.statusStrip1.TabIndex = 0;
             this.statusStrip1.Text = "statusStrip1";
             // 
+            // listView
+            // 
+            this.listView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listView.Location = new System.Drawing.Point(0, 0);
+            this.listView.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.listView.Name = "listView";
+            this.listView.Size = new System.Drawing.Size(691, 453);
+            this.listView.TabIndex = 1;
+            this.listView.UseCompatibleStateImageBehavior = false;
+            // 
             // statusStrip2
             // 
-            this.statusStrip2.Location = new System.Drawing.Point(0, 564);
+            this.statusStrip2.Location = new System.Drawing.Point(0, 453);
             this.statusStrip2.Name = "statusStrip2";
-            this.statusStrip2.Size = new System.Drawing.Size(921, 22);
+            this.statusStrip2.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
+            this.statusStrip2.Size = new System.Drawing.Size(691, 22);
             this.statusStrip2.TabIndex = 0;
             this.statusStrip2.Text = "statusStrip2";
             // 
-            // treeView1
+            // richTextBoxLog
             // 
-            this.treeView1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.treeView1.Location = new System.Drawing.Point(0, 0);
-            this.treeView1.Name = "treeView1";
-            this.treeView1.Size = new System.Drawing.Size(462, 564);
-            this.treeView1.TabIndex = 1;
-            // 
-            // listView1
-            // 
-            this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.listView1.Location = new System.Drawing.Point(0, 0);
-            this.listView1.Name = "listView1";
-            this.listView1.Size = new System.Drawing.Size(921, 564);
-            this.listView1.TabIndex = 1;
-            this.listView1.UseCompatibleStateImageBehavior = false;
+            this.richTextBoxLog.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.richTextBoxLog.Location = new System.Drawing.Point(0, 0);
+            this.richTextBoxLog.Name = "richTextBoxLog";
+            this.richTextBoxLog.Size = new System.Drawing.Size(1040, 88);
+            this.richTextBoxLog.TabIndex = 0;
+            this.richTextBoxLog.Text = "";
             // 
             // FormMain
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1393, 751);
+            this.ClientSize = new System.Drawing.Size(1045, 610);
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.splitter1);
             this.Controls.Add(this.panel1);
-            this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "FormMain";
             this.Text = "MoneyAI - Smart Personal Finance in 15 Minutes";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
@@ -250,9 +251,9 @@
         private System.Windows.Forms.Button buttonScanStatements;
         private System.Windows.Forms.Button buttonSaveLatestMerged;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private System.Windows.Forms.TreeView treeView1;
+        private System.Windows.Forms.TreeView treeView;
         private System.Windows.Forms.StatusStrip statusStrip1;
-        private System.Windows.Forms.ListView listView1;
+        private System.Windows.Forms.ListView listView;
         private System.Windows.Forms.StatusStrip statusStrip2;
     }
 }

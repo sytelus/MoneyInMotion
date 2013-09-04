@@ -143,6 +143,8 @@ namespace MoneyAI
                 throw new Exception("Account config file {0} already exist. Cannot add new account.".FormatEx(accountConfigFilePath));
 
             File.WriteAllText(accountConfigFilePath, accountConfig.SerializeToJson());
+
+            MessagePipe.SendMessage("Account added at {0}".FormatEx(accountConfigFilePath));
         }
 
 

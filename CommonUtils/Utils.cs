@@ -452,6 +452,19 @@ namespace CommonUtils
                     yield return new KeyValuePair<T, T>(source[sourceIndex1], source[sourceIndex2]);
         }
 
+        public static TResult IfNotNullValue<TInput, TResult>(this TInput? input, Func<TInput?, TResult> resultSelector, TResult resultIfNull) where TInput : struct 
+        {
+            if (input == null)
+                return resultIfNull;
+            else
+                return resultSelector(input);
+        }
+
+        public static TResult IfNotNullValue<TInput, TResult>(this TInput? input, Func<TInput?, TResult> resultSelector) where TInput : struct 
+        {
+            return IfNotNullValue(input, resultSelector, default(TResult));
+        }
+
         public static TResult IfNotNull<TInput, TResult>(this TInput input, Func<TInput, TResult> resultSelector, TResult resultIfNull) where TInput : class
         {
             if (input == null)

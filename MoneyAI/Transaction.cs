@@ -22,8 +22,12 @@ namespace MoneyAI
         [DataMember(IsRequired = true)]
         public TransactionReason TransactionReason { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
-        public DateTime? TransactionDate { get; private set; }
+        [DataMember(IsRequired = true)]
+        private DateTime? transactionDate;
+        public DateTime TransactionDate
+        {
+            get { return this.transactionDate.Value; }
+        }
 
         [DataMember(EmitDefaultValue = false)]
         public DateTime? PostDate { get; private set; }
@@ -83,6 +87,15 @@ namespace MoneyAI
                 cleanedName = entityName.Trim();
 
             return cleanedName.ToTitleCase();
+        }
+
+        public IEnumerable<string> GetDisplayCategoryPath()
+        {
+            if (!this.CategoryPath.IsNullOrEmpty())
+                return this.CategoryPath;
+            else 
+                return (this.UserCorrection.IfNotNull(c => c.EntityName) ?? this.EntityNameNormalized
+                    ).AsEnumerable();
         }
 
         [DataContract]
@@ -165,7 +178,7 @@ namespace MoneyAI
                     case "Type":
                         transaction.TransactionReason = GetTransactionType(columnValue); break;
                     case "Trans Date":
-                        transaction.TransactionDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
+                        transaction.transactionDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
                     case "Post Date":
                         transaction.PostDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
                     case "Description":
@@ -189,7 +202,7 @@ namespace MoneyAI
             return Utils.AsEnumerable(
                 this.AccountId, this.TransactionReason.ToString(),
                 this.Amount.ToString(), this.EntityName.EmptyIfNull().ToUpperInvariant()
-                , this.PostDate.ToStringNullSafe(), this.TransactionDate.ToStringNullSafe());
+                , this.PostDate.IfNotNullValue(p => p.Value.ToString("u")), this.TransactionDate.ToString("u"));
         }
 
         private void Validate()
@@ -201,8 +214,8 @@ namespace MoneyAI
                 errors += "AccountInfo.Id must have value.";
             if (this.Amount == null)
                 errors += "Amount must have value.";
-            if (this.PostDate == null && this.TransactionDate == null)
-                errors += "Either PostDate Or TransactionDate must have value.";
+            if (this.transactionDate == null)
+                errors += "TransactionDate must have value.";
             if (string.IsNullOrEmpty(this.EntityName))
                 errors += "EntityName must have value.";
 
