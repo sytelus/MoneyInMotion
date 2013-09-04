@@ -35,27 +35,103 @@ namespace MoneyAI
         public string AccountId { get; private set; }
         [DataMember(IsRequired = true)]
         public string ImportId { get; private set; }
-        [DataMember(IsRequired = true)] 
-        public DateTime CreateDate { get; private set; }
-        [DataMember(IsRequired = true)] 
-        public string CreatedBy { get; private set; }
-        [DataMember(EmitDefaultValue = false)] 
-        public DateTime? UpdateDate { get; private set; }
-        [DataMember(EmitDefaultValue = false)] 
-        public string UpdatedBy { get; private set; }       
+        [DataMember(IsRequired = true)]
+        public AuditInfo AuditInfo { get; private set; }
         [DataMember(IsRequired = true)] 
         public string Id { get; private set; }       
         [DataMember(IsRequired = true)] 
         public int LineNumber { get; private set; }     
         [DataMember(EmitDefaultValue = false)] 
         public string[] CategoryPath { get; private set; }
-        [DataMember(EmitDefaultValue = false)] 
-        public Transaction OriginalTransaction;
-        
+        [DataMember(EmitDefaultValue = false)]
+        public Correction UserCorrection { get; private set; }
+        [DataMember(EmitDefaultValue = false)]
+        public ICollection<string> Edits { get; private set; }
+
+        private string cachedEntityNameNormalized = null;
+        public string EntityNameNormalized
+        {
+            get
+            {
+                if (cachedEntityNameNormalized == null)
+                    cachedEntityNameNormalized = GetEntityNameNormalized(this.EntityName) ?? string.Empty;
+
+                return cachedEntityNameNormalized;
+            }
+        }
+
+        private static string GetEntityNameNormalized(string entityName)
+        {
+            entityName = entityName ?? string.Empty;
+            var cleanedName = Utils.RemoveNonAlphaNumericChars(entityName);
+            if (cleanedName.Length == 0)
+                cleanedName = entityName.Trim();
+
+            return cleanedName.ToTitleCase();
+        }
+
+        [DataContract]
+        public class Correction
+        {
+            [DataMember(EmitDefaultValue = false)]
+            public TransactionReason? TransactionReason { get; internal set; }
+            [DataMember(EmitDefaultValue = false)]
+            public DateTime? TransactionDate { get; internal set; }
+            [DataMember(EmitDefaultValue = false)]
+            public decimal? Amount { get; internal set; }
+            [DataMember(EmitDefaultValue = false)]
+            public string EntityName { get; internal set; }
+
+            internal IEnumerable<string> GetContent()
+            {
+                return Utils.AsEnumerable(
+                    this.TransactionReason.ToStringNullSafe(),
+                    this.Amount.ToStringNullSafe(), this.EntityName.EmptyIfNull().ToUpperInvariant(),
+                    this.TransactionDate.ToStringNullSafe());
+            }
+        }
+
+        private void ApplyCategoryPath(string[] categoryPath)
+        {
+            if (categoryPath != null && categoryPath.Length == 0)
+                this.CategoryPath = null;
+            else
+                this.CategoryPath = categoryPath;
+        }
+
+        private void ApplyCorrection(Correction correction, Correction overlayOnCorrection = null)
+        {
+            this.UserCorrection = this.UserCorrection ?? new Correction();
+            this.UserCorrection.TransactionDate = correction.TransactionDate ?? overlayOnCorrection.IfNotNull(c => c.TransactionDate);
+            this.UserCorrection.TransactionReason = correction.TransactionReason ?? overlayOnCorrection.IfNotNull(c => c.TransactionReason);
+            this.UserCorrection.Amount = correction.Amount ?? overlayOnCorrection.IfNotNull(c => c.Amount);
+            this.UserCorrection.EntityName = correction.EntityName ?? overlayOnCorrection.IfNotNull(c => c.EntityName);
+        }
+
+        public void ApplyEdit(TransactionEdit edit)
+        {
+            if (edit.CategoryPath != null)
+            {
+                this.ApplyCategoryPath(edit.CategoryPath);
+                this.AddEdit(edit);
+            }
+
+            if (edit.UserCorrection != null)
+            {
+                this.ApplyCorrection(edit.UserCorrection);
+                this.AddEdit(edit);
+            }
+        }
+
+        private void AddEdit(TransactionEdit edit)
+        {
+            this.Edits = this.Edits ?? new HashSet<string>();
+            this.Edits.Add(edit.ContentHash);
+        }
+
         private Transaction()
         {
-            this.CreateDate = DateTime.UtcNow;
-            this.CreatedBy = WindowsIdentity.GetCurrent().IfNotNull(i => i.Name);
+            this.AuditInfo = AuditInfo.Create();
         }
 
         public static Transaction CreateFromCsvLine(string[] headerColumns, string line, string accountId, string importId, int lineNumber)

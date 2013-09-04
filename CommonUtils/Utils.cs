@@ -65,6 +65,11 @@ namespace CommonUtils
             return instance;
         }
 
+        public static string ToTitleCase(this string s)
+        {
+            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(s);
+        }
+
         public static double Log2(double x)
         {
             return Math.Log(x) / LogE2;
@@ -977,7 +982,10 @@ namespace CommonUtils
         {
             return value ?? string.Empty;
         }
-
+        public static IEnumerable<T> EmptyIfNull<T>(this IEnumerable<T> value)
+        {
+            return value ?? Enumerable.Empty<T>();
+        }
         public static string NullIfEmpty(this string value)
         {
             if (string.IsNullOrEmpty(value))
