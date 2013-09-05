@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
@@ -88,6 +89,7 @@ namespace MoneyAI.WinForms
                             .Select(mg => Tuple.Create(mg.Key, mg.ToArray()))
                             .OrderByDescending(m => m)));
 
+            var selectedNode = txnTreeView.SelectedNode;
             foreach (var yearGroup in yearGroups)
             {
                 var yearNode = CategoryNode.CreateTreeNode(new TreeNodeData()
@@ -109,12 +111,45 @@ namespace MoneyAI.WinForms
                         categoryRootNode.Merge(transaction);
 
                     categoryRootNode.BuildTreeViewNodes(monthNode);
+
+                    if (selectedNode == null)
+                        selectedNode = monthNode;
                 }
 
                 yearNode.Expand();
             }
 
             rootNode.Expand();
+
+            if (selectedNode != null)
+            {
+                txnTreeView.SelectedNode = selectedNode;
+                txnTreeView.Focus();
+            }
         }
+
+        private void txnTreeView_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            if (txnTreeView.SelectedNode != null)
+            {
+                var filter = (TreeNodeData) txnTreeView.SelectedNode.Tag;
+                var filteredTransactions = appState.LatestMerged.Where(t => 
+                    (filter.YearFilter == null || t.TransactionDate.Year == filter.YearFilter.Value)
+                    && (filter.MonthFilter == null || t.TransactionDate.Month == filter.MonthFilter.Value)
+                    && (filter.CategoryPathFilter == null || IsCategoryPathMatch(filter.CategoryPathFilter, t.DisplayCategoryPath)))
+                    .OrderBy(t => t.Amount);
+
+                txnListView.SetObjects(filteredTransactions);
+
+
+            }
+            else txnListView.ClearObjects();
+        }
+
+        private bool IsCategoryPathMatch(IEnumerable<string> path1, IEnumerable<string> path2)
+        {
+            return path1.Zip(path2, (c1, c2) => c1.Equals(c2, StringComparison.Ordinal)).Any(e => !e);
+        }
+
     }
 }

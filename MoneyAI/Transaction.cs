@@ -18,7 +18,7 @@ namespace MoneyAI
     }
 
     [DataContract]
-    public class Transaction
+    public partial class Transaction
     {
         [DataMember(IsRequired = true)]
         public TransactionReason TransactionReason { get; private set; }
@@ -97,27 +97,6 @@ namespace MoneyAI
                 cleanedName = entityName.Trim().ToTitleCase();
 
             return cleanedName;
-        }
-
-        private string[] cachedDisplayCategoryPath;
-        public string[] DisplayCategoryPath
-        {
-            get
-            {
-                if (cachedDisplayCategoryPath == null)
-                    cachedDisplayCategoryPath = GetDisplayCategoryPath().ToArray();
-
-                return cachedDisplayCategoryPath;
-            }
-        }
-
-        private IEnumerable<string> GetDisplayCategoryPath()
-        {
-            if (!this.CategoryPath.IsNullOrEmpty())
-                return this.CategoryPath;
-            else 
-                return (this.UserCorrection.IfNotNull(c => c.EntityName) ?? this.EntityNameNormalized
-                    ).AsEnumerable();
         }
 
         [DataContract]

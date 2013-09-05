@@ -54,6 +54,7 @@
     <Compile Include="AppState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Transaction.cs" />
+    <Compile Include="Transaction.Display.cs" />
     <Compile Include="TransactionEdit.cs" />
     <Compile Include="TransactionEdits.cs" />
     <Compile Include="Transactions.cs" />
