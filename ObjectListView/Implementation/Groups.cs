@@ -720,7 +720,7 @@ namespace BrightIdeasSoftware
         /// <summary>
         /// Get the current state of this group from the underlying control
         /// </summary>
-        protected int SetState(GroupState newState, GroupState mask) {
+        protected IntPtr SetState(GroupState newState, GroupState mask) {
             NativeMethods.LVGROUP2 group = new NativeMethods.LVGROUP2();
             group.cbSize = ((uint)Marshal.SizeOf(typeof(NativeMethods.LVGROUP2)));
             group.mask = (uint)GroupMask.LVGF_STATE;

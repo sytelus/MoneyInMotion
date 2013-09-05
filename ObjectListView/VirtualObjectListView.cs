@@ -719,7 +719,7 @@ namespace BrightIdeasSoftware
         protected void DisableVirtualGroups() {
             IntPtr x;
 
-            int err = NativeMethods.ClearGroups(this);
+            var err = NativeMethods.ClearGroups(this);
             //System.Diagnostics.Debug.WriteLine(err);
 
             const int LVM_ENABLEGROUPVIEW = 0x1000 + 157;

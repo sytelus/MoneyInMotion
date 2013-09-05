@@ -1026,41 +1026,49 @@ namespace BrightIdeasSoftware
             public int y;
         }
 
-        public static int GetGroupInfo(ObjectListView olv, int groupId, ref LVGROUP2 group) {
-            return (int)NativeMethods.SendMessage(olv.Handle, LVM_GETGROUPINFO, groupId, ref group);
+        public static IntPtr GetGroupInfo(ObjectListView olv, int groupId, ref LVGROUP2 group)
+        {
+            return NativeMethods.SendMessage(olv.Handle, LVM_GETGROUPINFO, groupId, ref group);
         }
 
         public static GroupState GetGroupState(ObjectListView olv, int groupId, GroupState mask) {
             return (GroupState)NativeMethods.SendMessage(olv.Handle, LVM_GETGROUPSTATE, groupId, (int)mask);
         }
 
-        public static int InsertGroup(ObjectListView olv, LVGROUP2 group) {
-            return (int)NativeMethods.SendMessage(olv.Handle, LVM_INSERTGROUP, -1, ref group);
+        public static IntPtr InsertGroup(ObjectListView olv, LVGROUP2 group)
+        {
+            return NativeMethods.SendMessage(olv.Handle, LVM_INSERTGROUP, -1, ref group);
         }
 
-        public static int SetGroupInfo(ObjectListView olv, int groupId, LVGROUP2 group) {
-            return (int)NativeMethods.SendMessage(olv.Handle, LVM_SETGROUPINFO, groupId, ref group);
+        public static IntPtr SetGroupInfo(ObjectListView olv, int groupId, LVGROUP2 group)
+        {
+            return NativeMethods.SendMessage(olv.Handle, LVM_SETGROUPINFO, groupId, ref group);
         }
 
-        public static int SetGroupMetrics(ObjectListView olv, LVGROUPMETRICS metrics) {
-            return (int)NativeMethods.SendMessage(olv.Handle, LVM_SETGROUPMETRICS, 0, ref metrics);
+        public static IntPtr SetGroupMetrics(ObjectListView olv, LVGROUPMETRICS metrics)
+        {
+            return NativeMethods.SendMessage(olv.Handle, LVM_SETGROUPMETRICS, 0, ref metrics);
         }
 
-        public static int ClearGroups(VirtualObjectListView virtualObjectListView) {
-            return (int)NativeMethods.SendMessage(virtualObjectListView.Handle, LVM_REMOVEALLGROUPS, 0, 0);
+        public static IntPtr ClearGroups(VirtualObjectListView virtualObjectListView)
+        {
+            return NativeMethods.SendMessage(virtualObjectListView.Handle, LVM_REMOVEALLGROUPS, 0, 0);
         }
 
-        public static int SetGroupImageList(ObjectListView olv, ImageList il) {
+        public static IntPtr SetGroupImageList(ObjectListView olv, ImageList il)
+        {
             const int LVSIL_GROUPHEADER = 3;
             IntPtr handle = IntPtr.Zero;
             if (il != null)
                 handle = il.Handle;
-            return (int)NativeMethods.SendMessage(olv.Handle, LVM_SETIMAGELIST, LVSIL_GROUPHEADER, handle);
+            return NativeMethods.SendMessage(olv.Handle, LVM_SETIMAGELIST, LVSIL_GROUPHEADER, handle);
         }
 
-        public static int HitTest(ObjectListView olv, ref LVHITTESTINFO hittest)
+        public static IntPtr HitTest(ObjectListView olv, ref LVHITTESTINFO hittest)
         {
-            return (int)NativeMethods.SendMessage(olv.Handle, olv.View == View.Details ? LVM_SUBITEMHITTEST : LVM_HITTEST, -1, ref hittest);
+            return NativeMethods.SendMessage(olv.Handle, olv.View == View.Details ? LVM_SUBITEMHITTEST : LVM_HITTEST, -1, ref hittest);
         }
+
+        public static readonly IntPtr IntPtrMinusOne = new IntPtr(-1);
     }
 }

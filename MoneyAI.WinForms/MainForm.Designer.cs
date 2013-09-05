@@ -40,10 +40,11 @@
             this.txnTreeView = new System.Windows.Forms.TreeView();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.txnListView = new BrightIdeasSoftware.ObjectListView();
-            this.olvColumnTransactionDate = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.olvColumnCategory = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
+            this.olvColumnTransactionDate = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.olvColumnEntityName = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.olvColumnAmount = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
+            this.olvColumnType = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.olvColumnAccountName = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.olvColumnOriginalEntityName = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
             this.olvColumnImportInfo = ((BrightIdeasSoftware.OLVColumn)(new BrightIdeasSoftware.OLVColumn()));
@@ -199,45 +200,42 @@
             // 
             // txnListView
             // 
-            this.txnListView.AllColumns.Add(this.olvColumnTransactionDate);
             this.txnListView.AllColumns.Add(this.olvColumnCategory);
+            this.txnListView.AllColumns.Add(this.olvColumnTransactionDate);
             this.txnListView.AllColumns.Add(this.olvColumnEntityName);
             this.txnListView.AllColumns.Add(this.olvColumnAmount);
+            this.txnListView.AllColumns.Add(this.olvColumnType);
             this.txnListView.AllColumns.Add(this.olvColumnAccountName);
             this.txnListView.AllColumns.Add(this.olvColumnOriginalEntityName);
             this.txnListView.AllColumns.Add(this.olvColumnImportInfo);
             this.txnListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.olvColumnTransactionDate,
             this.olvColumnCategory,
+            this.olvColumnTransactionDate,
             this.olvColumnEntityName,
             this.olvColumnAmount,
+            this.olvColumnType,
             this.olvColumnAccountName,
             this.olvColumnOriginalEntityName,
             this.olvColumnImportInfo});
             this.txnListView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.txnListView.EmptyListMsg = "Select item from the tree";
+            this.txnListView.FullRowSelect = true;
+            this.txnListView.GridLines = true;
             this.txnListView.HeaderUsesThemes = false;
             this.txnListView.Location = new System.Drawing.Point(0, 0);
             this.txnListView.Margin = new System.Windows.Forms.Padding(4);
             this.txnListView.Name = "txnListView";
             this.txnListView.ShowCommandMenuOnRightClick = true;
-            this.txnListView.ShowGroups = false;
             this.txnListView.ShowItemCountOnGroups = true;
             this.txnListView.Size = new System.Drawing.Size(922, 562);
             this.txnListView.TabIndex = 1;
-            this.txnListView.TintSortColumn = true;
+            this.txnListView.UseCellFormatEvents = true;
             this.txnListView.UseCompatibleStateImageBehavior = false;
             this.txnListView.UseFilterIndicator = true;
             this.txnListView.UseFiltering = true;
             this.txnListView.View = System.Windows.Forms.View.Details;
-            // 
-            // olvColumnTransactionDate
-            // 
-            this.olvColumnTransactionDate.AspectName = "TransactionDate";
-            this.olvColumnTransactionDate.AspectToStringFormat = "{0:M}";
-            this.olvColumnTransactionDate.CellPadding = null;
-            this.olvColumnTransactionDate.FillsFreeSpace = true;
-            this.olvColumnTransactionDate.Text = "Date";
+            this.txnListView.AboutToCreateGroups += new System.EventHandler<BrightIdeasSoftware.CreateGroupsEventArgs>(this.txnListView_AboutToCreateGroups);
+            this.txnListView.FormatCell += new System.EventHandler<BrightIdeasSoftware.FormatCellEventArgs>(this.txnListView_FormatCell);
             // 
             // olvColumnCategory
             // 
@@ -245,6 +243,14 @@
             this.olvColumnCategory.CellPadding = null;
             this.olvColumnCategory.FillsFreeSpace = true;
             this.olvColumnCategory.Text = "Category";
+            // 
+            // olvColumnTransactionDate
+            // 
+            this.olvColumnTransactionDate.AspectName = "TransactionDate";
+            this.olvColumnTransactionDate.AspectToStringFormat = "{0:d}";
+            this.olvColumnTransactionDate.CellPadding = null;
+            this.olvColumnTransactionDate.FillsFreeSpace = true;
+            this.olvColumnTransactionDate.Text = "Date";
             // 
             // olvColumnEntityName
             // 
@@ -260,6 +266,12 @@
             this.olvColumnAmount.CellPadding = null;
             this.olvColumnAmount.FillsFreeSpace = true;
             this.olvColumnAmount.Text = "Amount";
+            // 
+            // olvColumnType
+            // 
+            this.olvColumnType.AspectName = "DisplayType";
+            this.olvColumnType.CellPadding = null;
+            this.olvColumnType.Text = "Type";
             // 
             // olvColumnAccountName
             // 
@@ -353,6 +365,7 @@
         private BrightIdeasSoftware.OLVColumn olvColumnAccountName;
         private BrightIdeasSoftware.OLVColumn olvColumnOriginalEntityName;
         private BrightIdeasSoftware.OLVColumn olvColumnImportInfo;
+        private BrightIdeasSoftware.OLVColumn olvColumnType;
     }
 }
 

@@ -86,18 +86,35 @@ namespace MoneyAI
         private readonly static Regex whiteSpaceRegex = new Regex(@"[\s]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static string GetEntityNameNormalized(string entityName)
         {
+            //Ensure non-null name
             entityName = entityName ?? string.Empty;
-            var cleanedName = nonAlphaRegex.Replace(entityName, String.Empty);
+            //Replace non-alpha chars with space
+            var cleanedName = nonAlphaRegex.Replace(entityName, " ");
+            //Replace white spaces such as tab/new lines with space
             cleanedName = multipleWhiteSpaceRegex.Replace(cleanedName, " ");
+            //Combine multiple spaces to one
             cleanedName = whiteSpaceRegex.Replace(cleanedName, " ");
+            //Trim extra spaces
             cleanedName = cleanedName.Trim();
-            cleanedName = !cleanedName.Contains('.') ? cleanedName.ToTitleCase() : cleanedName.ToLower(CultureInfo.CurrentCulture);
+
+            //Determine if we should convert to title case or lower case
+            var hasAnyUpperCase = cleanedName.Any(Char.IsUpper);
+            var hasAnyLowerCase = cleanedName.Any(Char.IsLower);
+            //If mixed case then skip case conversion
+            if (!(hasAnyLowerCase && hasAnyUpperCase))
+            {
+                var isAllUpperCase = !hasAnyLowerCase && cleanedName.All(c => Char.IsUpper(c) || !char.IsLetter(c));
+                var hasDot = cleanedName.Contains('.'); //Posible .com names
+                if (isAllUpperCase)
+                    cleanedName = !hasDot ? cleanedName.ToTitleCase() : cleanedName.ToLower();
+            }
 
             if (cleanedName.Length == 0)
                 cleanedName = entityName.Trim().ToTitleCase();
 
             return cleanedName;
         }
+
 
         [DataContract]
         public class Correction

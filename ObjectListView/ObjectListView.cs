@@ -4206,11 +4206,11 @@ namespace BrightIdeasSoftware
             NativeMethods.LVHITTESTINFO lParam = new NativeMethods.LVHITTESTINFO();
             lParam.pt_x = x;
             lParam.pt_y = y;
-            int index = NativeMethods.HitTest(this, ref lParam);
+            var index = NativeMethods.HitTest(this, ref lParam);
 
             // Setup the various values we need to make our hit test structure
             bool isGroupHit = (lParam.flags & (int)HitTestLocationEx.LVHT_EX_GROUP) != 0;
-            OLVListItem hitItem = isGroupHit || index == -1 ? null : this.GetItem(index);
+            OLVListItem hitItem = isGroupHit || index == NativeMethods.IntPtrMinusOne ? null : this.GetItem(index.ToInt32());
             OLVListSubItem subItem = (this.View == View.Details && hitItem != null) ? hitItem.GetSubItem(lParam.iSubItem) : null;
 
             // Figure out which group is involved in the hit test. This is a little complicated:
@@ -4228,7 +4228,7 @@ namespace BrightIdeasSoftware
                 } else {
                     if (isGroupHit) {
                         foreach (OLVGroup olvGroup in this.OLVGroups) {
-                            if (olvGroup.GroupId == index) {
+                            if (olvGroup.GroupId == index.ToInt32()) {
                                 group = olvGroup;
                                 break;
                             }
@@ -8423,7 +8423,7 @@ namespace BrightIdeasSoftware
             this.HotItemStyle = this.HotItemStyle;
 
             // Arrange for any group images to be installed after the control is created
-            int x = NativeMethods.SetGroupImageList(this, this.GroupImageList);
+            var x = NativeMethods.SetGroupImageList(this, this.GroupImageList);
 
             this.UseExplorerTheme = this.UseExplorerTheme;
 

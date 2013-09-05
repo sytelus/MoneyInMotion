@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
+using BrightIdeasSoftware;
 using CommonUtils;
 using MoneyAI.WinForms.Properties;
 
@@ -24,7 +26,50 @@ namespace MoneyAI.WinForms
             defaultRootPath = Settings.Default.RootFolder.NullIfEmpty();
             textBoxRootFolder.Text = defaultRootPath;
 
+            txnListView.BeforeCreatingGroups += txnListView_BeforeCreatingGroups;
+
             buttonScanStatements_Click(sender, e);
+        }
+
+        private class CategoryGroupComparer : IComparer<BrightIdeasSoftware.OLVGroup>
+        {
+            public static readonly CategoryGroupComparer Comparer = new CategoryGroupComparer();
+            public int Compare(OLVGroup x, OLVGroup y)
+            {
+                EnsureGroupTag(x);
+                EnsureGroupTag(y);
+                Tuple<string, int, decimal, decimal> xt = (Tuple<string, int, decimal, decimal>)x.Tag, yt = (Tuple<string, int, decimal, decimal>)y.Tag;
+
+                return Math.Max(yt.Item4, yt.Item3).CompareTo(Math.Max(xt.Item3, xt.Item3));
+            }
+        }
+
+        private static void EnsureGroupTag(OLVGroup group)
+        {
+            if (group.Tag == null)
+            {
+                var groupStats = GetGroupHeaderTotals(@group.Items.Select(i => (Transaction)i.RowObject).ToArray());
+                group.Tag = groupStats;
+            }
+        }
+
+        private class TransactionItemComparer : IComparer<BrightIdeasSoftware.OLVListItem>
+        {
+            public static readonly TransactionItemComparer Comparer = new TransactionItemComparer();
+            public int Compare(OLVListItem x, OLVListItem y)
+            {
+                return ((Transaction)x.RowObject).Amount.CompareTo(((Transaction)y.RowObject).Amount);
+            }
+        }
+
+        private void txnListView_BeforeCreatingGroups(object sender, BrightIdeasSoftware.CreateGroupsEventArgs e)
+        {
+            if (e.Parameters.GroupByColumn == olvColumnCategory)
+            {
+                e.Parameters.GroupComparer = CategoryGroupComparer.Comparer;
+            }
+
+            e.Parameters.ItemComparer = TransactionItemComparer.Comparer; 
         }
 
         private void FormMain_FormClosed(object sender, FormClosedEventArgs e)
@@ -136,19 +181,61 @@ namespace MoneyAI.WinForms
                 var filteredTransactions = appState.LatestMerged.Where(t => 
                     (filter.YearFilter == null || t.TransactionDate.Year == filter.YearFilter.Value)
                     && (filter.MonthFilter == null || t.TransactionDate.Month == filter.MonthFilter.Value)
-                    && (filter.CategoryPathFilter == null || IsCategoryPathMatch(filter.CategoryPathFilter, t.DisplayCategoryPath)))
-                    .OrderBy(t => t.Amount);
+                    && (filter.CategoryPathFilter == null || IsCategoryPathMatch(filter.CategoryPathFilter, t.DisplayCategoryPath)));
 
                 txnListView.SetObjects(filteredTransactions);
-
-
             }
             else txnListView.ClearObjects();
+            txnListView.Sort(olvColumnCategory);
         }
 
         private bool IsCategoryPathMatch(IEnumerable<string> path1, IEnumerable<string> path2)
         {
             return path1.Zip(path2, (c1, c2) => c1.Equals(c2, StringComparison.Ordinal)).Any(e => !e);
+        }
+
+        private void txnListView_FormatCell(object sender, BrightIdeasSoftware.FormatCellEventArgs e)
+        {
+            if (e.Column == olvColumnAmount)
+            {
+                var transaction = (Transaction) e.Model;
+                if (transaction.Amount < 0)
+                    e.SubItem.ForeColor = Color.Red;
+            }
+        }
+
+        private void txnListView_AboutToCreateGroups(object sender, BrightIdeasSoftware.CreateGroupsEventArgs e)
+        {
+            if (e.Parameters.GroupByColumn == olvColumnCategory)
+            {
+                foreach (var group in e.Groups)
+                {
+                    EnsureGroupTag(group);
+
+                    var groupStats = (Tuple<string, int, decimal, decimal>) group.Tag;
+                    var totalsText = groupStats.Item1;
+                    var count = groupStats.Item2;
+
+                    group.Header = "{0} - {1} {2}".FormatEx((string) group.Key, count, totalsText);
+                    group.Footer = " ";
+                    group.Subtitle = " ";
+                    //group.Collapsed = true;
+                }
+            }
+        }
+
+        private static Tuple<string, int, decimal, decimal> GetGroupHeaderTotals(ICollection<Transaction> transactions)
+        {
+            string totalsText = transactions
+                .GroupBy(t => t.TransactionReason)
+                .Select(g => Tuple.Create(g.Key, g.Sum(t => t.Amount)))
+                .Where(tp => tp.Item2 != 0)
+                .OrderBy(tp => Math.Abs(tp.Item2))
+                .ToDelimitedString("    ", tp => string.Concat(tp.Item1.ToString(), " ", Math.Abs(tp.Item2).ToString("C")), true);
+            int count = transactions.Count;
+            decimal negativeSum = Math.Abs(transactions.Where(t => t.Amount < 0).Sum(t => t.Amount));
+            decimal positiveSum = transactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
+            return Tuple.Create(totalsText, count, negativeSum, positiveSum);
         }
 
     }

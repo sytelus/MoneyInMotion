@@ -30,6 +30,11 @@ namespace MoneyAI
             get { return this.AccountId; }
         }
 
+        public string DisplayType
+        {
+            get { return this.TransactionReason.ToString(); }
+        }
+
         public string DisplayImportInfo
         {
             get { return this.ImportId; }
