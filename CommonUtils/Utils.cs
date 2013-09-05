@@ -67,7 +67,7 @@ namespace CommonUtils
 
         public static string ToTitleCase(this string s)
         {
-            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(s);
+            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(s.ToLower(CultureInfo.CurrentCulture));
         }
 
         public static double Log2(double x)
@@ -106,6 +106,14 @@ namespace CommonUtils
                 return attribute.Value;
         }
 
+        public static string ToCurrencyString(this decimal currency)
+        {
+            return currency.ToString("C");
+        }
+        public static string ToStringCurrentCulture(this int k)
+        {
+            return k.ToString(CultureInfo.CurrentCulture);
+        }
         public static string ToStringInvariant(this int k)
         {
             return k.ToString(CultureInfo.InvariantCulture);

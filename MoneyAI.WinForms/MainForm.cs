@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using CommonUtils;
@@ -71,50 +72,49 @@ namespace MoneyAI.WinForms
 
         private void RefreshExplorer()
         {
-            this.treeView.Nodes.Clear();
-            var rootNode = CreateTreeNode("All", new TreeNodeFilter() {Type = TreeNodeFilter.FilterType.None, Value = null} );
-            this.treeView.Nodes.Add(rootNode);
+            this.txnTreeView.Nodes.Clear();
+            var rootNode = CategoryNode.CreateTreeNode(new TreeNodeData()
+            {
+                Text = "All"
+            } );
+            this.txnTreeView.Nodes.Add(rootNode);
 
-            var dateGroups = this.appState.LatestMerged
+            var yearGroups = this.appState.LatestMerged
                 .GroupBy(t => t.TransactionDate.Year)
                 .OrderByDescending(g => g.Key)
                 .Select(g => 
                     Tuple.Create(g.Key
                         , g.GroupBy(yt => yt.TransactionDate.Month)
-                            .OrderByDescending(mg => mg.Key)
                             .Select(mg => Tuple.Create(mg.Key, mg.ToArray()))
-                        .ToArray()));
+                            .OrderByDescending(m => m)));
 
-            foreach (var dateGroup in dateGroups)
+            foreach (var yearGroup in yearGroups)
             {
-                var yearNode = CreateTreeNode(dateGroup.Item1.ToString(), new TreeNodeFilter() {Type = TreeNodeFilter.FilterType.Year, Value = dateGroup.Item1});
+                var yearNode = CategoryNode.CreateTreeNode(new TreeNodeData()
+                {
+                    Text = yearGroup.Item1.ToStringCurrentCulture(), YearFilter = yearGroup.Item1
+                });
                 rootNode.Nodes.Add(yearNode);
 
-                foreach (var monthGroup in dateGroup.Item2)
+                foreach (var monthGroup in yearGroup.Item2)
                 {
-                    var monthNode = CreateTreeNode(monthGroup.Item1.ToString(), new TreeNodeFilter() { Type = TreeNodeFilter.FilterType.Month, Value = monthGroup.Item1 });
+                    var monthNode = CategoryNode.CreateTreeNode(new TreeNodeData()
+                    {
+                        Text = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(monthGroup.Item1), YearFilter = yearGroup.Item1, MonthFilter = monthGroup.Item1
+                    });
                     yearNode.Nodes.Add(monthNode);
-                    
 
+                    var categoryRootNode = new CategoryNode(null, yearGroup.Item1, monthGroup.Item1);
+                    foreach (var transaction in monthGroup.Item2)
+                        categoryRootNode.Merge(transaction);
+
+                    categoryRootNode.BuildTreeViewNodes(monthNode);
                 }
+
+                yearNode.Expand();
             }
-        }
 
-        private static TreeNode CreateTreeNode(string text, TreeNodeFilter filter, TreeNode[] children = null, TreeNode parentNode = null, bool collapse = false)
-        {
-            var node = new TreeNode(text);
-            node.Tag = filter;
-
-            if (parentNode != null)
-                parentNode.Nodes.Add(node);
-
-            if (children != null)
-                node.Nodes.AddRange(children);
-
-            if (!collapse)
-                node.Expand();
-
-            return node;
+            rootNode.Expand();
         }
     }
 }

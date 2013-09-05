@@ -72,6 +72,7 @@
     <Compile Include="AccountConfigDialog.Designer.cs">
       <DependentUpon>AccountConfigDialog.cs</DependentUpon>
     </Compile>
+    <Compile Include="CategoryNode.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -85,7 +86,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="TreeNodeFilter.cs" />
+    <Compile Include="TreeNodeData.cs" />
     <EmbeddedResource Include="AccountConfigDialog.resx">
       <DependentUpon>AccountConfigDialog.cs</DependentUpon>
     </EmbeddedResource>
@@ -132,9 +133,17 @@
       <Project>{d60b2856-0341-4481-afdd-de70532b6884}</Project>
       <Name>CommonUtils</Name>
     </ProjectReference>
+    <ProjectReference Include="..\ListViewPrinter\ListViewPrinter.csproj">
+      <Project>{e73a10bd-2b5a-4bac-897f-3a58cfc07631}</Project>
+      <Name>ListViewPrinter</Name>
+    </ProjectReference>
     <ProjectReference Include="..\MoneyAI\MoneyAI.csproj">
       <Project>{49E1703C-6F0E-4791-8037-39769AC6A0E4}</Project>
       <Name>MoneyAI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ObjectListView\ObjectListView.csproj">
+      <Project>{18feda0c-d147-4286-b39a-01204808106a}</Project>
+      <Name>ObjectListView</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

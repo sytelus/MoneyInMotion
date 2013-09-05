@@ -37,11 +37,11 @@
             this.splitter1 = new System.Windows.Forms.Splitter();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
-            this.treeView = new System.Windows.Forms.TreeView();
+            this.txnTreeView = new System.Windows.Forms.TreeView();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
-            this.listView = new System.Windows.Forms.ListView();
             this.statusStrip2 = new System.Windows.Forms.StatusStrip();
             this.richTextBoxLog = new System.Windows.Forms.RichTextBox();
+            this.txnListView = new BrightIdeasSoftware.ObjectListView();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -51,6 +51,7 @@
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
             this.splitContainer2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.txnListView)).BeginInit();
             this.SuspendLayout();
             // 
             // label1
@@ -86,7 +87,7 @@
             // buttonSaveLatestMerged
             // 
             this.buttonSaveLatestMerged.Location = new System.Drawing.Point(551, 9);
-            this.buttonSaveLatestMerged.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonSaveLatestMerged.Margin = new System.Windows.Forms.Padding(2);
             this.buttonSaveLatestMerged.Name = "buttonSaveLatestMerged";
             this.buttonSaveLatestMerged.Size = new System.Drawing.Size(126, 19);
             this.buttonSaveLatestMerged.TabIndex = 7;
@@ -97,7 +98,7 @@
             // buttonScanStatements
             // 
             this.buttonScanStatements.Location = new System.Drawing.Point(416, 9);
-            this.buttonScanStatements.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonScanStatements.Margin = new System.Windows.Forms.Padding(2);
             this.buttonScanStatements.Name = "buttonScanStatements";
             this.buttonScanStatements.Size = new System.Drawing.Size(124, 19);
             this.buttonScanStatements.TabIndex = 6;
@@ -108,7 +109,7 @@
             // buttonAddAccount
             // 
             this.buttonAddAccount.Location = new System.Drawing.Point(869, 8);
-            this.buttonAddAccount.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonAddAccount.Margin = new System.Windows.Forms.Padding(2);
             this.buttonAddAccount.Name = "buttonAddAccount";
             this.buttonAddAccount.Size = new System.Drawing.Size(127, 19);
             this.buttonAddAccount.TabIndex = 5;
@@ -140,61 +141,51 @@
             // 
             this.splitContainer1.Panel2.Controls.Add(this.richTextBoxLog);
             this.splitContainer1.Size = new System.Drawing.Size(1042, 571);
-            this.splitContainer1.SplitterDistance = 477;
+            this.splitContainer1.SplitterDistance = 476;
             this.splitContainer1.TabIndex = 4;
             // 
             // splitContainer2
             // 
             this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer2.Location = new System.Drawing.Point(0, 0);
-            this.splitContainer2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.splitContainer2.Margin = new System.Windows.Forms.Padding(2);
             this.splitContainer2.Name = "splitContainer2";
             // 
             // splitContainer2.Panel1
             // 
-            this.splitContainer2.Panel1.Controls.Add(this.treeView);
+            this.splitContainer2.Panel1.Controls.Add(this.txnTreeView);
             this.splitContainer2.Panel1.Controls.Add(this.statusStrip1);
             // 
             // splitContainer2.Panel2
             // 
-            this.splitContainer2.Panel2.Controls.Add(this.listView);
+            this.splitContainer2.Panel2.Controls.Add(this.txnListView);
             this.splitContainer2.Panel2.Controls.Add(this.statusStrip2);
-            this.splitContainer2.Size = new System.Drawing.Size(1040, 475);
+            this.splitContainer2.Size = new System.Drawing.Size(1040, 474);
             this.splitContainer2.SplitterDistance = 346;
             this.splitContainer2.SplitterWidth = 3;
             this.splitContainer2.TabIndex = 0;
             // 
-            // treeView
+            // txnTreeView
             // 
-            this.treeView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.treeView.Location = new System.Drawing.Point(0, 0);
-            this.treeView.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            this.treeView.Name = "treeView";
-            this.treeView.Size = new System.Drawing.Size(346, 453);
-            this.treeView.TabIndex = 1;
+            this.txnTreeView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txnTreeView.Location = new System.Drawing.Point(0, 0);
+            this.txnTreeView.Margin = new System.Windows.Forms.Padding(2);
+            this.txnTreeView.Name = "txnTreeView";
+            this.txnTreeView.Size = new System.Drawing.Size(346, 452);
+            this.txnTreeView.TabIndex = 1;
             // 
             // statusStrip1
             // 
-            this.statusStrip1.Location = new System.Drawing.Point(0, 453);
+            this.statusStrip1.Location = new System.Drawing.Point(0, 452);
             this.statusStrip1.Name = "statusStrip1";
             this.statusStrip1.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
             this.statusStrip1.Size = new System.Drawing.Size(346, 22);
             this.statusStrip1.TabIndex = 0;
             this.statusStrip1.Text = "statusStrip1";
             // 
-            // listView
-            // 
-            this.listView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.listView.Location = new System.Drawing.Point(0, 0);
-            this.listView.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
-            this.listView.Name = "listView";
-            this.listView.Size = new System.Drawing.Size(691, 453);
-            this.listView.TabIndex = 1;
-            this.listView.UseCompatibleStateImageBehavior = false;
-            // 
             // statusStrip2
             // 
-            this.statusStrip2.Location = new System.Drawing.Point(0, 453);
+            this.statusStrip2.Location = new System.Drawing.Point(0, 452);
             this.statusStrip2.Name = "statusStrip2";
             this.statusStrip2.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
             this.statusStrip2.Size = new System.Drawing.Size(691, 22);
@@ -206,9 +197,19 @@
             this.richTextBoxLog.Dock = System.Windows.Forms.DockStyle.Fill;
             this.richTextBoxLog.Location = new System.Drawing.Point(0, 0);
             this.richTextBoxLog.Name = "richTextBoxLog";
-            this.richTextBoxLog.Size = new System.Drawing.Size(1040, 88);
+            this.richTextBoxLog.Size = new System.Drawing.Size(1040, 89);
             this.richTextBoxLog.TabIndex = 0;
             this.richTextBoxLog.Text = "";
+            // 
+            // txnListView
+            // 
+            this.txnListView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txnListView.Location = new System.Drawing.Point(0, 0);
+            this.txnListView.Name = "txnListView";
+            this.txnListView.Size = new System.Drawing.Size(691, 452);
+            this.txnListView.TabIndex = 1;
+            this.txnListView.UseCompatibleStateImageBehavior = false;
+            this.txnListView.View = System.Windows.Forms.View.Details;
             // 
             // FormMain
             // 
@@ -235,6 +236,7 @@
             this.splitContainer2.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
             this.splitContainer2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.txnListView)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -251,10 +253,10 @@
         private System.Windows.Forms.Button buttonScanStatements;
         private System.Windows.Forms.Button buttonSaveLatestMerged;
         private System.Windows.Forms.SplitContainer splitContainer2;
-        private System.Windows.Forms.TreeView treeView;
+        private System.Windows.Forms.TreeView txnTreeView;
         private System.Windows.Forms.StatusStrip statusStrip1;
-        private System.Windows.Forms.ListView listView;
         private System.Windows.Forms.StatusStrip statusStrip2;
+        private BrightIdeasSoftware.ObjectListView txnListView;
     }
 }
 

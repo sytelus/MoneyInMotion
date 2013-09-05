@@ -7,6 +7,7 @@ using System.Runtime.Serialization;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Text;
+using System.Text.RegularExpressions;
 using CommonUtils;
 
 namespace MoneyAI
@@ -36,7 +37,8 @@ namespace MoneyAI
         public string EntityName { get; private set; }
 
         [DataMember(IsRequired = true)]
-        public decimal? Amount { get; private set; }
+        private decimal? amount;
+        public decimal Amount { get { return this.amount.Value; } }
 
         [DataMember(IsRequired = true)]
         public string ContentHash { get; private set; }
@@ -79,17 +81,37 @@ namespace MoneyAI
             }
         }
 
+        private readonly static Regex nonAlphaRegex = new Regex(@"[^\w\s\.]|[\d]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly static Regex multipleWhiteSpaceRegex = new Regex(@"[\s]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly static Regex whiteSpaceRegex = new Regex(@"[\s]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static string GetEntityNameNormalized(string entityName)
         {
             entityName = entityName ?? string.Empty;
-            var cleanedName = Utils.RemoveNonAlphaNumericChars(entityName);
-            if (cleanedName.Length == 0)
-                cleanedName = entityName.Trim();
+            var cleanedName = nonAlphaRegex.Replace(entityName, String.Empty);
+            cleanedName = multipleWhiteSpaceRegex.Replace(cleanedName, " ");
+            cleanedName = whiteSpaceRegex.Replace(cleanedName, " ");
+            cleanedName = cleanedName.Trim();
+            cleanedName = !cleanedName.Contains('.') ? cleanedName.ToTitleCase() : cleanedName.ToLower(CultureInfo.CurrentCulture);
 
-            return cleanedName.ToTitleCase();
+            if (cleanedName.Length == 0)
+                cleanedName = entityName.Trim().ToTitleCase();
+
+            return cleanedName;
         }
 
-        public IEnumerable<string> GetDisplayCategoryPath()
+        private string[] cachedDisplayCategoryPath;
+        public string[] DisplayCategoryPath
+        {
+            get
+            {
+                if (cachedDisplayCategoryPath == null)
+                    cachedDisplayCategoryPath = GetDisplayCategoryPath().ToArray();
+
+                return cachedDisplayCategoryPath;
+            }
+        }
+
+        private IEnumerable<string> GetDisplayCategoryPath()
         {
             if (!this.CategoryPath.IsNullOrEmpty())
                 return this.CategoryPath;
@@ -184,7 +206,7 @@ namespace MoneyAI
                     case "Description":
                         transaction.EntityName = columnValue; break;
                     case "Amount":
-                        transaction.Amount = Decimal.Parse(columnValue, NumberStyles.Currency); break;
+                        transaction.amount = Decimal.Parse(columnValue, NumberStyles.Currency); break;
                     default:
                         throw new Exception("Heade column '{0}' is not recognized".FormatEx(headerColumn));
                 }
@@ -212,7 +234,7 @@ namespace MoneyAI
                 errors += "LocationHash must have value.";
             if (string.IsNullOrEmpty(this.AccountId))
                 errors += "AccountInfo.Id must have value.";
-            if (this.Amount == null)
+            if (this.amount == null)
                 errors += "Amount must have value.";
             if (this.transactionDate == null)
                 errors += "TransactionDate must have value.";
