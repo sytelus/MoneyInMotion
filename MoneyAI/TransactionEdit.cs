@@ -9,54 +9,26 @@ using CommonUtils;
 
 namespace MoneyAI
 {
-    public enum TransactionEditScope
-    {
-        EntityName, EntityNameNormalized, TransactionID, All, None
-    }
-    
     [DataContract]
-    public class TransactionEdit
+    public partial class TransactionEdit
     {
-        [DataMember(IsRequired = true)]
-        public TransactionEditScope Scope { get; private set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string[] ScopeParameters { get; private set; }
-
         [DataMember(IsRequired = true)]
         public AuditInfo AuditInfo { get; private set; }
 
         [DataMember(IsRequired = true)]
-        public string ScopeHash { get; private set; }
+        public EditScope Scope { get; private set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public Transaction.EditedValues EditedValues { get; internal set; }
+        public EditedValues Values { get; private set; }
 
-        internal TransactionEdit(TransactionEditScope scope, string[] scopeParameters)
+        [DataMember(IsRequired = true)]
+        public string SourceId { get; private set; }
+
+        internal TransactionEdit(EditScope scope, string sourceId)
         {
             this.AuditInfo = AuditInfo.Create();
             this.Scope = scope;
-            this.ScopeParameters = scopeParameters;
-
-            this.ScopeHash = GetScopeHash(scope, scopeParameters);
-        }
-
-        internal static string GetScopeHash(TransactionEditScope scope, string[] scopeParameters)
-        {
-            return Utils.GetMD5HashString(string.Join("\t"
-                , scope.ToString().AsEnumerable().Concat(scopeParameters.EmptyIfNull())));
-        }
-
-        internal void Apply(Transactions transactions)
-        {
-            var filteredTransactions = FilterTransactions(transactions);
-            foreach (var filteredTransaction in filteredTransactions)
-                ApplyInternal(filteredTransaction);
-        }
-
-        private void ApplyInternal(Transaction filteredTransaction)
-        {
-            filteredTransaction.ApplyEdit(this);
+            this.SourceId = sourceId;
         }
 
         private IEnumerable<Transaction> FilterTransactions(IEnumerable<Transaction> transactions)
@@ -66,21 +38,34 @@ namespace MoneyAI
 
         private bool FilterTransaction(Transaction transaction)
         {
-            switch (this.Scope)
+            switch (this.Scope.Type)
             {
-                case TransactionEditScope.All:
+                case ScopeType.All:
                     return true;
-                case TransactionEditScope.None:
+                case ScopeType.None:
                     return false;
-                case TransactionEditScope.EntityName:
-                    return string.Equals(transaction.EntityName, this.ScopeParameters[0], StringComparison.CurrentCultureIgnoreCase);
-                case TransactionEditScope.EntityNameNormalized:
-                    return string.Equals(transaction.EntityNameNormalized, this.ScopeParameters[0], StringComparison.CurrentCultureIgnoreCase);
-                case TransactionEditScope.TransactionID:
-                    return string.Equals(transaction.Id, this.ScopeParameters[0], StringComparison.Ordinal);
+                case ScopeType.EntityName:
+                    return string.Equals(transaction.EntityName, this.Scope.ScopeParameters[0], StringComparison.CurrentCultureIgnoreCase);
+                case ScopeType.EntityNameNormalized:
+                    return string.Equals(transaction.EntityNameNormalized, this.Scope.ScopeParameters[0], StringComparison.CurrentCultureIgnoreCase);
+                case ScopeType.TransactionId:
+                    return string.Equals(transaction.Id, this.Scope.ScopeParameters[0], StringComparison.Ordinal);
                 default:
-                    throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported".FormatEx(this.Scope.ToString()));
+                    throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported".FormatEx(this.Scope.Type.ToString()));
             }
+        }
+
+        public void Apply(IEnumerable<Transaction> transactions)
+        {
+            var filteredTransactions = this.FilterTransactions(transactions);
+            foreach (var filteredTransaction in filteredTransactions)
+                filteredTransaction.ApplyEdit(this);
+        }
+
+        internal void Merge(TransactionEdit otherEdit)
+        {
+            this.Values.Merge(otherEdit.Values);
+            AuditInfo.Update();
         }
 
         public string SerializeToJson()

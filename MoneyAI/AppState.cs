@@ -40,7 +40,7 @@ namespace MoneyAI
             if (this.Repository.TransactionsStorage.Exists(transactionEditsLocation))
                 this.TransactionEdits = this.Repository.TransactionEditsStorage.Load(transactionEditsLocation);
             else
-                this.TransactionEdits = new TransactionEdits();
+                this.TransactionEdits = new TransactionEdits(transactionEditsLocation.PortableAddress);
         }
 
         public void AddAccountConfig(AccountConfig accountConfig)

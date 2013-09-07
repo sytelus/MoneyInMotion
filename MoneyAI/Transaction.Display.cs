@@ -11,14 +11,14 @@ namespace MoneyAI
     {
         public string DisplayOriginalEntityName
         {
-            get { return this.Edits.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault(null))) ?? this.EntityName; }
+            get { return this.Edits.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault())) ?? this.EntityName; }
         }
 
         public string DisplayEntityName
         {
             get
             {
-                var displayEntityName = this.Edits.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault(null)));
+                var displayEntityName = this.Edits.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault()));
                 return displayEntityName ?? this.EntityNameNormalized;
             }
         }
@@ -32,7 +32,7 @@ namespace MoneyAI
         {
             get
             {
-                var isFlagged = this.Edits.IfNotNull(u => u.IsFlagged.IfNotNull(e => e.GetValueOrDefault(false)));
+                var isFlagged = this.Edits.IfNotNull(u => u.IsFlagged.IfNotNull(e => e.GetValueOrDefault()));
                 return isFlagged ? "flag" : null;
             }
         }
@@ -78,7 +78,7 @@ namespace MoneyAI
 
         private string[] GetDisplayCategoryPath()
         {
-            var categoryPath = this.Edits.IfNotNull(u => u.CategoryPath.IfNotNull(e => e.GetValueOrDefault(null)));
+            var categoryPath = this.Edits.IfNotNull(u => u.CategoryPath.IfNotNull(e => e.GetValueOrDefault()));
             return categoryPath ?? Utils.EmptyStringArray;
         }
 

@@ -11,21 +11,20 @@ namespace MoneyAI
     public class FileLocation : ILocation
     {
         public string Address { get; private set; }
+        public string PortableAddress { get; private set; }
         public ImportInfo ImportInfo { get; private set; }
         public ContentType ContentType { get; private set; }
         public AccountConfig AccountConfig { get; private set; }
 
-        private readonly string fileRelativePath;
-        
         public FileLocation(string rootPath, string relativeFilePath, AccountConfig accountConfig = null, bool isImportInfo = false)
         {
             this.Address = Path.Combine(rootPath, relativeFilePath);
-            fileRelativePath = relativeFilePath;
+            this.PortableAddress = relativeFilePath;
 
             if (isImportInfo)
             {
                 var updateDate = File.GetLastWriteTimeUtc(this.Address);
-                var importId = Utils.GetMD5HashString(string.Join("\t", fileRelativePath, updateDate.ToString("u")));
+                var importId = Utils.GetMD5HashString(string.Join("\t", relativeFilePath));
                 this.ImportInfo = new ImportInfo(importId, relativeFilePath, updateDate, File.GetCreationTimeUtc(this.Address), importId);
             }
             this.AccountConfig = accountConfig;

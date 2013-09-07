@@ -59,10 +59,10 @@ namespace MoneyAI
         public int LineNumber { get; private set; }     
 
         [DataMember(EmitDefaultValue = false)]
-        public EditedValues Edits { get; private set; }
+        public TransactionEdit.EditedValues Edits { get; private set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public IDictionary<int,string> EditSequence { get; private set; }
+        public IDictionary<int,Tuple<string,string>> EditSequence { get; private set; }
 
         [DataMember(EmitDefaultValue = false)] private int editSequenceNumber;
 
@@ -114,9 +114,9 @@ namespace MoneyAI
 
         public void ApplyEdit(TransactionEdit edit)
         {
-            this.Edits = this.Edits ?? new EditedValues();
+            this.Edits = this.Edits ?? new TransactionEdit.EditedValues();
 
-            this.Edits.Merge(edit.EditedValues);
+            this.Edits.Merge(edit.Values);
 
             this.InvalidateCachedValues();
 
@@ -132,9 +132,9 @@ namespace MoneyAI
 
         private void RecordAppliedEdit(TransactionEdit edit)
         {
-            this.EditSequence = this.EditSequence ?? new Dictionary<int, string>();
+            this.EditSequence = this.EditSequence ?? new Dictionary<int, Tuple<string, string>>();
             this.editSequenceNumber += 1;
-            this.EditSequence.Add(this.editSequenceNumber, edit.ScopeHash);
+            this.EditSequence.Add(this.editSequenceNumber, Tuple.Create(edit.SourceId, edit.Scope.Id));
         }
 
         private Transaction()

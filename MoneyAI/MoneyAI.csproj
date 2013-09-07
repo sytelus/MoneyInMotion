@@ -57,6 +57,7 @@
     <Compile Include="Transaction.Display.cs" />
     <Compile Include="Transaction.SubClasses.cs" />
     <Compile Include="TransactionEdit.cs" />
+    <Compile Include="TransactionEdit.SubClasses.cs" />
     <Compile Include="TransactionEdits.cs" />
     <Compile Include="Transactions.cs" />
   </ItemGroup>

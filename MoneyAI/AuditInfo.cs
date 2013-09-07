@@ -38,10 +38,10 @@ namespace MoneyAI
             return auditInfo;
         }
 
-        public void Update(string updatedBy)
+        public void Update(string updatedBy = null)
         {
             this.UpdateDate = DateTime.UtcNow;
-            this.UpdatedBy = updatedBy;
+            this.UpdatedBy = updatedBy ?? WindowsIdentity.GetCurrent().IfNotNull(i => i.Name);
         }
     }
 }

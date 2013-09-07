@@ -220,7 +220,7 @@ namespace MoneyAI
 
             public TransactionEdits Load(ILocation location)
             {
-                return TransactionEdits.DeserializeFromJson(File.ReadLines(location.Address));
+                return TransactionEdits.DeserializeFromJson(File.ReadLines(location.Address), location.PortableAddress);
             }
 
             public void Save(ILocation location, TransactionEdits transactions)
