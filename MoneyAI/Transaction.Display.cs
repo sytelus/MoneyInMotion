@@ -11,17 +11,29 @@ namespace MoneyAI
     {
         public string DisplayOriginalEntityName
         {
-            get { return this.UserCorrection.IfNotNull(u => u.EntityName) ?? this.EntityName; }
+            get { return this.Edits.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault(null))) ?? this.EntityName; }
         }
 
         public string DisplayEntityName
         {
             get
             {
-                var displayEntityName = this.UserCorrection.IfNotNull(u => u.EntityName) ?? this.EntityNameNormalized;
-                if (displayEntityName == DisplayCategory)
-                    return null;
-                else return displayEntityName;
+                var displayEntityName = this.Edits.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault(null)));
+                return displayEntityName ?? this.EntityNameNormalized;
+            }
+        }
+
+        public string DisplayEmpty
+        {
+            get { return string.Empty; }
+        }
+
+        public string DisplayIsUserFlaggedImageName
+        {
+            get
+            {
+                var isFlagged = this.Edits.IfNotNull(u => u.IsFlagged.IfNotNull(e => e.GetValueOrDefault(false)));
+                return isFlagged ? "flag" : null;
             }
         }
 
@@ -46,13 +58,13 @@ namespace MoneyAI
             get
             {
                 if (cachedDisplayCategoryPath == null)
-                    cachedDisplayCategoryPath = GetDisplayCategoryPath().ToArray();
+                    cachedDisplayCategoryPath = GetDisplayCategoryPath();
 
                 return cachedDisplayCategoryPath;
             }
         }
 
-        public string cachedDisplayCategory;
+        private string cachedDisplayCategory;
         public string DisplayCategory
         {
             get
@@ -64,13 +76,10 @@ namespace MoneyAI
             }
         }
 
-        private IEnumerable<string> GetDisplayCategoryPath()
+        private string[] GetDisplayCategoryPath()
         {
-            if (!this.CategoryPath.IsNullOrEmpty())
-                return this.CategoryPath;
-            else
-                return (this.UserCorrection.IfNotNull(c => c.EntityName) ?? this.EntityNameNormalized
-                    ).AsEnumerable();
+            var categoryPath = this.Edits.IfNotNull(u => u.CategoryPath.IfNotNull(e => e.GetValueOrDefault(null)));
+            return categoryPath ?? Utils.EmptyStringArray;
         }
 
     }

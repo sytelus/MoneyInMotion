@@ -23,34 +23,28 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false)]
         public string[] ScopeParameters { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
-        public string[] CategoryPath { get; private set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public Transaction.Correction UserCorrection { get; private set; }
-
         [DataMember(IsRequired = true)]
         public AuditInfo AuditInfo { get; private set; }
 
         [DataMember(IsRequired = true)]
-        public string ContentHash { get; private set; }
+        public string ScopeHash { get; private set; }
 
-        private TransactionEdit()
+        [DataMember(EmitDefaultValue = false)]
+        public Transaction.EditedValues EditedValues { get; internal set; }
+
+        internal TransactionEdit(TransactionEditScope scope, string[] scopeParameters)
         {
             this.AuditInfo = AuditInfo.Create();
+            this.Scope = scope;
+            this.ScopeParameters = scopeParameters;
+
+            this.ScopeHash = GetScopeHash(scope, scopeParameters);
         }
 
-        public static TransactionEdit CreateEditForEntityNameNormalizedCategoryAssignment(string entityNameNormalized,
-            string[] categoryPath)
+        internal static string GetScopeHash(TransactionEditScope scope, string[] scopeParameters)
         {
-            var edit = new TransactionEdit()
-                       {
-                           Scope = TransactionEditScope.EntityNameNormalized,
-                           ScopeParameters = new[] { entityNameNormalized },
-                           CategoryPath = categoryPath ?? new string[] { }
-                       };
-            edit.ContentHash = Utils.GetMD5HashString(string.Join("\t", edit.GetContent()));
-            return edit;
+            return Utils.GetMD5HashString(string.Join("\t"
+                , scope.ToString().AsEnumerable().Concat(scopeParameters.EmptyIfNull())));
         }
 
         internal void Apply(Transactions transactions)
@@ -65,15 +59,7 @@ namespace MoneyAI
             filteredTransaction.ApplyEdit(this);
         }
 
-        private IEnumerable<string> GetContent()
-        {
-            return this.Scope.ToString().AsEnumerable()
-                .Concat(this.ScopeParameters.EmptyIfNull())
-                .Concat(this.UserCorrection.IfNotNull(u => u.GetContent()).EmptyIfNull())
-                .Concat(this.CategoryPath.EmptyIfNull());
-        }
-
-        private IEnumerable<Transaction> FilterTransactions(Transactions transactions)
+        private IEnumerable<Transaction> FilterTransactions(IEnumerable<Transaction> transactions)
         {
             return transactions.Where(FilterTransaction);
         }

@@ -58,14 +58,11 @@ namespace MoneyAI
         [DataMember(IsRequired = true)] 
         public int LineNumber { get; private set; }     
 
-        [DataMember(EmitDefaultValue = false)] 
-        public string[] CategoryPath { get; private set; }
+        [DataMember(EmitDefaultValue = false)]
+        public EditedValues Edits { get; private set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public Correction UserCorrection { get; private set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public IDictionary<int,string> Edits { get; private set; }
+        public IDictionary<int,string> EditSequence { get; private set; }
 
         [DataMember(EmitDefaultValue = false)] private int editSequenceNumber;
 
@@ -115,65 +112,29 @@ namespace MoneyAI
             return cleanedName;
         }
 
-
-        [DataContract]
-        public class Correction
-        {
-            [DataMember(EmitDefaultValue = false)]
-            public TransactionReason? TransactionReason { get; internal set; }
-            [DataMember(EmitDefaultValue = false)]
-            public DateTime? TransactionDate { get; internal set; }
-            [DataMember(EmitDefaultValue = false)]
-            public decimal? Amount { get; internal set; }
-            [DataMember(EmitDefaultValue = false)]
-            public string EntityName { get; internal set; }
-
-            internal IEnumerable<string> GetContent()
-            {
-                return Utils.AsEnumerable(
-                    this.TransactionReason.ToStringNullSafe(),
-                    this.Amount.ToStringNullSafe(), this.EntityName.EmptyIfNull().ToUpperInvariant(),
-                    this.TransactionDate.ToStringNullSafe());
-            }
-        }
-
-        private void ApplyCategoryPath(string[] categoryPath)
-        {
-            if (categoryPath != null && categoryPath.Length == 0)
-                this.CategoryPath = null;
-            else
-                this.CategoryPath = categoryPath;
-        }
-
-        private void ApplyCorrection(Correction correction, Correction overlayOnCorrection = null)
-        {
-            this.UserCorrection = this.UserCorrection ?? new Correction();
-            this.UserCorrection.TransactionDate = correction.TransactionDate ?? overlayOnCorrection.IfNotNull(c => c.TransactionDate);
-            this.UserCorrection.TransactionReason = correction.TransactionReason ?? overlayOnCorrection.IfNotNull(c => c.TransactionReason);
-            this.UserCorrection.Amount = correction.Amount ?? overlayOnCorrection.IfNotNull(c => c.Amount);
-            this.UserCorrection.EntityName = correction.EntityName ?? overlayOnCorrection.IfNotNull(c => c.EntityName);
-        }
-
         public void ApplyEdit(TransactionEdit edit)
         {
-            if (edit.CategoryPath != null)
-            {
-                this.ApplyCategoryPath(edit.CategoryPath);
-                this.AddEdit(edit);
-            }
+            this.Edits = this.Edits ?? new EditedValues();
 
-            if (edit.UserCorrection != null)
-            {
-                this.ApplyCorrection(edit.UserCorrection);
-                this.AddEdit(edit);
-            }
+            this.Edits.Merge(edit.EditedValues);
+
+            this.InvalidateCachedValues();
+
+            this.RecordAppliedEdit(edit);
         }
 
-        private void AddEdit(TransactionEdit edit)
+        private void InvalidateCachedValues()
         {
-            this.Edits = this.Edits ?? new Dictionary<int, string>();
+            this.cachedDisplayCategory = null;
+            this.cachedDisplayCategoryPath = null;
+            this.cachedEntityNameNormalized = null;
+        }
+
+        private void RecordAppliedEdit(TransactionEdit edit)
+        {
+            this.EditSequence = this.EditSequence ?? new Dictionary<int, string>();
             this.editSequenceNumber += 1;
-            this.Edits.Add(this.editSequenceNumber, edit.ContentHash);
+            this.EditSequence.Add(this.editSequenceNumber, edit.ScopeHash);
         }
 
         private Transaction()

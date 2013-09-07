@@ -238,5 +238,14 @@ namespace MoneyAI.WinForms
             return Tuple.Create(totalsText, count, negativeSum, positiveSum);
         }
 
+        private void txnListView_CellClick(object sender, CellClickEventArgs e)
+        {
+            if (e.Column == olvColumnIsUserFlagged)
+            {
+                var tx = (Transaction) e.Model;
+                //tx.IsUserFlagged = !tx.IsUserFlagged;
+                e.ListView.RefreshItem(e.Item);
+            }
+        }
     }
 }
