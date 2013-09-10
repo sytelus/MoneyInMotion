@@ -4,82 +4,97 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using CommonUtils;
 
 namespace MoneyAI
 {
+    [DataContract]
     public class Transactions : ICollection<Transaction>
     {
-        private readonly IList<Transaction> items = new List<Transaction>();
-        private readonly HashSet<string> uniqueIds = new HashSet<string>();
-        private readonly IDictionary<string, AccountInfo> accountInfos = new Dictionary<string, AccountInfo>();
-        private readonly IDictionary<string, ImportInfo> importInfos = new Dictionary<string, ImportInfo>();
 
-        public Transactions() : this(null, null, null)
+        [DataMember]
+        private readonly string name;
+        
+        [DataMember]
+        private readonly List<Transaction> items;
+
+        [DataMember]
+        private readonly HashSet<string> uniqueContentHashes;
+
+        [DataMember]
+        private readonly Dictionary<string, AccountInfo> accountInfos;
+
+        [DataMember]
+        private readonly Dictionary<string, ImportInfo> importInfos;
+
+        [DataMember]
+        private readonly TransactionEdits edits;
+
+
+        public Transactions(string name)
+            : this(name, null, null, null)
         {
             
         }
 
-        public Transactions(ICollection<Transaction> others, IEnumerable<AccountInfo> accountInfos, IEnumerable<ImportInfo> importInfos)
+        public Transactions(string name, IEnumerable<Transaction> importedTransactions, AccountInfo importedAccountInfo, ImportInfo importInfo) 
         {
-            if (others != null)
-                this.Merge(others, accountInfos, importInfos);
+            this.name = name;
+            this.items = importedTransactions == null ? new List<Transaction>() : importedTransactions.ToList();
+            this.uniqueContentHashes = this.items.Select(t => t.ContentHash).ToHashSet();
+
+            this.accountInfos = new Dictionary<string, AccountInfo>();
+            if (importedAccountInfo != null)
+                accountInfos.Add(importedAccountInfo.Id, importedAccountInfo);
+
+            this.importInfos = new Dictionary<string, ImportInfo>();
+            if (importInfo != null)
+                this.importInfos.Add(importInfo.Id, importInfo);
+
+            this.edits = new TransactionEdits(name);
         }
 
-        //FUTURE: Should be readonly dictionary
-        public IDictionary<string, AccountInfo> AccountInfos
+        public AccountInfo GetAccountInfo(string accountId)
         {
-            get { return this.accountInfos; } 
+            return this.accountInfos[accountId]; 
         }
-        //FUTURE: Should be readonly dictionary
-        public IDictionary<string, ImportInfo> ImportInfos
+        
+        public ImportInfo GetImportInfo(string importId)
         {
-            get { return this.importInfos; }
-        }
-
-        public class  SerializedComponents 
-        {
-            public IEnumerable<string> SerializedTransactions { get; set; }
-            public IEnumerable<string> SerializedAccountInfos { get; set; }
-            public IEnumerable<string> SerializedImportInfos { get; set; }
+            return this.importInfos[importId]; 
         }
 
-        public SerializedComponents SerializeToJson()
+        public bool HasImportInfo(string importId)
         {
-            var components = new SerializedComponents()
-            {
-                SerializedTransactions = this.items.Select(item => item.SerializeToJson()),
-                SerializedAccountInfos = this.accountInfos.Values.Select(a => a.SerializeToJson()),
-                SerializedImportInfos = this.importInfos.Values.Select(i => i.SerializeToJson())
-            };
-            return components;
+            return this.importInfos.ContainsKey(importId);
         }
 
-        public static Transactions DeserializeFromJson(SerializedComponents serializedComponents)
+        public string SerializeToJson()
         {
-            var transactionList = serializedComponents.SerializedTransactions.Select(Transaction.DeserializeFromJson).ToList();
-            var accountInfosDeserialized = serializedComponents.SerializedAccountInfos.Select(AccountInfo.DeserializeFromJson);
-            var importInfosDeserialized = serializedComponents.SerializedImportInfos.Select(ImportInfo.DeserializeFromJson);
-            return new Transactions(transactionList, accountInfosDeserialized, importInfosDeserialized);
+            return JsonSerializer<Transactions>.Serialize(this);
         }
 
-        public void Merge(ICollection<Transaction> others, IEnumerable<AccountInfo> otherAccountInfos, IEnumerable<ImportInfo> otherImportInfos)
+        public static Transactions DeserializeFromJson(string serializedData)
         {
-            //First add transaction without updating IDs. THEN add IDs.
-            this.items.AddRange(others.Where(i => !this.uniqueIds.Contains(i.ContentHash)));
-            this.uniqueIds.AddRange(others.Select(i => i.ContentHash));
-            this.accountInfos.AddRange(otherAccountInfos
-                .Where(a => !this.accountInfos.ContainsKey(a.Id))
-                .Select(a => new KeyValuePair<string, AccountInfo>(a.Id, a)), false);
-            this.importInfos.AddRange(otherImportInfos
-                .Where(i => !this.importInfos.ContainsKey(i.Id))
-                .Select(i => new KeyValuePair<string, ImportInfo>(i.Id, i)), false);
+            return JsonSerializer<Transactions>.Deserialize(serializedData);
         }
 
         public void Merge(Transactions other)
         {
-            this.Merge(other.items, other.AccountInfos.Values, other.ImportInfos.Values);
+            var newItems = other
+                .Where(t => !this.uniqueContentHashes.Contains(t.ContentHash))
+                .Select(t => t.CreateCopy()).ToList();
+
+            this.items.AddRange(newItems);
+            this.uniqueContentHashes.AddRange(newItems.Select(i => i.ContentHash));
+            this.accountInfos.AddRange(newItems.Select(i => i.AccountId).Where(aid => !this.accountInfos.ContainsKey(aid)).Select(aid =>
+                new KeyValuePair<string, AccountInfo>(aid, other.GetAccountInfo(aid))));
+            this.importInfos.AddRange(newItems.Select(i => i.ImportId).Where(iid => !this.importInfos.ContainsKey(iid)).Select(iid =>
+                new KeyValuePair<string, ImportInfo>(iid, other.GetImportInfo(iid))));
+            this.edits.Merge(other.edits, this.uniqueContentHashes);
+
         }
 
         public IEnumerator<Transaction> GetEnumerator()
@@ -94,10 +109,10 @@ namespace MoneyAI
 
         public bool Add(Transaction item, bool allowDuplicate, AccountInfo accountInfo, ImportInfo importInfo)
         {
-            if (allowDuplicate || !uniqueIds.Contains(item.ContentHash))
+            if (allowDuplicate || !uniqueContentHashes.Contains(item.ContentHash))
             {
                 this.items.Add(item);
-                this.uniqueIds.Add(item.ContentHash);
+                this.uniqueContentHashes.Add(item.ContentHash);
                 this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
                 this.importInfos.AddIfNotExist(importInfo.Id, importInfo);
                 return true;
@@ -108,7 +123,7 @@ namespace MoneyAI
         public void Clear()
         {
             this.items.Clear();
-            this.uniqueIds.Clear();
+            this.uniqueContentHashes.Clear();
             this.accountInfos.Clear();
             this.importInfos.Clear();
         }
@@ -130,7 +145,7 @@ namespace MoneyAI
 
         public bool IsReadOnly
         {
-            get { return items.IsReadOnly; }
+            get { return false; }
         }
 
         public bool Remove(Transaction item)
@@ -142,5 +157,44 @@ namespace MoneyAI
         {
             throw new NotImplementedException();
         }
+
+        #region Edit application code
+        private IEnumerable<Transaction> FilterTransactions(TransactionEdit edit)
+        {
+            return this.items.Where(t => FilterTransaction(edit, t));
+        }
+
+        private bool FilterTransaction(TransactionEdit edit, Transaction transaction)
+        {
+            switch (edit.Scope.Type)
+            {
+                case TransactionEdit.ScopeType.All:
+                    return true;
+                case TransactionEdit.ScopeType.None:
+                    return false;
+                case TransactionEdit.ScopeType.EntityName:
+                    return string.Equals(transaction.EntityName, edit.Scope.Parameters[0], StringComparison.CurrentCultureIgnoreCase);
+                case TransactionEdit.ScopeType.EntityNameNormalized:
+                    return string.Equals(transaction.EntityNameNormalized, edit.Scope.Parameters[0], StringComparison.CurrentCultureIgnoreCase);
+                case TransactionEdit.ScopeType.TransactionId:
+                    return string.Equals(transaction.Id, edit.Scope.Parameters[0], StringComparison.Ordinal);
+                default:
+                    throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported".FormatEx(edit.Scope.Type.ToString()));
+            }
+        }
+
+        public int Apply(TransactionEdit edit)
+        {
+            var filteredTransactions = this.FilterTransactions(edit);
+            var count = 0;
+            foreach (var filteredTransaction in filteredTransactions)
+            {
+                filteredTransaction.ApplyEdit(edit);
+                count++;
+            }
+            return count;
+        }
+
+        #endregion
     }
 }

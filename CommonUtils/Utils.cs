@@ -1511,6 +1511,19 @@ namespace CommonUtils
             return dict;
         }
 
+        public static Dictionary<TKey, TValue> ToLastSetDictionary<T, TKey, TValue>(this IEnumerable<T> sequence, Func<T, TKey> getKeys, Func<T, TValue> getValues)
+        {
+            var dict = new Dictionary<TKey, TValue>();
+            foreach (var item in sequence)
+            {
+                var key = getKeys(item);
+                var value = getValues(item);
+
+                dict[key] = value;
+            }
+            return dict;
+        }
+
         public static string SerializeToJson<T>(DataContractJsonSerializer serializer, T objectToSerialize)
         {
             MemoryStream buffer = null;

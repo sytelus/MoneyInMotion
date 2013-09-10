@@ -157,15 +157,10 @@ namespace MoneyAI
                 {
                     case ContentType.Csv:
                         var transactionsFromFile = GetTransactionsFromCsvFile(location.Address, location.AccountConfig.AccountInfo, location.ImportInfo).ToList();
-                        return new Transactions(transactionsFromFile, location.AccountConfig.AccountInfo.AsEnumerable(), location.ImportInfo.AsEnumerable());
+                        return new Transactions(location.PortableAddress, transactionsFromFile, location.AccountConfig.AccountInfo, location.ImportInfo);
                     case ContentType.Json:
-                        var serializedComponents = new Transactions.SerializedComponents()
-                        {
-                            SerializedTransactions = File.ReadLines(location.Address),
-                            SerializedAccountInfos = File.ReadLines(GetAddressInfosFilePath(location.Address)),
-                            SerializedImportInfos = File.ReadLines(GetImportInfosFilePath(location.Address))
-                        };
-                        return Transactions.DeserializeFromJson(serializedComponents);
+                        var serializedData = File.ReadAllText(location.Address);
+                        return Transactions.DeserializeFromJson(serializedData);
                     case ContentType.None:
                     default:
                         throw new ArgumentException("location.ContentType value {0} is not supported for loading transaction".FormatEx(location.ContentType));
@@ -174,10 +169,8 @@ namespace MoneyAI
 
             public void Save(ILocation location, Transactions transactions)
             {
-                var serializedComponents = transactions.SerializeToJson();
-                Utils.SaveLines(location.Address, serializedComponents.SerializedTransactions);
-                Utils.SaveLines(GetAddressInfosFilePath(location.Address), serializedComponents.SerializedAccountInfos);
-                Utils.SaveLines(GetImportInfosFilePath(location.Address), serializedComponents.SerializedImportInfos);
+                var serializedData = transactions.SerializeToJson();
+                File.WriteAllText(location.Address, serializedData);
 
                 MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
             }
@@ -185,15 +178,6 @@ namespace MoneyAI
             public bool Exists(ILocation location)
             {
                 return File.Exists(location.Address);
-            }
-
-            private static string GetAddressInfosFilePath(string transactionsFilePath)
-            {
-                return Path.ChangeExtension(transactionsFilePath, "AddressInfo.json");
-            }
-            private static string GetImportInfosFilePath(string transactionsFilePath)
-            {
-                return Path.ChangeExtension(transactionsFilePath, "ImportInfo.json");
             }
 
             private static IEnumerable<Transaction> GetTransactionsFromCsvFile(string file, AccountInfo accountInfo, ImportInfo importInfo)
@@ -220,13 +204,13 @@ namespace MoneyAI
 
             public TransactionEdits Load(ILocation location)
             {
-                return TransactionEdits.DeserializeFromJson(File.ReadLines(location.Address), location.PortableAddress);
+                return TransactionEdits.DeserializeFromJson(File.ReadAllText(location.Address));
             }
 
             public void Save(ILocation location, TransactionEdits transactions)
             {
                 var serializedData = transactions.SerializeToJson();
-                Utils.SaveLines(location.Address, serializedData);
+                File.WriteAllText(location.Address, serializedData);
 
                 MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
             }

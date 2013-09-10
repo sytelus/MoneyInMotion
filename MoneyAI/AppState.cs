@@ -34,7 +34,7 @@ namespace MoneyAI
             if (this.Repository.TransactionsStorage.Exists(latestMergedLocation))
                 this.LatestMerged = this.Repository.TransactionsStorage.Load(latestMergedLocation);
             else
-                this.LatestMerged = new Transactions();
+                this.LatestMerged = new Transactions(this.Repository.LastestMergedLocationName);
 
             var transactionEditsLocation = this.Repository.GetNamedLocation(this.Repository.TransactionEditsLocationName);
             if (this.Repository.TransactionsStorage.Exists(transactionEditsLocation))
@@ -53,7 +53,7 @@ namespace MoneyAI
             var statementLocations = this.Repository.GetStatementLocations();
             foreach (var statementLocation in statementLocations)
             {
-                if (this.LatestMerged.ImportInfos.ContainsKey(statementLocation.ImportInfo.Id))
+                if (this.LatestMerged.HasImportInfo(statementLocation.ImportInfo.Id))
                     MessagePipe.SendMessage("Location {0} skipped".FormatEx(statementLocation.Address));
                 else
                 {

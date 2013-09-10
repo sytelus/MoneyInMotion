@@ -25,41 +25,21 @@ namespace MoneyAI
         public string SourceId { get; private set; }
 
         internal TransactionEdit(EditScope scope, string sourceId)
+            : this(null, scope, sourceId, null)
         {
-            this.AuditInfo = AuditInfo.Create();
+        }
+
+        private TransactionEdit(AuditInfo auditInfo, EditScope scope, string sourceId, EditedValues editValues)
+        {
+            this.AuditInfo = auditInfo ?? AuditInfo.Create();
             this.Scope = scope;
             this.SourceId = sourceId;
+            this.Values = new EditedValues(editValues);
         }
 
-        private IEnumerable<Transaction> FilterTransactions(IEnumerable<Transaction> transactions)
+        internal TransactionEdit(TransactionEdit edit)
+            : this(null, edit.Scope, edit.SourceId, edit.Values)
         {
-            return transactions.Where(FilterTransaction);
-        }
-
-        private bool FilterTransaction(Transaction transaction)
-        {
-            switch (this.Scope.Type)
-            {
-                case ScopeType.All:
-                    return true;
-                case ScopeType.None:
-                    return false;
-                case ScopeType.EntityName:
-                    return string.Equals(transaction.EntityName, this.Scope.ScopeParameters[0], StringComparison.CurrentCultureIgnoreCase);
-                case ScopeType.EntityNameNormalized:
-                    return string.Equals(transaction.EntityNameNormalized, this.Scope.ScopeParameters[0], StringComparison.CurrentCultureIgnoreCase);
-                case ScopeType.TransactionId:
-                    return string.Equals(transaction.Id, this.Scope.ScopeParameters[0], StringComparison.Ordinal);
-                default:
-                    throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported".FormatEx(this.Scope.Type.ToString()));
-            }
-        }
-
-        public void Apply(IEnumerable<Transaction> transactions)
-        {
-            var filteredTransactions = this.FilterTransactions(transactions);
-            foreach (var filteredTransaction in filteredTransactions)
-                filteredTransaction.ApplyEdit(this);
         }
 
         internal void Merge(TransactionEdit otherEdit)

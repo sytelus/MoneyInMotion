@@ -59,12 +59,8 @@ namespace MoneyAI
         public int LineNumber { get; private set; }     
 
         [DataMember(EmitDefaultValue = false)]
-        public TransactionEdit.EditedValues Edits { get; private set; }
+        public TransactionEdit.EditedValues MergedEdits { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
-        public IDictionary<int,Tuple<string,string>> EditSequence { get; private set; }
-
-        [DataMember(EmitDefaultValue = false)] private int editSequenceNumber;
 
         private string cachedEntityNameNormalized = null;
         public string EntityNameNormalized
@@ -112,15 +108,19 @@ namespace MoneyAI
             return cleanedName;
         }
 
+        internal Transaction CreateCopy()
+        {
+            var serializedData = JsonSerializer<Transaction>.Serialize(this);
+            return JsonSerializer<Transaction>.Deserialize(serializedData);
+        }
+
         public void ApplyEdit(TransactionEdit edit)
         {
-            this.Edits = this.Edits ?? new TransactionEdit.EditedValues();
+            this.MergedEdits = this.MergedEdits ?? new TransactionEdit.EditedValues();
 
-            this.Edits.Merge(edit.Values);
+            this.MergedEdits.Merge(edit.Values);
 
             this.InvalidateCachedValues();
-
-            this.RecordAppliedEdit(edit);
         }
 
         private void InvalidateCachedValues()
@@ -128,13 +128,6 @@ namespace MoneyAI
             this.cachedDisplayCategory = null;
             this.cachedDisplayCategoryPath = null;
             this.cachedEntityNameNormalized = null;
-        }
-
-        private void RecordAppliedEdit(TransactionEdit edit)
-        {
-            this.EditSequence = this.EditSequence ?? new Dictionary<int, Tuple<string, string>>();
-            this.editSequenceNumber += 1;
-            this.EditSequence.Add(this.editSequenceNumber, Tuple.Create(edit.SourceId, edit.Scope.Id));
         }
 
         private Transaction()

@@ -21,17 +21,17 @@ namespace MoneyAI
             public ScopeType Type { get; private set; }
 
             [DataMember(EmitDefaultValue = false)]
-            public string[] ScopeParameters { get; private set; }
+            public string[] Parameters { get; private set; }
 
             [DataMember(IsRequired = true)]
             public string Id { get; private set; }
 
-            public EditScope(ScopeType type, string[] scopeParameters)
+            public EditScope(ScopeType scopeType, string[] scopeParameters)
             {
-                this.Type = type;
-                this.ScopeParameters = scopeParameters;
+                this.Type = scopeType;
+                this.Parameters = scopeParameters;
 
-                this.Id = GetScopeHash(type, scopeParameters);
+                this.Id = GetScopeHash(scopeType, scopeParameters);
             }
 
             private static string GetScopeHash(ScopeType scopeType, IEnumerable<string> scopeParameters)
@@ -65,6 +65,21 @@ namespace MoneyAI
 
             [DataMember(EmitDefaultValue = false)]
             public Transaction.EditValue<string[]> CategoryPath { get; internal set; }
+
+
+            internal EditedValues(EditedValues other = null)
+            {
+                if (other == null)
+                    return;
+
+                this.TransactionReason = other.TransactionReason;
+                this.TransactionDate = other.TransactionDate;
+                this.Amount = other.Amount;
+                this.EntityName = other.EntityName;
+                this.IsFlagged = other.IsFlagged;
+                this.Note = other.Note;
+                this.CategoryPath = other.CategoryPath;
+            }
 
             internal void Merge(EditedValues other)
             {
