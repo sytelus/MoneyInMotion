@@ -24,24 +24,18 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false)]
         public string UpdatedBy { get; private set; }
 
-        private AuditInfo()
+        public AuditInfo(AuditInfo auditInfo, bool setUpdated, string updatedBy = null)
         {
-            
+            this.CreateDate = auditInfo.CreateDate;
+            this.CreatedBy = auditInfo.CreatedBy;
+            this.UpdateDate = setUpdated ? DateTime.UtcNow : auditInfo.UpdateDate;
+            this.UpdatedBy = setUpdated ? (updatedBy ?? WindowsIdentity.GetCurrent().IfNotNull(i => i.Name)) : auditInfo.UpdatedBy;
         }
 
-        public static AuditInfo Create(string createdBy = null)
+        public AuditInfo(string createdBy = null)
         {
-            var auditInfo = new AuditInfo();
-            auditInfo.CreateDate = DateTime.UtcNow;
-            auditInfo.CreatedBy = createdBy ?? WindowsIdentity.GetCurrent().IfNotNull(i => i.Name);
-
-            return auditInfo;
-        }
-
-        public void Update(string updatedBy = null)
-        {
-            this.UpdateDate = DateTime.UtcNow;
-            this.UpdatedBy = updatedBy ?? WindowsIdentity.GetCurrent().IfNotNull(i => i.Name);
+            this.CreateDate = DateTime.UtcNow;
+            this.CreatedBy = createdBy ?? WindowsIdentity.GetCurrent().IfNotNull(i => i.Name);
         }
     }
 }

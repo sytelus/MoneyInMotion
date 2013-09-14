@@ -10,9 +10,9 @@ namespace MoneyAI
 {
     public partial class TransactionEdit
     {
-        public enum ScopeType
+        public enum ScopeType : int
         {
-            EntityName, EntityNameNormalized, TransactionId, All, None
+             None = 0, EntityName = 1, EntityNameNormalized = 2, TransactionId = 3, All = 4
         }
 
         public class EditScope
@@ -70,7 +70,7 @@ namespace MoneyAI
             internal EditedValues(EditedValues other = null)
             {
                 if (other == null)
-                    return;
+                    return; //leave everyting to default
 
                 this.TransactionReason = other.TransactionReason;
                 this.TransactionDate = other.TransactionDate;
@@ -83,10 +83,10 @@ namespace MoneyAI
 
             internal void Merge(EditedValues other)
             {
-                // There are 2 possibilities for user intent:
-                // 1. Apply my edit to existing edit. 
-                // 2. Don't do anything to existing edit.
-                // 3. Remove any existing edit.
+                // There are 3 possibilities for user intent:
+                // 1. Apply my new value to existing edit. 
+                // 2. Leave current edited value alone.
+                // 3. Remove any existing edited value and restore to original.
                 // 
                 // #1 is covered when EditValue is not null and IsVoided is false.
                 // #2 is covered when EditValue object is null.

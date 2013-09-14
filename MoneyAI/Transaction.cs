@@ -12,9 +12,19 @@ using CommonUtils;
 
 namespace MoneyAI
 {
+    [Flags]
     public enum TransactionReason
     {
-        Purchase, Adjustment, Fee, Payment, Return
+        Purchase = 0, 
+        Adjustment = 1, 
+        Fee = 2, 
+        InterAccountPayment = 4, 
+        Return = 8,
+        InterAccountTransfer = 16,
+
+        NetOutgoing = Purchase | Fee,
+        NetIncoming = Return,
+        NetInterAccount = InterAccountPayment | InterAccountTransfer
     }
 
     [DataContract]
@@ -59,83 +69,41 @@ namespace MoneyAI
         public int LineNumber { get; private set; }     
 
         [DataMember(EmitDefaultValue = false)]
-        public TransactionEdit.EditedValues MergedEdits { get; private set; }
+        public TransactionEdit.EditedValues MergedEdit { get; private set; }
 
-
-        private string cachedEntityNameNormalized = null;
-        public string EntityNameNormalized
-        {
-            get
-            {
-                if (cachedEntityNameNormalized == null)
-                    cachedEntityNameNormalized = GetEntityNameNormalized(this.EntityName) ?? string.Empty;
-
-                return cachedEntityNameNormalized;
-            }
-        }
-
-        private readonly static Regex nonAlphaRegex = new Regex(@"[^\w\s\.]|[\d]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly static Regex multipleWhiteSpaceRegex = new Regex(@"[\s]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly static Regex whiteSpaceRegex = new Regex(@"[\s]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static string GetEntityNameNormalized(string entityName)
-        {
-            //Ensure non-null name
-            entityName = entityName ?? string.Empty;
-            //Replace non-alpha chars with space
-            var cleanedName = nonAlphaRegex.Replace(entityName, " ");
-            //Replace white spaces such as tab/new lines with space
-            cleanedName = multipleWhiteSpaceRegex.Replace(cleanedName, " ");
-            //Combine multiple spaces to one
-            cleanedName = whiteSpaceRegex.Replace(cleanedName, " ");
-            //Trim extra spaces
-            cleanedName = cleanedName.Trim();
-
-            //Determine if we should convert to title case or lower case
-            var hasAnyUpperCase = cleanedName.Any(Char.IsUpper);
-            var hasAnyLowerCase = cleanedName.Any(Char.IsLower);
-            //If mixed case then skip case conversion
-            if (!(hasAnyLowerCase && hasAnyUpperCase))
-            {
-                var isAllUpperCase = !hasAnyLowerCase && cleanedName.All(c => Char.IsUpper(c) || !char.IsLetter(c));
-                var hasDot = cleanedName.Contains('.'); //Posible .com names
-                if (isAllUpperCase)
-                    cleanedName = !hasDot ? cleanedName.ToTitleCase() : cleanedName.ToLower();
-            }
-
-            if (cleanedName.Length == 0)
-                cleanedName = entityName.Trim().ToTitleCase();
-
-            return cleanedName;
-        }
-
-        internal Transaction CreateCopy()
+        public Transaction Clone()
         {
             var serializedData = JsonSerializer<Transaction>.Serialize(this);
             return JsonSerializer<Transaction>.Deserialize(serializedData);
         }
 
-        public void ApplyEdit(TransactionEdit edit)
+        //This is kept internal because otherwise edit won't get tracked
+        internal void ApplyEdit(TransactionEdit edit)
         {
-            this.MergedEdits = this.MergedEdits ?? new TransactionEdit.EditedValues();
-
-            this.MergedEdits.Merge(edit.Values);
+            if (this.MergedEdit == null)
+                this.MergedEdit = new TransactionEdit.EditedValues(edit.Values);
+            else
+                this.MergedEdit.Merge(edit.Values);
 
             this.InvalidateCachedValues();
+
+            this.AuditInfo = new AuditInfo(this.AuditInfo, true);
         }
 
         private void InvalidateCachedValues()
         {
             this.cachedDisplayCategory = null;
-            this.cachedDisplayCategoryPath = null;
+            this.cachedCategoryPath = null;
             this.cachedEntityNameNormalized = null;
         }
 
         private Transaction()
         {
-            this.AuditInfo = AuditInfo.Create();
+            this.AuditInfo = new AuditInfo();
         }
 
-        public static Transaction CreateFromCsvLine(string[] headerColumns, string line, string accountId, string importId, int lineNumber)
+        //We only allow to create instance through the parent collection
+        internal static Transaction CreateFromCsvLine(string[] headerColumns, string line, string accountId, string importId, int lineNumber)
         {
             var transaction = new Transaction();
             transaction.ImportId = importId;
@@ -181,15 +149,15 @@ namespace MoneyAI
         {
             var errors = string.Empty;
             if (this.ImportId == null)
-                errors += "LocationHash must have value.";
+                errors.Append("ImportId must have value.", " ");
             if (string.IsNullOrEmpty(this.AccountId))
-                errors += "AccountInfo.Id must have value.";
+                errors.Append("AccountId must have value.", " ");
             if (this.amount == null)
-                errors += "Amount must have value.";
+                errors.Append("Amount must have value.", " ");
             if (this.transactionDate == null)
-                errors += "TransactionDate must have value.";
+                errors.Append("TransactionDate must have value.", " ");
             if (string.IsNullOrEmpty(this.EntityName))
-                errors += "EntityName must have value.";
+                errors.Append("EntityName must have value.", " ");
 
             if (!string.IsNullOrEmpty(errors))
                 throw new InvalidDataException(errors);
@@ -202,7 +170,7 @@ namespace MoneyAI
                 case "SALE":
                     return TransactionReason.Purchase;
                 case "PAYMENT":
-                    return TransactionReason.Payment;
+                    return TransactionReason.InterAccountPayment;
                 case "ADJUSTMENT":
                     return TransactionReason.Adjustment;
                 case "RETURN":

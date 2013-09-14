@@ -28,7 +28,7 @@ namespace MoneyAI.WinForms
 
         public void Merge(Transaction transaction)
         {
-            var categoryPath = transaction.DisplayCategoryPath;
+            var categoryPath = transaction.CategoryPath;
 
             var current = this;
             foreach (var category in categoryPath)

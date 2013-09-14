@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
+using System.Linq;
+using System.Text;
 using CommonUtils;
 
-namespace MoneyAI
+namespace MoneyAI.Repositories
 {
-    public class DiskTransactionRepository : ITransactionsRepository
+    public class FileTransactionRepository : ITransactionsRepository
     {
         private readonly string rootFolderPath, importFolderPath, namedLocationsFilePath;
         private readonly IDictionary<string, ILocation> namedLocations;
@@ -21,7 +19,7 @@ namespace MoneyAI
             , DropBoxHostFileName = "Dropbox\\host.db";
         const string AccountConfigFileName = @"AccountConfig.json", NamedLocationsFileName = @"NamedLocations.json";
 
-        public DiskTransactionRepository(string rootFolderPath = null)
+        public FileTransactionRepository(string rootFolderPath = null)
         {
             this.rootFolderPath = rootFolderPath ?? Path.Combine(GetDropBoxPath(), DefaultRelativeDropBoxFolder);
 
@@ -156,8 +154,9 @@ namespace MoneyAI
                 switch (location.ContentType)
                 {
                     case ContentType.Csv:
-                        var transactionsFromFile = GetTransactionsFromCsvFile(location.Address, location.AccountConfig.AccountInfo, location.ImportInfo).ToList();
-                        return new Transactions(location.PortableAddress, transactionsFromFile, location.AccountConfig.AccountInfo, location.ImportInfo);
+                        var csvTransactions = new Transactions(location.PortableAddress);
+                        AddTransactionsFromCsvFile(csvTransactions, location.Address, location.AccountConfig.AccountInfo, location.ImportInfo);;
+                        return csvTransactions;
                     case ContentType.Json:
                         var serializedData = File.ReadAllText(location.Address);
                         return Transactions.DeserializeFromJson(serializedData);
@@ -180,7 +179,7 @@ namespace MoneyAI
                 return File.Exists(location.Address);
             }
 
-            private static IEnumerable<Transaction> GetTransactionsFromCsvFile(string file, AccountInfo accountInfo, ImportInfo importInfo)
+            private static void AddTransactionsFromCsvFile(Transactions transactions, string file, AccountInfo accountInfo, ImportInfo importInfo)
             {
                 var lines = File.ReadLines(file).RemoveNullOrEmpty().ToList();
                 var headerColumns = (string[])null;
@@ -190,14 +189,10 @@ namespace MoneyAI
                     if (headerColumns == null)
                         headerColumns = Utils.ParseCsvLine(line).ToArray();
                     else
-                    {
-                        var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo.Id, importInfo.Id, lineNumber);
-                        yield return transaction;
-                    }
+                        transactions.AddFromCsvLine(headerColumns, line, lineNumber, accountInfo, importInfo);
                 }
             }
         }
-
 
         public class TransactionEditsStorageOperations : IStorageOperations<TransactionEdits>
         {

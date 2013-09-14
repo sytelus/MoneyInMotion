@@ -70,6 +70,14 @@ namespace CommonUtils
             return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(s.ToLower(CultureInfo.CurrentCulture));
         }
 
+        public static string Append(this string s, string valueToAppend, string delimiter = null, bool applyDelimiterOnlyIfNotEmpty = true)
+        {
+            if (delimiter == null || (string.IsNullOrEmpty(s) && applyDelimiterOnlyIfNotEmpty))
+                return string.Concat(s, valueToAppend);
+            else
+                return string.Concat(delimiter, s, valueToAppend);
+        }
+
         public static double Log2(double x)
         {
             return Math.Log(x) / LogE2;
@@ -815,6 +823,10 @@ namespace CommonUtils
         {
             return Enumerable.Repeat(value, 1);
         }
+        public static T[] AsArray<T>(this T value)
+        {
+            return new T[] {value};
+        }
         public static IEnumerable<T> AsEnumerable<T>(params T[] values)
         {
             if (values != null)
@@ -1028,6 +1040,11 @@ namespace CommonUtils
         public static string[] GetLines(string text)
         {
             return (text ?? String.Empty).Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        public static T[] IfNullOrEmpty<T>(this T[] values, Func<T[]> alternateValue = null)
+        {
+            return values.IsNullOrEmpty() ? (alternateValue != null ? alternateValue() : null) : values;
         }
 
         public static bool IsNullOrEmpty<T>(this T[] values)

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using BrightIdeasSoftware;
 using CommonUtils;
+using MoneyAI.Repositories;
 using MoneyAI.WinForms.Properties;
 
 namespace MoneyAI.WinForms
@@ -101,7 +102,7 @@ namespace MoneyAI.WinForms
         {
             if (appState == null)
             {
-                var repository = new DiskTransactionRepository(defaultRootPath);
+                var repository = new FileTransactionRepository(defaultRootPath);
                 appState = new AppState(repository);
                 appState.Load();
             }
@@ -181,7 +182,7 @@ namespace MoneyAI.WinForms
                 var filteredTransactions = appState.LatestMerged.Where(t => 
                     (filter.YearFilter == null || t.TransactionDate.Year == filter.YearFilter.Value)
                     && (filter.MonthFilter == null || t.TransactionDate.Month == filter.MonthFilter.Value)
-                    && (filter.CategoryPathFilter == null || IsCategoryPathMatch(filter.CategoryPathFilter, t.DisplayCategoryPath)));
+                    && (filter.CategoryPathFilter == null || IsCategoryPathMatch(filter.CategoryPathFilter, t.CategoryPath)));
 
                 txnListView.SetObjects(filteredTransactions);
             }
@@ -189,7 +190,7 @@ namespace MoneyAI.WinForms
             txnListView.Sort(olvColumnCategory);
         }
 
-        private bool IsCategoryPathMatch(IEnumerable<string> path1, IEnumerable<string> path2)
+        private static bool IsCategoryPathMatch(IEnumerable<string> path1, IEnumerable<string> path2)
         {
             return path1.Zip(path2, (c1, c2) => c1.Equals(c2, StringComparison.Ordinal)).Any(e => !e);
         }

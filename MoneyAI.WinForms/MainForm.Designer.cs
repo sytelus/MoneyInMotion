@@ -274,7 +274,7 @@
             // 
             // olvColumnEntityName
             // 
-            this.olvColumnEntityName.AspectName = "DisplayEntityName";
+            this.olvColumnEntityName.AspectName = "DisplayEntityNameNormalized";
             this.olvColumnEntityName.CellPadding = null;
             this.olvColumnEntityName.FillsFreeSpace = true;
             this.olvColumnEntityName.Text = "Entity";
@@ -301,7 +301,7 @@
             // 
             // olvColumnOriginalEntityName
             // 
-            this.olvColumnOriginalEntityName.AspectName = "DisplayOriginalEntityName";
+            this.olvColumnOriginalEntityName.AspectName = "DisplayEntityNameOriginal";
             this.olvColumnOriginalEntityName.CellPadding = null;
             this.olvColumnOriginalEntityName.FillsFreeSpace = true;
             this.olvColumnOriginalEntityName.Text = "Original Entity Name";

@@ -137,6 +137,10 @@
       <Project>{e73a10bd-2b5a-4bac-897f-3a58cfc07631}</Project>
       <Name>ListViewPrinter</Name>
     </ProjectReference>
+    <ProjectReference Include="..\MoneyAI.Repositories\MoneyAI.Repositories.csproj">
+      <Project>{000a72df-7da7-489b-9ba3-21b7847151e9}</Project>
+      <Name>MoneyAI.Repositories</Name>
+    </ProjectReference>
     <ProjectReference Include="..\MoneyAI\MoneyAI.csproj">
       <Project>{49E1703C-6F0E-4791-8037-39769AC6A0E4}</Project>
       <Name>MoneyAI</Name>

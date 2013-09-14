@@ -24,28 +24,22 @@ namespace MoneyAI
         [DataMember(IsRequired = true)]
         public string SourceId { get; private set; }
 
-        internal TransactionEdit(EditScope scope, string sourceId)
-            : this(null, scope, sourceId, null)
+        internal TransactionEdit(EditScope scope, string sourceId, EditedValues editValues = null)
         {
-        }
-
-        private TransactionEdit(AuditInfo auditInfo, EditScope scope, string sourceId, EditedValues editValues)
-        {
-            this.AuditInfo = auditInfo ?? AuditInfo.Create();
+            this.AuditInfo = new AuditInfo();
             this.Scope = scope;
             this.SourceId = sourceId;
             this.Values = new EditedValues(editValues);
         }
 
-        internal TransactionEdit(TransactionEdit edit)
-            : this(null, edit.Scope, edit.SourceId, edit.Values)
+        internal TransactionEdit(TransactionEdit edit): this(edit.Scope, edit.SourceId, edit.Values)
         {
         }
 
         internal void Merge(TransactionEdit otherEdit)
         {
             this.Values.Merge(otherEdit.Values);
-            AuditInfo.Update();
+            this.AuditInfo = new AuditInfo(this.AuditInfo, true);
         }
 
         public string SerializeToJson()

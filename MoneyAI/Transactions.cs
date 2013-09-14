@@ -15,7 +15,7 @@ namespace MoneyAI
     {
 
         [DataMember]
-        private readonly string name;
+        public string Name { get; private set; }
         
         [DataMember]
         private readonly List<Transaction> items;
@@ -34,24 +34,13 @@ namespace MoneyAI
 
 
         public Transactions(string name)
-            : this(name, null, null, null)
         {
-            
-        }
-
-        public Transactions(string name, IEnumerable<Transaction> importedTransactions, AccountInfo importedAccountInfo, ImportInfo importInfo) 
-        {
-            this.name = name;
-            this.items = importedTransactions == null ? new List<Transaction>() : importedTransactions.ToList();
-            this.uniqueContentHashes = this.items.Select(t => t.ContentHash).ToHashSet();
+            this.Name = name;
+            this.items = new List<Transaction>();
+            this.uniqueContentHashes = new HashSet<string>();
 
             this.accountInfos = new Dictionary<string, AccountInfo>();
-            if (importedAccountInfo != null)
-                accountInfos.Add(importedAccountInfo.Id, importedAccountInfo);
-
             this.importInfos = new Dictionary<string, ImportInfo>();
-            if (importInfo != null)
-                this.importInfos.Add(importInfo.Id, importInfo);
 
             this.edits = new TransactionEdits(name);
         }
@@ -70,6 +59,14 @@ namespace MoneyAI
         {
             return this.importInfos.ContainsKey(importId);
         }
+        public bool HasAccountInfo(string accountId)
+        {
+            return this.accountInfos.ContainsKey(accountId);
+        }
+        public bool HasContentHash(string contentHash)
+        {
+            return this.uniqueContentHashes.Contains(contentHash);
+        }
 
         public string SerializeToJson()
         {
@@ -85,7 +82,7 @@ namespace MoneyAI
         {
             var newItems = other
                 .Where(t => !this.uniqueContentHashes.Contains(t.ContentHash))
-                .Select(t => t.CreateCopy()).ToList();
+                .Select(t => t.Clone()).ToList();
 
             this.items.AddRange(newItems);
             this.uniqueContentHashes.AddRange(newItems.Select(i => i.ContentHash));
@@ -94,8 +91,31 @@ namespace MoneyAI
             this.importInfos.AddRange(newItems.Select(i => i.ImportId).Where(iid => !this.importInfos.ContainsKey(iid)).Select(iid =>
                 new KeyValuePair<string, ImportInfo>(iid, other.GetImportInfo(iid))));
             this.edits.Merge(other.edits, this.uniqueContentHashes);
-
         }
+
+        private bool AddNew(Transaction transaction, bool allowDuplicate, AccountInfo accountInfo, ImportInfo importInfo)
+        {
+            if (allowDuplicate || !uniqueContentHashes.Contains(transaction.ContentHash))
+            {
+                this.items.Add(transaction);
+                this.uniqueContentHashes.Add(transaction.ContentHash);
+                this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
+                this.importInfos.AddIfNotExist(importInfo.Id, importInfo);
+                return true;
+            }
+            else return false;
+        }
+
+        public Transaction AddFromCsvLine(string[] headerColumns, string line, int lineNumber, AccountInfo accountInfo, ImportInfo importInfo, bool allowDuplicate = true)
+        {
+            var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo.Id, importInfo.Id, lineNumber);
+            this.AddNew(transaction, allowDuplicate, accountInfo, importInfo);
+
+            return transaction;
+        }
+
+
+        #region ICollection 
 
         public IEnumerator<Transaction> GetEnumerator()
         {
@@ -105,19 +125,6 @@ namespace MoneyAI
         IEnumerator IEnumerable.GetEnumerator()
         {
             return items.GetEnumerator();
-        }
-
-        public bool Add(Transaction item, bool allowDuplicate, AccountInfo accountInfo, ImportInfo importInfo)
-        {
-            if (allowDuplicate || !uniqueContentHashes.Contains(item.ContentHash))
-            {
-                this.items.Add(item);
-                this.uniqueContentHashes.Add(item.ContentHash);
-                this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
-                this.importInfos.AddIfNotExist(importInfo.Id, importInfo);
-                return true;
-            }
-            else return false;
         }
 
         public void Clear()
@@ -157,14 +164,15 @@ namespace MoneyAI
         {
             throw new NotImplementedException();
         }
+        #endregion
 
-        #region Edit application code
+        #region Apply Edit
         private IEnumerable<Transaction> FilterTransactions(TransactionEdit edit)
         {
             return this.items.Where(t => FilterTransaction(edit, t));
         }
 
-        private bool FilterTransaction(TransactionEdit edit, Transaction transaction)
+        private static bool FilterTransaction(TransactionEdit edit, Transaction transaction)
         {
             switch (edit.Scope.Type)
             {
@@ -194,7 +202,6 @@ namespace MoneyAI
             }
             return count;
         }
-
         #endregion
     }
 }

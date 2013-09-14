@@ -12,71 +12,53 @@ namespace MoneyAI
     public class TransactionEdits : IEnumerable<TransactionEdit>
     {
         [DataMember]
-        private readonly LinkedList<TransactionEdit> editsList;
+        private readonly LinkedList<TransactionEdit> edits;
 
         [DataMember]
         public string SourceId { get; private set; }
 
-        private Dictionary<string, TransactionEdit> lastEditByScope;
-
         public TransactionEdits(string sourceId)
         {
-            this.editsList = new LinkedList<TransactionEdit>();
+            this.edits = new LinkedList<TransactionEdit>();
             this.SourceId = sourceId;
-
-            this.Initialize();
-        }
-
-        public TransactionEdit UpdateEntityNameNormalizedCategoryAssignment(string entityNameNormalized, string[] categoryPath, bool updateLastEditByScope = false)
-        {
-            var edit = GetOrCreateEditForScope(TransactionEdit.ScopeType.EntityNameNormalized, new[] { entityNameNormalized }, updateLastEditByScope);
-
-            edit.Values.CategoryPath = categoryPath != null ? new Transaction.EditValue<string[]>(categoryPath) 
-                : Transaction.EditValue<string[]>.VoidedEditValue;
-
-            return edit;
         }
 
         private void Add(TransactionEdit edit)
         {
-            this.lastEditByScope[edit.Scope.Id] = edit;
-            this.editsList.AddLast(edit);
+            this.edits.AddLast(edit);
         }
 
-        public TransactionEdit UpdateIsUserFlagged(string trasactionId, bool? isUserFlagged, bool updateLastEditByScope = false)
+        private TransactionEdit AddEditForScope(TransactionEdit.ScopeType scopeType, string[] scopeParameters)
         {
-            var edit = GetOrCreateEditForScope(TransactionEdit.ScopeType.TransactionId, new[] { trasactionId }, updateLastEditByScope);
+            var scope = new TransactionEdit.EditScope(scopeType, scopeParameters);
+            var edit = new TransactionEdit(scope, this.SourceId);
+            this.Add(edit);
+
+            return edit;
+        }
+
+        public TransactionEdit UpdateIsUserFlagged(string trasactionId, bool? isUserFlagged)
+        {
+            var edit = AddEditForScope(TransactionEdit.ScopeType.TransactionId, new[] { trasactionId });
 
             edit.Values.IsFlagged = isUserFlagged.HasValue ? new Transaction.EditValue<bool>(isUserFlagged.Value) : Transaction.EditValue<bool>.VoidedEditValue;
 
             return edit;
         }
 
-
-        private void CopyFromEdit(TransactionEdit other, bool updateLastEditByScope)
+        public TransactionEdit UpdateEntityNameNormalizedCategoryAssignment(string entityNameNormalized, string[] categoryPath)
         {
-            var existing = updateLastEditByScope ? this.lastEditByScope.GetValueOrDefault(other.Scope.Id) : null;
-            if (existing == null)
-            {
-                existing = new TransactionEdit(other);
-                this.Add(existing);
-            }
-            else existing.Merge(other);
+            var edit = AddEditForScope(TransactionEdit.ScopeType.EntityNameNormalized, new[] { entityNameNormalized });
+
+            edit.Values.CategoryPath = categoryPath != null ? new Transaction.EditValue<string[]>(categoryPath) : Transaction.EditValue<string[]>.VoidedEditValue;
+
+            return edit;
         }
 
-
-        private TransactionEdit GetOrCreateEditForScope(TransactionEdit.ScopeType scopeType, string[] scopeParameters, bool updateLastEditByScope)
+        private void AddEditClone(TransactionEdit other)
         {
-            var scope = new TransactionEdit.EditScope(scopeType, scopeParameters);
-
-            var existing = updateLastEditByScope ? this.lastEditByScope.GetValueOrDefault(scope.Id) : null;
-            if (existing == null)
-            {
-                existing = new TransactionEdit(scope, this.SourceId);
-                this.Add(existing);
-            }
-
-            return existing;
+            var edit = new TransactionEdit(other);
+            this.Add(edit);
         }
 
         public string SerializeToJson()
@@ -86,33 +68,30 @@ namespace MoneyAI
         public static TransactionEdits DeserializeFromJson(string serializedData)
         {
             var transactionEdits = JsonSerializer<TransactionEdits>.Deserialize(serializedData);
-            transactionEdits.Initialize();
             return transactionEdits;
         }
 
-        private void Initialize()
-        {
-            this.lastEditByScope = this.editsList.ToLastSetDictionary(e => e.Scope.Id, e => e);
-        }
-
-        public void Merge(TransactionEdits other, ICollection<string> knownTransactionIds, bool updateLastEditByScope = false)
+        internal void Merge(TransactionEdits other, ICollection<string> knownTransactionIds)
         {
             foreach (var otherEdit in other
                 .Where(otherEdit => otherEdit.Scope.Type != TransactionEdit.ScopeType.TransactionId 
                                     || knownTransactionIds.Contains(otherEdit.Scope.Parameters[0])))
             {
-                CopyFromEdit(otherEdit, updateLastEditByScope);
+                AddEditClone(otherEdit);
             }
         }
 
+        #region IEnumerable
         public IEnumerator<TransactionEdit> GetEnumerator()
         {
-            return this.editsList.GetEnumerator();
+            return this.edits.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
-            return this.editsList.GetEnumerator();
+            return this.edits.GetEnumerator();
         }
+        #endregion
+
     }
 }
