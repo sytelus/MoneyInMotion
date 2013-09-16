@@ -19,11 +19,11 @@ namespace MoneyAI.WinForms
 
         public CategoryNode(string name, int? year, int? month)
         {
-            this.Children = new Dictionary<string, CategoryNode>();
-            this.Name = name;
-            this.Year = year;
-            this.Month = month;
-            this.Transactions = new List<Transaction>();
+            Children = new Dictionary<string, CategoryNode>();
+            Name = name;
+            Year = year;
+            Month = month;
+            Transactions = new List<Transaction>();
         }
 
         public void Merge(Transaction transaction)
@@ -36,7 +36,7 @@ namespace MoneyAI.WinForms
                 var found = current.Children.GetValueOrDefault(category);
                 if (found == null)
                 {
-                    found = new CategoryNode(category, this.Year, this.Month);
+                    found = new CategoryNode(category, Year, Month);
                     current.Children.Add(category, found);
                 }
                 found.Transactions.Add(transaction);
@@ -46,21 +46,21 @@ namespace MoneyAI.WinForms
 
         public decimal GetTransationAmountSum()
         {
-            return this.Transactions.Sum(t => t.Amount);
+            return Transactions.Sum(t => t.Amount);
         }
 
         public void BuildTreeViewNodes(TreeNode treeViewNode, List<string> categoryPath = null)
         {
-            categoryPath = categoryPath ?? (this.Name == null ? null : new List<string>() {this.Name});
+            categoryPath = categoryPath ?? (Name == null ? null : new List<string>() {Name});
 
-            foreach (var childCategoryNode in this.Children.Values.OrderBy(c => c.GetTransationAmountSum()))
+            foreach (var childCategoryNode in Children.Values.OrderBy(c => c.GetTransationAmountSum()))
             {
                 var childTreeViewNode = CreateTreeNode(
                     new TreeNodeData()
                     {
                         Text = childCategoryNode.Name,
-                        YearFilter = this.Year,
-                        MonthFilter = this.Month,
+                        YearFilter = Year,
+                        MonthFilter = Month,
                         CategoryPathFilter = categoryPath.IfNotNull(c => c.ToArray())
                     });
                 treeViewNode.Nodes.Add(childTreeViewNode);

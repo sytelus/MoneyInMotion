@@ -7,20 +7,22 @@ using CommonUtils;
 
 namespace MoneyAI.Repositories
 {
-    public class FileTransactionRepository : ITransactionsRepository
+    public class FileRepository : IRepository
     {
         private readonly string rootFolderPath, importFolderPath, namedLocationsFilePath;
         private readonly IDictionary<string, ILocation> namedLocations;
-        private readonly IStorageOperations<Transactions> transactionsStorage = new TransactionsStorageOperations();
-        private readonly IStorageOperations<TransactionEdits> transactionEditsStorage = new TransactionEditsStorageOperations();
+        private readonly IStorage<TransactionEdits> transactionEditsStorage = new TransactionEditsStorage();
+        private readonly IStorage<Transactions> transactionsStorage;
 
         const string DefaultRelativeDropBoxFolder = "MoneyAI", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
-            , DefaultLatestMergedFileName = "LatestMerged.json", DefaultTransactionEditsFileName = "TransactionEdits.json"
+            , DefaultLatestMergedFileName = "LatestMerged.json", DefaultTransactionEditsFileName = "LatestMergedEdits.json"
             , DropBoxHostFileName = "Dropbox\\host.db";
         const string AccountConfigFileName = @"AccountConfig.json", NamedLocationsFileName = @"NamedLocations.json";
 
-        public FileTransactionRepository(string rootFolderPath = null)
+        public FileRepository(string rootFolderPath = null)
         {
+            this.transactionsStorage = new TransactionsStorage(transactionEditsStorage);
+
             this.rootFolderPath = rootFolderPath ?? Path.Combine(GetDropBoxPath(), DefaultRelativeDropBoxFolder);
 
             importFolderPath = Path.Combine(this.rootFolderPath, DefaultRelativeImportFolder);
@@ -32,7 +34,7 @@ namespace MoneyAI.Repositories
                 : new Dictionary<string, ILocation>()
                 {
                     { LastestMergedLocationName, new FileLocation(namedTransactionsFolderPath, DefaultLatestMergedFileName) },
-                    { TransactionEditsLocationName, new FileLocation(namedTransactionsFolderPath, DefaultTransactionEditsFileName) }
+                    { LastestMergedEditsLocationName, new FileLocation(namedTransactionsFolderPath, DefaultTransactionEditsFileName) }
                 } ;
         }
 
@@ -46,17 +48,17 @@ namespace MoneyAI.Repositories
             get { return DefaultLatestMergedFileName; }
         }
 
-        public string TransactionEditsLocationName
+        public string LastestMergedEditsLocationName
         {
             get { return DefaultTransactionEditsFileName; }
         }
 
-        public IStorageOperations<TransactionEdits> TransactionEditsStorage
+        public IStorage<TransactionEdits> TransactionEditsStorage
         {
             get { return transactionEditsStorage; }
         }
 
-        public IStorageOperations<Transactions> TransactionsStorage
+        public IStorage<Transactions> TransactionsStorage
         {
             get { return transactionsStorage; }
         }
@@ -144,77 +146,5 @@ namespace MoneyAI.Repositories
 
             MessagePipe.SendMessage("Account added at {0}".FormatEx(accountConfigFilePath));
         }
-
-
-        public class TransactionsStorageOperations : IStorageOperations<Transactions>
-        {
-
-            public Transactions Load(ILocation location)
-            {
-                switch (location.ContentType)
-                {
-                    case ContentType.Csv:
-                        var csvTransactions = new Transactions(location.PortableAddress);
-                        AddTransactionsFromCsvFile(csvTransactions, location.Address, location.AccountConfig.AccountInfo, location.ImportInfo);;
-                        return csvTransactions;
-                    case ContentType.Json:
-                        var serializedData = File.ReadAllText(location.Address);
-                        return Transactions.DeserializeFromJson(serializedData);
-                    case ContentType.None:
-                    default:
-                        throw new ArgumentException("location.ContentType value {0} is not supported for loading transaction".FormatEx(location.ContentType));
-                }
-            }
-
-            public void Save(ILocation location, Transactions transactions)
-            {
-                var serializedData = transactions.SerializeToJson();
-                File.WriteAllText(location.Address, serializedData);
-
-                MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
-            }
-
-            public bool Exists(ILocation location)
-            {
-                return File.Exists(location.Address);
-            }
-
-            private static void AddTransactionsFromCsvFile(Transactions transactions, string file, AccountInfo accountInfo, ImportInfo importInfo)
-            {
-                var lines = File.ReadLines(file).RemoveNullOrEmpty().ToList();
-                var headerColumns = (string[])null;
-                for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
-                {
-                    var line = lines[lineNumber];
-                    if (headerColumns == null)
-                        headerColumns = Utils.ParseCsvLine(line).ToArray();
-                    else
-                        transactions.AddFromCsvLine(headerColumns, line, lineNumber, accountInfo, importInfo);
-                }
-            }
-        }
-
-        public class TransactionEditsStorageOperations : IStorageOperations<TransactionEdits>
-        {
-
-            public TransactionEdits Load(ILocation location)
-            {
-                return TransactionEdits.DeserializeFromJson(File.ReadAllText(location.Address));
-            }
-
-            public void Save(ILocation location, TransactionEdits transactions)
-            {
-                var serializedData = transactions.SerializeToJson();
-                File.WriteAllText(location.Address, serializedData);
-
-                MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
-            }
-
-            public bool Exists(ILocation location)
-            {
-                return File.Exists(location.Address);
-            }
-        }
-
     }
 }

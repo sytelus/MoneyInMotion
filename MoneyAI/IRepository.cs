@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MoneyAI
 {
-    public interface ITransactionsRepository
+    public interface IRepository
     {
 
 
@@ -17,11 +17,11 @@ namespace MoneyAI
         bool NamedLocationExists(string name);
         IEnumerable<KeyValuePair<string, ILocation>> NamedLocations { get; }
 
-        IStorageOperations<Transactions> TransactionsStorage { get; }
-        IStorageOperations<TransactionEdits> TransactionEditsStorage { get; }
+        IStorage<Transactions> TransactionsStorage { get; }
+        IStorage<TransactionEdits> TransactionEditsStorage { get; }
 
         string LastestMergedLocationName { get; }
-        string TransactionEditsLocationName { get; }
+        string LastestMergedEditsLocationName { get; }
 
         void AddAccountConfig(AccountConfig accountConfig);
     }

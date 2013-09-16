@@ -7,10 +7,10 @@ using System.Xml.Linq;
 
 namespace MoneyAI
 {
-    public interface IStorageOperations<T>
+    public interface IStorage<TEntity>
     {
-        T Load(ILocation location);
-        void Save(ILocation location, T entity);
+        TEntity Load(ILocation location);
+        void Save(ILocation location, TEntity entity, ILocation auxilaryComponentLocation = null);
         bool Exists(ILocation location);
     }
 }

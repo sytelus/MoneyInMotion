@@ -9,6 +9,9 @@ using CommonUtils;
 
 namespace MoneyAI
 {
+    /// <summary>
+    /// This class should be immutable outside of library.
+    /// </summary>
     [DataContract]
     public partial class TransactionEdit
     {
@@ -24,12 +27,16 @@ namespace MoneyAI
         [DataMember(IsRequired = true)]
         public string SourceId { get; private set; }
 
+        [DataMember(IsRequired = true)]
+        public string Id { get; private set; }
+
         internal TransactionEdit(EditScope scope, string sourceId, EditedValues editValues = null)
         {
             this.AuditInfo = new AuditInfo();
             this.Scope = scope;
             this.SourceId = sourceId;
             this.Values = new EditedValues(editValues);
+            this.Id = Guid.NewGuid().ToBase64String();
         }
 
         internal TransactionEdit(TransactionEdit edit): this(edit.Scope, edit.SourceId, edit.Values)

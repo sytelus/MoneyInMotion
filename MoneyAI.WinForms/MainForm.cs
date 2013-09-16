@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -20,7 +21,6 @@ namespace MoneyAI.WinForms
 
         private string defaultRootPath;
         private AppState appState;
-        System.Globalization.DateTimeFormatInfo dateTimeFormatInfo = new System.Globalization.DateTimeFormatInfo();
         private void FormMain_Load(object sender, EventArgs e)
         {
             MessagePipe.AddListner(UpdateLog, listnerKey: "FormMain");
@@ -32,7 +32,7 @@ namespace MoneyAI.WinForms
             buttonScanStatements_Click(sender, e);
         }
 
-        private class CategoryGroupComparer : IComparer<BrightIdeasSoftware.OLVGroup>
+        private class CategoryGroupComparer : IComparer<OLVGroup>
         {
             public static readonly CategoryGroupComparer Comparer = new CategoryGroupComparer();
             public int Compare(OLVGroup x, OLVGroup y)
@@ -54,7 +54,7 @@ namespace MoneyAI.WinForms
             }
         }
 
-        private class TransactionItemComparer : IComparer<BrightIdeasSoftware.OLVListItem>
+        private class TransactionItemComparer : IComparer<OLVListItem>
         {
             public static readonly TransactionItemComparer Comparer = new TransactionItemComparer();
             public int Compare(OLVListItem x, OLVListItem y)
@@ -63,7 +63,7 @@ namespace MoneyAI.WinForms
             }
         }
 
-        private void txnListView_BeforeCreatingGroups(object sender, BrightIdeasSoftware.CreateGroupsEventArgs e)
+        private void txnListView_BeforeCreatingGroups(object sender, CreateGroupsEventArgs e)
         {
             if (e.Parameters.GroupByColumn == olvColumnCategory)
             {
@@ -102,9 +102,9 @@ namespace MoneyAI.WinForms
         {
             if (appState == null)
             {
-                var repository = new FileTransactionRepository(defaultRootPath);
+                var repository = new FileRepository(defaultRootPath);
                 appState = new AppState(repository);
-                appState.Load();
+                appState.LoadLatestMerged();
             }
 
             appState.MergeNewStatements();
@@ -114,19 +114,19 @@ namespace MoneyAI.WinForms
         
         private void buttonSaveLatestMerged_Click(object sender, EventArgs e)
         {
-            appState.Save();
+            appState.SaveLatestMerged();
         }
 
         private void RefreshExplorer()
         {
-            this.txnTreeView.Nodes.Clear();
+            txnTreeView.Nodes.Clear();
             var rootNode = CategoryNode.CreateTreeNode(new TreeNodeData()
             {
                 Text = "All"
             } );
-            this.txnTreeView.Nodes.Add(rootNode);
+            txnTreeView.Nodes.Add(rootNode);
 
-            var yearGroups = this.appState.LatestMerged
+            var yearGroups = appState.LatestMerged
                 .GroupBy(t => t.TransactionDate.Year)
                 .OrderByDescending(g => g.Key)
                 .Select(g => 
@@ -195,7 +195,7 @@ namespace MoneyAI.WinForms
             return path1.Zip(path2, (c1, c2) => c1.Equals(c2, StringComparison.Ordinal)).Any(e => !e);
         }
 
-        private void txnListView_FormatCell(object sender, BrightIdeasSoftware.FormatCellEventArgs e)
+        private void txnListView_FormatCell(object sender, FormatCellEventArgs e)
         {
             if (e.Column == olvColumnAmount)
             {
@@ -205,7 +205,7 @@ namespace MoneyAI.WinForms
             }
         }
 
-        private void txnListView_AboutToCreateGroups(object sender, BrightIdeasSoftware.CreateGroupsEventArgs e)
+        private void txnListView_AboutToCreateGroups(object sender, CreateGroupsEventArgs e)
         {
             if (e.Parameters.GroupByColumn == olvColumnCategory)
             {
@@ -227,26 +227,99 @@ namespace MoneyAI.WinForms
 
         private static Tuple<string, int, decimal, decimal> GetGroupHeaderTotals(ICollection<Transaction> transactions)
         {
-            string totalsText = transactions
+            var totalsText = transactions
                 .GroupBy(t => t.TransactionReason)
                 .Select(g => Tuple.Create(g.Key, g.Sum(t => t.Amount)))
                 .Where(tp => tp.Item2 != 0)
                 .OrderBy(tp => Math.Abs(tp.Item2))
                 .ToDelimitedString("    ", tp => string.Concat(tp.Item1.ToString(), " ", Math.Abs(tp.Item2).ToString("C")), true);
-            int count = transactions.Count;
-            decimal negativeSum = Math.Abs(transactions.Where(t => t.Amount < 0).Sum(t => t.Amount));
-            decimal positiveSum = transactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
+            var count = transactions.Count;
+            var negativeSum = Math.Abs(transactions.Where(t => t.Amount < 0).Sum(t => t.Amount));
+            var positiveSum = transactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
             return Tuple.Create(totalsText, count, negativeSum, positiveSum);
         }
 
         private void txnListView_CellClick(object sender, CellClickEventArgs e)
         {
             if (e.Column == olvColumnIsUserFlagged)
+                ToggleFlagsRows(e.Item.AsEnumerable(), appState.LatestMerged);
+        }
+
+        private void FormMain_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Insert)
             {
-                var tx = (Transaction) e.Model;
-                //tx.IsUserFlagged = !tx.IsUserFlagged;
-                e.ListView.RefreshItem(e.Item);
+                ToggleFlagsRows(txnListView.SelectedItems, appState.LatestMerged);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
             }
+            else if (e.Control && e.KeyCode == Keys.N)
+            {
+                ApplyNoteForRows(txnListView.SelectedItems, appState.LatestMerged);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.F2)
+            {
+                ApplyCategoryForRows(txnListView.SelectedItems);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void ApplyNoteForRows(IList rows, Transactions transactions)
+        {
+            if (rows.Count == 0)
+                return;
+
+            var currentNote = ((Transaction) ((OLVListItem) rows[0]).RowObject).Note;
+            var newNote = NoteDialogForm.GetNoteFromUser(currentNote, this);
+
+            if (currentNote == newNote)
+                return;
+
+            RefreshItems(rows, tx => transactions.SetNote(tx, newNote));
+        }
+
+        private void ApplyCategoryForRows(IList rows)
+        {
+            if (rows.Count == 0)
+                return;
+
+            var firstTx = (Transaction) ((OLVListItem) rows[0]).RowObject;
+            var lastCategoryEdit = this.appState.LatestMerged.GetEditsDescending(firstTx)
+                .FirstOrDefault(edit => edit.Values.IfNotNull(v => v.CategoryPath.GetValueOrDefault()) != null);
+
+            var newScopePathTuple = CategoryDialogForm.GetCategoryEditFromUser(lastCategoryEdit, firstTx
+                 , rows.Cast<OLVListItem>().Select(r => ((Transaction)r.RowObject).Id).ToList(), this);
+
+            if (newScopePathTuple == null)
+                return;
+
+            var affedtedTx = this.appState.LatestMerged.SetCategory(newScopePathTuple.Item1, newScopePathTuple.Item2);
+
+            if (newScopePathTuple.Item1.Type == TransactionEdit.ScopeType.TransactionId)
+                RefreshItems(rows);
+            else
+                this.txnListView.RefreshObjects(affedtedTx.ToList());
+        }
+
+        private static void RefreshItems(IEnumerable rows, Action<Transaction> transactionAction = null)
+        {
+            foreach (OLVListItem item in rows)
+            {
+                if (transactionAction != null)
+                {
+                    var tx = (Transaction)item.RowObject;
+                    transactionAction(tx);
+                }
+                ((ObjectListView)item.ListView).RefreshItem(item);
+            }
+        }
+
+        private static void ToggleFlagsRows(IEnumerable rows, Transactions transactions)
+        {
+            RefreshItems(rows, tx => transactions.SetIsUserFlagged(tx, !tx.IsUserFlagged));
         }
     }
 }

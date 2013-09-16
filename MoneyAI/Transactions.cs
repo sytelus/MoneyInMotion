@@ -11,7 +11,7 @@ using CommonUtils;
 namespace MoneyAI
 {
     [DataContract]
-    public class Transactions : ICollection<Transaction>
+    public class Transactions : ICollection<Transaction>, IDeserializationCallback 
     {
 
         [DataMember]
@@ -20,8 +20,8 @@ namespace MoneyAI
         [DataMember]
         private readonly List<Transaction> items;
 
-        [DataMember]
-        private readonly HashSet<string> uniqueContentHashes;
+        private HashSet<string> uniqueContentHashes;
+        private Dictionary<string, Transaction> itemsById;
 
         [DataMember]
         private readonly Dictionary<string, AccountInfo> accountInfos;
@@ -38,6 +38,7 @@ namespace MoneyAI
             this.Name = name;
             this.items = new List<Transaction>();
             this.uniqueContentHashes = new HashSet<string>();
+            this.itemsById = new Dictionary<string, Transaction>();
 
             this.accountInfos = new Dictionary<string, AccountInfo>();
             this.importInfos = new Dictionary<string, ImportInfo>();
@@ -68,11 +69,41 @@ namespace MoneyAI
             return this.uniqueContentHashes.Contains(contentHash);
         }
 
+        public Transaction this[string id]
+        {
+            get { return this.itemsById[id]; }
+        }
+
+        public IEnumerable<TransactionEdit> GetEditsDescending(Transaction transaction)
+        {
+            if (transaction.AppliedEditIdsDescending == null)
+                return Enumerable.Empty<TransactionEdit>();
+            else
+                return transaction.AppliedEditIdsDescending.Select(editId => this.edits[editId]);
+        }
+
+        public void SetIsUserFlagged(Transaction transaction, bool isUserFlagged)
+        {
+            var edit = this.edits.CreateEditIsUserFlagged(transaction.Id, isUserFlagged);
+            this.ApplyInternal(edit);
+        }
+
+        public IEnumerable<Transaction> SetCategory(TransactionEdit.EditScope scope, string[] categoryPath)
+        {
+            var edit = this.edits.CreateEditCategory(scope, categoryPath);
+            return this.ApplyInternal(edit);
+        }
+
+        public void SetNote(Transaction transaction, string note)
+        {
+            var edit = this.edits.CreateEditNote(transaction.Id, note);
+            this.ApplyInternal(edit);
+        }
+
         public string SerializeToJson()
         {
             return JsonSerializer<Transactions>.Serialize(this);
         }
-
         public static Transactions DeserializeFromJson(string serializedData)
         {
             return JsonSerializer<Transactions>.Deserialize(serializedData);
@@ -84,6 +115,7 @@ namespace MoneyAI
                 .Where(t => !this.uniqueContentHashes.Contains(t.ContentHash))
                 .Select(t => t.Clone()).ToList();
 
+            this.itemsById.AddRange(newItems.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)));
             this.items.AddRange(newItems);
             this.uniqueContentHashes.AddRange(newItems.Select(i => i.ContentHash));
             this.accountInfos.AddRange(newItems.Select(i => i.AccountId).Where(aid => !this.accountInfos.ContainsKey(aid)).Select(aid =>
@@ -97,6 +129,7 @@ namespace MoneyAI
         {
             if (allowDuplicate || !uniqueContentHashes.Contains(transaction.ContentHash))
             {
+                this.itemsById.Add(transaction.Id, transaction);
                 this.items.Add(transaction);
                 this.uniqueContentHashes.Add(transaction.ContentHash);
                 this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
@@ -131,6 +164,7 @@ namespace MoneyAI
         {
             this.items.Clear();
             this.uniqueContentHashes.Clear();
+            this.itemsById.Clear();
             this.accountInfos.Clear();
             this.importInfos.Clear();
         }
@@ -169,7 +203,10 @@ namespace MoneyAI
         #region Apply Edit
         private IEnumerable<Transaction> FilterTransactions(TransactionEdit edit)
         {
-            return this.items.Where(t => FilterTransaction(edit, t));
+            if (edit.Scope.Type == TransactionEdit.ScopeType.TransactionId)
+                return edit.Scope.Parameters.Select(id => this.itemsById[id]);
+            else
+                return this.items.Where(t => FilterTransaction(edit, t));
         }
 
         private static bool FilterTransaction(TransactionEdit edit, Transaction transaction)
@@ -191,17 +228,45 @@ namespace MoneyAI
             }
         }
 
-        public int Apply(TransactionEdit edit)
+        public void Apply(TransactionEdits editsToApply, bool ignoreMissingIds = true)
+        {
+            foreach (var edit in editsToApply)
+            {
+                this.edits.Add(edit);
+
+                // ReSharper disable once IteratorMethodResultIsIgnored
+                this.ApplyInternal(edit, ignoreMissingIds);
+            }
+        }
+
+        /// <summary>
+        /// Assumes edit has already been added in this.edits collection
+        /// </summary>
+        private IEnumerable<Transaction> ApplyInternal(TransactionEdit edit, bool ignoreMissingIds = false)
         {
             var filteredTransactions = this.FilterTransactions(edit);
             var count = 0;
             foreach (var filteredTransaction in filteredTransactions)
             {
                 filteredTransaction.ApplyEdit(edit);
+                yield return filteredTransaction;
                 count++;
             }
-            return count;
+
+            if (!ignoreMissingIds && edit.Scope.Type == TransactionEdit.ScopeType.TransactionId && count != edit.Scope.Parameters.Length)
+                throw new Exception("Edit targetted transactions with {0} IDs but only {1} were found in this collection".FormatEx(edit.Scope.Parameters.Length, count));
         }
         #endregion
+
+        public void OnDeserialization(object sender)
+        {
+            this.uniqueContentHashes = this.items.Select(i => i.ContentHash).ToHashSet();
+            this.itemsById = this.items.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)).ToDictionary();
+        }
+
+        public TransactionEdits GetClonedEdits()
+        {
+            return this.edits.Clone();
+        }
     }
 }

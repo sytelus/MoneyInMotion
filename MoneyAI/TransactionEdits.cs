@@ -9,10 +9,12 @@ using CommonUtils;
 namespace MoneyAI
 {
     [DataContract]
-    public class TransactionEdits : IEnumerable<TransactionEdit>
+    public class TransactionEdits : IEnumerable<TransactionEdit>, IDeserializationCallback
     {
         [DataMember]
         private readonly LinkedList<TransactionEdit> edits;
+
+        private Dictionary<string, TransactionEdit> editsById;
 
         [DataMember]
         public string SourceId { get; private set; }
@@ -21,23 +23,36 @@ namespace MoneyAI
         {
             this.edits = new LinkedList<TransactionEdit>();
             this.SourceId = sourceId;
+            this.editsById = new Dictionary<string, TransactionEdit>();
         }
 
-        private void Add(TransactionEdit edit)
+        internal void Add(TransactionEdit edit)
         {
             this.edits.AddLast(edit);
+            this.editsById.Add(edit.Id, edit);
         }
 
-        private TransactionEdit AddEditForScope(TransactionEdit.ScopeType scopeType, string[] scopeParameters)
+        public TransactionEdit this[string id]
         {
-            var scope = new TransactionEdit.EditScope(scopeType, scopeParameters);
+            get { return this.editsById[id]; }
+        }
+
+
+        private TransactionEdit AddEditForScope(TransactionEdit.EditScope scope)
+        {
             var edit = new TransactionEdit(scope, this.SourceId);
             this.Add(edit);
 
             return edit;
         }
 
-        public TransactionEdit UpdateIsUserFlagged(string trasactionId, bool? isUserFlagged)
+        private TransactionEdit AddEditForScope(TransactionEdit.ScopeType scopeType, string[] scopeParameters)
+        {
+            var scope = new TransactionEdit.EditScope(scopeType, scopeParameters);
+            return AddEditForScope(scope);
+        }
+
+        public TransactionEdit CreateEditIsUserFlagged(string trasactionId, bool? isUserFlagged)
         {
             var edit = AddEditForScope(TransactionEdit.ScopeType.TransactionId, new[] { trasactionId });
 
@@ -46,11 +61,20 @@ namespace MoneyAI
             return edit;
         }
 
-        public TransactionEdit UpdateEntityNameNormalizedCategoryAssignment(string entityNameNormalized, string[] categoryPath)
+        public TransactionEdit CreateEditCategory(TransactionEdit.EditScope scope, string[] categoryPath)
         {
-            var edit = AddEditForScope(TransactionEdit.ScopeType.EntityNameNormalized, new[] { entityNameNormalized });
+            var edit = AddEditForScope(scope);
 
             edit.Values.CategoryPath = categoryPath != null ? new Transaction.EditValue<string[]>(categoryPath) : Transaction.EditValue<string[]>.VoidedEditValue;
+
+            return edit;
+        }
+
+        public TransactionEdit CreateEditNote(string trasactionId, string note)
+        {
+            var edit = AddEditForScope(TransactionEdit.ScopeType.TransactionId, new[] { trasactionId });
+
+            edit.Values.Note = note != null ? new Transaction.EditValue<string>(note) : Transaction.EditValue<string>.VoidedEditValue;
 
             return edit;
         }
@@ -93,5 +117,16 @@ namespace MoneyAI
         }
         #endregion
 
+
+        public void OnDeserialization(object sender)
+        {
+            this.editsById = this.edits.ToDictionary(e => e.Id, e => e);
+        }
+
+        public TransactionEdits Clone()
+        {
+            var serializedData = this.SerializeToJson();
+            return TransactionEdits.DeserializeFromJson(serializedData);
+        }
     }
 }

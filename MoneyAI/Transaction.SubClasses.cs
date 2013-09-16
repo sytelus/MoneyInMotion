@@ -29,11 +29,10 @@ namespace MoneyAI
 
             public T GetValueOrDefault(T defaultValue = default(T))
             {
-                return this.IsVoided ? this.Value : defaultValue;
+                return !this.IsVoided ? this.Value : defaultValue;
             }
 
-            internal EditValue(T value)
-                : this(value, false)
+            internal EditValue(T value) : this(value, false)
             {
             }
         }

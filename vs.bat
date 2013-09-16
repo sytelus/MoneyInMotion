@@ -1,0 +1,1 @@
+"%ProgramFiles%\Microsoft Visual Studio 11.0\Common7\IDE\devenv" MoneyAI.sln

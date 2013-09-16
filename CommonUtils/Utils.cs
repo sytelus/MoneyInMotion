@@ -78,6 +78,20 @@ namespace CommonUtils
                 return string.Concat(delimiter, s, valueToAppend);
         }
 
+        public static LinkedListNode<T> AddItemFirst<T>(this LinkedList<T> list, T item)
+        {
+            var node = new LinkedListNode<T>(item);
+            list.AddFirst(node);
+            return node;
+        }
+
+        public static LinkedListNode<T> AddItemLast<T>(this LinkedList<T> list, T item)
+        {
+            var node = new LinkedListNode<T>(item);
+            list.AddLast(node);
+            return node;
+        }
+
         public static double Log2(double x)
         {
             return Math.Log(x) / LogE2;
@@ -1018,6 +1032,12 @@ namespace CommonUtils
         public static IEnumerable<T> EmptyIfNull<T>(this IEnumerable<T> value)
         {
             return value ?? Enumerable.Empty<T>();
+        }
+        public static string[] NullIfEmpty(this string[] value)
+        {
+            if (value == null || value.Length == 0)
+                return null;
+            else return value;
         }
         public static string NullIfEmpty(this string value)
         {

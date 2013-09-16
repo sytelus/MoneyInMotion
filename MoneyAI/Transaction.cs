@@ -71,6 +71,9 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false)]
         public TransactionEdit.EditedValues MergedEdit { get; private set; }
 
+        [DataMember(EmitDefaultValue = false)]
+        internal LinkedList<string> AppliedEditIdsDescending { get; private set; }
+
         public Transaction Clone()
         {
             var serializedData = JsonSerializer<Transaction>.Serialize(this);
@@ -81,13 +84,18 @@ namespace MoneyAI
         internal void ApplyEdit(TransactionEdit edit)
         {
             if (this.MergedEdit == null)
+            {
                 this.MergedEdit = new TransactionEdit.EditedValues(edit.Values);
+                this.AppliedEditIdsDescending = new LinkedList<string>();
+            }
             else
                 this.MergedEdit.Merge(edit.Values);
 
             this.InvalidateCachedValues();
 
             this.AuditInfo = new AuditInfo(this.AuditInfo, true);
+
+            this.AppliedEditIdsDescending.AddItemFirst(edit.Id);
         }
 
         private void InvalidateCachedValues()

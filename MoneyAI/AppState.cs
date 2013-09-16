@@ -9,38 +9,40 @@ namespace MoneyAI
 {
     public class AppState
     {
-        public ITransactionsRepository Repository { get; private set; }
+        public IRepository Repository { get; private set; }
         public Transactions LatestMerged { get; private set; }
-        public TransactionEdits TransactionEdits { get; private set; }
 
-
-        public AppState(ITransactionsRepository repository)
+        public AppState(IRepository repository)
         {
             this.Repository = repository;
         }
 
-        public void Save()
+        public void SaveLatestMerged()
         {
             var latestMergedLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedLocationName);
-            this.Repository.TransactionsStorage.Save(latestMergedLocation, this.LatestMerged);
+            var transactionEditsLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedEditsLocationName);
 
-            var transactionEditsLocation = this.Repository.GetNamedLocation(this.Repository.TransactionEditsLocationName);
-            this.Repository.TransactionEditsStorage.Save(transactionEditsLocation, this.TransactionEdits);
+            this.Repository.TransactionsStorage.Save(latestMergedLocation, this.LatestMerged, transactionEditsLocation);
         }
 
-        public void Load()
+        public void LoadLatestMerged()
         {
             var latestMergedLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedLocationName);
             if (this.Repository.TransactionsStorage.Exists(latestMergedLocation))
                 this.LatestMerged = this.Repository.TransactionsStorage.Load(latestMergedLocation);
             else
                 this.LatestMerged = new Transactions(this.Repository.LastestMergedLocationName);
+        }
 
-            var transactionEditsLocation = this.Repository.GetNamedLocation(this.Repository.TransactionEditsLocationName);
+        public void ApplyEditsToLatestMerged(ILocation location = null)
+        {
+            var transactionEditsLocation = location ?? this.Repository.GetNamedLocation(this.Repository.LastestMergedEditsLocationName);
             if (this.Repository.TransactionsStorage.Exists(transactionEditsLocation))
-                this.TransactionEdits = this.Repository.TransactionEditsStorage.Load(transactionEditsLocation);
-            else
-                this.TransactionEdits = new TransactionEdits(transactionEditsLocation.PortableAddress);
+            {
+                var edits = this.Repository.TransactionEditsStorage.Load(transactionEditsLocation);
+                this.LatestMerged.Apply(edits);
+            }
+            else throw new Exception("Edits were not found at location {0}".FormatEx(location.Address));
         }
 
         public void AddAccountConfig(AccountConfig accountConfig)

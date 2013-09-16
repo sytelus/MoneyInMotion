@@ -73,11 +73,23 @@
       <DependentUpon>AccountConfigDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="CategoryNode.cs" />
+    <Compile Include="CategoryDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CategoryDialog.Designer.cs">
+      <DependentUpon>CategoryDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NoteDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="NoteDialog.Designer.cs">
+      <DependentUpon>NoteDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -90,8 +102,14 @@
     <EmbeddedResource Include="AccountConfigDialog.resx">
       <DependentUpon>AccountConfigDialog.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="CategoryDialog.resx">
+      <DependentUpon>CategoryDialog.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NoteDialog.resx">
+      <DependentUpon>NoteDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

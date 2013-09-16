@@ -41,8 +41,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TransactionEditsStorage.cs" />
+    <Compile Include="TransactionsStorage.cs" />
     <Compile Include="FileLocation.cs" />
-    <Compile Include="FileTransactionRepository.cs" />
+    <Compile Include="FileRepository.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

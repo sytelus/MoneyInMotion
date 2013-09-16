@@ -77,12 +77,26 @@ namespace MoneyAI
             get { return string.Empty; }
         }
 
-        public string DisplayIsUserFlaggedImageName
+        public bool IsUserFlagged
+        {
+            get { return this.MergedEdit.IfNotNull(u => u.IsFlagged.IfNotNull(e => e.GetValueOrDefault())); }
+        }
+
+        public string Note
+        {
+            get { return this.MergedEdit.IfNotNull(u => u.Note.IfNotNull(e => e.GetValueOrDefault())); }
+        }
+
+        public string DisplayRowImageName
         {
             get
             {
-                var isFlagged = this.MergedEdit.IfNotNull(u => u.IsFlagged.IfNotNull(e => e.GetValueOrDefault()));
-                return isFlagged ? "flag" : null;
+                if (this.IsUserFlagged)
+                    return "flag";
+                else if (this.Note != null)
+                    return "note";
+                else
+                    return null;
             }
         }
 

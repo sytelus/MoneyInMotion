@@ -12,9 +12,12 @@ namespace MoneyAI
     {
         public enum ScopeType : int
         {
-             None = 0, EntityName = 1, EntityNameNormalized = 2, TransactionId = 3, All = 4
+             None = 0, All = 1,
+             EntityName = 2, EntityNameNormalized = 3, EntityNameAnyTokens = 4,
+             TransactionId = 100
         }
 
+        [DataContract]
         public class EditScope
         {
             [DataMember(IsRequired = true)]
@@ -28,6 +31,10 @@ namespace MoneyAI
 
             public EditScope(ScopeType scopeType, string[] scopeParameters)
             {
+                var errors = Validate(scopeType, scopeParameters);
+                if (errors != null)
+                    throw new Exception("EditScope parameters are invalid: {0}".FormatEx(errors));
+
                 this.Type = scopeType;
                 this.Parameters = scopeParameters;
 
@@ -39,9 +46,42 @@ namespace MoneyAI
                 return Utils.GetMD5HashString(string.Join("\t", scopeType.ToString().AsEnumerable().Concat(scopeParameters.EmptyIfNull())));
             }
 
-
+            public static string Validate(ScopeType scopeType, string[] scopeParameters)
+            {
+                string errors = null;
+                switch (scopeType)
+                {
+                    case ScopeType.TransactionId:
+                        if (scopeParameters.IsNullOrEmpty())
+                            errors = errors.Append("1 or more Scope Parameters are required for Scope Type {0}".FormatEx(scopeType));
+                        break;
+                    case ScopeType.EntityName:
+                        if (scopeParameters.IsNullOrEmpty() || scopeParameters.Length > 1)
+                            errors = errors.Append("Only 1 Scope Parameter must be supplied for Scope Type {0}".FormatEx(scopeType));
+                        break;
+                    case ScopeType.EntityNameAnyTokens:
+                        if (scopeParameters.IsNullOrEmpty())
+                            errors = errors.Append("1 or more Scope Parameters are required for Scope Type {0}".FormatEx(scopeType));
+                        break;
+                    case ScopeType.EntityNameNormalized:
+                        if (scopeParameters.IsNullOrEmpty() || scopeParameters.Length > 1)
+                            errors = errors.Append("Only 1 Scope Parameter must be supplied for Scope Type {0}".FormatEx(scopeType));
+                        break;
+                    case ScopeType.None:
+                    case ScopeType.All:
+                        if (!scopeParameters.IsNullOrEmpty())
+                            errors = errors.Append("Zero Scope Parameters are expected for Scope Type {0}".FormatEx(scopeType));
+                        break;
+                    default:
+                        throw new NotSupportedException("Edit Scope Type {0} is not supported".FormatEx(scopeType));
+                }
+                return errors;
+            }
         }
 
+        /// <summary>
+        /// This class should be immutable outside of library
+        /// </summary>
         [DataContract]
         public class EditedValues
         {
