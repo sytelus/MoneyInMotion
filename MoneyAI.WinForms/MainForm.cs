@@ -109,7 +109,7 @@ namespace MoneyAI.WinForms
 
             appState.MergeNewStatements();
 
-            RefreshExplorer();
+            RefreshExplorer(this.appState.LatestMerged);
         }
         
         private void buttonSaveLatestMerged_Click(object sender, EventArgs e)
@@ -117,60 +117,77 @@ namespace MoneyAI.WinForms
             appState.SaveLatestMerged();
         }
 
-        private void RefreshExplorer()
+        private static string GetMonthDisplayName(int month)
         {
-            txnTreeView.Nodes.Clear();
-            var rootNode = CategoryNode.CreateTreeNode(new TreeNodeData()
+            return CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(month);
+        }
+
+        private static void RefreshNode(TreeNode treeNode, Transactions allTransactions, IEnumerable<Transaction> parentTransactions = null)
+        {
+            var isExpanded = treeNode.IsExpanded;
+            var treeNodeData = (TreeNodeData) treeNode.Tag;
+            if (treeNodeData.YearFilter == null)
             {
-                Text = "All"
-            } );
-            txnTreeView.Nodes.Add(rootNode);
-
-            var yearGroups = appState.LatestMerged
-                .GroupBy(t => t.TransactionDate.Year)
-                .OrderByDescending(g => g.Key)
-                .Select(g => 
-                    Tuple.Create(g.Key
-                        , g.GroupBy(yt => yt.TransactionDate.Month)
-                            .Select(mg => Tuple.Create(mg.Key, mg.ToArray()))
-                            .OrderByDescending(m => m)));
-
-            var selectedNode = txnTreeView.SelectedNode;
-            foreach (var yearGroup in yearGroups)
-            {
-                var yearNode = CategoryNode.CreateTreeNode(new TreeNodeData()
+                var yearGroups = allTransactions.GroupBy(t => t.TransactionDate.Year).OrderByDescending(g => g.Key);
+                foreach (var yearGroup in yearGroups)
                 {
-                    Text = yearGroup.Item1.ToStringCurrentCulture(), YearFilter = yearGroup.Item1
-                });
-                rootNode.Nodes.Add(yearNode);
-
-                foreach (var monthGroup in yearGroup.Item2)
-                {
-                    var monthNode = CategoryNode.CreateTreeNode(new TreeNodeData()
-                    {
-                        Text = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(monthGroup.Item1), YearFilter = yearGroup.Item1, MonthFilter = monthGroup.Item1
-                    });
-                    yearNode.Nodes.Add(monthNode);
-
-                    var categoryRootNode = new CategoryNode(null, yearGroup.Item1, monthGroup.Item1);
-                    foreach (var transaction in monthGroup.Item2)
-                        categoryRootNode.Merge(transaction);
-
-                    categoryRootNode.BuildTreeViewNodes(monthNode);
-
-                    if (selectedNode == null)
-                        selectedNode = monthNode;
+                    var yearTreeNode = CategoryNode.CreateTreeNode(treeNode,
+                        new TreeNodeData() { Text = yearGroup.Key.ToStringCurrentCulture(), YearFilter = yearGroup.Key });
+                    RefreshNode(yearTreeNode, allTransactions, yearGroup.Select(t => t));
+                    
+                    yearTreeNode.Expand();
                 }
+            }
+            else if (treeNodeData.MonthFilter == null)
+            {
+                var year = treeNodeData.YearFilter.Value;
+                parentTransactions = parentTransactions ?? allTransactions.Where(t => t.TransactionDate.Year == year);
+                var monthGroups = parentTransactions.GroupBy(t => t.TransactionDate.Month).OrderByDescending(g => g.Key);
+                foreach (var monthGroup in monthGroups)
+                {
+                    var monthTreeNode = CategoryNode.CreateTreeNode(treeNode, new TreeNodeData()
+                        {
+                            Text = GetMonthDisplayName(monthGroup.Key), YearFilter = year, MonthFilter = monthGroup.Key
+                        });
+                    RefreshNode(monthTreeNode, allTransactions, monthGroup.Select(t => t));
+                }
+            }
+            else
+            {
+                var year = treeNodeData.YearFilter.Value;
+                var month = treeNodeData.MonthFilter.Value;
 
-                yearNode.Expand();
+                parentTransactions = parentTransactions ?? allTransactions.Where(t => t.TransactionDate.Year == year).Where(t => t.TransactionDate.Month == month);
+
+                var categoryPaths = parentTransactions.Select(t => t.CategoryPath);
+
+                var rootCategoryNode = new CategoryNode(null);
+
+                foreach (var categoryPath in categoryPaths)
+                    rootCategoryNode.Merge(categoryPath);
+
+                rootCategoryNode.BuildTreeViewNodes(treeNode, year, month);
             }
 
-            rootNode.Expand();
+            if (isExpanded)
+                treeNode.Expand();
+        }
 
-            if (selectedNode != null)
+        private void RefreshExplorer(Transactions transactions)
+        {
+            txnTreeView.Nodes.Clear();
+
+            var rootTreeNode = CategoryNode.CreateTreeNode(null, new TreeNodeData() { Text = "All" });
+            txnTreeView.Nodes.Add(rootTreeNode);
+
+            RefreshNode(rootTreeNode, transactions);
+
+            rootTreeNode.Expand();
+
+            if (txnTreeView.SelectedNode == null)
             {
-                txnTreeView.SelectedNode = selectedNode;
-                txnTreeView.Focus();
+                txnTreeView.SelectedNode = rootTreeNode.Nodes.Cast<TreeNode>().FirstOrDefault()
+                        .IfNotNull(yearNode => yearNode.Nodes.Cast<TreeNode>().FirstOrDefault());
             }
         }
 
@@ -190,9 +207,10 @@ namespace MoneyAI.WinForms
             txnListView.Sort(olvColumnCategory);
         }
 
-        private static bool IsCategoryPathMatch(IEnumerable<string> path1, IEnumerable<string> path2)
+        private static bool IsCategoryPathMatch(ICollection<string> categoryFilterPath, ICollection<string> transactionCategoryPath)
         {
-            return path1.Zip(path2, (c1, c2) => c1.Equals(c2, StringComparison.Ordinal)).Any(e => !e);
+            return categoryFilterPath.Count <= transactionCategoryPath.Count 
+                && categoryFilterPath.Zip(transactionCategoryPath, (c1, c2) => c1.Equals(c2, StringComparison.Ordinal)).All(eq => eq);
         }
 
         private void txnListView_FormatCell(object sender, FormatCellEventArgs e)
