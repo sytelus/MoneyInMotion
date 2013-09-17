@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 using CommonUtils;
@@ -82,10 +83,10 @@ namespace MoneyAI
                 return transaction.AppliedEditIdsDescending.Select(editId => this.edits[editId]);
         }
 
-        public void SetIsUserFlagged(Transaction transaction, bool isUserFlagged)
+        public IEnumerable<Transaction> SetIsUserFlagged(Transaction transaction, bool isUserFlagged)
         {
             var edit = this.edits.CreateEditIsUserFlagged(transaction.Id, isUserFlagged);
-            this.ApplyInternal(edit);
+            return this.ApplyInternal(edit);
         }
 
         public IEnumerable<Transaction> SetCategory(TransactionEdit.EditScope scope, string[] categoryPath)
@@ -94,10 +95,10 @@ namespace MoneyAI
             return this.ApplyInternal(edit);
         }
 
-        public void SetNote(Transaction transaction, string note)
+        public IEnumerable<Transaction> SetNote(Transaction transaction, string note)
         {
             var edit = this.edits.CreateEditNote(transaction.Id, note);
-            this.ApplyInternal(edit);
+            return this.ApplyInternal(edit);
         }
 
         public string SerializeToJson()

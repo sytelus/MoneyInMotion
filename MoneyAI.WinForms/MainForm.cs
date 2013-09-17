@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -296,7 +297,7 @@ namespace MoneyAI.WinForms
             if (currentNote == newNote)
                 return;
 
-            RefreshItems(rows, tx => transactions.SetNote(tx, newNote));
+            RefreshItems(rows, tx => transactions.SetNote(tx, newNote).ToVoid());
         }
 
         private void ApplyCategoryForRows(IList rows)
@@ -337,7 +338,7 @@ namespace MoneyAI.WinForms
 
         private static void ToggleFlagsRows(IEnumerable rows, Transactions transactions)
         {
-            RefreshItems(rows, tx => transactions.SetIsUserFlagged(tx, !tx.IsUserFlagged));
+            RefreshItems(rows, tx => transactions.SetIsUserFlagged(tx, tx.IsUserFlagged.IfNotNullValue(f => !f, true)).ToVoid());
         }
     }
 }

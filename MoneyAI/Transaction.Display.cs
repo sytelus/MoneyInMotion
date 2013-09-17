@@ -77,9 +77,15 @@ namespace MoneyAI
             get { return string.Empty; }
         }
 
-        public bool IsUserFlagged
+        public bool? IsUserFlagged
         {
-            get { return this.MergedEdit.IfNotNull(u => u.IsFlagged.IfNotNull(e => e.GetValueOrDefault())); }
+            get
+            {
+                var isFlaggedEditValue = this.MergedEdit.IfNotNull(u => u.IsFlagged);
+                if (isFlaggedEditValue == null)
+                    return null;
+                else return isFlaggedEditValue.GetValueOrDefault(); 
+            }
         }
 
         public string Note
@@ -91,10 +97,12 @@ namespace MoneyAI
         {
             get
             {
-                if (this.IsUserFlagged)
+                if (this.IsUserFlagged.IsTrue())
                     return "flag";
                 else if (this.Note != null)
                     return "note";
+                if (this.IsUserFlagged.IsFalse())
+                    return "unFlag";
                 else
                     return null;
             }

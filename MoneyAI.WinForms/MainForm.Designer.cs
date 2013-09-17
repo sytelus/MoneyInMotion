@@ -323,10 +323,10 @@
             // 
             this.imageList.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageList.ImageStream")));
             this.imageList.TransparentColor = System.Drawing.Color.Transparent;
-            this.imageList.Images.SetKeyName(0, "flag");
-            this.imageList.Images.SetKeyName(1, "flagColumn");
-            this.imageList.Images.SetKeyName(2, "noflag");
-            this.imageList.Images.SetKeyName(3, "note");
+            this.imageList.Images.SetKeyName(0, "note");
+            this.imageList.Images.SetKeyName(1, "unFlag");
+            this.imageList.Images.SetKeyName(2, "flag");
+            this.imageList.Images.SetKeyName(3, "flagColumn");
             // 
             // statusStrip2
             // 

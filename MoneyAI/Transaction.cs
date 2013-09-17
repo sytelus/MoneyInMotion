@@ -150,7 +150,7 @@ namespace MoneyAI
             return Utils.AsEnumerable(
                 this.AccountId, this.TransactionReason.ToString(),
                 this.Amount.ToString(), this.EntityName.EmptyIfNull().ToUpperInvariant()
-                , this.PostDate.IfNotNullValue(p => p.Value.ToString("u")), this.TransactionDate.ToString("u"));
+                , this.PostDate.IfNotNullValue(p => p.ToString("u")), this.TransactionDate.ToString("u"));
         }
 
         private void Validate()

@@ -482,15 +482,22 @@ namespace CommonUtils
                     yield return new KeyValuePair<T, T>(source[sourceIndex1], source[sourceIndex2]);
         }
 
-        public static TResult IfNotNullValue<TInput, TResult>(this TInput? input, Func<TInput?, TResult> resultSelector, TResult resultIfNull) where TInput : struct 
+        public static void ToVoid<T>(this IEnumerable<T> sequence)
+        {
+            foreach (var x in sequence)
+            {
+            }
+        }
+
+        public static TResult IfNotNullValue<TInput, TResult>(this TInput? input, Func<TInput, TResult> resultSelector, TResult resultIfNull) where TInput : struct 
         {
             if (input == null)
                 return resultIfNull;
             else
-                return resultSelector(input);
+                return resultSelector(input.Value);
         }
 
-        public static TResult IfNotNullValue<TInput, TResult>(this TInput? input, Func<TInput?, TResult> resultSelector) where TInput : struct 
+        public static TResult IfNotNullValue<TInput, TResult>(this TInput? input, Func<TInput, TResult> resultSelector) where TInput : struct 
         {
             return IfNotNullValue(input, resultSelector, default(TResult));
         }
