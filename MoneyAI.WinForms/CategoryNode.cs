@@ -13,6 +13,8 @@ namespace MoneyAI.WinForms
     {
         public IDictionary<string, CategoryNode> Children { get; private set; }
         public string Name { get; private set; }
+        public decimal AmountSum { get; private set; }
+        public int TransactionCount { get; private set; }
 
         public CategoryNode(string name)
         {
@@ -20,7 +22,7 @@ namespace MoneyAI.WinForms
             Name = name;
         }
 
-        public void Merge(string[] categoryPath)
+        public void Merge(string[] categoryPath, decimal amountSum, int transactionCount)
         {
             var current = this;
             foreach (var category in categoryPath)
@@ -31,17 +33,21 @@ namespace MoneyAI.WinForms
                     found = new CategoryNode(category);
                     current.Children.Add(category, found);
                 }
+
+                found.AmountSum += Math.Abs(amountSum);
+                found.TransactionCount += transactionCount;
+
                 current = found;
             }
         }
 
         public void BuildTreeViewNodes(TreeNode treeViewNode, int year, int month, string[] parentCategoryPath = null)
         {
-            foreach (var childCategoryNode in Children.Values)
+            foreach (var childCategoryNode in Children.Values.OrderBy(cn => cn.Name)) //To sort by total amount, use cn.AmountSum
             {
                 var treeNodeData = new TreeNodeData()
                 {
-                    Text = childCategoryNode.Name,
+                    Text = "{0}  ({1})".FormatEx(childCategoryNode.Name, childCategoryNode.TransactionCount),
                     YearFilter = year,
                     MonthFilter = month,
                     CategoryPathFilter = parentCategoryPath == null ? new string[] {childCategoryNode.Name} : parentCategoryPath.Concat(childCategoryNode.Name).ToArray()

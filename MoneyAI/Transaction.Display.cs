@@ -131,14 +131,32 @@ namespace MoneyAI
             get
             {
                 if (cachedCategoryPath == null)
-                    cachedCategoryPath = this.MergedEdit.IfNotNull(u => u.CategoryPath.IfNotNull(e => e.GetValueOrDefault())) ?? Utils.EmptyStringArray;
+                    cachedCategoryPath = GetCategoryPath() ?? Utils.EmptyStringArray;
 
                 return cachedCategoryPath;
             }
         }
 
+        private string[] GetCategoryPath()
+        {
+            return this.MergedEdit.IfNotNull(u => u.CategoryPath.IfNotNull(e => e.GetValueOrDefault()));
+        }
+
+        private string[] cachedDisplayCategoryPathOrName;
+        public string[] DisplayCategoryPathOrName
+        {
+            get
+            {
+                if (cachedDisplayCategoryPathOrName == null)
+                    cachedDisplayCategoryPathOrName = GetCategoryPath() ?? this.DisplayEntityNameNormalized.AsArray();
+
+                return cachedDisplayCategoryPathOrName;
+            }
+        }
+
+
         private string cachedDisplayCategory;
-        public string DisplayCategory
+        public string DisplayCategoryPathOrNameCocatenated
         {
             get
             {

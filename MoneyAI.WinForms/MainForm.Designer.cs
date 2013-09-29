@@ -258,15 +258,15 @@
             this.olvColumnIsUserFlagged.HeaderTextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             this.olvColumnIsUserFlagged.ImageAspectName = "DisplayRowImageName";
             this.olvColumnIsUserFlagged.IsEditable = false;
-            this.olvColumnIsUserFlagged.MinimumWidth = 20;
+            this.olvColumnIsUserFlagged.MinimumWidth = 30;
             this.olvColumnIsUserFlagged.ShowTextInHeader = false;
             this.olvColumnIsUserFlagged.Text = "";
             this.olvColumnIsUserFlagged.ToolTipText = "Flag the transaction for later review";
-            this.olvColumnIsUserFlagged.Width = 20;
+            this.olvColumnIsUserFlagged.Width = 30;
             // 
             // olvColumnCategory
             // 
-            this.olvColumnCategory.AspectName = "DisplayCategory";
+            this.olvColumnCategory.AspectName = "DisplayCategoryPathOrNameCocatenated";
             this.olvColumnCategory.CellPadding = null;
             this.olvColumnCategory.FillsFreeSpace = true;
             this.olvColumnCategory.Text = "Category";
