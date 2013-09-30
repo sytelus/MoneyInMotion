@@ -19,18 +19,18 @@ namespace MoneyAI.WinForms
             {
                 EnsureGroupTag(x);
                 EnsureGroupTag(y);
-                Tuple<string, int, decimal, decimal> xt = (Tuple<string, int, decimal, decimal>)x.Tag, yt = (Tuple<string, int, decimal, decimal>)y.Tag;
+                TransactionAggregates xt = (TransactionAggregates)x.Tag, yt = (TransactionAggregates)y.Tag;
 
-                return Math.Max(yt.Item4, yt.Item3).CompareTo(Math.Max(xt.Item3, xt.Item3));
+                return yt.MaxPositiveNegativeTotalAbsolute.CompareTo(xt.MaxPositiveNegativeTotalAbsolute);
             }
         }
 
-        private static void EnsureGroupTag(OLVGroup group)
+        private static void EnsureGroupTag(OLVGroup listViewGroup)
         {
-            if (group.Tag == null)
+            if (listViewGroup.Tag == null)
             {
-                var groupStats = GetGroupHeaderTotals(@group.Items.Select(i => (Transaction)i.RowObject).ToArray());
-                group.Tag = groupStats;
+                var groupStats = new TransactionAggregates(listViewGroup.Items.Select(i => (Transaction)i.RowObject));
+                listViewGroup.Tag = groupStats;
             }
         }
 
@@ -53,9 +53,9 @@ namespace MoneyAI.WinForms
                 {
                     EnsureGroupTag(group);
 
-                    var groupStats = (Tuple<string, int, decimal, decimal>)group.Tag;
-                    var totalsText = groupStats.Item1;
-                    var count = groupStats.Item2;
+                    var groupStats = (TransactionAggregates)group.Tag;
+                    var totalsText = groupStats.GetTotalsByReasonDisplayText();
+                    var count = groupStats.Count;
 
                     group.Header = "{0} - {1} {2}".FormatEx((string)group.Key, count, totalsText);
                     group.Footer = " ";
@@ -118,21 +118,6 @@ namespace MoneyAI.WinForms
         private static void ToggleFlagsRows(IEnumerable rows, Transactions transactions)
         {
             RefreshItems(rows, tx => transactions.SetIsUserFlagged(tx, tx.IsUserFlagged.IfNotNullValue(f => !f, true)).ToVoid());
-        }
-
-
-        private static Tuple<string, int, decimal, decimal> GetGroupHeaderTotals(ICollection<Transaction> transactions)
-        {
-            var totalsText = transactions
-                .GroupBy(t => t.TransactionReason)
-                .Select(g => Tuple.Create(g.Key, g.Sum(t => t.Amount)))
-                .Where(tp => tp.Item2 != 0)
-                .OrderBy(tp => Math.Abs(tp.Item2))
-                .ToDelimitedString("    ", tp => string.Concat(tp.Item1.ToString(), " ", Math.Abs(tp.Item2).ToString("C")), true);
-            var count = transactions.Count;
-            var negativeSum = Math.Abs(transactions.Where(t => t.Amount < 0).Sum(t => t.Amount));
-            var positiveSum = transactions.Where(t => t.Amount > 0).Sum(t => t.Amount);
-            return Tuple.Create(totalsText, count, negativeSum, positiveSum);
         }
 
         private void txnListView_CellClick(object sender, CellClickEventArgs e)
