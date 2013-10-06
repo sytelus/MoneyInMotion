@@ -49,16 +49,21 @@ namespace MoneyAI.WinForms
         {
             if (e.Parameters.GroupByColumn == olvColumnCategory)
             {
+                var grandAggregate = new TransactionAggregates();
                 foreach (var group in e.Groups)
                 {
                     EnsureGroupTag(group);
 
-                    var groupStats = (TransactionAggregates)group.Tag;
-                    var totalsText = groupStats.GetTotalsByReasonDisplayText();
-                    var count = groupStats.Count;
+                    var groupAggregates = (TransactionAggregates)group.Tag;
+
+                    grandAggregate.Add(groupAggregates);
+                    groupAggregates.SaveRunningAggregate(grandAggregate);
+
+                    var totalsText = groupAggregates.GetTotalsByReasonDisplayText();
+                    var count = groupAggregates.Count;
 
                     group.Header = "{0} - {1} {2}".FormatEx((string)group.Key, count, totalsText);
-                    group.Footer = " ";
+                    group.Footer = groupAggregates.GetRunningAggregateDisplayText();
                     group.Subtitle = " ";
                     //group.Collapsed = true;
                 }
