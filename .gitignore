@@ -1,36 +1,39 @@
 #Project specific files
-Web.Release.Config
-External Stuff/
+**/Web.Release.Config
+**/External Stuff/
 
 #OS junk files
-[Tt]humbs.db
-*.DS_Store
+**/[Tt]humbs.db
+**/*.DS_Store
 
 #Visual Studio files
-*.pch
-*.vspscc
-*.vssscc
-*_i.c
-*_p.c
-*.ncb
-*.suo
-*.sln.DotSettings.user
-[Oo]bj/
-[Bb]in
-[Dd]ebug*/
-[Rr]elease*/
+**/*.pch
+**/*.vspscc
+**/*.vssscc
+**/*_i.c
+**/*_p.c
+**/*.ncb
+**/*.suo
+**/*.sln.DotSettings.user
+**/[Oo]bj/
+**/[Bb]in
+**/[Dd]ebug*/
+**/[Rr]elease*/
 
 #Tooling
-_ReSharper*/
-*.resharper
-[Tt]est[Rr]esult*
+**/_ReSharper*/
+**/*.resharper
+**/[Tt]est[Rr]esult*
 
 #Project files
-[Bb]uild/
-TestResults/
+**/[Bb]uild/
+**/TestResults/
 
 #Subversion files
-.svn
+**/.svn
 
 # Office Temp Files
-~$*
+**/~$*
+
+#PII/large files
+**/data/*.json

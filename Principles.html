@@ -1,0 +1,19 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>MoneyAI - Core Architecture and Design Principles</title>
+</head>
+<body>
+    <h1>Core Architecture and Design Principles</h1>
+    <ul>
+        <li>Never alter or delete original source transaction files</li>
+        <li>We should always be able to re-construct all outputs at any time</li>
+        <li>Never alter source transaction information</li>
+        <li>All changes in transaction are always created as edits, saved in seperate files</li>
+        <li>User edits are kept seperately and can be applied on top of any transactions or shared with other users</li>
+        <li>Most edits should be in form of rules</li>
+    </ul>
+</body>
+</html>
