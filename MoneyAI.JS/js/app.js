@@ -16,7 +16,7 @@
 require(['domReady', 'repository', 'jquery'], function (domReady, repository, $) {
     domReady(function () {
         repository.getTransactions(function (data) {
-            $("#log").text(data.Name);
+            $("#log").text(data.Name + "<br/>" + data.items.length + "<br/>" + data.items[0].auditInfo.createDate + "<br/>" + new Date(data.items[0].auditInfo.createDate));
         });
     });
 });

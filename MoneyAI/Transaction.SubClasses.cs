@@ -13,10 +13,10 @@ namespace MoneyAI
         [DataContract]
         public class EditValue<T>
         {
-            [DataMember]
+            [DataMember(Name = "isVoided")]
             public bool IsVoided { get; private set; }
 
-            [DataMember]
+            [DataMember(Name = "value")]
             public T Value { get; private set; }
 
             public readonly static EditValue<T> VoidedEditValue = new EditValue<T>(default(T), true);

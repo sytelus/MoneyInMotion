@@ -16,7 +16,7 @@ namespace MoneyAI
 
         private Dictionary<string, TransactionEdit> editsById;
 
-        [DataMember]
+        [DataMember(Name = "sourceId")]
         public string SourceId { get; private set; }
 
         public TransactionEdits(string sourceId)

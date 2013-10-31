@@ -29,14 +29,14 @@ namespace MoneyAI.WinForms
         {
             using (var dialog = new NoteDialogForm())
             {
-                dialog.richTextBoxNote.Rtf = initial;
+                dialog.richTextBoxNote.Text = initial;
                 var dialogResult = dialog.ShowDialog(parentForm);
                 if (dialogResult == DialogResult.OK)
                 {
                     if (dialog.IsNoteRemoved)
                         return null;
                     else
-                        return dialog.richTextBoxNote.Rtf;
+                        return dialog.richTextBoxNote.Text;
                 }
                 else return initial;
             }

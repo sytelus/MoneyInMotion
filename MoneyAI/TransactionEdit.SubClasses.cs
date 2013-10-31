@@ -20,13 +20,13 @@ namespace MoneyAI
         [DataContract]
         public class EditScope
         {
-            [DataMember(IsRequired = true)]
+            [DataMember(IsRequired = true, Name = "type")]
             public ScopeType Type { get; private set; }
 
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "parameters")]
             public string[] Parameters { get; private set; }
 
-            [DataMember(IsRequired = true)]
+            [DataMember(IsRequired = true, Name = "id")]
             public string Id { get; private set; }
 
             public EditScope(ScopeType scopeType, string[] scopeParameters)
@@ -85,25 +85,25 @@ namespace MoneyAI
         [DataContract]
         public class EditedValues
         {
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "transactionReason")]
             public Transaction.EditValue<TransactionReason> TransactionReason { get; internal set; }
 
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "transactionDate")]
             public Transaction.EditValue<DateTime> TransactionDate { get; internal set; }
 
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "amount")]
             public Transaction.EditValue<decimal> Amount { get; internal set; }
 
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "entityName")]
             public Transaction.EditValue<string> EntityName { get; internal set; }
 
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "isFlagged")]
             public Transaction.EditValue<Boolean> IsFlagged { get; internal set; }
 
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "note")]
             public Transaction.EditValue<string> Note { get; internal set; }
 
-            [DataMember(EmitDefaultValue = false)]
+            [DataMember(EmitDefaultValue = false, Name = "categoryPath")]
             public Transaction.EditValue<string[]> CategoryPath { get; internal set; }
 
 

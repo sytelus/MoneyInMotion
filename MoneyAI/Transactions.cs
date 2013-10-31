@@ -15,7 +15,7 @@ namespace MoneyAI
     public class Transactions : ICollection<Transaction>, IDeserializationCallback 
     {
 
-        [DataMember]
+        [DataMember(Name = "name")]
         public string Name { get; private set; }
         
         [DataMember]

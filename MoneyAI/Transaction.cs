@@ -30,7 +30,7 @@ namespace MoneyAI
     [DataContract]
     public partial class Transaction
     {
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "transactionReason")]
         public TransactionReason TransactionReason { get; private set; }
 
         [DataMember(IsRequired = true)]
@@ -40,38 +40,38 @@ namespace MoneyAI
             get { return this.transactionDate.Value; }
         }
 
-        [DataMember(EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false, Name = "postDate")]
         public DateTime? PostDate { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "entityName")]
         public string EntityName { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "amount")]
         private decimal? amount;
         public decimal Amount { get { return this.amount.Value; } }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "contentHash")]
         public string ContentHash { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "accountId")]
         public string AccountId { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "importId")]
         public string ImportId { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "auditInfo")]
         public AuditInfo AuditInfo { get; private set; }
 
-        [DataMember(IsRequired = true)] 
-        public string Id { get; private set; }       
+        [DataMember(IsRequired = true, Name = "id")] 
+        public string Id { get; private set; }
 
-        [DataMember(IsRequired = true)] 
-        public int LineNumber { get; private set; }     
+        [DataMember(IsRequired = true, Name = "lineNumber")] 
+        public int LineNumber { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false, Name = "mergedEdit")]
         public TransactionEdit.EditedValues MergedEdit { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false, Name = "appliedEditIdsDescending")]
         internal LinkedList<string> AppliedEditIdsDescending { get; private set; }
 
         public Transaction Clone()

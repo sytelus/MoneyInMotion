@@ -9,7 +9,8 @@ namespace CommonUtils
 {
     public static class JsonSerializer<T> 
     {
-        private static DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T)); 
+        const string dateFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
+        private static DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T), new DataContractJsonSerializerSettings() { DateTimeFormat = new System.Runtime.Serialization.DateTimeFormat(dateFormat) }); 
 
         public static string Serialize(T objectGraph)
         {

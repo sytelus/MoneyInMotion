@@ -15,19 +15,19 @@ namespace MoneyAI
     [DataContract]
     public partial class TransactionEdit
     {
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "auditInfo")]
         public AuditInfo AuditInfo { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "scope")]
         public EditScope Scope { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false, Name = "values")]
         public EditedValues Values { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "isRequired")]
         public string SourceId { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "id")]
         public string Id { get; private set; }
 
         internal TransactionEdit(EditScope scope, string sourceId, EditedValues editValues = null)

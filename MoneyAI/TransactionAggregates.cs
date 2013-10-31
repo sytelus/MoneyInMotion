@@ -15,13 +15,13 @@ namespace MoneyAI
         [DataMember]
         private readonly IDictionary<TransactionReason, decimal> totalsByReason = new Dictionary<TransactionReason, decimal>();
 
-        [DataMember]
+        [DataMember(Name = "count")]
         public int Count { get; private set; }
 
-        [DataMember]
+        [DataMember(Name = "positiveTotal")]
         public decimal PositiveTotal { get; private set; }
 
-        [DataMember]
+        [DataMember(Name = "negativeTotal")]
         public decimal NegativeTotal { get; private set; }
         
         public decimal Total { get { return this.PositiveTotal + this.NegativeTotal; } }

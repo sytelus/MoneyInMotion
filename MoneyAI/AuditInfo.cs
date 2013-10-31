@@ -12,16 +12,16 @@ namespace MoneyAI
     [DataContract]
     public class AuditInfo
     {
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "createDate")]
         public DateTime CreateDate { get; private set; }
 
-        [DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true, Name = "createdBy")]
         public string CreatedBy { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false, Name = "updateDate")]
         public DateTime? UpdateDate { get; private set; }
 
-        [DataMember(EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false, Name = "updatedBy")]
         public string UpdatedBy { get; private set; }
 
         public AuditInfo(AuditInfo auditInfo, bool setUpdated, string updatedBy = null)
