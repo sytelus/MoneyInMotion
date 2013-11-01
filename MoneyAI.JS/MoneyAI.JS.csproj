@@ -16,6 +16,8 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="css\main.css" />
+    <Content Include="Gruntfile.js" />
     <Content Include="index.html" />
     <Content Include="js\app.js" />
     <Content Include="js\ext\jquery-1.10.2.js" />
@@ -26,6 +28,11 @@
   <ItemGroup>
     <Content Include="data\LatestMerged.json" />
     <Content Include="data\LatestMergedEdits.json" />
+    <Content Include="JSLintNet.json" />
+    <Content Include=".bowerrc" />
+    <Content Include=".jshintrc" />
+    <Content Include="bower.json" />
+    <Content Include="package.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>
@@ -33,9 +40,7 @@
       <DependentUpon>web.config</DependentUpon>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="css\" />
-  </ItemGroup>
+  <ItemGroup />
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>

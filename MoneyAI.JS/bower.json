@@ -1,0 +1,16 @@
+{
+	"name": "MoneyAI",
+	"version": "0.0.0",
+	"dependencies": {
+		"requirejs": "~2.1.9",
+		"jquery": "~1.10.2",
+		"requirejs-domready": "~2.0.1",
+		"javascript-debug": "latest",
+		"lodash": "~2.2.1",
+		"jquery-ui": "~1.10.2",
+		"jstree": "latest",
+		"jquery.hotkeys": "git://github.com/jeresig/jquery.hotkeys",
+		"jquery.cookie": "latest",
+		"modernizr": "latest"
+	}
+}

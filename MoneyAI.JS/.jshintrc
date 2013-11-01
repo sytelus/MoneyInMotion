@@ -1,0 +1,6 @@
+{
+    "browser": true,
+	"node" : true,
+
+    "predef"        : ["define"]	// Custom globals for requirejs
+}

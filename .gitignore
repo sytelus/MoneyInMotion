@@ -37,3 +37,8 @@
 
 #PII/large files
 **/data/*.json
+
+#JS build
+**/node_modules
+**/.tmp
+**/.sass-cache
