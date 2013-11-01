@@ -12,8 +12,8 @@ module.exports = function (grunt) {
 
     // configurable paths
     var pathsConfig = {
-        app: 'js',
-        dist: 'dist'
+        src: '',
+        dist: 'dist'  //distribution folder
     };
 
     grunt.initConfig({
@@ -28,56 +28,16 @@ module.exports = function (grunt) {
             },
             all: [
                 'Gruntfile.js',
-                '<%= paths.app %>/{,*/}*.js',
-                '!<%= paths.app %>/ext/*'
+                '<%= paths.src %>/js/**/*.js',
+                '!<%= paths.src %>/js/ext/*'
             ]
-        },
-        // not used since Uglify task does concat,
-        // but still available if needed
-        /*concat: {
-            dist: {}
-        },*/
-        requirejs: {
-            dist: {
-                // Options: https://github.com/jrburke/r.js/blob/master/build/example.build.js
-                options: {
-                    // `name` and `out` is set by grunt-usemin
-                    baseUrl: 'js',
-                    mainConfigFile: 'js/app.js',
-                    modules: [{name: 'app'}],
-                    optimize: 'none',
-                    dir: "js",
-                    // TODO: Figure out how to make sourcemaps work with grunt-usemin
-                    // https://github.com/paths/grunt-usemin/issues/30
-                    //generateSourceMaps: true,
-                    // required to support SourceMaps
-                    // http://requirejs.org/docs/errors.html#sourcemapcomments
-                    preserveLicenseComments: false,
-                    useStrict: true,
-                    wrap: true
-                    //uglify2: {} // https://github.com/mishoo/UglifyJS2
-                }
-            }
-        },
-        useminPrepare: {
-            html: '<%= paths.app %>/index.html',
-            options: {
-                dest: '<%= paths.dist %>'
-            }
-        },
-        usemin: {
-            html: ['<%= paths.dist %>/{,*/}*.html'],
-            css: ['<%= paths.dist %>/css/{,*/}*.css'],
-            options: {
-                dirs: ['<%= paths.dist %>']
-            }
         },
         imagemin: {
             dist: {
                 files: [{
                     expand: true,
-                    cwd: '<%= paths.app %>/images',
-                    src: '{,*/}*.{png,jpg,jpeg}',
+                    cwd: '<%= paths.src %>/images',
+                    src: '**/*.{png,jpg,jpeg,gif}',
                     dest: '<%= paths.dist %>/images'
                 }]
             }
@@ -85,61 +45,75 @@ module.exports = function (grunt) {
         cssmin: {
             dist: {
                 files: {
-                    '<%= paths.dist %>/css/main.css': [
-                        '.tmp/css/{,*/}*.css',
-                        '<%= paths.app %>/css/{,*/}*.css'
-                    ]
+                    '<%= paths.dist %>/css/main.css': ['<%= paths.src %>/css/**/*.css']
                 }
             }
         },
         htmlmin: {
             dist: {
                 options: {
-                    /*removeCommentsFromCDATA: true,
+                    //removeCommentsFromCDATA: true,
                     // https://github.com/paths/grunt-usemin/issues/44
-                    //collapseWhitespace: true,
+                    collapseWhitespace: true,
                     collapseBooleanAttributes: true,
-                    removeAttributeQuotes: true,
+                    //removeAttributeQuotes: true,
                     removeRedundantAttributes: true,
                     useShortDoctype: true,
-                    removeEmptyAttributes: true,
-                    removeOptionalTags: true*/
+                    //removeEmptyAttributes: true,
+                    removeOptionalTags: true
                 },
                 files: [{
                     expand: true,
-                    cwd: '<%= paths.app %>',
-                    src: '*.html',
-                    dest: '<%= paths.dist %>'
+                    cwd: '<%= paths.src %>',
+                    src: '*.htm*',
+                    dest: '<%= paths.dist %>'   //html file will be modified by requirejs next
                 }]
             }
         },
         copy: {
             dist: {
                 files: [{
-                    expand: true,
-                    dot: true,
-                    cwd: '<%= paths.app %>',
+                    expand: true, dot: true,
+                    cwd: '<%= paths.src %>',
                     dest: '<%= paths.dist %>',
-                    src: [
-                        '*.{ico,txt}',
-                        '.htaccess'
-                    ]
-                }]
+                    src: ['*.{ico,txt}', '.htaccess']
+                }] 
             }
         },
+        requirejs: {
+            dist: {
+                options: {
+                    almod: true,
+                    wrap: true,  //https://github.com/asciidisco/grunt-requirejs/blob/master/docs/almondIntegration.md#require-function-not-found-after-almond-integration
+
+                    name: 'main',
+                    baseUrl: 'js',
+                    mainConfigFile: 'js/main.js',
+                    out: '<%= paths.dist %>/js/mainall.js',
+                    optimize: 'none',
+                    
+                    replaceRequireScript: [{
+                        files: ['<%= paths.dist %>/index.html'],
+                        module: 'main',
+                        modulePath: '/' + '<%= paths.dist %>/js/mainall'
+                    }],
+
+                    //generateSourceMaps: true, // TODO: Figure out how to make sourcemaps work with grunt-usemin https://github.com/paths/grunt-usemin/issues/30
+                    preserveLicenseComments: false, // required to support SourceMaps. http://requirejs.org/docs/errors.html#sourcemapcomments
+                    normalizeDirDefines: "all", //http://requirejs.org/docs/optimization.html#turbo
+                    useStrict: true
+                }
+            }
+        }
     });
 
     grunt.registerTask('build', [
         'clean:dist',
-        'useminPrepare',
-        'requirejs',
         'imagemin',
-        'htmlmin',
-        'concat',
         'cssmin',
-        'uglify',
+        'htmlmin',
         'copy',
-        'usemin'
+        'requirejs'
     ]);
 
     grunt.registerTask('default', [

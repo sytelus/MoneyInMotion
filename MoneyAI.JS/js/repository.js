@@ -1,4 +1,4 @@
-﻿define(["jquery"], function ($) {
+﻿define('repository', ["jquery"], function ($) {
     "use strict";
     return {
         getTransactions: function (onGet, onFail) {

@@ -23,6 +23,7 @@
     <Content Include="js\ext\jquery-1.10.2.js" />
     <Content Include="js\ext\require.js" />
     <Content Include="js\repository.js" />
+    <Content Include="js\main.js" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
