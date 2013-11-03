@@ -49,6 +49,49 @@ module.exports = function (grunt) {
                 }
             }
         },
+        copy: {
+            dist: {
+                files: [{
+                    expand: true, dot: true,
+                    cwd: '<%= paths.src %>',
+                    dest: '<%= paths.dist %>',
+                    src: ['*.{ico,txt}', '.htaccess', '*.htm*'] //html file will be modified by requirejs next
+                }] 
+            }
+        },
+        requirejs: {
+            dist: {
+                options: {
+                    almond: true,
+                    wrap: true,  //https://github.com/asciidisco/grunt-requirejs/blob/master/docs/almondIntegration.md#require-function-not-found-after-almond-integration
+
+                    name: 'main',
+                    baseUrl: 'js',
+                    mainConfigFile: 'js/main.js',
+                    out: '<%= paths.dist %>/js/mainall.js',
+
+
+                    optimize: 'none',
+                    /*
+                    optimize: "uglify",
+                    uglify: {
+                        toplevel: false    //https://github.com/jrburke/requirejs/wiki/Upgrading-to-RequireJS-2.0#wiki-shim
+                    },
+                    generateSourceMaps: true, // TODO: Figure out how to make sourcemaps work with grunt-usemin https://github.com/paths/grunt-usemin/issues/30
+                    preserveLicenseComments: false, // required to support SourceMaps. http://requirejs.org/docs/errors.html#sourcemapcomments
+                    */
+                    
+                    replaceRequireScript: [{
+                        files: ['<%= paths.dist %>/index.html'],
+                        module: 'main',
+                        modulePath: '/' + '<%= paths.dist %>/js/mainall'
+                    }],
+
+                    normalizeDirDefines: "all", //http://requirejs.org/docs/optimization.html#turbo
+                    useStrict: true
+                }
+            }
+        },
         htmlmin: {
             dist: {
                 options: {
@@ -64,45 +107,10 @@ module.exports = function (grunt) {
                 },
                 files: [{
                     expand: true,
-                    cwd: '<%= paths.src %>',
+                    cwd: '<%= paths.dist %>',
                     src: '*.htm*',
-                    dest: '<%= paths.dist %>'   //html file will be modified by requirejs next
+                    dest: '<%= paths.dist %>'   
                 }]
-            }
-        },
-        copy: {
-            dist: {
-                files: [{
-                    expand: true, dot: true,
-                    cwd: '<%= paths.src %>',
-                    dest: '<%= paths.dist %>',
-                    src: ['*.{ico,txt}', '.htaccess']
-                }] 
-            }
-        },
-        requirejs: {
-            dist: {
-                options: {
-                    almod: true,
-                    wrap: true,  //https://github.com/asciidisco/grunt-requirejs/blob/master/docs/almondIntegration.md#require-function-not-found-after-almond-integration
-
-                    name: 'main',
-                    baseUrl: 'js',
-                    mainConfigFile: 'js/main.js',
-                    out: '<%= paths.dist %>/js/mainall.js',
-                    optimize: 'none',
-                    
-                    replaceRequireScript: [{
-                        files: ['<%= paths.dist %>/index.html'],
-                        module: 'main',
-                        modulePath: '/' + '<%= paths.dist %>/js/mainall'
-                    }],
-
-                    //generateSourceMaps: true, // TODO: Figure out how to make sourcemaps work with grunt-usemin https://github.com/paths/grunt-usemin/issues/30
-                    preserveLicenseComments: false, // required to support SourceMaps. http://requirejs.org/docs/errors.html#sourcemapcomments
-                    normalizeDirDefines: "all", //http://requirejs.org/docs/optimization.html#turbo
-                    useStrict: true
-                }
             }
         }
     });
@@ -111,9 +119,9 @@ module.exports = function (grunt) {
         'clean:dist',
         'imagemin',
         'cssmin',
-        'htmlmin',
         'copy',
-        'requirejs'
+        'requirejs',
+        'htmlmin'
     ]);
 
     grunt.registerTask('default', [

@@ -1,14 +1,20 @@
 ﻿require.config({
-    //To get timely, correct error triggers in IE, force a define/shim exports check.
-    //enforceDefine: true,
+    //enforceDefine: true,  //To get timely, correct error triggers in IE, force a define/shim exports check.
     baseUrl: "js",
     paths: {
-        jquery: "ext/jquery/jquery",  //fallback  "//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"
-        jqueryui: "ext/jquery-ui/ui/jquery-ui", //fallback "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"],
+        /*
+        jquery: ["//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js", "ext/jquery/jquery"],  
+        jqueryui: ["//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js", "ext/jquery-ui/ui/jquery-ui"] ,
+        */
+        jquery: "ext/jquery/jquery",
+        jqueryui: "ext/jquery-ui/ui/jquery-ui",
         domReady: "ext/requirejs-domready/domReady"
     },
     shim: {
-        jqueryui: ["jquery"]
+        "jQueryUI": {
+            export: "$",
+            deps: ['jQuery']
+        }
     }
 });
 
