@@ -103,6 +103,7 @@ namespace MoneyAI
             this.cachedDisplayCategory = null;
             this.cachedCategoryPath = null;
             this.cachedEntityNameNormalized = null;
+            this.cachedCorrectedTransactionDate = null;
         }
 
         private Transaction()

@@ -24,6 +24,10 @@
     <Content Include="js\ext\require.js" />
     <Content Include="js\repository.js" />
     <Content Include="js\main.js" />
+    <Content Include="js\txExplorerView.js" />
+    <Content Include="js\Transaction.js" />
+    <Content Include="js\txListView.js" />
+    <Content Include="js\txNavigationView.js" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>

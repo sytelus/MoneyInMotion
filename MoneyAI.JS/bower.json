@@ -11,6 +11,7 @@
 		"jstree": "latest",
 		"jquery.hotkeys": "git://github.com/jeresig/jquery.hotkeys",
 		"jquery.cookie": "latest",
-		"modernizr": "latest"
+		"modernizr": "latest",
+		"momentjs": "latest"
 	}
 }

@@ -6,14 +6,31 @@
         jquery: ["//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js", "ext/jquery/jquery"],  
         jqueryui: ["//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js", "ext/jquery-ui/ui/jquery-ui"] ,
         */
-        jquery: "ext/jquery/jquery",
-        jqueryui: "ext/jquery-ui/ui/jquery-ui",
-        domReady: "ext/requirejs-domready/domReady"
+        "lodash": "ext/lodash/dist/lodash",
+        "jquery": "ext/jquery/jquery",
+        "domReady": "ext/requirejs-domready/domReady",
+        "jqueryui": "ext/jquery-ui/ui/jquery-ui",
+        "jstree": "ext/jstree/dist/jstree.js",
+        "jquery.hotkeys": "ext/jquery.hotkeys/jquery.hotkeys",
+        "jquery.cookie": "ext/jquery.cookie/jquery.cookie",
+        "moment": "ext/moment/moment.js"
     },
     shim: {
-        "jQueryUI": {
-            export: "$",
-            deps: ['jQuery']
+        "jqueryui": {
+            deps: ["jquery"],
+            export: "jQuery"
+        },
+        "jstree": {
+            deps: ["jquery", "jqueryui", "jquery.hotkeys", "jquery.cookie"],
+            exports: "jQuery.fn.jstree"
+        },
+        "jquery.hotkeys": {
+            deps: ["jquery"],
+            exports: "jQuery"
+        },
+        "jquery.cookie": {
+            deps: ["jquery"],
+            exports: "jQuery"
         }
     }
 });

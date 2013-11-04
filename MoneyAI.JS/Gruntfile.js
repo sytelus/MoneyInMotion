@@ -12,7 +12,7 @@ module.exports = function (grunt) {
 
     // configurable paths
     var pathsConfig = {
-        src: '',
+        src: '.',
         dist: 'dist'  //distribution folder
     };
 
@@ -29,7 +29,7 @@ module.exports = function (grunt) {
             all: [
                 'Gruntfile.js',
                 '<%= paths.src %>/js/**/*.js',
-                '!<%= paths.src %>/js/ext/*'
+                '!<%= paths.src %>/js/ext/**/*.js'
             ]
         },
         imagemin: {
@@ -124,8 +124,12 @@ module.exports = function (grunt) {
         'htmlmin'
     ]);
 
+    grunt.registerTask('test', [
+        'jshint'
+    ]);
+
     grunt.registerTask('default', [
-        'jshint',
+        'test',
         'build'
     ]);
 };

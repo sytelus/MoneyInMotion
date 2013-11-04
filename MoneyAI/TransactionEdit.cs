@@ -24,7 +24,7 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false, Name = "values")]
         public EditedValues Values { get; private set; }
 
-        [DataMember(IsRequired = true, Name = "isRequired")]
+        [DataMember(IsRequired = true, Name = "sourceId")]
         public string SourceId { get; private set; }
 
         [DataMember(IsRequired = true, Name = "id")]

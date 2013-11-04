@@ -10335,20 +10335,31 @@ if ( typeof module === "object" && module && typeof module.exports === "object" 
 define('repository', ["jquery"], function ($) {
     "use strict";
     return {
-        getTransactions: function (onGet, onFail) {
-            $.getJSON("data/LatestMerged.json", function (data, textStatus) {
-                console.log(textStatus);
-                onGet(data);
-            })
-            .fail(function (jqxhr, textStatus, error) {
-                if (!!onFail) {
-                    onFail(error);
-                }
-                console.log(textStatus);
-            })
-            .always(function () {
-                console.log("getTransactions complete");
-            });
+        getTransactions: function (onGet, onFail, forceRefresh) {
+            var that = this;
+            if (forceRefresh || !this.transactions) {
+                $.getJSON("data/LatestMerged.json", function (data, textStatus) {
+                    console.log(textStatus);
+                    that.transactions = data;
+                    onGet(data);
+                })
+                .fail(function (jqxhr, textStatus, error) {
+                    console.log(textStatus);
+                    if (!!onFail) {
+                        onFail(error);
+                    }
+                    else throw error;
+                })
+                .always(function () {
+                    console.log("getTransactions complete");
+                });
+            }
+            else {
+                onGet(this.transactions);
+            }
+        },
+        invalidateTransactions: function () {
+            delete this.transactions;
         }
     };
 });
@@ -10371,14 +10382,29 @@ require.config({
         jquery: ["//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js", "ext/jquery/jquery"],  
         jqueryui: ["//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js", "ext/jquery-ui/ui/jquery-ui"] ,
         */
-        jquery: "ext/jquery/jquery",
-        jqueryui: "ext/jquery-ui/ui/jquery-ui",
-        domReady: "ext/requirejs-domready/domReady"
+        "jquery": "ext/jquery/jquery",
+        "domReady": "ext/requirejs-domready/domReady",
+        "jqueryui": "ext/jquery-ui/ui/jquery-ui",
+        "jstree": "ext/jstree/dist/jstree.js",
+        "jquery.hotkeys": "ext/jquery.hotkeys/jquery.hotkeys",
+        "jquery.cookie": "ext/jquery.cookie/jquery.cookie"
     },
     shim: {
-        "jQueryUI": {
-            export: "$",
-            deps: ['jQuery']
+        "jqueryui": {
+            deps: ["jquery"],
+            export: "jQuery"
+        },
+        "jstree": {
+            deps: ["jquery", "jqueryui", "jquery.hotkeys", "jquery.cookie"],
+            exports: "jQuery.fn.jstree"
+        },
+        "jquery.hotkeys": {
+            deps: ["jquery"],
+            exports: "jQuery"
+        },
+        "jquery.cookie": {
+            deps: ["jquery"],
+            exports: "jQuery"
         }
     }
 });

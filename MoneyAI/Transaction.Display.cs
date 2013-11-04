@@ -142,6 +142,19 @@ namespace MoneyAI
             return this.MergedEdit.IfNotNull(u => u.CategoryPath.IfNotNull(e => e.GetValueOrDefault()));
         }
 
+        private DateTime? cachedCorrectedTransactionDate;
+        public DateTime CorrectedTransactionDate
+        {
+            get
+            {
+                if (cachedCorrectedTransactionDate == null)
+                    cachedCorrectedTransactionDate = this.MergedEdit.IfNotNull(u => u.TransactionDate.IfNotNull(e => e.Value, this.transactionDate.Value)
+                        , this.transactionDate.Value);
+
+                return cachedCorrectedTransactionDate.Value;
+            }
+        }
+
         private string[] cachedDisplayCategoryPathOrName;
         public string[] DisplayCategoryPathOrName
         {
