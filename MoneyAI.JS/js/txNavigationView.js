@@ -1,11 +1,13 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "moment", "buckets", "jstree", "utils"], function (_, Transaction, moment, buckets, jstree, utils) {
+﻿define("txNavigationView", ["lodash", "Transaction", "moment", "buckets", "text!templates/txNavigatorPane.html!strip", "utils", "handlebars", "jqueryui"],
+    function (_, Transaction, moment, buckets, paneTemplateText, utils, Handlebars, $) {
+
     "use strict";
     return {
         initialize: function () {
         },
 
         load: function (txs, txEdits) {
-            var years = new buckets.Dictionary();
+            var yearMonths = new buckets.Dictionary();
 
             for(var i = 0; i < txs.items.length; i++) {
                 var correctedTransactionDate = Transaction.prototype.correctedTransactionDate.call(txs.items[i]);
@@ -15,25 +17,29 @@
                 var months = years.get(year);
                 if (!months) {
                     months = new buckets.Set();
-                    years.set(year, months);
+                    yearMonths.set(year, months);
                 }
 
                 months.add(month);
             }
 
-            var navData = [];
-            years.forEach(function (year, months) {
-                navData.push({ title: year, children: _.map(months.toArray().sort(utils.compareFunction(true)), function (m) { return { title: m } }) });
-            });
+            var years = yearMonths.keys().sort(utils.compareFunction(true));
 
-            navData.sort(utils.compareFunction(true, function(d) { return d.title; }));
+            $("#txNavigation").empty();
+            var paneTemplate = Handlebars.compile(paneTemplateText);
 
-            $("#txNavigation").jstree({
-                "json": {
-                    "data": navData
-                },
-                "plugins": ["json"]
-            });
+            for (var yearIndex = 0; yearIndex < years.length; yearIndex++) {
+                var paneData = {
+                    year: years[yearIndex],
+                    months: yearMonths.get(years[yearIndex]).toArray().sort(utils.compareFunction(true))
+                };
+
+                var paneHtml = paneTemplate(panData);
+
+                $("#txNavigation").append(paneHtml);
+            }
+
+
         }
     };
 });

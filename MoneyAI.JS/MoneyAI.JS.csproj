@@ -29,6 +29,7 @@
     <Content Include="js\Transaction.js" />
     <Content Include="js\txListView.js" />
     <Content Include="js\txNavigationView.js" />
+    <Content Include="templates\txNavigatorPane.html" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
