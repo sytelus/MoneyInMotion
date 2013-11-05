@@ -26,8 +26,8 @@
     };
 
     $this.prototype.correctedTransactionDate = function () {
-        return this._memoize("correctedTransactionDate", function () { 
-            var transactionDateString = this.getMergedEditValue("transactionDate") || this.transactionDate;
+        return $this.prototype._memoize.call(this, "correctedTransactionDate", function () { 
+            var transactionDateString = $this.prototype.getMergedEditValue.call(this, "transactionDate") || this.transactionDate;
             return moment(transactionDateString);
         });
     };

@@ -1,0 +1,13 @@
+{
+  "name": "buckets",
+  "homepage": "https://github.com/mauriciosantos/buckets",
+  "_release": "af66c6bd91",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "af66c6bd91ccf262a715b0318d6a74ca7d3e6c21"
+  },
+  "_source": "git://github.com/mauriciosantos/buckets.git",
+  "_target": "*",
+  "_originalSource": "git://github.com/mauriciosantos/buckets"
+}

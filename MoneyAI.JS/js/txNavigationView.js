@@ -1,20 +1,39 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "moment"], function (_, Transaction, moment) {
+﻿define("txNavigationView", ["lodash", "Transaction", "moment", "buckets", "jstree", "utils"], function (_, Transaction, moment, buckets, jstree, utils) {
     "use strict";
     return {
         initialize: function () {
         },
 
         load: function (txs, txEdits) {
-            var yearMonths = _.map(txs.items, function (tx) {
-                var correctedTransactionDate = Transaction.prototype.correctedTransactionDate.call(tx);
-                return { year: correctedTransactionDate.format("YYYY"), month: correctedTransactionDate.format("MM") }
+            var years = new buckets.Dictionary();
+
+            for(var i = 0; i < txs.items.length; i++) {
+                var correctedTransactionDate = Transaction.prototype.correctedTransactionDate.call(txs.items[i]);
+                var year = correctedTransactionDate.format("YYYY");
+                var month = correctedTransactionDate.format("MM");
+                
+                var months = years.get(year);
+                if (!months) {
+                    months = new buckets.Set();
+                    years.set(year, months);
+                }
+
+                months.add(month);
+            }
+
+            var navData = [];
+            years.forEach(function (year, months) {
+                navData.push({ title: year, children: _.map(months.toArray().sort(utils.compareFunction(true)), function (m) { return { title: m } }) });
             });
 
+            navData.sort(utils.compareFunction(true, function(d) { return d.title; }));
 
-            .groupBy(yearMonths, "year").sortBy();
-
-            var uniqueYearAllMonths = ;
-            var navData = 
+            $("#txNavigation").jstree({
+                "json": {
+                    "data": navData
+                },
+                "plugins": ["json"]
+            });
         }
     };
 });

@@ -12,6 +12,7 @@
 		"jquery.hotkeys": "git://github.com/jeresig/jquery.hotkeys",
 		"jquery.cookie": "latest",
 		"modernizr": "latest",
-		"momentjs": "latest"
+		"momentjs": "latest",
+		"buckets": "git://github.com/mauriciosantos/buckets"
 	}
 }

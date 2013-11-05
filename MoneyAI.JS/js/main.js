@@ -10,10 +10,11 @@
         "jquery": "ext/jquery/jquery",
         "domReady": "ext/requirejs-domready/domReady",
         "jqueryui": "ext/jquery-ui/ui/jquery-ui",
-        "jstree": "ext/jstree/dist/jstree.js",
+        "jstree": "ext/jstree/dist/jstree",
         "jquery.hotkeys": "ext/jquery.hotkeys/jquery.hotkeys",
         "jquery.cookie": "ext/jquery.cookie/jquery.cookie",
-        "moment": "ext/moment/moment.js"
+        "moment": "ext/momentjs/moment",
+        "buckets": "ext/buckets/buckets"
     },
     shim: {
         "jqueryui": {
@@ -31,6 +32,10 @@
         "jquery.cookie": {
             deps: ["jquery"],
             exports: "jQuery"
+        },
+        "buckets": {
+            deps: [],
+            exports: "buckets"
         }
     }
 });
