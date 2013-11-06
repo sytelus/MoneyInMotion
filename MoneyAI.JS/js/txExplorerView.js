@@ -11,7 +11,7 @@
         refresh: function (year, month) {
             utils.logger.log("Refresh Request for:", "year: ", year, " month: ", month);
 
-            repository.getTransactions(function (txs) {
+            repository.getTransactions("txExplorerView.refresh", function (txs) {
                 utils.logger.log("txs Data: ", "Items: ", txs.items.length, "First createdate: ", txs.items[0].auditInfo.createDate);
                 txNavigationView.refresh(txs);
             });
