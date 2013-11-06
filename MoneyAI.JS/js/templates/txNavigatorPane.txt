@@ -1,8 +1,8 @@
 ﻿	{{#.}}
     <h3>{{year}}</h3>
-    <div>
+    <div  class="navMonth">
 		{{#months}}
-		<p>{{.}}</p>
+		<p><a href="{{urlHash}}" class="jslink">{{monthName}}</a></p>
 		{{/months}}
     </div>
 	{{/.}}

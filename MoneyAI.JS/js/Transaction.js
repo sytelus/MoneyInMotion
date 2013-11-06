@@ -1,4 +1,4 @@
-﻿define("Transaction", ["moment"], function (moment) {
+﻿define("Transaction", [], function () {
     "use strict";
     var $this = function Transaction() {
     };
@@ -28,7 +28,7 @@
     $this.prototype.correctedTransactionDate = function () {
         return $this.prototype._memoize.call(this, "correctedTransactionDate", function () { 
             var transactionDateString = $this.prototype.getMergedEditValue.call(this, "transactionDate") || this.transactionDate;
-            return moment(transactionDateString);
+            return new Date(transactionDateString);
         });
     };
 

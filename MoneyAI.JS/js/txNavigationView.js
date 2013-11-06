@@ -1,5 +1,5 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "moment", "buckets", "text!templates/txNavigatorPane.txt", "utils", "handlebars", "jqueryui"],
-    function (_, Transaction, moment, buckets, paneTemplateText, utils, Handlebars, $) {
+﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "utils", "handlebars", "jqueryui"],
+    function (_, Transaction, paneTemplateText, utils, Handlebars, $) {
 
     "use strict";
     return {
@@ -7,16 +7,16 @@
         },
 
         load: function (txs, txEdits) {
-            var yearMonths = new buckets.Dictionary();
+            var yearMonths = new utils.Dictionary();
 
             for(var i = 0; i < txs.items.length; i++) {
                 var correctedTransactionDate = Transaction.prototype.correctedTransactionDate.call(txs.items[i]);
-                var year = correctedTransactionDate.format("YYYY");
-                var month = correctedTransactionDate.format("MM");
+                var year = utils.getYearString(correctedTransactionDate);
+                var month = utils.getMonthString(correctedTransactionDate);
                 
                 var months = yearMonths.get(year);
                 if (!months) {
-                    months = new buckets.Set();
+                    months = new utils.Set();
                     yearMonths.set(year, months);
                 }
 
@@ -26,8 +26,11 @@
             var navData = yearMonths.toArray(function (year, monthsSet) {
                 return {
                     year: year, months:
-                        _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function(monthString) {
-                            return moment({ month: parseInt(monthString, 10) }).format("MMMM");
+                        _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function (monthString) {
+                            var monthInt = parseInt(monthString, 10);
+                            var monthName = utils.getMonthName(monthInt);
+                            var urlHash = "#" + $.param({ action:"showmonth", year: year, month: monthString });
+                            return { monthName: monthName, urlHash: urlHash };
                         })
                 };
             });

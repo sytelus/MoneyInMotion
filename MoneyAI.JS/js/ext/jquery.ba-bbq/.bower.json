@@ -1,0 +1,13 @@
+{
+  "name": "jquery.ba-bbq",
+  "homepage": "https://github.com/DerDu/jquery-bbq",
+  "_release": "389d5e991c",
+  "_resolution": {
+    "type": "branch",
+    "branch": "patch-1",
+    "commit": "389d5e991ca1496e80ddf9b296cb2b4f82aed511"
+  },
+  "_source": "git://github.com/DerDu/jquery-bbq.git",
+  "_target": "patch-1",
+  "_originalSource": "git://github.com/DerDu/jquery-bbq"
+}

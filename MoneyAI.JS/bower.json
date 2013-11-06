@@ -8,13 +8,13 @@
 		"javascript-debug": "latest",
 		"lodash": "~2.2.1",
 		"jquery-ui": "~1.10.3",
-		"jstree": "latest",
 		"jquery.hotkeys": "git://github.com/jeresig/jquery.hotkeys",
 		"jquery.cookie": "latest",
 		"modernizr": "latest",
 		"momentjs": "latest",
 		"buckets": "git://github.com/sytelus/buckets",
 		"requirejs-text": "latest",
-		"handlebars": "latest"
+		"handlebars": "latest",
+		"jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1"
 	}
 }

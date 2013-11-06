@@ -16,9 +16,14 @@
         "moment": "ext/momentjs/moment",
         "buckets": "ext/buckets/buckets",
         "text": "ext/requirejs-text/text",
-        "handlebars": "ext/handlebars/handlebars"
+        "handlebars": "ext/handlebars/handlebars",
+        "jquery.ba-bbq": "ext/jquery.ba-bbq/jquery.ba-bbq",
+        "debug": "ext/javascript-debug/ba-debug"
     },
     shim: {
+        "debug": {
+            exports: "debug"
+        },
         "jqueryui": {
             deps: ["jquery"],
             exports: "jQuery"
@@ -34,6 +39,10 @@
             exports: "jQuery"
         },
         "jquery.cookie": {
+            deps: ["jquery"],
+            exports: "jQuery"
+        },
+        "jquery.ba-bbq": {
             deps: ["jquery"],
             exports: "jQuery"
         },

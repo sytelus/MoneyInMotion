@@ -7,6 +7,12 @@
         },
         load: function (txs, txEdits) {
             txNavigationView.load(txs, txEdits);
+        },
+        showMonth: function (year, month) {
+            console.log("year: " + year + " month: " + month);
+            if (year && month) {
+                //TODO
+            }
         }
     };
 });
