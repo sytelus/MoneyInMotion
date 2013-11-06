@@ -1,4 +1,4 @@
-﻿define("txExplorerView", ["txListView", "txNavigationView"], function (txListView, txNavigationView) {
+﻿define("txExplorerView", ["txListView", "txNavigationView", "utils"], function (txListView, txNavigationView, utils) {
     "use strict";
     return {
         initialize: function () {
@@ -9,7 +9,7 @@
             txNavigationView.load(txs, txEdits);
         },
         showMonth: function (year, month) {
-            console.log("year: " + year + " month: " + month);
+            utils.logger.log("year: ", year, " month: ", month);
             if (year && month) {
                 //TODO
             }

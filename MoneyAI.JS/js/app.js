@@ -3,9 +3,9 @@
     domReady(function () {
         txExplorerView.initialize();
 
-        utils.logger.log("Loaded on: " + new Date());
+        utils.logger.log("Loaded on: ", new Date());
         repository.getTransactions(function (data) {
-            utils.logger.log("Recieved: ", data.Name, "Items", data.items.length, "First createdate", data.items[0].auditInfo.createDate);
+            utils.logger.log("Recieved: ", data.Name, "Items: ", data.items.length, "First createdate: ", data.items[0].auditInfo.createDate);
             txExplorerView.load(data);
         });
 
@@ -20,7 +20,7 @@
         //Global event handler for hash change for jslink anchors
         $(window).bind('hashchange', function (e) {
             var action = e.getState("action");
-            $("#log").append("<br/>hashchange occured with action " + action);
+            utils.logger.log("hashchange occured with action: ", action);
             if (action == "showmonth") {
                 var year = parseInt(e.getState("year"), 10);
                 var month = parseInt(e.getState("month"), 10);
