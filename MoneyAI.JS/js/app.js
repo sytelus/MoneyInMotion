@@ -1,22 +1,20 @@
-﻿define('app', ["domReady", "jquery", "txExplorerView", "jquery.ba-bbq", "utils"], function (domReady, $, txExplorerView, bbq, utils) {
+﻿define("app", ["domReady", "jquery", "txExplorerView", "jquery.ba-bbq", "utils"], function (domReady, $, txExplorerView, bbq, utils) {
     "use strict";
     domReady(function () {
-        txExplorerView.initialize();
-
         utils.logger.log("Loaded on: ", new Date());
 
         //Enable hashchange event for jslink anchors using delegated events
-        $(document).on("click", ".jslink  a[href^=#]", function () {   //NOTE: jquery live events don't bubble up in iOS except for a and button elements
-            var url = $(this).attr('href');
+        $(document).on("click", ".jslink  a[href^=#]", function () {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
+            var url = $(this).attr("href");
             $.bbq.pushState(url);
             return false;   //prevent default click
         });
 
         //Global event handler for hash change for jslink anchors
-        $(window).bind('hashchange', function (e) {
+        $(window).bind("hashchange", function (e) {
             var action = e.getState("action");
             utils.logger.log("hashchange occured with action: ", action);
-            if (action == "showmonth") {
+            if ($("#txExplorer").length) {
                 var year = e.getState("year");
                 var month = e.getState("month");
 
@@ -26,6 +24,6 @@
         });
 
         //Force hashchange for the first page load
-        $(window).trigger('hashchange');
+        $(window).trigger("hashchange");
     });
 });

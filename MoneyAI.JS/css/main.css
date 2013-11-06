@@ -12,8 +12,12 @@
 
 .navMonth a:link {
     text-decoration:  none;
+    width:100%;
 }
 
+.navMonth p {
+    width:100%;
+}
 #txNavigationContainer {
     float: left;
 }

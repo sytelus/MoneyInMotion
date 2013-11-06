@@ -56,7 +56,7 @@ module.exports = function (grunt) {
                     cwd: '<%= paths.src %>',
                     dest: '<%= paths.dist %>',
                     src: ['*.{ico,txt}', '.htaccess', '*.htm*'] //html file will be modified by requirejs next
-                }] 
+                }]
             }
         },
         requirejs: {
@@ -87,7 +87,7 @@ module.exports = function (grunt) {
                         modulePath: '/' + '<%= paths.dist %>/js/mainall'
                     }],
 
-                    normalizeDirDefines: "all", //http://requirejs.org/docs/optimization.html#turbo
+                    normalizeDirDefines: 'all', //http://requirejs.org/docs/optimization.html#turbo
                     useStrict: true
                 }
             }
@@ -109,7 +109,7 @@ module.exports = function (grunt) {
                     expand: true,
                     cwd: '<%= paths.dist %>',
                     src: '*.htm*',
-                    dest: '<%= paths.dist %>'   
+                    dest: '<%= paths.dist %>'
                 }]
             }
         }

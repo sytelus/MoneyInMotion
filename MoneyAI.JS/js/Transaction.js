@@ -33,7 +33,7 @@
             },
 
             getCorrectedTransactionDate: function () {
-                return memoize.call(this, "correctedTransactionDate", function () { 
+                return memoize.call(this, "correctedTransactionDate", function () {
                     var transactionDateString = $this.prototype.getMergedEditValue.call(this, "transactionDate") || this.transactionDate;
                     return new Date(transactionDateString);
                 });

@@ -1,4 +1,4 @@
-﻿define('repository', ["jquery", "utils"], function ($, utils) {
+﻿define("repository", ["jquery", "utils"], function ($, utils) {
     "use strict";
 
     //privates
@@ -10,15 +10,15 @@
         getTransactions: function (callerId, onGet, onFail, forceRefresh) {
             if (forceRefresh || !cahedValues.transactions) {
 
-                //If there is a pending request, don't start new one
-                if (!currentAjaxRequest || currentAjaxRequest.state() != "pending") {
+                //If there is a pending request, don"t start new one
+                if (!currentAjaxRequest || currentAjaxRequest.state() !== "pending") {
                     currentAjaxRequest = $.getJSON("data/LatestMerged.json");
                     callers = {};   //list of callers waiting for request
                     utils.logger.log("Started Ajax request", "callerId", callerId);
                 }
 
                 //if this caller is not in the list, add it and queue up its callbacks to existing request
-                if (!callers[callerId]) {   
+                if (!callers[callerId]) {
                     callers.callerId = callerId;
 
                     currentAjaxRequest.done(function (data, textStatus) {
@@ -32,7 +32,9 @@
                         if (!!onFail) {
                             onFail(error);
                         }
-                        else throw error;
+                        else {
+                            throw error;
+                        }
                     });
 
                     currentAjaxRequest.always(function () {
