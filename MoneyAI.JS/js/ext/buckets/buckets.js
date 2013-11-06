@@ -789,6 +789,26 @@ var buckets = {};
         return array;
     };
     /**
+     * Returns an array containing all of the key, value pairs in this dictionary.
+     * @param {function(Object,Object):Object} Function to execute for each pair, it is
+     * invoked with two arguments: key and value. The return value of the function is 
+	 * put in the array. If function is not specified then object {key,value} is placed in array.
+     * @return {Array} An array containing all of the key, value pairs in this dictionary.
+     */
+    buckets.Dictionary.prototype.toArray = function(pairMapFunction) {
+        var array = [];
+        for (var name in this.table) {
+            if (this.table.hasOwnProperty(name)) {
+				var dictPair = this.table[name];
+				var mappedPair = !!pairMapFunction ? 
+					pairMapFunction(dictPair.key, dictPair.value) : 
+					{key: dictPair.key, value: dictPair.value };
+                array.push(mappedPair);
+            }
+        }
+        return array;
+    };
+    /**
      * Returns an array containing all of the values in this dictionary.
      * @return {Array} An array containing all of the values in this dictionary.
      */

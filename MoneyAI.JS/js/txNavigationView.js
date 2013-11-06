@@ -1,4 +1,4 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "moment", "buckets", "text!templates/txNavigatorPane.html!strip", "utils", "handlebars", "jqueryui"],
+﻿define("txNavigationView", ["lodash", "Transaction", "moment", "buckets", "text!templates/txNavigatorPane.txt", "utils", "handlebars", "jqueryui"],
     function (_, Transaction, moment, buckets, paneTemplateText, utils, Handlebars, $) {
 
     "use strict";
@@ -14,7 +14,7 @@
                 var year = correctedTransactionDate.format("YYYY");
                 var month = correctedTransactionDate.format("MM");
                 
-                var months = years.get(year);
+                var months = yearMonths.get(year);
                 if (!months) {
                     months = new buckets.Set();
                     yearMonths.set(year, months);
@@ -23,22 +23,23 @@
                 months.add(month);
             }
 
-            var years = yearMonths.keys().sort(utils.compareFunction(true));
+            var navData = yearMonths.toArray(function (year, monthsSet) {
+                return {
+                    year: year, months:
+                        _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function(monthString) {
+                            return moment({ month: parseInt(monthString, 10) }).format("MMMM");
+                        })
+                };
+            });
+
+            navData.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.year; }));
+
+            var paneTemplate = Handlebars.compile(paneTemplateText);
+            var paneHtml = paneTemplate(navData);
 
             $("#txNavigation").empty();
-            var paneTemplate = Handlebars.compile(paneTemplateText);
-
-            for (var yearIndex = 0; yearIndex < years.length; yearIndex++) {
-                var paneData = {
-                    year: years[yearIndex],
-                    months: yearMonths.get(years[yearIndex]).toArray().sort(utils.compareFunction(true))
-                };
-
-                var paneHtml = paneTemplate(panData);
-
-                $("#txNavigation").append(paneHtml);
-            }
-
+            $("#txNavigation").append(paneHtml);
+            $("#txNavigation").accordion();
 
         }
     };

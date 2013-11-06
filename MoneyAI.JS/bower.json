@@ -13,7 +13,7 @@
 		"jquery.cookie": "latest",
 		"modernizr": "latest",
 		"momentjs": "latest",
-		"buckets": "git://github.com/mauriciosantos/buckets",
+		"buckets": "git://github.com/sytelus/buckets",
 		"requirejs-text": "latest",
 		"handlebars": "latest"
 	}

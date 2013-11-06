@@ -1,13 +1,13 @@
 {
   "name": "buckets",
-  "homepage": "https://github.com/mauriciosantos/buckets",
-  "_release": "af66c6bd91",
+  "homepage": "https://github.com/sytelus/buckets",
+  "_release": "9f42945a63",
   "_resolution": {
     "type": "branch",
     "branch": "master",
-    "commit": "af66c6bd91ccf262a715b0318d6a74ca7d3e6c21"
+    "commit": "9f42945a63af5209c4c1de4fc14857ebe99d4ad2"
   },
-  "_source": "git://github.com/mauriciosantos/buckets.git",
+  "_source": "git://github.com/sytelus/buckets.git",
   "_target": "*",
-  "_originalSource": "git://github.com/mauriciosantos/buckets"
+  "_originalSource": "git://github.com/sytelus/buckets"
 }

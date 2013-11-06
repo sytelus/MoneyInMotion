@@ -182,4 +182,25 @@ function() {
 		expect(t).toEqual(1);
     });
 
+	it('toArray returns all pairs in array',
+    function() {
+        for (var i = 0; i < elems; i++) {
+            dict.set("" + i, i);
+        }
+		var pairArray = dict.toArray();
+		expect(pairArray.length).toEqual(dict.size());
+		
+		for(var i=0; i < pairArray.length; i++) {
+			expect(dict.get([pairArray[i].key])).toEqual(pairArray[i].value);
+		}
+		
+		var pairArray2 = dict.toArray(function(k,v) { return {key: k, value: v*2}; });
+		expect(pairArray2.length).toEqual(dict.size());
+		
+		for(var i=0; i < pairArray2.length; i++) {
+			expect(dict.get([pairArray2[i].key]) * 2).toEqual(pairArray2[i].value);
+		}
+
+    });
+	
 });

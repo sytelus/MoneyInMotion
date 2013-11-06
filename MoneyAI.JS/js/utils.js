@@ -3,7 +3,7 @@
     return {
         compareFunction: function(isReverse, mapFunction, thisArg) {
             var that = thisArg || this;
-            return function(a, b) {
+            return function (a, b) {
 
                 var x = a, y = b;
 
@@ -19,7 +19,7 @@
                     return 0;
                 }
                 return isReverse ? -1 : 1;
-            }
+            };
         }
     };
 });

@@ -1,0 +1,9 @@
+#log {
+    position: absolute;
+    bottom: 2%;
+    font-family: "Lucida Console", Monaco, monospace;
+    font-size:small;
+    background-color:black;
+    color: grey;
+    border: thin;
+}
