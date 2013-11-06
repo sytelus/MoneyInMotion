@@ -16,7 +16,9 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="css\bpmain.css" />
     <Content Include="css\main.css" />
+    <Content Include="css\normalize.css" />
     <Content Include="Gruntfile.js" />
     <Content Include="index.html" />
     <Content Include="js\app.js" />

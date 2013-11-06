@@ -1,14 +1,9 @@
-﻿define('app', ["domReady", "repository", "jquery", "txExplorerView", "jquery.ba-bbq", "utils"], function (domReady, repository, $, txExplorerView, bbq, utils) {
+﻿define('app', ["domReady", "jquery", "txExplorerView", "jquery.ba-bbq", "utils"], function (domReady, $, txExplorerView, bbq, utils) {
     "use strict";
     domReady(function () {
         txExplorerView.initialize();
 
         utils.logger.log("Loaded on: ", new Date());
-        repository.getTransactions(function (data) {
-            utils.logger.log("Recieved: ", data.Name, "Items: ", data.items.length, "First createdate: ", data.items[0].auditInfo.createDate);
-            txExplorerView.load(data);
-        });
-
 
         //Enable hashchange event for jslink anchors using delegated events
         $(document).on("click", ".jslink  a[href^=#]", function () {   //NOTE: jquery live events don't bubble up in iOS except for a and button elements
@@ -22,10 +17,10 @@
             var action = e.getState("action");
             utils.logger.log("hashchange occured with action: ", action);
             if (action == "showmonth") {
-                var year = parseInt(e.getState("year"), 10);
-                var month = parseInt(e.getState("month"), 10);
+                var year = e.getState("year");
+                var month = e.getState("month");
 
-                txExplorerView.showMonth(year, month);
+                txExplorerView.refresh(year, month);
             }
             //else ignore unknown state
         });

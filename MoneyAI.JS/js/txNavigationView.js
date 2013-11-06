@@ -6,13 +6,12 @@
         initialize: function () {
         },
 
-        load: function (txs, txEdits) {
+        refresh: function (txs, txEdits) {
             var yearMonths = new utils.Dictionary();
 
             for(var i = 0; i < txs.items.length; i++) {
-                var correctedTransactionDate = Transaction.prototype.correctedTransactionDate.call(txs.items[i]);
-                var year = utils.getYearString(correctedTransactionDate);
-                var month = utils.getMonthString(correctedTransactionDate);
+                var year = Transaction.prototype.getTransactionYearString.call(txs.items[i]);
+                var month = Transaction.prototype.getTransactionMonthString.call(txs.items[i]);
                 
                 var months = yearMonths.get(year);
                 if (!months) {
@@ -40,10 +39,15 @@
             var paneTemplate = Handlebars.compile(paneTemplateText);
             var paneHtml = paneTemplate(navData);
 
+            var accordionExists = $('#txNavigation').hasClass('ui-accordion');
             $("#txNavigation").empty();
             $("#txNavigation").append(paneHtml);
-            $("#txNavigation").accordion();
-
+            if (accordionExists) {
+                $("#txNavigation").accordion("refresh");
+            }
+            else {
+                $("#txNavigation").accordion(); //.accordion("option", "animate", false);
+            }
         }
     };
 });

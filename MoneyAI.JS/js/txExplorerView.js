@@ -1,18 +1,20 @@
-﻿define("txExplorerView", ["txListView", "txNavigationView", "utils"], function (txListView, txNavigationView, utils) {
+﻿define("txExplorerView", ["txListView", "txNavigationView", "utils", "repository"], function (txListView, txNavigationView, utils, repository) {
     "use strict";
+      
+    //public interface
     return {
         initialize: function () {
             txListView.initialize();
             txNavigationView.initialize();
         },
-        load: function (txs, txEdits) {
-            txNavigationView.load(txs, txEdits);
-        },
-        showMonth: function (year, month) {
-            utils.logger.log("year: ", year, " month: ", month);
-            if (year && month) {
-                //TODO
-            }
+
+        refresh: function (year, month) {
+            utils.logger.log("Refresh Request for:", "year: ", year, " month: ", month);
+
+            repository.getTransactions(function (txs) {
+                utils.logger.log("txs Data: ", "Items: ", txs.items.length, "First createdate: ", txs.items[0].auditInfo.createDate);
+                txNavigationView.refresh(txs);
+            });
         }
     };
 });

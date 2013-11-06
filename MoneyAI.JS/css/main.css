@@ -13,3 +13,11 @@
 .navMonth a:link {
     text-decoration:  none;
 }
+
+#txNavigationContainer {
+    float: left;
+}
+
+#txListContainer {
+    float: left;
+}

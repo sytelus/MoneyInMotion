@@ -3,7 +3,7 @@
     return {
         initialize: function () {
         },
-        load: function (txs, txEdits) {
+        refresh: function (txs, txEdits) {
 
         }
     };

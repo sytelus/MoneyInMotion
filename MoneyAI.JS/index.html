@@ -16,7 +16,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="cleartype" content="on" />
 
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+    <link rel="stylesheet" href="css/normalize.css" />
+    <link rel="stylesheet" href="css/bpmain.css" />
+    <link rel="stylesheet" href="js/ext/jquery-ui/themes/start/jquery-ui.css" />
     <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
@@ -24,18 +26,17 @@
         <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
     <![endif]-->
     <div id="txExplorer">
-        <span id="txNavigation">
+        <div id="txNavigationContainer">
+            <div id="txNavigation">
 
-        </span>
-        <span id="txList">
+            </div>
+        </div>
+        <div id="txListContainer">
+            <div id="txList">
 
-        </span>
+            </div>
+        </div>
     </div>
-
-    <div id="log">
-        <!-- debug log -->
-    </div>
-
     <script data-main="js/main" src="js/ext/requirejs/require.js"></script>
 </body>
 </html>
