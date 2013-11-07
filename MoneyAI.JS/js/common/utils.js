@@ -1,9 +1,15 @@
-﻿define("utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars"], function (_, moment, buckets, $, debug, accounting, handlebars) {
-    "use strict";
+﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers"],
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers) {
 
+   "use strict";
 
+   accounting.settings.currency.format = {
+       pos: "%s %v",   // for positive values, eg. "$ 1.00" (required)
+       neg: "%s (%v)", // for negative values, eg. "$ (1.00)" [optional]
+       zero: "%s %v"  // for zero values, eg. "$  --" [optional]
+   };
 
-    return {
+    var utilsInstance = {
         compareFunction: function(isReverse, mapFunction, thisArg) {
             var that = thisArg || this;
             return function (a, b) {
@@ -52,7 +58,18 @@
 
         runTemplate: function (compiledTemplate, templateData) {
             return compiledTemplate(templateData);
-        }
+        },
+
+        registerTemplateHelper: function (helperName, helperFunction) {
+            handlebars.registerHelper(helperName, helperFunction);
+        },
+
+        forEach: _.forEach
 
     };
+
+    templateHelpers.registerAll(utilsInstance);
+
+    return utilsInstance;
+
 });

@@ -19,7 +19,8 @@
         "handlebars": "ext/handlebars/handlebars",
         "jquery.ba-bbq": "ext/jquery.ba-bbq/jquery.ba-bbq",
         "debug": "ext/javascript-debug/ba-debug",
-        "accounting": "ext/accounting/accounting"
+        "accounting": "ext/accounting/accounting",
+        "jquery.layout": "ext/jquery.layout/dist/jquery.layout-latest"
     },
     shim: {
         "debug": {
@@ -27,6 +28,10 @@
         },
         "jqueryui": {
             deps: ["jquery"],
+            exports: "jQuery"
+        },
+        "jquery.layout": {
+            deps: ["jqueryui"],
             exports: "jQuery"
         },
         /*

@@ -1,4 +1,4 @@
-﻿define("txExplorerView", ["txListView", "txNavigationView", "utils", "repository"], function (txListView, txNavigationView, utils, repository) {
+﻿define("txExplorerView", ["txListView", "txNavigationView", "common/utils", "repository"], function (txListView, txNavigationView, utils, repository) {
     "use strict";
       
     //public interface

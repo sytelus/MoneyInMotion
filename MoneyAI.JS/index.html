@@ -18,25 +18,38 @@
 
     <link rel="stylesheet" href="css/normalize.css" />
     <link rel="stylesheet" href="css/bpmain.css" />
-    <link rel="stylesheet" href="js/ext/jquery-ui/themes/start/jquery-ui.css" />
+    <link rel="stylesheet" href="js/ext/jquery.layout/dist/layout-default-latest.css" />
+    <link rel="stylesheet" href="js/ext/jquery-ui/themes/redmond/jquery-ui.css" />
+    <link rel="stylesheet" href="js/ext/jquery-ui/themes/redmond/jquery.ui.theme.css" />
     <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
     <!--[if lt IE 7]>
         <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
     <![endif]-->
-    <div id="txExplorer">
-        <div id="txNavigationContainer">
-            <div id="txNavigation">
 
+    <div id="ui-layout-north" class="ui-widget-content">Money AI</div>
+    <div id="txExplorer">
+        <div id="ui-layout-west" >
+            <div id="txNavigationContainer">
+                <div id="txNavigation">
+
+                </div>
             </div>
         </div>
-        <div id="txListContainer">
-            <div id="txList">
+        <div id="ui-layout-center" class="ui-widget-content ui-layout-center">
+            <div id="txListContainer" class="ui-layout-content ui-widget-content">
+                <h3 class="ui-state-active ui-corner-top">Transactions</h3>
+                <div id="txList">
 
+                </div>
             </div>
         </div>
     </div>
+    <!-- <div id="ui-layout-east">East</div>
+    <div id="ui-layout-south">South</div> -->
+
+
     <script data-main="js/main" src="js/ext/requirejs/require.js"></script>
 </body>
 </html>

@@ -15,13 +15,115 @@
     width:100%;
 }
 
+.negativeAmount {
+    color:red;
+}
+
 .navMonth p {
     width:100%;
 }
+
 #txNavigationContainer {
-    float: left;
+    height: 100%;
+    width: 100%;
 }
 
 #txListContainer {
-    float: left;
+    height: 90%;
+    width: 90%;
+    align-content:center;
+    vertical-align:top;
+    padding-left:10px;
+}
+
+#txList {
+    font-size:60%;
+    width:100%;
+}
+
+#txListControl {
+    width:100%;
+}
+
+/* remove padding and scrolling from elements that contain an Accordion OR a content-div */
+#ui-layout-center ,	/* has content-div */
+#ui-layout-west ,	/* has Accordion */
+.ui-layout-content { /* content-div has Accordion */
+	padding: 0;
+	overflow: scroll;
+}
+.ui-layout-center P.ui-layout-content {
+	line-height:	1.4em;
+	margin:			0; /* remove top/bottom margins from <P> used as content-div */
+}
+
+
+.roundedCornersTable {
+    *border-collapse: collapse; /* IE7 and lower */
+    border-spacing: 0;
+    border: solid #ccc 1px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    border-radius: 6px;
+    -webkit-box-shadow: 0 1px 1px #ccc; 
+    -moz-box-shadow: 0 1px 1px #ccc; 
+    box-shadow: 0 1px 1px #ccc;         
+}
+
+.roundedCornersTable tr:hover {
+    background: #fbf8e9;
+    -o-transition: all 0.1s ease-in-out;
+    -webkit-transition: all 0.1s ease-in-out;
+    -moz-transition: all 0.1s ease-in-out;
+    -ms-transition: all 0.1s ease-in-out;
+    transition: all 0.1s ease-in-out;     
+}    
+    
+.roundedCornersTable td, .roundedCornersTable th {
+    border-left: 1px solid #ccc;
+    border-top: 1px solid #ccc;
+    padding: 1px;
+    text-align: left;    
+}
+
+.roundedCornersTable th {
+    -webkit-box-shadow: 0 1px 0 rgba(255,255,255,.8) inset; 
+    -moz-box-shadow:0 1px 0 rgba(255,255,255,.8) inset;  
+    box-shadow: 0 1px 0 rgba(255,255,255,.8) inset;        
+    border-top: none;
+    text-shadow: 0 1px 0 rgba(255,255,255,.5); 
+}
+
+.roundedCornersTable td:first-child, .roundedCornersTable th:first-child {
+    border-left: none;
+}
+
+.roundedCornersTable th:first-child {
+    -moz-border-radius: 6px 0 0 0;
+    -webkit-border-radius: 6px 0 0 0;
+    border-radius: 6px 0 0 0;
+}
+
+.roundedCornersTable th:last-child {
+    -moz-border-radius: 0 6px 0 0;
+    -webkit-border-radius: 0 6px 0 0;
+    border-radius: 0 6px 0 0;
+}
+
+.roundedCornersTable th:only-child{
+    -moz-border-radius: 6px 6px 0 0;
+    -webkit-border-radius: 6px 6px 0 0;
+    border-radius: 6px 6px 0 0;
+}
+
+.roundedCornersTable tr:last-child td:first-child {
+    -moz-border-radius: 0 0 0 6px;
+    -webkit-border-radius: 0 0 0 6px;
+    border-radius: 0 0 0 6px;
+}
+
+.roundedCornersTable tr:last-child td:last-child {
+    -moz-border-radius: 0 0 6px 0;
+    -webkit-border-radius: 0 0 6px 0;
+    border-radius: 0 0 6px 0;
 }

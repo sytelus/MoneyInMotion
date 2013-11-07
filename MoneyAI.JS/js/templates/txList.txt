@@ -1,12 +1,53 @@
-﻿	<table>
-        {{#body}}
-            <!-- render each group -->
-            {{#rows}}
-                <tr>
-                    <td>
-                        {{correctedValues.entityName}}
-                    </td>
-                </tr>
-            {{/rows}}
-        {{/body}}
+﻿	<table id="txListControl" class="ui-widget roundedCornersTable">
+		<thead class="ui-widget-header">
+			<tr>
+				<th><img src="images/flagColumn.gif"/></th>
+				<th>Name</th>
+				<th>Date</th>
+				<th>Amount</th>
+				<th>Type</th>
+				<th>Account</th>
+				<th>Source</th>
+			</tr>
+		</thead>
+		<tbody class="ui-widget-content">
+			{{#body}}
+				<!-- render each group -->
+				{{#rows}}
+					<tr>
+						<td>
+							{{#unless correctedValues.isFlagged}}
+								{{#if correctedValues.note}}
+									<img src="images/note.png"/>
+								{{/if}}
+							{{else}}
+								{{#if correctedValues.isFlagged}}
+									<img src="images/flag.gif"/>
+								{{else}}
+									<img src="images/noflag.gif"/>
+								{{/if}}
+							{{/unless}}
+						</td>
+						<td>
+							{{txEntityNameDisplay .}}
+						</td>
+						<td>
+							{{txTransactionDateDisplay .}}
+						</td>
+						<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
+							{{formatCurrency correctedValues.amount}}
+						</td>
+						<td>
+							{{transactionReason}}
+						</td>
+						<td>
+							{{accountId}}
+						</td>
+						<td>
+							{{importId}}
+						</td>
+					</tr>
+				{{/rows}}
+			{{/body}}
+		</tbody>
     </table>

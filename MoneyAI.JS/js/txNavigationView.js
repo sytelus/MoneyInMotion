@@ -1,4 +1,4 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "utils", "jqueryui"],
+﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "common/utils", "jqueryui"],
     function (_, Transaction, templateText, utils, $) {
 
     "use strict";
@@ -62,7 +62,9 @@
             }
             else {
                 $("#txNavigation").accordion(
-                    selectYearIndex ? { active: selectYearIndex, collapsible: true } : { collapsible: true }); //.accordion("option", "animate", false);
+                    selectYearIndex ? {
+                        active: selectYearIndex, collapsible: true, heightStyle: "fill"
+                    } : { collapsible: true, heightStyle: "fill"}); //.accordion("option", "animate", false);
             }
         }
     };

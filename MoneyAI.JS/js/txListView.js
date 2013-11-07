@@ -1,4 +1,4 @@
-﻿define("txListView", ["lodash", "Transaction", "utils", "text!templates/txList.txt"],
+﻿define("txListView", ["lodash", "Transaction", "common/utils", "text!templates/txList.txt"],
     function (_, Transaction, utils, templateText) {
 
     "use strict";
@@ -25,7 +25,7 @@
                 return tx.correctedValues.transactionYearString === selectedYear && tx.correctedValues.transactionMonthString === selectedMonth;
             });
 
-            _.forEach(selectedTxs, function (tx) { Transaction.prototype.ensureAllCorrectedValues.call(tx); });
+            utils.forEach(selectedTxs, function (tx) { Transaction.prototype.ensureAllCorrectedValues.call(tx); });
 
             var templateData = {
                 body: [{

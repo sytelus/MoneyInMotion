@@ -1,4 +1,4 @@
-﻿define("repository", ["jquery", "utils"], function ($, utils) {
+﻿define("repository", ["jquery", "common/utils"], function ($, utils) {
     "use strict";
 
     //privates

@@ -1,4 +1,4 @@
-﻿define("Transaction", ["utils", "lodash"], function (utils, _) {
+﻿define("Transaction", ["common/utils"], function (utils) {
     "use strict";
     var $this = function Transaction() {
     };
@@ -68,15 +68,11 @@
 
                     var that = this;
 
-                    _.forEach(correctedValueNames, function (correctedValueName) { getCorrectedValue.call(that, correctedValueName); });
+                    utils.forEach(correctedValueNames, function (correctedValueName) { getCorrectedValue.call(that, correctedValueName); });
 
                     proto.getCorrectedTransactionDateParsed.call(this);
                     proto.getTransactionYearString.call(this);
                     proto.getTransactionMonthString.call(this);
-
-                    memoizeCorrectedValue.call(this, "categoryPathDisplayText", function () {
-                        return (that.correctedValues.categoryPath || []).join(" > ");
-                    });
 
                     memoizeCorrectedValue.call(this, "transactionDisplayText", function () {
                         return utils.formateDate(that.correctedValues.transactionDateParsed, utils.FormatStringDateLocalized);
