@@ -25,18 +25,6 @@ namespace MoneyAI
             get { return this.MergedEdit.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault())); }
         }
 
-        private string cachedEntityNameNormalized = null;
-        public string EntityNameNormalized
-        {
-            get
-            {
-                if (cachedEntityNameNormalized == null)
-                    cachedEntityNameNormalized = GetEntityNameNormalized(this.EntityName) ?? string.Empty;
-
-                return cachedEntityNameNormalized;
-            }
-        }
-
         private readonly static Regex nonAlphaRegex = new Regex(@"[^\w\s\.]|[\d]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly static Regex multipleWhiteSpaceRegex = new Regex(@"[\s]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly static Regex whiteSpaceRegex = new Regex(@"[\s]", RegexOptions.Compiled | RegexOptions.IgnoreCase);

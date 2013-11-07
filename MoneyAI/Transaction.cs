@@ -74,6 +74,9 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false, Name = "appliedEditIdsDescending")]
         internal LinkedList<string> AppliedEditIdsDescending { get; private set; }
 
+        [DataMember(EmitDefaultValue = false, Name = "entityNameNormalized")]
+        public string EntityNameNormalized { get; private set; }
+
         public Transaction Clone()
         {
             var serializedData = JsonSerializer<Transaction>.Serialize(this);
@@ -102,7 +105,6 @@ namespace MoneyAI
         {
             this.cachedDisplayCategory = null;
             this.cachedCategoryPath = null;
-            this.cachedEntityNameNormalized = null;
             this.cachedCorrectedTransactionDate = null;
         }
 
@@ -131,7 +133,9 @@ namespace MoneyAI
                     case "Post Date":
                         transaction.PostDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
                     case "Description":
-                        transaction.EntityName = columnValue; break;
+                        transaction.EntityName = columnValue;
+                        transaction.EntityNameNormalized = GetEntityNameNormalized(columnValue) ?? "";
+                        break;
                     case "Amount":
                         transaction.amount = Decimal.Parse(columnValue, NumberStyles.Currency); break;
                     default:

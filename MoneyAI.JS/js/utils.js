@@ -1,5 +1,8 @@
-﻿define("utils", ["lodash", "moment", "buckets", "jquery", "debug"], function (_, moment, buckets, $, debug) {
+﻿define("utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars"], function (_, moment, buckets, $, debug, accounting, handlebars) {
     "use strict";
+
+
+
     return {
         compareFunction: function(isReverse, mapFunction, thisArg) {
             var that = thisArg || this;
@@ -32,6 +35,24 @@
         },
         getMonthString: function(date) {
             return moment(date).format("MM");
+        },
+
+        FormatStringDateLocalized: "L",
+        formateDate: function(date, formatString) {
+            return moment(date).format(formatString);
+        },
+
+        formateCurrency: function (number) {
+            return accounting.formatMoney(number);
+        },
+
+        compileTemplate: function (templateText) {
+            return handlebars.compile(templateText);
+        },
+
+        runTemplate: function (compiledTemplate, templateData) {
+            return compiledTemplate(templateData);
         }
+
     };
 });

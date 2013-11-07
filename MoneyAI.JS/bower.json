@@ -15,6 +15,7 @@
 		"buckets": "git://github.com/sytelus/buckets",
 		"requirejs-text": "latest",
 		"handlebars": "latest",
-		"jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1"
+		"jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1",
+		"accounting": "latest"
 	}
 }

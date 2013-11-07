@@ -18,7 +18,8 @@
         "text": "ext/requirejs-text/text",
         "handlebars": "ext/handlebars/handlebars",
         "jquery.ba-bbq": "ext/jquery.ba-bbq/jquery.ba-bbq",
-        "debug": "ext/javascript-debug/ba-debug"
+        "debug": "ext/javascript-debug/ba-debug",
+        "accounting": "ext/accounting/accounting"
     },
     shim: {
         "debug": {

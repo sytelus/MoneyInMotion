@@ -1,8 +1,10 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "utils", "handlebars", "jqueryui"],
-    function (_, Transaction, paneTemplateText, utils, Handlebars, $) {
+﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "utils", "jqueryui"],
+    function (_, Transaction, templateText, utils, $) {
 
     "use strict";
     /*jshint -W080 */   //Allow explicit initialization with undefined
+    
+    var compiledTemplate;   //cache compiled template
 
     return {
         refresh: function (txs, selectYear, selectMonth) {
@@ -21,7 +23,7 @@
                 months.add(month);
             }
 
-            var navData = yearMonths.toArray(function (year, monthsSet) {
+            var templateData = yearMonths.toArray(function (year, monthsSet) {
                 return {
                     year: year,
                     months:
@@ -34,27 +36,26 @@
                 };
             });
 
-            navData.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.year; }));
+            templateData.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.year; }));
 
             //Find indices of selected items
-            var selectYearIndex = _.findIndex(navData, function (yearMonths) { return yearMonths.year === selectYear; });
+            var selectYearIndex = _.findIndex(templateData, function (yearMonths) { return yearMonths.year === selectYear; });
             var selectMonthIndex = undefined;
-            selectYearIndex = selectYearIndex >= 0 ? selectYearIndex : (navData.length ? 0 : undefined);
+            selectYearIndex = selectYearIndex >= 0 ? selectYearIndex : (templateData.length ? 0 : undefined);
             if (selectYearIndex >= 0) {
-                selectMonthIndex = _.findIndex(navData[selectYearIndex].months, function (monthInfo) { return monthInfo.monthString === selectMonth; });
-                selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (navData[selectYearIndex].length ? 0 : undefined);
+                selectMonthIndex = _.findIndex(templateData[selectYearIndex].months, function (monthInfo) { return monthInfo.monthString === selectMonth; });
+                selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (templateData[selectYearIndex].length ? 0 : undefined);
             }
 
             if (selectYearIndex >= 0 && selectMonthIndex >= 0) {
-                navData[selectYearIndex].months[selectMonthIndex].isSelected = true;
+                templateData[selectYearIndex].months[selectMonthIndex].isSelected = true;
             }
 
-            var paneTemplate = Handlebars.compile(paneTemplateText);
-            var paneHtml = paneTemplate(navData);
+            compiledTemplate = compiledTemplate || utils.compileTemplate(templateText);
+            var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
             var accordionExists = $("#txNavigation").hasClass("ui-accordion");
-            $("#txNavigation").empty();
-            $("#txNavigation").append(paneHtml);
+            $("#txNavigation").html(templateHtml);
 
             if (accordionExists) {
                 $("#txNavigation").accordion("refresh");

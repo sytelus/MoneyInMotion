@@ -1,0 +1,12 @@
+﻿	<table>
+        {{#body}}
+            <!-- render each group -->
+            {{#rows}}
+                <tr>
+                    <td>
+                        {{correctedValues.entityName}}
+                    </td>
+                </tr>
+            {{/rows}}
+        {{/body}}
+    </table>

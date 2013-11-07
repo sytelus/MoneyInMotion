@@ -1,4 +1,4 @@
-﻿	{{#.}}
+﻿{{#.}}
 <h3>{{year}}</h3>
 <div class="navMonth">
     {{#months}}
@@ -7,4 +7,4 @@
     </p>
     {{/months}}
 </div>
-	{{/.}}
+{{/.}}

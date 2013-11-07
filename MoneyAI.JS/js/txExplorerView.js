@@ -9,6 +9,7 @@
             repository.getTransactions("txExplorerView.refresh", function (txs) {
                 utils.logger.log("txs Data: ", "Items: ", txs.items.length, "First createdate: ", txs.items[0].auditInfo.createDate);
                 txNavigationView.refresh(txs, year, month);
+                txListView.refresh(txs, year, month);
             });
         }
     };
