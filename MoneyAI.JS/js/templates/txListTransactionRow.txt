@@ -1,0 +1,30 @@
+﻿					<tr>
+						<td>
+							{{#unless correctedValues.isFlagged}}
+								{{#if correctedValues.note}}
+									<img src="images/note.png"/>
+								{{/if}}
+							{{else}}
+								{{#if correctedValues.isFlagged}}
+									<img src="images/flag.gif"/>
+								{{else}}
+									<img src="images/noflag.gif"/>
+								{{/if}}
+							{{/unless}}
+						</td>
+						<td>
+							{{correctedValues.entityNameBest}}
+						</td>
+						<td>
+							{{txTransactionDateDisplay .}}
+						</td>
+						<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
+							{{formatCurrency correctedValues.amount}}
+						</td>
+						<td>
+							{{transactionReason}}
+						</td>
+						<td>
+							{{accountId}}
+						</td>
+					</tr>

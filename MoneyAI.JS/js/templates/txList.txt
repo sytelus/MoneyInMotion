@@ -1,4 +1,5 @@
 ﻿	<table id="txListControl" class="ui-widget roundedCornersTable">
+        <h3 class="ui-state-active ui-corner-top">Transactions</h3>
 		<thead class="ui-widget-header">
 			<tr>
 				<th><img src="images/flagColumn.gif"/></th>
@@ -7,47 +8,18 @@
 				<th>Amount</th>
 				<th>Type</th>
 				<th>Account</th>
-				<th>Source</th>
 			</tr>
 		</thead>
 		<tbody class="ui-widget-content">
-			{{#body}}
-				<!-- render each group -->
-				{{#rows}}
-					<tr>
-						<td>
-							{{#unless correctedValues.isFlagged}}
-								{{#if correctedValues.note}}
-									<img src="images/note.png"/>
-								{{/if}}
-							{{else}}
-								{{#if correctedValues.isFlagged}}
-									<img src="images/flag.gif"/>
-								{{else}}
-									<img src="images/noflag.gif"/>
-								{{/if}}
-							{{/unless}}
-						</td>
-						<td>
-							{{txEntityNameDisplay .}}
-						</td>
-						<td>
-							{{txTransactionDateDisplay .}}
-						</td>
-						<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
-							{{formatCurrency correctedValues.amount}}
-						</td>
-						<td>
-							{{transactionReason}}
-						</td>
-						<td>
-							{{accountId}}
-						</td>
-						<td>
-							{{importId}}
-						</td>
-					</tr>
-				{{/rows}}
-			{{/body}}
+				<!-- render each subgroup group -->
+				{{#toChildAggregatorsArray}}
+					<tr><td colspan = "6">{{name}}</td></tr>
+					{{#toChildAggregatorsArray}}
+						<tr><td colspan = "6">{{name}}</td></tr>
+						{{#toTxArray}}
+							{{> tx}}
+						{{/toTxArray}}
+					{{/toChildAggregatorsArray}}
+				{{/toChildAggregatorsArray}}
 		</tbody>
     </table>

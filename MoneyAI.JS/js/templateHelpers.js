@@ -1,14 +1,7 @@
-﻿define("templateHelpers", [], function () {
+﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt"], function (txListTransactionRowTemplateText) {
     "use strict";
 
     var helpers = [
-        function (utils) {
-            utils.registerTemplateHelper("txEntityNameDisplay", function (tx) {
-                //If name is not corrected use normalized version
-                return tx.correctedValues.entityName == tx.entityName ? tx.entityNameNormalized : tx.correctedValues.entityName;
-            });
-        },
-
         function (utils) {
             utils.registerTemplateHelper("txCategoryPathDisplay", function (tx) {
                 return (tx.correctedValues.categoryPath || []).join(" > ");
@@ -22,9 +15,19 @@
         }
     ];
 
+    var partials = {
+        tx: function (utils) {
+            return utils.compileTemplate(txListTransactionRowTemplateText);
+        }
+    };
+
     return {
         registerAll: function (utils) {
             utils.forEach(helpers, function (h) { h(utils); });
+
+            utils.forEach(partials, function (getPartialCompiled, partialName) {
+                utils.registerTemplatePartial(partialName, getPartialCompiled(utils));
+            });
         }
     };
 });

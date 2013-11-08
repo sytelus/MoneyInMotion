@@ -31,6 +31,16 @@
         //NOTE: We use .call to make calls to other prototype methods because these may get called from 
         //outside on JSON objects
         return {
+
+            TransactionReasonCodes: {
+                Purchase: 0,
+                Adjustment: 1,
+                Fee: 2,
+                InterAccountPayment: 4,
+                Return: 8,
+                InterAccountTransfer: 16
+            },
+
             getMergedEditValue: function (name) {
                 if (this.mergedEdit) {
                     if (this.mergedEdit[name]) {
@@ -63,6 +73,13 @@
                 });
             },
 
+            getEntityNameBest: function() {
+                return memoizeCorrectedValue.call(this, "entityNameBest", function () {
+                    var correctedEntityName = getCorrectedValue.call(this, "entityName");
+                    return correctedEntityName == this.entityName ? this.entityNameNormalized : correctedEntityName;
+                });
+            },
+
             ensureAllCorrectedValues: function () {
                 if (!this.correctedValues || !this.correctedValues.isPopulated) {
 
@@ -73,6 +90,7 @@
                     proto.getCorrectedTransactionDateParsed.call(this);
                     proto.getTransactionYearString.call(this);
                     proto.getTransactionMonthString.call(this);
+                    proto.getEntityNameBest.call(this);
 
                     memoizeCorrectedValue.call(this, "transactionDisplayText", function () {
                         return utils.formateDate(that.correctedValues.transactionDateParsed, utils.FormatStringDateLocalized);

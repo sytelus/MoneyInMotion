@@ -11,14 +11,13 @@
 
     var utilsInstance = {
         compareFunction: function(isReverse, mapFunction, thisArg) {
-            var that = thisArg || this;
             return function (a, b) {
 
                 var x = a, y = b;
 
                 if ($.isFunction(mapFunction)) {
-                    x = that.mapFunction(a);
-                    y = that.mapFunction(b);
+                    x = mapFunction.call(thisArg, a);
+                    y = mapFunction.call(thisArg, b);
                 }
 
                 if (x < y) {
@@ -64,7 +63,12 @@
             handlebars.registerHelper(helperName, helperFunction);
         },
 
-        forEach: _.forEach
+        registerTemplatePartial: function (partialName, partialTemplateCompiled) {
+            handlebars.registerPartial(partialName, partialTemplateCompiled);
+        },
+
+        forEach: _.forEach,
+        toValueArray: _.values
 
     };
 
