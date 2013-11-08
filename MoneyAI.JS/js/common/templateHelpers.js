@@ -1,9 +1,20 @@
 ﻿define("common/templateHelpers", [], function () {
     "use strict";
 
+    var operators = {
+        //"==": function (l, r) { return l == r; },
+        "===": function (l, r) { return l === r; },
+        //"!=": function (l, r) { return l != r; },
+        "!==": function (l, r) { return l !== r; },
+        "<": function (l, r) { return l < r; },
+        ">": function (l, r) { return l > r; },
+        "<=": function (l, r) { return l <= r; },
+        ">=": function (l, r) { return l >= r; },
+        "typeof": function (l, r) { return typeof l === r; }
+    };
 
     var helpers = [
-        function (utils) {
+        function formatCurrency(utils) {
             utils.registerTemplateHelper("formatCurrency", function (value) {
 
                 if (!utils || !utils.formateCurrency || !value) {
@@ -14,7 +25,16 @@
             });
         },
 
-        function (utils) {
+        function repeatString(utils) {
+            utils.registerTemplateHelper("repeatString", function (str, count, countAdjustment) {
+                if (count === undefined) {
+                    throw new TypeError("count parameter for repeatString template helper should not be undefined");
+                }
+                return utils.templateHtmlString(utils.repeatString(str, count + (countAdjustment || 0)));
+            });
+        },
+
+        function compare(utils) {
             /* Usage:
                 {{#compare Database.Tables.Count ">" 5}}
                 There are more than 5 tables
@@ -34,18 +54,6 @@
                     rvalue = operator;
                     operator = "===";
                 }
-
-                var operators = {
-                    //"==": function (l, r) { return l == r; },
-                    "===": function (l, r) { return l === r; },
-                    //"!=": function (l, r) { return l != r; },
-                    "!==": function (l, r) { return l !== r; },
-                    "<": function (l, r) { return l < r; },
-                    ">": function (l, r) { return l > r; },
-                    "<=": function (l, r) { return l <= r; },
-                    ">=": function (l, r) { return l >= r; },
-                    "typeof": function (l, r) { return typeof l === r; }
-                };
 
                 if (!operators[operator]) {
                     throw new Error("Handlerbars Helper 'compare' doesn't know the operator " + operator);

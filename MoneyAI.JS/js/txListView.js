@@ -17,15 +17,21 @@
         var childAggregators = parentAggregator.childAggregators;
         var entityNameBest = tx.correctedValues.entityNameBest;
         if (!childAggregators[entityNameBest]) {
-            childAggregators[entityNameBest] = new TransactionAggregator(entityNameBest, entityNameBest, true, undefined, txSortMap, false);
+            childAggregators[entityNameBest] = new TransactionAggregator(parentAggregator, entityNameBest, entityNameBest, true, undefined, txSortMap, false);
         }
 
         return childAggregators[entityNameBest];
     };
 
-        var getExpenseChildAggregator = function expense() { return new TransactionAggregator("Expense", "Expenses", false, entityNameChildAggregator, aggregatorSortMap, false); },
-        //getIncomeChildAggregator = function income() { return new TransactionAggregator("Income", "Income", false, entityNameChildAggregator, aggregatorSortMap, false); },
-        getTransfersChildAggregator = function transfers() { return new TransactionAggregator("Transfers", "Transfers", false, entityNameChildAggregator, aggregatorSortMap, false); };
+    var getExpenseChildAggregator = function expense(parentAggregator) {
+        return new TransactionAggregator(parentAggregator, "Expense", "Expenses", false, entityNameChildAggregator, aggregatorSortMap, false);
+    },
+    //getIncomeChildAggregator = function income() {
+    //    return new TransactionAggregator(parentAggregator, "Income", "Income", false, entityNameChildAggregator, aggregatorSortMap, false);
+    //},
+    getTransfersChildAggregator = function transfers(parentAggregator) {
+        return new TransactionAggregator(parentAggregator, "Transfers", "Transfers", false, entityNameChildAggregator, aggregatorSortMap, false);
+    };
 
     var incomeExpenseChildAggregatorMapping = {
         "0": getExpenseChildAggregator,   //Purchase
@@ -40,7 +46,7 @@
         var aggregatorFunction = incomeExpenseChildAggregatorMapping[tx.correctedValues.transactionReason.toString()] || getExpenseChildAggregator;
         var childAggregators = parentAggregator.childAggregators;
         if (!childAggregators[aggregatorFunction.name]) {
-            childAggregators[aggregatorFunction.name] = aggregatorFunction();
+            childAggregators[aggregatorFunction.name] = aggregatorFunction(parentAggregator);
         }
 
         return childAggregators[aggregatorFunction.name];
@@ -56,7 +62,7 @@
                 return tx.correctedValues.transactionYearString === selectedYear && tx.correctedValues.transactionMonthString === selectedMonth;
             });
 
-            var netAggregator = new TransactionAggregator("Net", "Net/Net", false, incomeExpenseChildAggregator);
+            var netAggregator = new TransactionAggregator(undefined, "Net", "Net/Net", false, incomeExpenseChildAggregator);
 
             utils.forEach(selectedTxs, function (tx) {
                 Transaction.prototype.ensureAllCorrectedValues.call(tx);

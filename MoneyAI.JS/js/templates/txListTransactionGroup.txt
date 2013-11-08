@@ -1,0 +1,19 @@
+﻿				{{#toChildAggregatorsArray}}
+					{{#if isLeafGroup}}
+						{{#unless isSingleItem}}
+							<!-- header for leaf -->
+							<tr>
+								<td></td>
+								<td colspan = "5">{{repeatString "&nbsp" depth -1}}{{name}}</td>
+							</tr>
+						{{/unless}}
+						{{> tx }}
+					{{else}}
+						<!-- header for non-leaf -->
+						<tr>
+							<td></td>
+							<td colspan = "5">{{repeatString "&nbsp" depth -1}}{{name}}</td>
+						</tr>
+						{{> txGroup}}
+					{{/if}}
+				{{/toChildAggregatorsArray}}

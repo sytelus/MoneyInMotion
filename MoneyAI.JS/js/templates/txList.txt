@@ -11,15 +11,6 @@
 			</tr>
 		</thead>
 		<tbody class="ui-widget-content">
-				<!-- render each subgroup group -->
-				{{#toChildAggregatorsArray}}
-					<tr><td colspan = "6">{{name}}</td></tr>
-					{{#toChildAggregatorsArray}}
-						<tr><td colspan = "6">{{name}}</td></tr>
-						{{#toTxArray}}
-							{{> tx}}
-						{{/toTxArray}}
-					{{/toChildAggregatorsArray}}
-				{{/toChildAggregatorsArray}}
+			{{> txGroup}}
 		</tbody>
     </table>

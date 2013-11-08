@@ -1,4 +1,5 @@
-﻿					<tr>
+﻿				{{#each toTxArray}}
+					<tr>
 						<td>
 							{{#unless correctedValues.isFlagged}}
 								{{#if correctedValues.note}}
@@ -13,6 +14,11 @@
 							{{/unless}}
 						</td>
 						<td>
+							{{#compare ../count "===" 1}}
+								{{repeatString "&nbsp" ../../depth -1}}
+							{{else}}
+								{{repeatString "&nbsp" ../../depth 4}}
+							{{/compare}}
 							{{correctedValues.entityNameBest}}
 						</td>
 						<td>
@@ -28,3 +34,4 @@
 							{{accountId}}
 						</td>
 					</tr>
+				{{/each}}

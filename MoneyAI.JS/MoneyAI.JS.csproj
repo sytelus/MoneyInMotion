@@ -35,6 +35,7 @@
     <Content Include="js\ext\require.js" />
     <Content Include="js\repository.js" />
     <Content Include="js\main.js" />
+    <Content Include="js\templates\txListTransactionGroup.txt" />
     <Content Include="js\templates\txListTransactionRow.txt" />
     <Content Include="js\TransactionAggregator.js" />
     <Content Include="js\txExplorerView.js" />

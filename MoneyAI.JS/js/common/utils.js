@@ -67,6 +67,25 @@
             handlebars.registerPartial(partialName, partialTemplateCompiled);
         },
 
+        templateHtmlString: function (str) {
+            return new handlebars.SafeString(str);
+        },
+
+        repeatString: function (pattern, count) {
+            if (count < 1) {
+                return "";
+            }
+            var result = "";
+            while (count > 0) {
+                if (count & 1) {
+                    result += pattern;
+                }
+                count >>= 1;
+                pattern += pattern;
+            }
+            return result;
+        },
+
         forEach: _.forEach,
         toValueArray: _.values
 

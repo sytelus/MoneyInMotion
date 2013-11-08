@@ -1,4 +1,5 @@
-﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt"], function (txListTransactionRowTemplateText) {
+﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt", "text!templates/txListTransactionGroup.txt"],
+    function (txListTransactionRowText, txListTransactionGroupText) {
     "use strict";
 
     var helpers = [
@@ -17,7 +18,10 @@
 
     var partials = {
         tx: function (utils) {
-            return utils.compileTemplate(txListTransactionRowTemplateText);
+            return utils.compileTemplate(txListTransactionRowText);
+        },
+        txGroup: function (utils) {
+            return utils.compileTemplate(txListTransactionGroupText);
         }
     };
 

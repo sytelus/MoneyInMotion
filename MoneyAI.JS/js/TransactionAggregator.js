@@ -1,17 +1,19 @@
 ﻿define("TransactionAggregator", ["common/utils", "Transaction"], function (utils, Transaction) {
     "use strict";
 
-    var $this = function TransactionAggregator(name, title, keepRows, childAggregateFunction, sortMapFunction, sortAscending) {
+    var $this = function TransactionAggregator(parent, name, title, isLeafGroup, childAggregateFunction, sortMapFunction, sortAscending) {
         this.count = 0;
         this.positiveSum = 0;
         this.negativeSum = 0;
         this.sum = 0;
 
+        this.depth = parent ? parent.depth + 1 : 0;
+
         this.name = name;
         this.title = title;
 
         this.rows = [];
-        this.keepRows = !!keepRows;
+        this.isLeafGroup = !!isLeafGroup;
 
         this.childAggregators = {};
 
@@ -26,12 +28,12 @@
 
         //publics
         return {
-            add: function(tx) {
-                if (this.keepRows) {
+            add: function (tx) {
+                Transaction.prototype.ensureAllCorrectedValues.call(tx);
+
+                if (this.isLeafGroup) {
                     this.rows.push(tx);
                 }
-
-                Transaction.prototype.ensureAllCorrectedValues.call(tx);
 
                 if (tx.correctedValues.amount > 0) {
                     this.positiveSum += Math.abs(tx.correctedValues.amount);
@@ -60,6 +62,10 @@
             toTxArray: function () {
                 this.rows.sort(utils.compareFunction(this.sortAscending, this.sortMapFunction));
                 return this.rows;
+            },
+
+            isSingleItem: function () {
+                return this.count === 1;
             }
         };
     })();
