@@ -75,7 +75,7 @@
             compiledTemplate = compiledTemplate || utils.compileTemplate(templateText);
             var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
-            $("#txList").html(templateHtml);
+            $("#txListControl").html(templateHtml);
         }
     };
 });

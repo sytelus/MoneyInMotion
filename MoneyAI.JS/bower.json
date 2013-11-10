@@ -16,7 +16,6 @@
 		"requirejs-text": "latest",
 		"handlebars": "latest",
 		"jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1",
-		"accounting": "latest",
-		"jquery.layout": "git://github.com/jlbfalcao/jquery.layout"
+		"accounting": "latest"
 	}
 }

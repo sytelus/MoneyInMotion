@@ -16,9 +16,12 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="css\app.theme.css" />
     <Content Include="css\bpmain.css" />
-    <Content Include="css\main.css" />
+    <Content Include="css\app.layout.css" />
+    <Content Include="css\layout.theme.css" />
     <Content Include="css\normalize.css" />
+    <Content Include="css\layout.position.css" />
     <Content Include="Gruntfile.js" />
     <Content Include="images\CommentHS.png" />
     <Content Include="images\flag.gif" />
@@ -53,6 +56,7 @@
     <Content Include=".jshintrc" />
     <Content Include="bower.json" />
     <Content Include="package.json" />
+    <Content Include="css\layout.debug.css" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>

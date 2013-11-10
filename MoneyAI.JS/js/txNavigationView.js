@@ -54,14 +54,14 @@
             compiledTemplate = compiledTemplate || utils.compileTemplate(templateText);
             var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
-            var accordionExists = $("#txNavigation").hasClass("ui-accordion");
-            $("#txNavigation").html(templateHtml);
+            var accordionExists = $("#txNavigationControl").hasClass("ui-accordion");
+            $("#txNavigationControl").html(templateHtml);
 
             if (accordionExists) {
-                $("#txNavigation").accordion("refresh");
+                $("#txNavigationControl").accordion("refresh");
             }
             else {
-                $("#txNavigation").accordion(
+                $("#txNavigationControl").accordion(
                     selectYearIndex ? {
                         active: selectYearIndex, collapsible: true, heightStyle: "fill"
                     } : { collapsible: true, heightStyle: "fill"}); //.accordion("option", "animate", false);

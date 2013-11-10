@@ -8,6 +8,7 @@
  <!--<![endif]-->
 <head>
     <meta charset="utf-8" />
+    <!-- Ask browser to use best compatibility mode -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <title>MoneyAI</title>
     <meta name="description" content="Personal Finance with Smarts" />
@@ -18,36 +19,58 @@
 
     <link rel="stylesheet" href="css/normalize.css" />
     <link rel="stylesheet" href="css/bpmain.css" />
-    <link rel="stylesheet" href="js/ext/jquery.layout/dist/layout-default-latest.css" />
     <link rel="stylesheet" href="js/ext/jquery-ui/themes/redmond/jquery-ui.css" />
     <link rel="stylesheet" href="js/ext/jquery-ui/themes/redmond/jquery.ui.theme.css" />
-    <link rel="stylesheet" href="css/main.css" />
+    <!-- 
+        <link rel="stylesheet" href="css/layout.debug.css" /> 
+    -->
+    <link rel="stylesheet" href="css/layout.position.css" />
+    <link rel="stylesheet" href="css/layout.theme.css" />
+    <link rel="stylesheet" href="css/app.layout.css" />
+    <link rel="stylesheet" href="css/app.theme.css" />
 </head>
 <body>
     <!--[if lt IE 7]>
         <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
     <![endif]-->
-
-    <div id="ui-layout-north" class="ui-widget-content">Money AI</div>
-    <div id="txExplorer">
-        <div id="ui-layout-west" >
-            <div id="txNavigationContainer">
-                <div id="txNavigation">
-
+    <div class="siteRoot">
+        <div class="siteHeader">
+            <div class="siteTitle">
+                Misty Fog
+            </div>
+        </div>
+        <div class="siteNav">
+            <ul class="siteNavControl">
+                <li><a href="home">Home</a></li>
+                <li><a href="about">Tour</a></li>
+                <li><a href="news">Plans</a></li>
+                <li><a href="pelts">Blog</a></li>
+                <li><a href="meals">Support</a></li>
+                <li><a href="dioramas">Forums</a></li>
+                <li><a href="search">Help</a></li>
+            </ul>
+        </div>
+        <div id="txExplorer" class="pageRoot">
+            <div id="txNavigationContainer" class="pageNav">
+                <div id="txNavigationControl">
+                    Transaction Nav
+                </div>
+            </div>
+            <div id="txListContainer" class="pageContent">
+                <div id="txListControl">
+                    Transaction List
+                </div>
+            </div>
+            <div id="txSummaryContainer" class="pageAside">
+                <div id="txSummaryControl">
+                    Page Aside
                 </div>
             </div>
         </div>
-        <div id="ui-layout-center" class="ui-widget-content ui-layout-center">
-            <div id="txListContainer" class="ui-layout-content ui-widget-content">
-                <div id="txList">
-
-                </div>
-            </div>
+        <div class="siteFooter">
+            (C) MoneyAI, Inc
         </div>
     </div>
-    <!-- <div id="ui-layout-east">East</div>
-    <div id="ui-layout-south">South</div> -->
-
 
     <script data-main="js/main" src="js/ext/requirejs/require.js"></script>
 </body>

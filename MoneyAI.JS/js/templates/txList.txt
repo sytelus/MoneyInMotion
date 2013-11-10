@@ -1,6 +1,6 @@
-﻿	<table id="txListControl" class="ui-widget roundedCornersTable">
-        <h3 class="ui-state-active ui-corner-top">Transactions</h3>
-		<thead class="ui-widget-header">
+﻿	<h3 id="txListControlHeader">Transactions</h3>
+	<table id="txListGrid">
+		<thead>
 			<tr>
 				<th><img src="images/flagColumn.gif"/></th>
 				<th>Name</th>
@@ -10,7 +10,7 @@
 				<th>Account</th>
 			</tr>
 		</thead>
-		<tbody class="ui-widget-content">
+		<tbody>
 			{{> txGroup}}
 		</tbody>
-    </table>
+	</table>
