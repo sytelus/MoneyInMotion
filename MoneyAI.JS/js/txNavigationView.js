@@ -7,66 +7,63 @@
     var compiledTemplate;   //cache compiled template
 
     return {
-        refresh: function (txs, selectYear, selectMonth) {
+        refresh: function (txs, selectYearString, selectMonthString) {
             var yearMonths = new utils.Dictionary();
 
             for(var i = 0; i < txs.items.length; i++) {
-                var year = Transaction.prototype.getTransactionYearString.call(txs.items[i]);
-                var month = Transaction.prototype.getTransactionMonthString.call(txs.items[i]);
+                var yearString = Transaction.prototype.getTransactionYearString.call(txs.items[i]);
+                var monthString = Transaction.prototype.getTransactionMonthString.call(txs.items[i]);
                 
-                var months = yearMonths.get(year);
+                var months = yearMonths.get(yearString);
                 if (!months) {
                     months = new utils.Set();
-                    yearMonths.set(year, months);
+                    yearMonths.set(yearString, months);
                 }
 
-                months.add(month);
+                months.add(monthString);
             }
 
-            var templateData = yearMonths.toArray(function (year, monthsSet) {
+            var templateData = yearMonths.toArray(function (yearString, monthsSet) {
                 return {
-                    year: year,
+                    yearString: yearString,
                     months:
                         _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function (monthString) {
                             var monthInt = parseInt(monthString, 10);
                             var monthName = utils.getMonthName(monthInt);
-                            var urlHash = "#" + $.param({ action:"showmonth", year: year, month: monthString });
+                            var urlHash = "#" + $.param({ action:"showmonth", yearString: yearString, monthString: monthString });
                             return { monthName: monthName, urlHash: urlHash, monthString: monthString };
                         })
                 };
             });
 
-            templateData.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.year; }));
+            templateData.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.yearString; }));
 
             //Find indices of selected items
-            var selectYearIndex = _.findIndex(templateData, function (yearMonths) { return yearMonths.year === selectYear; });
+            var selectYearIndex = _.findIndex(templateData, function (yearMonths) { return yearMonths.yearString === selectYearString; });
             var selectMonthIndex = undefined;
             selectYearIndex = selectYearIndex >= 0 ? selectYearIndex : (templateData.length ? 0 : undefined);
             if (selectYearIndex >= 0) {
-                selectMonthIndex = _.findIndex(templateData[selectYearIndex].months, function (monthInfo) { return monthInfo.monthString === selectMonth; });
-                selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (templateData[selectYearIndex].length ? 0 : undefined);
+                selectMonthIndex = _.findIndex(templateData[selectYearIndex].months, function (monthInfo) { return monthInfo.monthString === selectMonthString; });
+                selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (templateData[selectYearIndex].months.length ? 0 : undefined);
             }
 
-            if (selectYearIndex >= 0 && selectMonthIndex >= 0) {
+            var selectedYearMonth = {yearString: undefined, monthString: undefined};
+            if (selectYearIndex >= 0) {
+                selectedYearMonth.yearString = templateData[selectYearIndex].yearString;
                 templateData[selectYearIndex].isSelected = true;
-                templateData[selectYearIndex].months[selectMonthIndex].isSelected = true;
+
+                if (selectMonthIndex >= 0) {
+                    selectedYearMonth.monthString = templateData[selectYearIndex].months[selectMonthIndex].monthString;
+                    templateData[selectYearIndex].months[selectMonthIndex].isSelected = true;
+                }
             }
 
             compiledTemplate = compiledTemplate || utils.compileTemplate(templateText);
             var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
-            //var accordionExists = $("#txNavigationControl").hasClass("ui-accordion");
             $("#txNavigationControl").html(templateHtml);
 
-            //if (accordionExists) {
-            //    $("#txNavigationControl").accordion("refresh");
-            //}
-            //else {
-            //    $("#txNavigationControl").accordion(
-            //        selectYearIndex ? {
-            //            active: selectYearIndex, collapsible: true, heightStyle: "fill"
-            //        } : { collapsible: true, heightStyle: "fill"}); //.accordion("option", "animate", false);
-            //}
+            return selectedYearMonth;
         }
     };
 });

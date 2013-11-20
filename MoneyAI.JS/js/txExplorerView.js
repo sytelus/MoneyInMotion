@@ -3,13 +3,13 @@
       
     //public interface
     return {
-        refresh: function (year, month) {
-            utils.logger.log("Refresh Request for:", "year: ", year, " month: ", month);
+        refresh: function (yearString, monthString) {
+            utils.logger.log("Refresh Request for:", "yearString: ", yearString, " monthString: ", monthString);
 
             repository.getTransactions("txExplorerView.refresh", function (txs) {
                 utils.logger.log("txs Data: ", "Items: ", txs.items.length, "First createdate: ", txs.items[0].auditInfo.createDate);
-                txNavigationView.refresh(txs, year, month);
-                txListView.refresh(txs, year, month);
+                var selectedYearMonth = txNavigationView.refresh(txs, yearString, monthString);
+                txListView.refresh(txs, selectedYearMonth.yearString, selectedYearMonth.monthString);
             });
         }
     };
