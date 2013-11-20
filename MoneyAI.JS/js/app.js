@@ -1,5 +1,5 @@
-﻿define("app", ["domReady", "jquery", "txExplorerView", "jquery.ba-bbq", "common/utils", "templateHelpers", "jquery.layout"],
-    function (domReady, $, txExplorerView, jQueryBbq, utils, templateHelpers, jQueryLayout) {
+﻿define("app", ["domReady", "jquery", "txExplorerView", "jquery.ba-bbq", "common/utils", "templateHelpers"],
+    function (domReady, $, txExplorerView, jQueryBbq, utils, templateHelpers) {
     "use strict";
     domReady(function () {
         utils.logger.log("Loaded on: ", new Date());

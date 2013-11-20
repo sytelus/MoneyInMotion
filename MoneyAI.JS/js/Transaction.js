@@ -76,7 +76,7 @@
             getEntityNameBest: function() {
                 return memoizeCorrectedValue.call(this, "entityNameBest", function () {
                     var correctedEntityName = getCorrectedValue.call(this, "entityName");
-                    return correctedEntityName == this.entityName ? this.entityNameNormalized : correctedEntityName;
+                    return correctedEntityName === this.entityName ? this.entityNameNormalized : correctedEntityName;
                 });
             },
 

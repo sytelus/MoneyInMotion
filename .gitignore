@@ -42,3 +42,6 @@
 **/node_modules
 **/.tmp
 **/.sass-cache
+
+#node
+**/npm-debug.log

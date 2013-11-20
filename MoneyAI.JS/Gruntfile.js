@@ -32,16 +32,16 @@ module.exports = function (grunt) {
                 '!<%= paths.src %>/js/ext/**/*.js'
             ]
         },
-        imagemin: {
-            dist: {
-                files: [{
-                    expand: true,
-                    cwd: '<%= paths.src %>/images',
-                    src: '**/*.{png,jpg,jpeg,gif}',
-                    dest: '<%= paths.dist %>/images'
-                }]
-            }
-        },
+        //imagemin: {
+        //    dist: {
+        //        files: [{
+        //            expand: true,
+        //            cwd: '<%= paths.src %>/images',
+        //            src: '**/*.{png,jpg,jpeg,gif}',
+        //            dest: '<%= paths.dist %>/images'
+        //        }]
+        //    }
+        //},
         cssmin: {
             dist: {
                 files: {
@@ -117,7 +117,7 @@ module.exports = function (grunt) {
 
     grunt.registerTask('build', [
         'clean:dist',
-        'imagemin',
+        //'imagemin',
         'cssmin',
         'copy',
         'requirejs',
