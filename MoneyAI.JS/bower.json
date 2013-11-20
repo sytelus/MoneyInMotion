@@ -7,7 +7,6 @@
 		"requirejs-domready": "~2.0.1",
 		"javascript-debug": "latest",
 		"lodash": "~2.2.1",
-		"jquery-ui": "~1.10.3",
 		"jquery.hotkeys": "git://github.com/jeresig/jquery.hotkeys",
 		"jquery.cookie": "latest",
 		"modernizr": "latest",
@@ -16,6 +15,7 @@
 		"requirejs-text": "latest",
 		"handlebars": "latest",
 		"jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1",
-		"accounting": "latest"
+		"accounting": "latest",
+		"bootstrap": "latest"
 	}
 }

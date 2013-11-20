@@ -1,5 +1,5 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "common/utils", "jqueryui"],
-    function (_, Transaction, templateText, utils, $) {
+﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "common/utils"],
+    function (_, Transaction, templateText, utils) {
 
     "use strict";
     /*jshint -W080 */   //Allow explicit initialization with undefined
@@ -48,24 +48,25 @@
             }
 
             if (selectYearIndex >= 0 && selectMonthIndex >= 0) {
+                templateData[selectYearIndex].isSelected = true;
                 templateData[selectYearIndex].months[selectMonthIndex].isSelected = true;
             }
 
             compiledTemplate = compiledTemplate || utils.compileTemplate(templateText);
             var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
-            var accordionExists = $("#txNavigationControl").hasClass("ui-accordion");
+            //var accordionExists = $("#txNavigationControl").hasClass("ui-accordion");
             $("#txNavigationControl").html(templateHtml);
 
-            if (accordionExists) {
-                $("#txNavigationControl").accordion("refresh");
-            }
-            else {
-                $("#txNavigationControl").accordion(
-                    selectYearIndex ? {
-                        active: selectYearIndex, collapsible: true, heightStyle: "fill"
-                    } : { collapsible: true, heightStyle: "fill"}); //.accordion("option", "animate", false);
-            }
+            //if (accordionExists) {
+            //    $("#txNavigationControl").accordion("refresh");
+            //}
+            //else {
+            //    $("#txNavigationControl").accordion(
+            //        selectYearIndex ? {
+            //            active: selectYearIndex, collapsible: true, heightStyle: "fill"
+            //        } : { collapsible: true, heightStyle: "fill"}); //.accordion("option", "animate", false);
+            //}
         }
     };
 });

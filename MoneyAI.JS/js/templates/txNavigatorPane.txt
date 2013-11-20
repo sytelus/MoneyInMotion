@@ -1,10 +1,22 @@
-﻿	{{#.}}
-	<h3>{{year}}</h3>
-	<div class="navMonth">
-		{{#months}}
-		<p {{#if isSelected}} class="ui-state-active" {{/if}}>
-			<a href="{{urlHash}}" class="jslink">{{monthName}}</a>
-		</p>
-		{{/months}}
-	</div>
-	{{/.}}
+﻿{{#.}}
+<div class="panel-group" id="yearAccordion">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h4 class="panel-title">
+                <a data-toggle="collapse" data-parent="#yearAccordion" href="#year{{year}}">
+                    {{year}}
+                </a>
+            </h4>
+        </div>
+        <div id="year{{year}}" class="panel-collapse collapse {{#if isSelected}}in{{/if}}">
+            <div class="panel-body">
+				<ul class="nav nav-pills">
+					{{#months}}
+						<li {{#if isSelected}}class="active"{{/if}}><a href="{{urlHash}}" class="jslink">{{monthName}}</a></li>
+					{{/months}}
+				</ul>
+            </div>
+        </div>
+    </div>
+</div>
+{{/.}}

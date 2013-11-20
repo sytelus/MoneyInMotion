@@ -9,7 +9,8 @@
         "lodash": "ext/lodash/dist/lodash",
         "jquery": "ext/jquery/jquery",
         "domReady": "ext/requirejs-domready/domReady",
-        "jqueryui": "ext/jquery-ui/ui/jquery-ui",
+        "bootstrap": "ext/bootstrap/dist/js/bootstrap",
+        //"jqueryui": "ext/jquery-ui/ui/jquery-ui",
         //"jstree": "ext/jstree/dist/jstree",
         "jquery.hotkeys": "ext/jquery.hotkeys/jquery.hotkeys",
         "jquery.cookie": "ext/jquery.cookie/jquery.cookie",
@@ -26,7 +27,11 @@
         "debug": {
             exports: "debug"
         },
-        "jqueryui": {
+        //"jqueryui": {
+        //    deps: ["jquery"],
+        //    exports: "jQuery"
+        //},
+        "bootstrap": {
             deps: ["jquery"],
             exports: "jQuery"
         },

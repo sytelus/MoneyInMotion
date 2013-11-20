@@ -1,4 +1,4 @@
-﻿define("app", ["domReady", "jquery", "txExplorerView", "jquery.ba-bbq", "common/utils", "templateHelpers"],
+﻿define("app", ["domReady", "bootstrap", "txExplorerView", "jquery.ba-bbq", "common/utils", "templateHelpers"],
     function (domReady, $, txExplorerView, jQueryBbq, utils, templateHelpers) {
     "use strict";
     domReady(function () {
