@@ -32,6 +32,28 @@ module.exports = function (grunt) {
                 '!<%= paths.src %>/js/ext/**/*.js'
             ]
         },
+
+        less: {
+            dest: {
+                options: {
+                    paths: ['<%= paths.src %>/css'],
+                    cleancss: false,
+                    compress: false,
+                    strictUnits: true
+                },
+                files: {
+                    '<%= paths.dist %>/css/app.css': '<%= paths.src %>/css/app.less'
+                }
+            }
+        },
+        csslint: {
+            options: {
+                csslintrc: '.csslintrc'
+            },
+            src: ['<%= paths.dist %>/css/**/*.css']
+        },
+
+
         //imagemin: {
         //    dist: {
         //        files: [{
@@ -45,7 +67,7 @@ module.exports = function (grunt) {
         cssmin: {
             dist: {
                 files: {
-                    '<%= paths.dist %>/css/main.css': ['<%= paths.src %>/css/**/*.css']
+                    '<%= paths.dist %>/css/app.min.css': ['<%= paths.dist %>/css/**/*.css']
                 }
             }
         },
@@ -92,6 +114,13 @@ module.exports = function (grunt) {
                 }
             }
         },
+
+        htmlrefs: {
+            dist: {
+                src: '<%= paths.dist %>/*.htm*'
+            }
+        },
+
         htmlmin: {
             dist: {
                 options: {
@@ -117,10 +146,13 @@ module.exports = function (grunt) {
 
     grunt.registerTask('build', [
         'clean:dist',
-        //'imagemin',
+        'less',
+        //'csslint', //bootstrap has too many violations
+        //'imagemin',   //currently broken
         'cssmin',
         'copy',
         'requirejs',
+        'htmlrefs',
         'htmlmin'
     ]);
 

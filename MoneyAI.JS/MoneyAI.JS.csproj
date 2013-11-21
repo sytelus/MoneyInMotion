@@ -16,7 +16,7 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="css\app.theme.css" />
+    <None Include="ccslintrc" />
     <Content Include="Gruntfile.js" />
     <Content Include="images\CommentHS.png" />
     <Content Include="images\flag.gif" />
@@ -52,6 +52,7 @@
     <Content Include="bower.json" />
     <Content Include="package.json" />
     <Content Include="css\layout.debug.css" />
+    <Content Include="css\app.less" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>

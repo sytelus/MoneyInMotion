@@ -25,7 +25,10 @@
     "grunt-requirejs": "~0.4.0",
     "grunt-open": "~0.2.2",
     "matchdep": "~0.3.0",
-	"almond": "~0.2.6"
+	"almond": "~0.2.6",
+	"grunt-htmlrefs": "~0.4.2",
+	"grunt-contrib-less": "~0.8.2",
+	"grunt-contrib-csslint": "~0.1.2"
   },
   "engines": {
     "node": ">=0.8.0"

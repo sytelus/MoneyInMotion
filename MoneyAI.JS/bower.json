@@ -16,6 +16,7 @@
 		"handlebars": "latest",
 		"jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1",
 		"accounting": "latest",
-		"bootstrap": "latest"
+		"bootstrap": "latest",
+		"less.js": "latest"
 	}
 }
