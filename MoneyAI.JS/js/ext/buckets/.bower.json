@@ -1,11 +1,11 @@
 {
   "name": "buckets",
   "homepage": "https://github.com/sytelus/buckets",
-  "_release": "9f42945a63",
+  "_release": "f476922a1d",
   "_resolution": {
     "type": "branch",
     "branch": "master",
-    "commit": "9f42945a63af5209c4c1de4fc14857ebe99d4ad2"
+    "commit": "f476922a1dda92bb3b9c5000d076acf62489ac9f"
   },
   "_source": "git://github.com/sytelus/buckets.git",
   "_target": "*",

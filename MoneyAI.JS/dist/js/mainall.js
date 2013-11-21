@@ -1,4 +1,4 @@
-(function () {
+
 /**
  * almond 0.2.7 Copyright (c) 2011-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -23403,14 +23403,15 @@ var buckets = {};
     if (typeof module !== 'undefined') {
         module.exports = buckets;
     }
+	
+	// Make AMD/RequireJS compatible
+	if ( typeof define === "function" && define.amd ) {
+		define( "buckets", [], function() {
+			return buckets;
+		});
+	}	
+	
 }());
-
-define("buckets", (function (global) {
-    return function () {
-        var ret, fn;
-        return ret || global.buckets;
-    };
-}(this)));
 
 /*!
  * JavaScript Debug - v0.4 - 6/22/2010
@@ -27572,7 +27573,7 @@ define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigator
                         _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function (monthString) {
                             var monthInt = parseInt(monthString, 10);
                             var monthName = utils.getMonthName(monthInt);
-                            var urlHash = "#" + $.param({ action:"showmonth", yearString: yearString, monthString: monthString });
+                            var urlHash = "#" + $.param({ action:"showmonth", year: yearString, month: monthString });
                             return { monthName: monthName, urlHash: urlHash, monthString: monthString };
                         })
                 };
@@ -29202,9 +29203,6 @@ require.config({
             deps: ["jquery"],
             exports: "jQuery"
         },
-        "buckets": {
-            exports: "buckets"
-        },
         "handlebars": {
             exports: "Handlebars"
         }
@@ -29213,4 +29211,3 @@ require.config({
 
 require(["app"]);   //Allows triggering when using almond;
 define("main", function(){});
-}());

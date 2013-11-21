@@ -73,23 +73,28 @@ module.exports = function (grunt) {
         },
         copy: {
             dist: {
-                files: [{
-                    expand: true, dot: true,
-                    cwd: '<%= paths.src %>',
-                    dest: '<%= paths.dist %>',
-                    src: ['*.{ico,txt}', '.htaccess', '*.htm*'] //html file will be modified by requirejs next
-                }]
+                files: [
+                    //html file will be modified by requirejs next
+                    {cwd: '<%= paths.src %>', src: ['*.{ico,txt}', '.htaccess', '*.htm*'],
+                        dest: '<%= paths.dist %>', dot: true, expand: true},
+                    //Get fonts in one place
+                    {cwd: '<%= paths.src %>/js/ext/font-awesome', src: ['fonts/*'],
+                        dest: '<%= paths.dist %>', dot: true, expand: true},
+                    {cwd: '<%= paths.src %>/js/ext/bootstrap/dist', src: ['fonts/*'],
+                        dest: '<%= paths.dist %>', dot: true, expand: true},
+                    {cwd: '<%= paths.src %>', src: ['images/**/*'],
+                        dest: '<%= paths.dist %>', dot: true, expand: true}                ]
             }
         },
         requirejs: {
             dist: {
                 options: {
                     almond: true,
-                    wrap: true,  //https://github.com/asciidisco/grunt-requirejs/blob/master/docs/almondIntegration.md#require-function-not-found-after-almond-integration
+                    //wrap: true,  //https://github.com/asciidisco/grunt-requirejs/blob/master/docs/almondIntegration.md#require-function-not-found-after-almond-integration
 
                     name: 'main',
                     baseUrl: 'js',
-                    mainConfigFile: 'js/main.js',
+                    mainConfigFile: '<%= paths.src %>/js/main.js',
                     out: '<%= paths.dist %>/js/mainall.js',
 
 

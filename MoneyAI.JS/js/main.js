@@ -57,9 +57,6 @@
             deps: ["jquery"],
             exports: "jQuery"
         },
-        "buckets": {
-            exports: "buckets"
-        },
         "handlebars": {
             exports: "Handlebars"
         }

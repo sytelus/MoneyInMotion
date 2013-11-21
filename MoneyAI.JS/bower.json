@@ -17,6 +17,7 @@
 		"jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1",
 		"accounting": "latest",
 		"bootstrap": "latest",
-		"less.js": "latest"
+		"less.js": "latest",
+		"font-awesome": "latest"
 	}
 }
