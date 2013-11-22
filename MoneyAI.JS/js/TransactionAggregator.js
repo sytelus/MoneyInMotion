@@ -7,6 +7,11 @@
         this.negativeSum = 0;
         this.sum = 0;
 
+        this.flagCounter = new utils.KeyCounter(true);
+        this.noteCounter = new utils.KeyCounter(true);
+        this.transactionReasonCounter = new utils.KeyCounter();
+        this.accountCounter = new utils.KeyCounter();
+
         this.depth = parent ? parent.depth + 1 : 0;
 
         this.name = name;
@@ -44,6 +49,8 @@
 
                 this.sum += tx.correctedValues.amount;
                 this.count += 1;
+
+
 
                 if (this.childAggregateFunction) {
                     var childAggregator = this.childAggregateFunction(this, tx);

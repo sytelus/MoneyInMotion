@@ -1,5 +1,5 @@
-﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers"],
-    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers) {
+﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "KeyCounter"],
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, KeyCounter) {
 
    "use strict";
 
@@ -29,9 +29,13 @@
                 return isReverse ? -1 : 1;
             };
         },
+
         logger: debug,
         Dictionary: buckets.Dictionary,
         Set: buckets.Set,
+
+        KeyCounter: KeyCounter(utilsInstance),
+
         getMonthName: function (monthNumber) {
             return moment({ month: monthNumber }).format("MMMM");
         },

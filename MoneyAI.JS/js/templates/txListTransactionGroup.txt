@@ -1,19 +1,49 @@
 ﻿				{{#toChildAggregatorsArray}}
-					{{#if isLeafGroup}}
-						{{#unless isSingleItem}}
-							<!-- header for leaf -->
-							<tr>
-								<td></td>
-								<td colspan = "5">{{repeatString "&nbsp" depth -1}}{{name}}</td>
-							</tr>
-						{{/unless}}
+					
+					<!-- no header for single item groups -->
+					{{#unless isSingleItem}}	
+						<tr>
+							<td>
+								{{#unless correctedValues.isFlagged}}
+									{{#if correctedValues.note}}
+										<img src="images/note.png"/>
+									{{/if}}
+								{{else}}
+									{{#if correctedValues.isFlagged}}
+										<img src="images/flag.gif"/>
+									{{else}}
+										<img src="images/noflag.gif"/>
+									{{/if}}
+								{{/unless}}
+							</td>
+							<td>
+								{{#compare ../count "===" 1}}
+									{{repeatString "&nbsp" ../../depth -1}}
+								{{else}}
+									{{repeatString "&nbsp" ../../depth 4}}
+								{{/compare}}
+								{{correctedValues.entityNameBest}}
+							</td>
+							<td>
+								{{txTransactionDateDisplay .}}
+							</td>
+							<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
+								{{formatCurrency correctedValues.amount}}
+							</td>
+							<td>
+								{{transactionReason}}
+							</td>
+							<td>
+								{{accountId}}
+							</td>
+						</tr>
+					{{/unless}}
+
+					<!-- if leaf group, print transactions as child else print child groups -->
+					{{#if isLeafGroup}}		
 						{{> tx }}
 					{{else}}
-						<!-- header for non-leaf -->
-						<tr>
-							<td></td>
-							<td colspan = "5">{{repeatString "&nbsp" depth -1}}{{name}}</td>
-						</tr>
 						{{> txGroup}}
 					{{/if}}
+
 				{{/toChildAggregatorsArray}}

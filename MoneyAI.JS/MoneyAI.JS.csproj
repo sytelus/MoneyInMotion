@@ -35,6 +35,7 @@
     <Content Include="js\main.js" />
     <Content Include="js\templates\txListTransactionGroup.txt" />
     <Content Include="js\templates\txListTransactionRow.txt" />
+    <Content Include="js\common\KeyCounter.js" />
     <Content Include="js\TransactionAggregator.js" />
     <Content Include="js\txExplorerView.js" />
     <Content Include="js\Transaction.js" />

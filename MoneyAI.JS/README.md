@@ -13,7 +13,7 @@ Build (Windows)
 	bower update
 	npm install
 	grunt
-5. Start webserver for MoneyInMotion\MoneyAI.JS folder. For IIS, make sure you have json mime type added as application/json.
+5. Start webserver for MoneyInMotion\MoneyAI.JS folder. For IIS, make sure you have json mime type added as application/json, less as text/css.
 6. You need files in MoneyInMotion\MoneyAI.JS\data folder which is mysteriously not provided. To get this files, run MoneyAI.WinForms project, drop in your account files, scan, save merged files and copy them over to data folder.
  
  Issues
