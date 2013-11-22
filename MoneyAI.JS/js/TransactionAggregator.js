@@ -7,10 +7,10 @@
         this.negativeSum = 0;
         this.sum = 0;
 
-        this.flagCounter = new utils.KeyCounter(true);
+        this.flagCounter = new utils.KeyCounter(true, utils.KeyCounter.booleanKeyMap);
         this.noteCounter = new utils.KeyCounter(true);
-        this.transactionReasonCounter = new utils.KeyCounter();
-        this.accountCounter = new utils.KeyCounter();
+        this.transactionReasonCounter = new utils.KeyCounter(true);
+        this.accountCounter = new utils.KeyCounter(true);
 
         this.depth = parent ? parent.depth + 1 : 0;
 
@@ -50,7 +50,10 @@
                 this.sum += tx.correctedValues.amount;
                 this.count += 1;
 
-
+                this.flagCounter.add(tx.correctedValues.isFlagged);
+                this.noteCounter.add(!!tx.correctedValues.note);
+                this.transactionReasonCounter.add(tx.correctedValues.transactionReason);
+                this.accountCounter.add(tx.accountId);
 
                 if (this.childAggregateFunction) {
                     var childAggregator = this.childAggregateFunction(this, tx);
@@ -58,6 +61,15 @@
                         childAggregator.add(tx);
                     }
                 }
+            },
+
+            finalize: function() {
+                this.flagCounter.finalize();
+                this.noteCounter.finalize();
+                this.transactionReasonCounter.finalize();
+                this.accountCounter.finalize();
+
+                utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });
             },
 
             toChildAggregatorsArray: function () {

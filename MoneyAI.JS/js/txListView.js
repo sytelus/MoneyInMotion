@@ -69,6 +69,7 @@
                 netAggregator.add(tx);
             });
             
+            netAggregator.finalize();
 
             var templateData = netAggregator;
 

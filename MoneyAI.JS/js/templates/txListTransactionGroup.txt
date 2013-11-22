@@ -4,37 +4,45 @@
 					{{#unless isSingleItem}}	
 						<tr>
 							<td>
-								{{#unless correctedValues.isFlagged}}
-									{{#if correctedValues.note}}
-										<img src="images/note.png"/>
-									{{/if}}
+								{{#compare noteCounter.count "===" 1}}
+									<i class="fa fa-file-o"></i>
 								{{else}}
-									{{#if correctedValues.isFlagged}}
-										<img src="images/flag.gif"/>
-									{{else}}
-										<img src="images/noflag.gif"/>
-									{{/if}}
-								{{/unless}}
-							</td>
-							<td>
-								{{#compare ../count "===" 1}}
-									{{repeatString "&nbsp" ../../depth -1}}
-								{{else}}
-									{{repeatString "&nbsp" ../../depth 4}}
+									{{#compare noteCounter.count ">=" 1}}
+										<i class="fa fa-files-o"></i>
+									{{/compare}}
 								{{/compare}}
-								{{correctedValues.entityNameBest}}
+								{{#compare flagCounter.keyCounts.trueValue "===" 1}}
+									<i class="todoFlag"></i>
+								{{else}}
+									{{#compare flagCounter.keyCounts.trueValue ">" 1}}
+										<i class="todoFlagPartial"></i>
+									{{else}}
+										{{#compare flagCounter.keyCounts.falseValue ">" 0}}
+											<i class="todoFlagDone"></i>
+										{{/compare}}
+									{{/compare}}
+								{{/compare}}
 							</td>
 							<td>
-								{{txTransactionDateDisplay .}}
-							</td>
-							<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
-								{{formatCurrency correctedValues.amount}}
+								{{repeatString "&nbsp" depth -1}}{{title}}
 							</td>
 							<td>
-								{{transactionReason}}
+								{{count}} Counts
+							</td>
+							<td {{#compare sum "<" 0}} class="negativeAmount" {{/compare}}>
+								{{formatCurrency sum}}
 							</td>
 							<td>
-								{{accountId}}
+								{{transactionReasonCounter.top.key}}
+								{{#compare transactionReasonCounter.count ">" 1}}
+									...
+								{{/compare}}
+							</td>
+							<td>
+								{{accountCounter.top.key}}
+								{{#compare accountCounter.count ">" 1}}
+									...
+								{{/compare}}
 							</td>
 						</tr>
 					{{/unless}}

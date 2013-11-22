@@ -1,7 +1,7 @@
 ﻿	<table class="table table-hover table-responsive table-condensed2" id="txListGrid">
 		<thead>
 			<tr>
-				<th><img src="images/flagColumn.gif"/></th>
+				<th><i class="todoFlagHeader"></i></th>
 				<th>Name</th>
 				<th>Date</th>
 				<th>Amount</th>

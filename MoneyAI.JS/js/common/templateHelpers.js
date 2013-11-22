@@ -10,7 +10,8 @@
         ">": function (l, r) { return l > r; },
         "<=": function (l, r) { return l <= r; },
         ">=": function (l, r) { return l >= r; },
-        "typeof": function (l, r) { return typeof l === r; }
+        "typeof": function (l, r) { return typeof l === r; },
+        "!typeof": function (l, r) { return typeof l !== r; }
     };
 
     var helpers = [
@@ -57,6 +58,16 @@
 
                 if (!operators[operator]) {
                     throw new Error("Handlerbars Helper 'compare' doesn't know the operator " + operator);
+                }
+
+                if (utils.isFunction(lvalue)) {
+                    lvalue = lvalue.call(this);
+                }
+                if (utils.isFunction(rvalue)) {
+                    rvalue = rvalue.call(this);
+                }
+                if (utils.isFunction(operator)) {
+                    operator = operator.call(this);
                 }
 
                 var result = operators[operator](lvalue, rvalue);

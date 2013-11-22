@@ -1,10 +1,11 @@
-﻿define("KeyCounter", [], function () {
+﻿define("common/keyCounter", [], function () {
     "use strict";
     return function (utils) {
 
-        var $this = function KeyCounter(ignoreUndefinedKey) {
+        var $this = function KeyCounter(ignoreUndefinedKey, keyMapFunction) {
             this.ignoreUndefinedKey = ignoreUndefinedKey;
-            this.keyCounts = new utils.Dictionary();
+            this.keyMapFunction = keyMapFunction;
+            this.keyCounts = {};
         };
 
         var proto = (function () {
@@ -14,20 +15,24 @@
             //publics
             return {
                 add: function (key) {
-                    if (key !== undefined || !ignoreUndefinedKey) {
-                        var newCount = (this.keyCounts.get(key) || 0) + 1;
-                        this.keyCounts.set(newCount);
+                    if (this.keyMapFunction) {
+                        key = this.keyMapFunction(key);
+                    }
+
+                    if (key !== undefined || !this.ignoreUndefinedKey) {
+                        var newCount = (this.keyCounts[key] || 0) + 1;
+                        this.keyCounts[key] = newCount;
                     }
                 },
 
-                count: function () {
-                    return this.keyCounts.size();
+                getCount: function () {
+                    return utils.size(this.keyCounts);
                 },
 
-                top: function () {
+                getTop: function () {
                     var maxKey, maxCount;
 
-                    this.keyCounts.forEach(function (eachKey, eachCount) {
+                    utils.forEach(this.keyCounts, function (eachCount, eachKey) {
                         if (maxCount === undefined || maxCount < eachCount) {
                             maxKey = eachKey;
                             maxCount = eachCount;
@@ -37,12 +42,20 @@
                     return { key: maxKey, count: maxCount };
                 },
 
-                sorted: function (sortDescending) {
-                    var array = this.keyCounts.toArray();
+                getSorted: function (sortDescending) {
+                    var array = utils.toKeyValueArray(this.keyCounts);
                     array.sort(utils.compareFunction(!!sortDescending, function (kvp) { return kvp.value; }));
                     return array;
-                }
+                },
 
+                finalize: function() {
+                    this.count = this.getCount();
+                    this.top = this.getTop();
+                },
+
+                booleanKeyMap: function() {
+                    return function (boolValue) { return boolValue ? "trueValue" : "falseValue"; };
+                }
             };
         })();
 

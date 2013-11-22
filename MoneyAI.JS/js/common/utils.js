@@ -1,5 +1,5 @@
-﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "KeyCounter"],
-    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, KeyCounter) {
+﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "common/keyCounter"],
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter) {
 
    "use strict";
 
@@ -33,8 +33,6 @@
         logger: debug,
         Dictionary: buckets.Dictionary,
         Set: buckets.Set,
-
-        KeyCounter: KeyCounter(utilsInstance),
 
         getMonthName: function (monthNumber) {
             return moment({ month: monthNumber }).format("MMMM");
@@ -91,9 +89,17 @@
         },
 
         forEach: _.forEach,
-        toValueArray: _.values
-
+        toValueArray: _.values,
+        isFunction: $.isFunction,
+        size: _.size,
+        forOwn: _.forOwn,
+        toKeyValueArray: function (obj) {
+            return _.map(obj, function (value, key) { return { key: key, value: value }; });
+        }
     };
+
+    //Set up members with cyclic dependecy
+    utilsInstance.KeyCounter = keyCounter(utilsInstance);
 
     templateHelpers.registerAll(utilsInstance);
 

@@ -1,17 +1,14 @@
 ﻿				{{#each toTxArray}}
 					<tr>
 						<td>
-							{{#unless correctedValues.isFlagged}}
-								{{#if correctedValues.note}}
-									<img src="images/note.png"/>
-								{{/if}}
+							{{#if correctedValues.note}}<i class="fa fa-file-o"></i>{{/if}}
+							{{#if correctedValues.isFlagged}}
+								<i class="todoFlag"></i>
 							{{else}}
-								{{#if correctedValues.isFlagged}}
-									<img src="images/flag.gif"/>
-								{{else}}
-									<img src="images/noflag.gif"/>
-								{{/if}}
-							{{/unless}}
+								{{#compare correctedValues.isFlagged "!typeof" "undefined"}}
+									<i class="todoFlagDone"></i>
+								{{/compare}}
+							{{/if}}
 						</td>
 						<td>
 							{{#compare ../count "===" 1}}

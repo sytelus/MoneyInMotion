@@ -92,10 +92,6 @@
                     proto.getTransactionMonthString.call(this);
                     proto.getEntityNameBest.call(this);
 
-                    memoizeCorrectedValue.call(this, "transactionDisplayText", function () {
-                        return utils.formateDate(that.correctedValues.transactionDateParsed, utils.FormatStringDateLocalized);
-                    });
-
                     this.correctedValues.isPopulated = true;
                 }
             }
