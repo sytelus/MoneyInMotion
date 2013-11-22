@@ -20,7 +20,7 @@ module.exports = function (grunt) {
         paths: pathsConfig,
         clean: {
             dist: ['.tmp', '<%= paths.dist %>/*'],
-            server: '.tmp'
+            bowerUpdate: ['<%= paths.src %>/fonts/**']
         },
         jshint: {
             options: {
@@ -34,7 +34,7 @@ module.exports = function (grunt) {
         },
 
         less: {
-            dest: {
+            dist: {
                 options: {
                     paths: ['<%= paths.src %>/css'],
                     cleancss: false,
@@ -83,7 +83,18 @@ module.exports = function (grunt) {
                     {cwd: '<%= paths.src %>/js/ext/bootstrap/dist', src: ['fonts/*'],
                         dest: '<%= paths.dist %>', dot: true, expand: true},
                     {cwd: '<%= paths.src %>', src: ['images/**/*'],
-                        dest: '<%= paths.dist %>', dot: true, expand: true}                ]
+                    dest: '<%= paths.dist %>', dot: true, expand: true
+                    }
+                ]
+            },
+            bowerUpdate: {
+                files: [
+                    //Get fonts in one place after bower update
+                    {cwd: '<%= paths.src %>/js/ext/font-awesome', src: ['fonts/*'],
+                        dest: '<%= paths.src %>', dot: true, expand: true},
+                    {cwd: '<%= paths.src %>/js/ext/bootstrap/dist', src: ['fonts/*'],
+                        dest: '<%= paths.src %>', dot: true, expand: true}
+                ]
             }
         },
         requirejs: {
@@ -146,8 +157,29 @@ module.exports = function (grunt) {
                     dest: '<%= paths.dist %>'
                 }]
             }
+        },
+
+        //Bower update tasks
+        bower: {
+            bowerUpdate: {
+                options: {
+                    install: true,
+                    copy: false,
+                    verbose: true,
+                    cleanTargetDir: false,
+                    cleanBowerDir: false,
+                    bowerOptions: {}
+                }
+            }
         }
+        
     });
+
+    grunt.registerTask('bowerUpdate', [
+        'clean:bowerUpdate',
+        'bower',
+        'copy:bowerUpdate'
+    ]);
 
     grunt.registerTask('build', [
         'clean:dist',
@@ -155,7 +187,7 @@ module.exports = function (grunt) {
         //'csslint', //bootstrap has too many violations
         //'imagemin',   //currently broken
         'cssmin',
-        'copy',
+        'copy:dist',
         'requirejs',
         'htmlrefs',
         'htmlmin'

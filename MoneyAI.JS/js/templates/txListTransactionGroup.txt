@@ -4,21 +4,21 @@
 					{{#unless isSingleItem}}	
 						<tr>
 							<td>
-								{{#compare noteCounter.count "===" 1}}
-									<i class="fa fa-file-o"></i>
+								{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
+									<i class="fa fa-files-o"></i>
 								{{else}}
-									{{#compare noteCounter.count ">=" 1}}
-										<i class="fa fa-files-o"></i>
+									{{#compare noteCounter.keyCounts.trueValue ">=" 1}}
+										<i class="fa fa-files"></i>
 									{{/compare}}
 								{{/compare}}
-								{{#compare flagCounter.keyCounts.trueValue "===" 1}}
-									<i class="todoFlag"></i>
+								{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
+									<i class="fa fa-flag alertIcon"></i>
 								{{else}}
-									{{#compare flagCounter.keyCounts.trueValue ">" 1}}
-										<i class="todoFlagPartial"></i>
+									{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
+										<i class="fa fa-flag-checkered partAlertIcon"></i>
 									{{else}}
 										{{#compare flagCounter.keyCounts.falseValue ">" 0}}
-											<i class="todoFlagDone"></i>
+											<i class="fa fa-flag-o informationIcon"></i>
 										{{/compare}}
 									{{/compare}}
 								{{/compare}}
@@ -34,13 +34,13 @@
 							</td>
 							<td>
 								{{transactionReasonCounter.top.key}}
-								{{#compare transactionReasonCounter.count ">" 1}}
+								{{#compare transactionReasonCounter.keyCount ">" 1}}
 									...
 								{{/compare}}
 							</td>
 							<td>
 								{{accountCounter.top.key}}
-								{{#compare accountCounter.count ">" 1}}
+								{{#compare accountCounter.keyCount ">" 1}}
 									...
 								{{/compare}}
 							</td>

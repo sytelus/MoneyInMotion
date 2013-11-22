@@ -8,7 +8,7 @@
         this.sum = 0;
 
         this.flagCounter = new utils.KeyCounter(true, utils.KeyCounter.booleanKeyMap);
-        this.noteCounter = new utils.KeyCounter(true);
+        this.noteCounter = new utils.KeyCounter(true, utils.KeyCounter.booleanKeyMap);
         this.transactionReasonCounter = new utils.KeyCounter(true);
         this.accountCounter = new utils.KeyCounter(true);
 

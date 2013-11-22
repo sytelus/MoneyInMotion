@@ -6,6 +6,7 @@
             this.ignoreUndefinedKey = ignoreUndefinedKey;
             this.keyMapFunction = keyMapFunction;
             this.keyCounts = {};
+            this.count = 0;
         };
 
         var proto = (function () {
@@ -23,9 +24,11 @@
                         var newCount = (this.keyCounts[key] || 0) + 1;
                         this.keyCounts[key] = newCount;
                     }
+
+                    this.count++;
                 },
 
-                getCount: function () {
+                getKeyCount: function () {
                     return utils.size(this.keyCounts);
                 },
 
@@ -49,16 +52,14 @@
                 },
 
                 finalize: function() {
-                    this.count = this.getCount();
+                    this.keyCount = this.getKeyCount();
                     this.top = this.getTop();
-                },
-
-                booleanKeyMap: function() {
-                    return function (boolValue) { return boolValue ? "trueValue" : "falseValue"; };
                 }
             };
         })();
 
+        //class statics
+        $this.booleanKeyMap = function (boolValue) { return boolValue === true ? "trueValue" : (boolValue === false ? "falseValue" : undefined); };
 
         proto.constructor = $this;
 

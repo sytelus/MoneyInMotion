@@ -3,10 +3,10 @@
 						<td>
 							{{#if correctedValues.note}}<i class="fa fa-file-o"></i>{{/if}}
 							{{#if correctedValues.isFlagged}}
-								<i class="todoFlag"></i>
+								<i class="fa fa-flag alertIcon"></i>
 							{{else}}
 								{{#compare correctedValues.isFlagged "!typeof" "undefined"}}
-									<i class="todoFlagDone"></i>
+									<i class="fa fa-flag-o informationIcon"></i>
 								{{/compare}}
 							{{/if}}
 						</td>
