@@ -1,11 +1,13 @@
-﻿@import (less) "../js/ext/bootstrap/dist/css/bootstrap.css";
-@import (less) "../js/ext/bootstrap/dist/css/bootstrap-theme.css";
+﻿@import "../js/ext/bootstrap/less/bootstrap.less";
+@import "../js/ext/bootstrap/less/theme.less";
 @import (less) "../js/ext/font-awesome/css/font-awesome.css";
 
+/*  Value formating */
 .negativeAmount {
     color:red;
 }
 
+/*   Tight grid */
 .table-condensed2 > thead > tr > th,
 .table-condensed2 > tbody > tr > th,
 .table-condensed2 > tfoot > tr > th,
@@ -16,18 +18,78 @@
   font-size: 85%;
 }
 
-.columnHeaderIcon {
+.itemCountCell {
+    color: grey;
+}
+
+.condencedDataGrid
+    :extend(.table all)
+    :extend(.table-hover all) 
+    :extend(.table-responsive all)
+    :extend(.table-condensed2 all) {
+}
+
+
+.txRowVisible {
+    display:table-row;
+}
+
+.txRowCollapsed {
+    display:none;
+}
+
+.txGroupRow {
+}
+
+.txTopLevelRow {
+}
+
+.txRowExpanderControl {
+    display:none;   //don't show checkbox
+}
+
+.txRowExpanderControlLabel {
+    cursor: pointer;    //cursor same as link
+}
+
+/*  Todo icon */
+@flag-rotation: 10deg;
+.todoPendingIcon:extend(.fa all):extend(.fa-flag all) {
+    .rotate(@flag-rotation);
+    color: deeppink;
+}
+.todoPartPendingIcon:extend(.fa all):extend(.fa-flag-checkered all) {
+    .rotate(@flag-rotation / 2);
+    color: orange;
+}
+.todoColumnIcon:extend(.fa all):extend(.fa-flag-o all) {
+    .rotate(@flag-rotation / 2);
+    color: silver;
+}
+.todoDoneIcon:extend(.fa all):extend(.fa-check all) {
+    color: lightgrey;
+}
+
+/*  Note icon */
+.noteIcon:extend(.fa all):extend(.fa-file all) {
+    color: yellow;
+}
+.notePartIcon:extend(.fa all):extend(.fa-files all) {
+    color: yellow;
+}
+.noteColumnIcon:extend(.fa all):extend(.fa-file-o all) {
     color: silver;
 }
 
-.alertIcon {
-    color: deeppink;
+.rowsExpandIcon:extend(.fa all):extend(.fa-plus-square-o all) {
+}
+.rowsCollapseIcon:extend(.fa all):extend(.fa-minus-square-o all) {
 }
 
-.partAlertIcon {
-    color: orange;
+.nbspIcon:extend(.fa all):extend(.fa-square all) {
+    visibility:hidden;
 }
 
-.informationIcon {
-    color: grey;
+.condencedIcon {
+    font-size: 90%;
 }

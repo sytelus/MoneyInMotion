@@ -1,7 +1,12 @@
 ﻿define("TransactionAggregator", ["common/utils", "Transaction"], function (utils, Transaction) {
     "use strict";
 
+    //static privates
+    var nextId = 1;
+
     var $this = function TransactionAggregator(parent, name, title, isLeafGroup, childAggregateFunction, sortMapFunction, sortAscending) {
+        this.groupId = nextId++;
+
         this.count = 0;
         this.positiveSum = 0;
         this.negativeSum = 0;
@@ -69,6 +74,8 @@
                 this.transactionReasonCounter.finalize();
                 this.accountCounter.finalize();
 
+                this.isSingleItem = this.getIsSingleItem();
+
                 utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });
             },
 
@@ -83,7 +90,7 @@
                 return this.rows;
             },
 
-            isSingleItem: function () {
+            getIsSingleItem: function () {
                 return this.count === 1;
             }
         };

@@ -1,5 +1,5 @@
-﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt", "text!templates/txListTransactionGroup.txt"],
-    function (txListTransactionRowText, txListTransactionGroupText) {
+﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt", "text!templates/txListTransactionGroup.txt", "Transaction"],
+    function (txListTransactionRowText, txListTransactionGroupText, Transaction) {
     "use strict";
 
     var helpers = [
@@ -10,8 +10,14 @@
         },
 
         function (utils) {
-            utils.registerTemplateHelper("txTransactionDateDisplay", function (tx) {
-                return utils.formateDate(tx.correctedValues.transactionDateParsed, utils.FormatStringDateLocalized);
+            utils.registerTemplateHelper("txTransactionDateDisplay", function (transactionDateParsed) {
+                return utils.formateDate(transactionDateParsed, utils.FormatStringDateLocalized);
+            });
+        },
+
+        function (utils) {
+            utils.registerTemplateHelper("txTransactionReasonDisplay", function (transactionReason) {
+                return Transaction.prototype.transactionReasonLookup[transactionReason.toString()];
             });
         }
     ];

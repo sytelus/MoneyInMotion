@@ -7,6 +7,10 @@
     var compiledTemplate;   //cache compiled template
 
     return {
+        initialize: function () {
+
+        },
+
         refresh: function (txs, selectYearString, selectMonthString) {
             var yearMonths = new utils.Dictionary();
 

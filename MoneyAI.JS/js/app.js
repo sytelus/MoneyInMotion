@@ -7,6 +7,8 @@
         //Setup app specific template helpers
         templateHelpers.registerAll(utils);
 
+        txExplorerView.initialize();
+
         //Enable hashchange event for jslink anchors using delegated events
         $(document).on("click", ".jslink  a[href^=#]", function () {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
             var url = $(this).attr("href");

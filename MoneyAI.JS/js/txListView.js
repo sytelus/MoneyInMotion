@@ -1,5 +1,5 @@
-﻿define("txListView", ["lodash", "Transaction", "common/utils", "text!templates/txList.txt", "TransactionAggregator"],
-    function (_, Transaction, utils, templateText, TransactionAggregator) {
+﻿define("txListView", ["jquery", "Transaction", "common/utils", "text!templates/txList.txt", "TransactionAggregator"],
+    function ($, Transaction, utils, templateText, TransactionAggregator) {
 
     "use strict";
 
@@ -56,9 +56,29 @@
 
     //publics
     return {
+        initialize: function () {
+            $("#txListControl").delegate(".txRowExpanderControl", "click", function () {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
+                var currentState = $(this).prop("checked");
+                var expanderId = $(this).attr("id");
+                var childRows = $(this).closest("tr").nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
+                var expanderIcon = $(this).next("label[for=\"" + expanderId + "\"]").children("i");
+
+                if (currentState) {
+                    childRows.attr("class", "txRowCollapsed");
+                    expanderIcon.attr("class", "rowsExpandIcon");
+                }
+                else {
+                    childRows.attr("class", "txRowVisible");
+                    expanderIcon.attr("class", "rowsCollapseIcon");
+                }
+
+                //return false;   //prevent further bubbling
+            });
+        },
+
         refresh: function (txs, selectedYear, selectedMonth) {
             //first filter out the transactions
-            var selectedTxs = _.filter(txs.items, function (tx) {
+            var selectedTxs = utils.filter(txs.items, function (tx) {
                 return tx.correctedValues.transactionYearString === selectedYear && tx.correctedValues.transactionMonthString === selectedMonth;
             });
 

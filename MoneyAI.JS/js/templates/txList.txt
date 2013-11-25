@@ -1,7 +1,7 @@
-﻿	<table class="table table-hover table-responsive table-condensed2" id="txListGrid">
+﻿	<table class="condencedDataGrid" id="txListGrid">
 		<thead>
 			<tr>
-				<th><i class="fa fa-flag-o columnHeaderIcon"></i></th>
+				<th><i class="todoColumnIcon"></i></th>
 				<th>Name</th>
 				<th>Date</th>
 				<th>Amount</th>

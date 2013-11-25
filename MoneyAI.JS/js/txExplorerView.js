@@ -3,6 +3,11 @@
       
     //public interface
     return {
+        initialize: function () {
+            txNavigationView.initialize();
+            txListView.initialize();
+        },
+
         refresh: function (yearString, monthString) {
             utils.logger.log("Refresh Request for:", "yearString: ", yearString, " monthString: ", monthString);
 

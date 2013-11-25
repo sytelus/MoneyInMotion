@@ -2,38 +2,42 @@
 					
 					<!-- no header for single item groups -->
 					{{#unless isSingleItem}}	
-						<tr>
+						<tr class="txGroupRow">
 							<td>
 								{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
-									<i class="fa fa-files-o"></i>
+									<i class="noteIcon"></i>
 								{{else}}
 									{{#compare noteCounter.keyCounts.trueValue ">=" 1}}
-										<i class="fa fa-files"></i>
+										<i class="notePartIcon"></i>
 									{{/compare}}
 								{{/compare}}
 								{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-									<i class="fa fa-flag alertIcon"></i>
+									<i class="todoPendingIcon"></i>
 								{{else}}
 									{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-										<i class="fa fa-flag-checkered partAlertIcon"></i>
+										<i class="todoPartPendingIcon"></i>
 									{{else}}
 										{{#compare flagCounter.keyCounts.falseValue ">" 0}}
-											<i class="fa fa-flag-o informationIcon"></i>
+											<i class="todoDoneIcon"></i>
 										{{/compare}}
 									{{/compare}}
 								{{/compare}}
 							</td>
 							<td>
-								{{repeatString "&nbsp" depth -1}}{{title}}
+								{{repeatString "&nbsp" depth -1}}
+								<input type="checkbox" id="Exp{{groupId}}" class="txRowExpanderControl" checked>
+								<label class="txRowExpanderControlLabel" for="Exp{{groupId}}">
+									<i class="rowsExpandIcon condencedIcon"></i>&nbsp;
+								</label>{{title}}
 							</td>
-							<td>
-								{{count}} Counts
+							<td class="itemCountCell">
+								({{count}} items)
 							</td>
 							<td {{#compare sum "<" 0}} class="negativeAmount" {{/compare}}>
 								{{formatCurrency sum}}
 							</td>
 							<td>
-								{{transactionReasonCounter.top.key}}
+								{{txTransactionReasonDisplay transactionReasonCounter.top.key}}
 								{{#compare transactionReasonCounter.keyCount ">" 1}}
 									...
 								{{/compare}}

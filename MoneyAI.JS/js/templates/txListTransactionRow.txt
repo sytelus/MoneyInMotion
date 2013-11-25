@@ -1,12 +1,13 @@
 ﻿				{{#each toTxArray}}
-					<tr>
+					<tr data-expanderid="Exp{{../groupId}}" 
+						class="{{#if ../isSingleItem}}txRowVisible{{else}}txRowCollapsed{{/if}}">
 						<td>
-							{{#if correctedValues.note}}<i class="fa fa-file-o"></i>{{/if}}
+							{{#if correctedValues.note}}<i class="noteIcon"></i>{{/if}}
 							{{#if correctedValues.isFlagged}}
-								<i class="fa fa-flag alertIcon"></i>
+								<i class="todoPendingIcon"></i>
 							{{else}}
 								{{#compare correctedValues.isFlagged "!typeof" "undefined"}}
-									<i class="fa fa-flag-o informationIcon"></i>
+									<i class="todoDoneIcon"></i>
 								{{/compare}}
 							{{/if}}
 						</td>
@@ -16,16 +17,17 @@
 							{{else}}
 								{{repeatString "&nbsp" ../../depth 4}}
 							{{/compare}}
+							<i class="nbspIcon condencedIcon"></i>
 							{{correctedValues.entityNameBest}}
 						</td>
 						<td>
-							{{txTransactionDateDisplay .}}
+							{{txTransactionDateDisplay correctedValues.transactionDateParsed}}
 						</td>
 						<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
 							{{formatCurrency correctedValues.amount}}
 						</td>
 						<td>
-							{{transactionReason}}
+							{{txTransactionReasonDisplay correctedValues.transactionReason}}
 						</td>
 						<td>
 							{{accountId}}

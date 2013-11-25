@@ -20,8 +20,13 @@
 
         var getCorrectedValue = function (name) {
             return memoizeCorrectedValue.call(this, name, function () {
-                var correctedValue = proto.getMergedEditValue.call(this, name) || this[name];
-                return correctedValue;
+                var editedValue = proto.getMergedEditValue.call(this, name);
+                if (editedValue === undefined) {
+                    return this[name];
+                }
+                else {
+                    return editedValue;
+                }
             });
         };
         
@@ -32,13 +37,22 @@
         //outside on JSON objects
         return {
 
-            TransactionReasonCodes: {
+            transactionReasonReverseLookup: {
                 Purchase: 0,
                 Adjustment: 1,
                 Fee: 2,
                 InterAccountPayment: 4,
                 Return: 8,
                 InterAccountTransfer: 16
+            },
+
+            transactionReasonLookup: {
+                "0": "Purchase",
+                "1": "Adjustment",
+                "2": "Fee",
+                "4": "InterAccountPayment",
+                "8": "Return",
+                "16": "InterAccountTransfer"
             },
 
             getMergedEditValue: function (name) {
