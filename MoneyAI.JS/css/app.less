@@ -19,7 +19,6 @@
 }
 
 .itemCountCell {
-    color: grey;
 }
 
 .condencedDataGrid
@@ -45,11 +44,20 @@
 }
 
 .txRowExpanderControl {
-    display:none;   //don't show checkbox
-}
+    text-decoration:none;
+    font-style:normal;
+    font-weight:normal;
+    border-bottom:1px dashed;
+    border-bottom-color: grey;
+    color:inherit;
+    cursor:pointer;
 
-.txRowExpanderControlLabel {
-    cursor: pointer;    //cursor same as link
+    .hoverIcon {
+        display: none;
+    }
+    &:hover > .hoverIcon {
+        display:inline;
+    }
 }
 
 /*  Todo icon */
@@ -91,5 +99,5 @@
 }
 
 .condencedIcon {
-    font-size: 90%;
+    //font-size: 90%;
 }

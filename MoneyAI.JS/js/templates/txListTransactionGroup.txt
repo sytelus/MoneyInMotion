@@ -24,14 +24,13 @@
 								{{/compare}}
 							</td>
 							<td>
-								{{repeatString "&nbsp" depth -1}}
-								<input type="checkbox" id="Exp{{groupId}}" class="txRowExpanderControl" checked>
-								<label class="txRowExpanderControlLabel" for="Exp{{groupId}}">
-									<i class="rowsExpandIcon condencedIcon"></i>&nbsp;
-								</label>{{title}}
+								{{repeatString "&nbsp" depth 0}}{{title}}
 							</td>
 							<td class="itemCountCell">
-								({{count}} items)
+								<a class="txRowExpanderControl" data-iscollapsed="false" id="Exp{{groupId}}">
+									<span class="hoverIcon"><i class="rowsExpandIcon condencedIcon"></i></span>
+									{{count}} items
+								</a>
 							</td>
 							<td {{#compare sum "<" 0}} class="negativeAmount" {{/compare}}>
 								{{formatCurrency sum}}

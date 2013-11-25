@@ -17,7 +17,6 @@
 							{{else}}
 								{{repeatString "&nbsp" ../../depth 4}}
 							{{/compare}}
-							<i class="nbspIcon condencedIcon"></i>
 							{{correctedValues.entityNameBest}}
 						</td>
 						<td>

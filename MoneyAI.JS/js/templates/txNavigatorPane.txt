@@ -8,7 +8,7 @@
                 </a>
             </h4>
         </div>
-        <div id="year{{year}}" class="panel-collapse collapse {{#if isSelected}}in{{/if}}">
+        <div id="year{{yearString}}" class="panel-collapse collapse {{#if isSelected}}in{{/if}}">
             <div class="panel-body">
 				<ul class="nav nav-pills">
 					{{#months}}

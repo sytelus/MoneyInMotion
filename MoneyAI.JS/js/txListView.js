@@ -58,21 +58,23 @@
     return {
         initialize: function () {
             $("#txListControl").delegate(".txRowExpanderControl", "click", function () {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
-                var currentState = $(this).prop("checked");
+                var isCollapsed = $(this).data("iscollapsed") === "true";
                 var expanderId = $(this).attr("id");
                 var childRows = $(this).closest("tr").nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
-                var expanderIcon = $(this).next("label[for=\"" + expanderId + "\"]").children("i");
+                var expanderIcon = $(this).find("i").filter(":first");
 
-                if (currentState) {
+                if (isCollapsed) {
                     childRows.attr("class", "txRowCollapsed");
                     expanderIcon.attr("class", "rowsExpandIcon");
+                    $(this).data("iscollapsed", "false");
                 }
                 else {
                     childRows.attr("class", "txRowVisible");
                     expanderIcon.attr("class", "rowsCollapseIcon");
+                    $(this).data("iscollapsed", "true");
                 }
 
-                //return false;   //prevent further bubbling
+                return false;   //prevent further bubbling
             });
         },
 
