@@ -2,7 +2,7 @@
 					
 					<!-- no header for single item groups -->
 					{{#unless isSingleItem}}	
-						<tr class="txGroupRow">
+						<tr class="txGroupRow" id="Exp{{groupId}}">
 							<td>
 								{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
 									<i class="noteIcon"></i>
@@ -30,23 +30,26 @@
 								{{formatCurrency sum}}
 							</td>
 							<td>
-								<div class="groupValuesTop">
-									{{txTransactionDateDisplay transactionDateCounter.top}}
-								</div>
-								<div class="groupValuesOtherCounts">
-									{{#compare transactionDateCounter.keyCount ">" 1}}
-										<a class="txRowExpanderControl" data-iscollapsed="false" id="Exp{{groupId}}">
-											<span class="hoverIcon"><i class="rowsExpandIcon condencedIcon"></i></span>
-											<small>{{transactionDateCounter.keyCount}} more days</small>
-										</a>
-									{{/compare}}
-								</div>
+								{{txTransactionDateDisplay transactionDateCounter.top.key}}
+								<span class="groupValuesOtherCounts">
+									<small>
+									<a class="txRowExpanderControl">
+										<span class="hoverIcon"><i class="rowsExpandIcon"></i></span>
+										<span class="expanderTitle">all</span>
+									</a>
+									</small>
+								</span>
 							</td>
 							<td>
-								{{txTransactionReasonDisplay transactionReasonCounter.top.key}}
-								{{#compare transactionReasonCounter.keyCount ">" 1}}
-									...
-								{{/compare}}
+								{{txTransactionReasonCounterDisplay transactionReasonCounter}}
+								<span class="groupValuesOtherCounts">
+									<small>
+									<a class="txRowExpanderControl">
+										<span class="hoverIcon"><i class="rowsExpandIcon"></i></span>
+										<span class="expanderTitle">all</span>
+									</a>
+									</small>
+								</span>							
 							</td>
 							<td>
 								{{accountCounter.top.key}}

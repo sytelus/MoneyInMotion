@@ -93,7 +93,8 @@
         isFunction: $.isFunction,
         size: _.size,
         forOwn: _.forOwn,
-        filter:_.filter,
+        filter: _.filter,
+        map: _.map,
         toKeyValueArray: function (obj) {
             return _.map(obj, function (value, key) { return { key: key, value: value }; });
         }

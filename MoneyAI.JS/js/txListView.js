@@ -57,24 +57,28 @@
     //publics
     return {
         initialize: function () {
-            $("#txListControl").delegate(".txRowExpanderControl", "click", function () {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
-                var isCollapsed = $(this).data("iscollapsed") === "true";
-                var expanderId = $(this).attr("id");
-                var childRows = $(this).closest("tr").nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
+            $("#txListControl").delegate(".txRowExpanderControl", "click", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
+                var parentRow = $(this).closest("tr");
+                var isCollapsed = parentRow.data("iscollapsed") === "true";    //default is undefined
+                var expanderId = parentRow.attr("id");
+                var childRows = parentRow.nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
                 var expanderIcon = $(this).find("i").filter(":first");
+                var expanderTitle = parentRow.find(".expanderTitle");
 
                 if (isCollapsed) {
                     childRows.attr("class", "txRowCollapsed");
                     expanderIcon.attr("class", "rowsExpandIcon");
-                    $(this).data("iscollapsed", "false");
+                    parentRow.data("iscollapsed", "false");
+                    expanderTitle.text("all");
                 }
                 else {
                     childRows.attr("class", "txRowVisible");
                     expanderIcon.attr("class", "rowsCollapseIcon");
-                    $(this).data("iscollapsed", "true");
+                    parentRow.data("iscollapsed", "true");
+                    expanderTitle.text("summary");
                 }
 
-                return false;   //prevent further bubbling
+                event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
             });
         },
 

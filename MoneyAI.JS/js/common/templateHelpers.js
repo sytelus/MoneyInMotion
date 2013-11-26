@@ -18,7 +18,7 @@
         function formatCurrency(utils) {
             utils.registerTemplateHelper("formatCurrency", function (value) {
 
-                if (!utils || !utils.formateCurrency || !value) {
+                if (!utils || !utils.formateCurrency || value === undefined) {
                     throw new Error("utils.formatCurrency is required, one numeric/string argument is required");
                 }
 

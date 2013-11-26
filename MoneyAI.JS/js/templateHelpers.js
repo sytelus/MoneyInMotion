@@ -17,7 +17,18 @@
 
         function (utils) {
             utils.registerTemplateHelper("txTransactionReasonDisplay", function (transactionReason) {
-                return Transaction.prototype.transactionReasonLookup[transactionReason.toString()];
+                return Transaction.prototype.getTransactionReasonTitle(transactionReason);
+            });
+        },
+
+        function (utils) {
+            utils.registerTemplateHelper("txTransactionReasonCounterDisplay", function (transactionReasonCounter) {
+                var sortedReasons = utils.map(transactionReasonCounter.getSorted(true),
+                    function (kvp) {
+                        return kvp.value + " " +
+                            Transaction.prototype.getTransactionReasonTitle(kvp.key, kvp.value);
+                    }).join(", ")
+                return sortedReasons;
             });
         }
     ];

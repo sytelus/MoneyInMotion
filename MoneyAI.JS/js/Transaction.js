@@ -46,13 +46,22 @@
                 InterAccountTransfer: 16
             },
 
-            transactionReasonLookup: {
+            transactionReasonTitleLookup: {
                 "0": "Purchase",
                 "1": "Adjustment",
                 "2": "Fee",
-                "4": "InterAccountPayment",
+                "4": "Inter Account Payment",
                 "8": "Return",
-                "16": "InterAccountTransfer"
+                "16": "Inter Account Transfer"
+            },
+
+            transactionReasonPluralTitleLookup: {
+                "0": "Purchases",
+                "1": "Adjustments",
+                "2": "Fees",
+                "4": "Inter Account Payments",
+                "8": "Returns",
+                "16": "Inter Account Transfers"
             },
 
             getMergedEditValue: function (name) {
@@ -92,6 +101,12 @@
                     var correctedEntityName = getCorrectedValue.call(this, "entityName");
                     return correctedEntityName === this.entityName ? this.entityNameNormalized : correctedEntityName;
                 });
+            },
+
+            getTransactionReasonTitle: function (transactionReason, count) {
+                count = count || 0;
+                return count > 1 ? proto.transactionReasonPluralTitleLookup[transactionReason.toString()] :
+                    proto.transactionReasonTitleLookup[transactionReason.toString()];
             },
 
             ensureAllCorrectedValues: function () {

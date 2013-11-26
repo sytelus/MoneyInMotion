@@ -5,7 +5,7 @@
 				<th>Name</th>
 				<th>Amount</th>
 				<th>Date</th>
-				<th>Type</th>
+				<th>Reason</th>
 				<th>Account</th>
 			</tr>
 		</thead>

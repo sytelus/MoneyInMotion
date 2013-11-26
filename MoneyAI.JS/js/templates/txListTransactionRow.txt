@@ -1,6 +1,6 @@
 ﻿				{{#each toTxArray}}
 					<tr data-expanderid="Exp{{../groupId}}" 
-						class="{{#if ../isSingleItem}}txRowVisible{{else}}txRowCollapsed{{/if}}">
+						{{#unless ../isSingleItem}}class="txRowCollapsed"{{/unless}}>
 						<td>
 							{{#if correctedValues.note}}<i class="noteIcon"></i>{{/if}}
 							{{#if correctedValues.isFlagged}}
@@ -26,7 +26,7 @@
 							{{txTransactionDateDisplay correctedValues.transactionDateParsed}}
 						</td>
 						<td>
-							{{txTransactionReasonDisplay correctedValues.transactionReason}}
+							1 {{txTransactionReasonDisplay correctedValues.transactionReason}}
 						</td>
 						<td>
 							{{accountId}}
