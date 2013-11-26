@@ -3,8 +3,8 @@
 			<tr>
 				<th><i class="todoColumnIcon"></i></th>
 				<th>Name</th>
-				<th>Date</th>
 				<th>Amount</th>
+				<th>Date</th>
 				<th>Type</th>
 				<th>Account</th>
 			</tr>

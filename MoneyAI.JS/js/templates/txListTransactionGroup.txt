@@ -26,14 +26,21 @@
 							<td>
 								{{repeatString "&nbsp" depth 0}}{{title}}
 							</td>
-							<td class="itemCountCell">
-								<a class="txRowExpanderControl" data-iscollapsed="false" id="Exp{{groupId}}">
-									<span class="hoverIcon"><i class="rowsExpandIcon condencedIcon"></i></span>
-									{{count}} items
-								</a>
-							</td>
 							<td {{#compare sum "<" 0}} class="negativeAmount" {{/compare}}>
 								{{formatCurrency sum}}
+							</td>
+							<td>
+								<div class="groupValuesTop">
+									{{txTransactionDateDisplay transactionDateCounter.top}}
+								</div>
+								<div class="groupValuesOtherCounts">
+									{{#compare transactionDateCounter.keyCount ">" 1}}
+										<a class="txRowExpanderControl" data-iscollapsed="false" id="Exp{{groupId}}">
+											<span class="hoverIcon"><i class="rowsExpandIcon condencedIcon"></i></span>
+											<small>{{transactionDateCounter.keyCount}} more days</small>
+										</a>
+									{{/compare}}
+								</div>
 							</td>
 							<td>
 								{{txTransactionReasonDisplay transactionReasonCounter.top.key}}

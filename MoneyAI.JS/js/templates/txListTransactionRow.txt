@@ -19,11 +19,11 @@
 							{{/compare}}
 							{{correctedValues.entityNameBest}}
 						</td>
-						<td>
-							{{txTransactionDateDisplay correctedValues.transactionDateParsed}}
-						</td>
 						<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
 							{{formatCurrency correctedValues.amount}}
+						</td>
+						<td>
+							{{txTransactionDateDisplay correctedValues.transactionDateParsed}}
 						</td>
 						<td>
 							{{txTransactionReasonDisplay correctedValues.transactionReason}}

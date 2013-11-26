@@ -16,6 +16,7 @@
         this.noteCounter = new utils.KeyCounter(true, utils.KeyCounter.booleanKeyMap);
         this.transactionReasonCounter = new utils.KeyCounter(true);
         this.accountCounter = new utils.KeyCounter(true);
+        this.transactionDateCounter = new utils.KeyCounter(true);
 
         this.depth = parent ? parent.depth + 1 : 0;
 
@@ -59,6 +60,7 @@
                 this.noteCounter.add(!!tx.correctedValues.note);
                 this.transactionReasonCounter.add(tx.correctedValues.transactionReason);
                 this.accountCounter.add(tx.accountId);
+                this.transactionDateCounter.add(tx.correctedValues.transactionDateParsed);
 
                 if (this.childAggregateFunction) {
                     var childAggregator = this.childAggregateFunction(this, tx);
@@ -73,6 +75,7 @@
                 this.noteCounter.finalize();
                 this.transactionReasonCounter.finalize();
                 this.accountCounter.finalize();
+                this.transactionDateCounter.finalize();
 
                 this.isSingleItem = this.getIsSingleItem();
 

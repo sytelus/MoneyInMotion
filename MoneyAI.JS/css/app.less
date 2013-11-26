@@ -15,7 +15,7 @@
 .table-condensed2 > tbody > tr > td,
 .table-condensed2 > tfoot > tr > td {
   padding: 0px;
-  font-size: 85%;
+  .small;
 }
 
 .itemCountCell {
@@ -26,6 +26,17 @@
     :extend(.table-hover all) 
     :extend(.table-responsive all)
     :extend(.table-condensed2 all) {
+}
+
+.groupValuesTop {
+}
+.groupValuesOtherCounts {
+    .groupValuesTop;
+
+    padding-top: 0px;
+    margin-top: 0px;
+    margin-bottom: 2px;
+    line-height:85%;
 }
 
 
