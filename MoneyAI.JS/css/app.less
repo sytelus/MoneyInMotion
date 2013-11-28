@@ -59,16 +59,22 @@
     margin:0;
 }
 
+.expanderTitle {
+}
+
 .txRowExpanderControl {
     text-decoration:none;
     color:inherit;
     cursor:pointer;
 
+    border: outset;
+    border-width: 1px;
+    padding: 3px;
+    border-color: transparent;
+
     &:hover {
         text-decoration:none;
-        /*border: outset;
-        border-width: 1px;
-        padding: 3px;*/
+        border-color: initial;
     }
 }
 
@@ -104,6 +110,10 @@
     color: yellow;
 }
 .noteColumnIcon:extend(.fa all):extend(.fa-file-o all) {
+    .text-muted;
+}
+
+.editIcon:extend(.fa all):extend(.fa-chevron-right all) {
     .text-muted;
 }
 

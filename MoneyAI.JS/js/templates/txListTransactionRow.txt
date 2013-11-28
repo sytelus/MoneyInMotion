@@ -30,5 +30,8 @@
 						<td>
 							{{accountId}}
 						</td>
+						<td>
+							<i class="editIcon"></i>
+						</td>
 					</tr>
 				{{/each}}

@@ -7,7 +7,7 @@
 						data-expanderid="Exp{{parentGroupId}}"
 						data-iscollapsed={{isTopLevelSelfOrChild}}>
 							{{#if isTopLevel}}
-								<td></td>
+								<td><!-- + column--></td>
 								<td colspan="1">
 									{{title}}
 								</td>
@@ -16,10 +16,11 @@
 										{{formatCurrency sum}} in {{txTransactionReasonCounterDisplay transactionReasonCounter}}
 									</small>
 								</td>
+								<td><!--edit column--></td>
 							{{else}}
 								<td>
 									<a class="txRowExpanderControl">
-										<span class="expanderTitle">+</span>
+										&nbsp;<span class="expanderTitle">+</span>&nbsp;
 									</a>							
 								</td>
 								<td>
@@ -70,6 +71,9 @@
 										{{accountCounter.top.key}}
 										{{#compare accountCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
 									</span>
+								</td>
+								<td>
+									<i class="editIcon"></i>
 								</td>
 							{{/if}}
 						</tr>

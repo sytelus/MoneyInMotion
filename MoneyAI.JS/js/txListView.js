@@ -97,10 +97,14 @@
         var expanderTitle = parentRow.find(".expanderTitle");
 
         if (expand) {
-            expanderTitle.text("-");
+            expanderTitle.html("&ndash;");
             parentRow.data("iscollapsed", "false");
-            childRows.removeClass("txRowCollapsed");
-            childRows.addClass("txRowVisible");
+            childRows.each(function () {
+                var row = $(this);
+                row.removeClass("txRowCollapsed");
+                row.addClass("txRowVisible");
+                collapseExpandRows(row, expand);
+            });
         }
         else {
             expanderTitle.text("+");
@@ -109,7 +113,7 @@
                 var row = $(this);
                 row.removeClass("txRowVisible");
                 row.addClass("txRowCollapsed");
-                collapseExpandRows(row, false);
+                collapseExpandRows(row, expand);
             });
         }
     };
