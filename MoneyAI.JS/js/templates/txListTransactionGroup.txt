@@ -6,7 +6,7 @@
 							{{#if isTopLevel}}
 								<td></td>
 								<td colspan="1">
-									<strong>{{title}}</strong>
+									{{title}}
 								</td>
 								<td colspan="4" class="topLevelGroupSummary">
 									<small>
@@ -72,7 +72,7 @@
 					{{/if}}
 
 					<!-- if leaf group, print transactions as child else print child groups -->
-					{{#if isLeafGroup}}		
+					{{#if rows}}		
 						{{> tx }}
 					{{else}}
 						{{> txGroup}}

@@ -4,7 +4,7 @@
     //static privates
     var nextId = 1;
 
-    var $this = function TransactionAggregator(parent, name, title, isLeafGroup, childAggregateFunction, sortMapFunction, sortAscending) {
+    var $this = function TransactionAggregator(parent, name, title, retainRows, childAggregateFunction, sortChildAggregatorsFunction, sortTxFunction) {
         this.groupId = nextId++;
 
         this.count = 0;
@@ -24,13 +24,13 @@
         this.title = title;
 
         this.rows = [];
-        this.isLeafGroup = !!isLeafGroup;
+        this.retainRows = !!retainRows;
 
         this.childAggregators = {};
 
         this.childAggregateFunction = childAggregateFunction;
-        this.sortMapFunction = sortMapFunction;
-        this.sortAscending = sortAscending;
+        this.sortChildAggregatorsFunction = sortChildAggregatorsFunction;
+        this.sortTxFunction = sortTxFunction;
     };
 
     var proto = (function () {
@@ -42,7 +42,7 @@
             add: function (tx) {
                 Transaction.prototype.ensureAllCorrectedValues.call(tx);
 
-                if (this.isLeafGroup) {
+                if (this.retainRows) {
                     this.rows.push(tx);
                 }
 
@@ -86,12 +86,16 @@
 
             toChildAggregatorsArray: function () {
                 var childAggregatorsArray = utils.toValueArray(this.childAggregators);
-                childAggregatorsArray.sort(utils.compareFunction(this.sortAscending, this.sortMapFunction));
+                if (this.sortChildAggregatorsFunction) {
+                    childAggregatorsArray = this.sortChildAggregatorsFunction(childAggregatorsArray);
+                }
                 return childAggregatorsArray;
             },
 
             toTxArray: function () {
-                this.rows.sort(utils.compareFunction(this.sortAscending, this.sortMapFunction));
+                if (this.sortTxFunction) {
+                    this.rows = this.sortTxFunction(this.rows);
+                }
                 return this.rows;
             },
 
