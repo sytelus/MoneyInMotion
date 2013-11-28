@@ -78,10 +78,10 @@
                 this.accountCounter.finalize();
                 this.transactionDateCounter.finalize();
                 
-                this.isMultiItem = this.count >= 1 || utils.size(this.childAggregators) > 1;
-                this.isMultiItemOrRoot = this.isMultiItem || this.isTopLevel;
                 this.isTopLevel = this.depth == 1;
                 this.isTopLevelSelfOrChild = this.depth <= 2;
+                this.isSingleItem = this.count == 1;
+                this.isSingleItemTopLevelSelfOrChild = this.isSingleItem && this.isTopLevelSelfOrChild;
 
                 utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });
             },

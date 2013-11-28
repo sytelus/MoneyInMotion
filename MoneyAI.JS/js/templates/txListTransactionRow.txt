@@ -1,11 +1,15 @@
 ﻿				{{#each toTxArray}}
 					<tr data-expanderid="Exp{{../groupId}}" 
-						class="{{#unless ../isTopLevel}}txTxRow txRowCollapsed{{/unless}}
-						data-iscollapsed={{../isTopLevel}}">
+						class="{{#unless ../isSingleItemTopLevelSelfOrChild}}txTxRow txRowCollapsed{{/unless}}
+						data-iscollapsed={{../isSingleItemTopLevelSelfOrChild}}">
 						<td>
 						</td>
 						<td>
-							{{repeatString "&nbsp" ../depth 4 4}}
+							{{#unless ../isSingleItemTopLevelSelfOrChild}}
+								{{repeatString "&nbsp" ../../depth 4 4}}
+							{{else}}
+								{{repeatString "&nbsp" ../../depth 4 0}}
+							{{/unless}}
 							{{correctedValues.entityNameBest}}
 
 							<!-- tx Icons -->

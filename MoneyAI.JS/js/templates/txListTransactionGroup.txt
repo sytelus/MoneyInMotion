@@ -1,7 +1,7 @@
 ﻿				{{#toChildAggregatorsArray}}
 					
 					<!-- no header for single item non-top groups -->
-					{{#if isMultiItemOrRoot}}	
+					{{#unless isSingleItemTopLevelSelfOrChild}}	
 						<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless isTopLevelSelfOrChild}} txRowCollapsed{{/unless}}" 
 						id="Exp{{groupId}}"
 						data-expanderid="Exp{{parentGroupId}}"
@@ -77,7 +77,7 @@
 								</td>
 							{{/if}}
 						</tr>
-					{{/if}}
+					{{/unless}}
 
 					<!-- if leaf group, print transactions as child else print child groups -->
 					{{#if rows}}		

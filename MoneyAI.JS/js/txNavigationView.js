@@ -28,7 +28,7 @@
             }
 
             var templateData = yearMonths.toArray(function (yearString, monthsSet) {
-                return {
+                var yearMonthsArray = {
                     yearString: yearString,
                     months:
                         _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function (monthString) {
@@ -38,6 +38,16 @@
                             return { monthName: monthName, urlHash: urlHash, monthString: monthString };
                         })
                 };
+
+                //Pad month names to be equal length
+                if (yearMonthsArray.months.length > 0) {
+                    var monthLongestLength = utils.max(yearMonthsArray.months, function (m) { return m.monthName.length; }).monthName.length;
+                    for (var i = 0; i < yearMonthsArray.months.length; i++) {
+                        yearMonthsArray.months[i].monthName += utils.repeatString(" ", monthLongestLength - yearMonthsArray.months[i].length);
+                    }
+                }
+
+                return yearMonthsArray;
             });
 
             templateData.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.yearString; }));

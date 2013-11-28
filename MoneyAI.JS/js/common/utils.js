@@ -96,6 +96,7 @@
         filter: _.filter,
         map: _.map,
         isEmpty: _.isEmpty,
+        max:_.max,
         toKeyValueArray: function (obj) {
             return _.map(obj, function (value, key) { return { key: key, value: value }; });
         }
