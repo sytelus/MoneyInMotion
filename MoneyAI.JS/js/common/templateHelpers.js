@@ -27,11 +27,16 @@
         },
 
         function repeatString(utils) {
-            utils.registerTemplateHelper("repeatString", function (str, count, countAdjustment) {
+            utils.registerTemplateHelper("repeatString", function (str, count, countMultiplier, countAdjustment, options) {
+                if (options === undefined) {
+                    options = countAdjustment;
+                    countAdjustment = undefined;
+                }
+
                 if (count === undefined) {
                     throw new TypeError("count parameter for repeatString template helper should not be undefined");
                 }
-                return utils.templateHtmlString(utils.repeatString(str, count + (countAdjustment || 0)));
+                return utils.templateHtmlString(utils.repeatString(str, (count * (countMultiplier === undefined ? 1 : countMultiplier)) + (countAdjustment || 0)));
             });
         },
 

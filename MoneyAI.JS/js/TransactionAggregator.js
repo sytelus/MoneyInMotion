@@ -6,6 +6,7 @@
 
     var $this = function TransactionAggregator(parent, name, title, retainRows, childAggregateFunction, sortChildAggregatorsFunction, sortTxFunction) {
         this.groupId = nextId++;
+        this.parentGroupId = parent ? parent.groupId : -1;
 
         this.count = 0;
         this.positiveSum = 0;
@@ -76,10 +77,11 @@
                 this.transactionReasonCounter.finalize();
                 this.accountCounter.finalize();
                 this.transactionDateCounter.finalize();
-
-                this.isSingleItem = this.getIsSingleItem();
+                
+                this.isMultiItem = this.count >= 1 || utils.size(this.childAggregators) > 1;
+                this.isMultiItemOrRoot = this.isMultiItem || this.isTopLevel;
                 this.isTopLevel = this.depth == 1;
-                this.enableGroup = !this.isSingleItem || this.isTopLevel;
+                this.isTopLevelSelfOrChild = this.depth <= 2;
 
                 utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });
             },
@@ -97,10 +99,6 @@
                     this.rows = this.sortTxFunction(this.rows);
                 }
                 return this.rows;
-            },
-
-            getIsSingleItem: function () {
-                return this.count === 1;
             }
         };
     })();

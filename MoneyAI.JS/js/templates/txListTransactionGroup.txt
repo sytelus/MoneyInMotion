@@ -1,8 +1,11 @@
 ﻿				{{#toChildAggregatorsArray}}
 					
 					<!-- no header for single item non-top groups -->
-					{{#if enableGroup}}	
-						<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}" id="Exp{{groupId}}">
+					{{#if isMultiItemOrRoot}}	
+						<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless isTopLevelSelfOrChild}} txRowCollapsed{{/unless}}" 
+						id="Exp{{groupId}}"
+						data-expanderid="Exp{{parentGroupId}}"
+						data-iscollapsed={{isTopLevelSelfOrChild}}>
 							{{#if isTopLevel}}
 								<td></td>
 								<td colspan="1">
@@ -20,7 +23,8 @@
 									</a>							
 								</td>
 								<td>
-									{{repeatString "&nbsp" depth 0}}{{title}}
+									{{repeatString "&nbsp" depth 4}}
+									{{title}}
 
 									<!-- Tx icons -->
 									<small>

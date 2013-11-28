@@ -21,12 +21,39 @@
 
     var entityNameChildAggregator = function (parentAggregator, tx) {
         var childAggregators = parentAggregator.childAggregators;
-        var entityNameBest = tx.correctedValues.entityNameBest;
-        if (!childAggregators[entityNameBest]) {
-            childAggregators[entityNameBest] = new TransactionAggregator(parentAggregator, entityNameBest, entityNameBest, true, undefined, sortNameChildAggregators, sortTxRows);
+        var categoryPath = tx.correctedValues.categoryPath;
+
+        var aggregatorName, aggregatorTitle, categoryDepth;
+        if (categoryPath && categoryPath.length) {
+            categoryDepth = parentAggregator.categoryDepth === undefined ? 0 : parentAggregator.categoryDepth + 1;
+            if (categoryDepth < categoryPath.length) {
+                aggregatorName = "CAT_" + categoryPath[categoryDepth]; //avoid name collisons
+                aggregatorTitle = categoryPath[categoryDepth];
+            }
+            else {
+                categoryDepth = undefined;
+            }
         }
 
-        return childAggregators[entityNameBest];
+        if (categoryDepth == undefined) {
+            aggregatorName = "NAM_" + tx.correctedValues.entityNameBest;
+            aggregatorTitle = tx.correctedValues.entityNameBest;
+        }
+
+        var aggregator = childAggregators[aggregatorName];
+        if (!aggregator) {
+            if (categoryDepth !== undefined) {
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows);
+                aggregator.categoryDepth = categoryDepth;
+            }
+            else {
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, true, undefined, sortNameChildAggregators, sortTxRows);
+            }
+
+            childAggregators[aggregatorName] = aggregator;
+        }
+
+        return aggregator;
     };
 
     var getExpenseChildAggregator = function expense(parentAggregator) {
@@ -64,28 +91,37 @@
         return childAggregators[aggregatorFunction.name];
     };
 
+    var collapseExpandRows = function (parentRow, expand) {
+        var expanderId = parentRow.attr("id");
+        var childRows = parentRow.nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
+        var expanderTitle = parentRow.find(".expanderTitle");
 
+        if (expand) {
+            expanderTitle.text("-");
+            parentRow.data("iscollapsed", "false");
+            childRows.removeClass("txRowCollapsed");
+            childRows.addClass("txRowVisible");
+        }
+        else {
+            expanderTitle.text("+");
+            parentRow.data("iscollapsed", "true");
+            childRows.each(function () {
+                var row = $(this);
+                row.removeClass("txRowVisible");
+                row.addClass("txRowCollapsed");
+                collapseExpandRows(row, false);
+            });
+        }
+    };
 
     //publics
     return {
         initialize: function () {
             $("#txListControl").delegate(".txRowExpanderControl", "click", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
                 var parentRow = $(this).closest("tr");
-                var isCollapsed = parentRow.data("iscollapsed") === "true";    //default is undefined
-                var expanderId = parentRow.attr("id");
-                var childRows = parentRow.nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
-                var expanderTitle = parentRow.find(".expanderTitle");
+                var isCollapsed = parentRow.data("iscollapsed").toString() === "true";    //default is undefined
 
-                if (isCollapsed) {
-                    childRows.attr("class", "txRowCollapsed");
-                    parentRow.data("iscollapsed", "false");
-                    expanderTitle.text("+");
-                }
-                else {
-                    childRows.attr("class", "txRowVisible");
-                    parentRow.data("iscollapsed", "true");
-                    expanderTitle.text("-");
-                }
+                collapseExpandRows(parentRow, isCollapsed);
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
             });
