@@ -78,6 +78,8 @@
                 this.transactionDateCounter.finalize();
 
                 this.isSingleItem = this.getIsSingleItem();
+                this.isTopLevel = this.depth == 1;
+                this.enableGroup = !this.isSingleItem || this.isTopLevel;
 
                 utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });
             },

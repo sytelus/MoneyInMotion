@@ -2,6 +2,16 @@
 					<tr data-expanderid="Exp{{../groupId}}" 
 						{{#unless ../isSingleItem}}class="txRowCollapsed"{{/unless}}>
 						<td>
+						</td>
+						<td>
+							{{#compare ../count "===" 1}}
+								{{repeatString "&nbsp" ../../depth -1}}
+							{{else}}
+								{{repeatString "&nbsp" ../../depth 4}}
+							{{/compare}}
+							{{correctedValues.entityNameBest}}
+
+							<!-- tx Icons -->
 							{{#if correctedValues.note}}<i class="noteIcon"></i>{{/if}}
 							{{#if correctedValues.isFlagged}}
 								<i class="todoPendingIcon"></i>
@@ -11,22 +21,14 @@
 								{{/compare}}
 							{{/if}}
 						</td>
-						<td>
-							{{#compare ../count "===" 1}}
-								{{repeatString "&nbsp" ../../depth -1}}
-							{{else}}
-								{{repeatString "&nbsp" ../../depth 4}}
-							{{/compare}}
-							{{correctedValues.entityNameBest}}
-						</td>
 						<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
 							{{formatCurrency correctedValues.amount}}
 						</td>
 						<td>
-							{{txTransactionDateDisplay correctedValues.transactionDateParsed}}
+							1 {{txTransactionReasonDisplay correctedValues.transactionReason}}
 						</td>
 						<td>
-							1 {{txTransactionReasonDisplay correctedValues.transactionReason}}
+							{{txTransactionDateDisplay correctedValues.transactionDateParsed}}
 						</td>
 						<td>
 							{{accountId}}

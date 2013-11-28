@@ -30,9 +30,6 @@
 
 .groupValuesTop {
 }
-.groupValuesOtherCounts {
-    .text-muted;
-}
 
 
 .txRowVisible {
@@ -47,23 +44,32 @@
 .txGroupRow {
 }
 
-.txTopLevelRow {
+.txTopLevelGroup {
+    .h4;
+    border-bottom: 2px solid #dddddd;
+}
+
+.moreIndicator {
+    .small;
+    .text-muted;
+    text-align:right;
+    padding:0;
+    margin:0;
 }
 
 .txRowExpanderControl {
     text-decoration:none;
-    border-bottom:1px dashed;
-    border-bottom-color: grey;
     color:inherit;
     cursor:pointer;
 
-    .hoverIcon {
-        display: none;
+    &:hover {
+        text-decoration:none;
     }
-    &:hover > .hoverIcon {
-        //display:inline;
-        display: none;  //disabling effect for now
-    }
+}
+
+.topLevelGroupSummary {
+    .text-right;
+    .text-muted;
 }
 
 /*  Todo icon */

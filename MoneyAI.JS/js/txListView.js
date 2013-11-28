@@ -62,20 +62,17 @@
                 var isCollapsed = parentRow.data("iscollapsed") === "true";    //default is undefined
                 var expanderId = parentRow.attr("id");
                 var childRows = parentRow.nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
-                var expanderIcon = $(this).find("i").filter(":first");
                 var expanderTitle = parentRow.find(".expanderTitle");
 
                 if (isCollapsed) {
                     childRows.attr("class", "txRowCollapsed");
-                    expanderIcon.attr("class", "rowsExpandIcon");
                     parentRow.data("iscollapsed", "false");
-                    expanderTitle.text("all");
+                    expanderTitle.text("+");
                 }
                 else {
                     childRows.attr("class", "txRowVisible");
-                    expanderIcon.attr("class", "rowsCollapseIcon");
                     parentRow.data("iscollapsed", "true");
-                    expanderTitle.text("summary");
+                    expanderTitle.text("-");
                 }
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling

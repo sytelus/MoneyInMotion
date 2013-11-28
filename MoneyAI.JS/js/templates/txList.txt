@@ -1,11 +1,11 @@
 ﻿	<table class="condencedDataGrid" id="txListGrid">
 		<thead>
 			<tr>
-				<th><i class="todoColumnIcon"></i></th>
+				<th>+</th>
 				<th>Name</th>
 				<th>Amount</th>
-				<th>Date</th>
 				<th>Reason</th>
+				<th>Date</th>
 				<th>Account</th>
 			</tr>
 		</thead>

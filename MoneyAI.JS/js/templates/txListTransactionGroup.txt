@@ -1,64 +1,75 @@
 ﻿				{{#toChildAggregatorsArray}}
 					
-					<!-- no header for single item groups -->
-					{{#unless isSingleItem}}	
-						<tr class="txGroupRow" id="Exp{{groupId}}">
-							<td>
-								{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
-									<i class="noteIcon"></i>
-								{{else}}
-									{{#compare noteCounter.keyCounts.trueValue ">=" 1}}
-										<i class="notePartIcon"></i>
-									{{/compare}}
-								{{/compare}}
-								{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-									<i class="todoPendingIcon"></i>
-								{{else}}
-									{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-										<i class="todoPartPendingIcon"></i>
+					<!-- no header for single item non-top groups -->
+					{{#if enableGroup}}	
+						<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}" id="Exp{{groupId}}">
+							{{#if isTopLevel}}
+								<td></td>
+								<td colspan="1">
+									<strong>{{title}}</strong>
+								</td>
+								<td colspan="4" class="topLevelGroupSummary">
+									<small>
+										{{formatCurrency sum}} in {{txTransactionReasonCounterDisplay transactionReasonCounter}}
+									</small>
+								</td>
+							{{else}}
+								<td>
+									<a class="txRowExpanderControl">
+										<span class="expanderTitle">+</span>
+									</a>							
+								</td>
+								<td>
+									{{repeatString "&nbsp" depth 0}}{{title}}
+
+									<!-- Tx icons -->
+									<small>
+									{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
+										<i class="noteIcon"></i>
 									{{else}}
-										{{#compare flagCounter.keyCounts.falseValue ">" 0}}
-											<i class="todoDoneIcon"></i>
+										{{#compare noteCounter.keyCounts.trueValue ">=" 1}}
+											<i class="notePartIcon"></i>
 										{{/compare}}
 									{{/compare}}
-								{{/compare}}
-							</td>
-							<td>
-								{{repeatString "&nbsp" depth 0}}{{title}}
-							</td>
-							<td {{#compare sum "<" 0}} class="negativeAmount" {{/compare}}>
-								{{formatCurrency sum}}
-							</td>
-							<td>
-								{{txTransactionDateDisplay transactionDateCounter.top.key}}
-								<span class="groupValuesOtherCounts">
-									<small>
-									<a class="txRowExpanderControl">
-										<span class="hoverIcon"><i class="rowsExpandIcon"></i></span>
-										<span class="expanderTitle">all</span>
-									</a>
+									{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
+										<i class="todoPendingIcon"></i>
+									{{else}}
+										{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
+											<i class="todoPartPendingIcon"></i>
+										{{else}}
+											{{#compare flagCounter.keyCounts.falseValue ">" 0}}
+												<i class="todoDoneIcon"></i>
+											{{/compare}}
+										{{/compare}}
+									{{/compare}}
 									</small>
-								</span>
-							</td>
-							<td>
-								{{txTransactionReasonCounterDisplay transactionReasonCounter}}
-								<span class="groupValuesOtherCounts">
-									<small>
-									<a class="txRowExpanderControl">
-										<span class="hoverIcon"><i class="rowsExpandIcon"></i></span>
-										<span class="expanderTitle">all</span>
-									</a>
-									</small>
-								</span>							
-							</td>
-							<td>
-								{{accountCounter.top.key}}
-								{{#compare accountCounter.keyCount ">" 1}}
-									...
-								{{/compare}}
-							</td>
+								</td>
+								<td>
+									<span class="txRowExpanderControl">
+										<span {{#compare sum "<" 0}}class="negativeAmount"{{/compare}}> 
+											{{formatCurrency sum}} 
+										</span>
+										<span class="moreIndicator">&hellip;</span>
+									</span>
+								</td>
+								<td>
+									{{txTransactionReasonCounterDisplay transactionReasonCounter}}
+								</td>
+								<td>
+									<span {{#compare transactionDateCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
+										{{txTransactionDateDisplay transactionDateCounter.top.key}}
+										{{#compare transactionDateCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
+									</span>
+								</td>
+								<td>
+									<span {{#compare accountCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
+										{{accountCounter.top.key}}
+										{{#compare accountCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
+									</span>
+								</td>
+							{{/if}}
 						</tr>
-					{{/unless}}
+					{{/if}}
 
 					<!-- if leaf group, print transactions as child else print child groups -->
 					{{#if isLeafGroup}}		
