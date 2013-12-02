@@ -40,7 +40,8 @@
 									&nbsp;<i class="editIcon"></i>&nbsp;
 								</a>
 								<ul class="dropdown-menu" role="menu">
-								  <li><a tabindex="-1" href="#action=flag&state=toggle&itemtype=tx&id={{id}}">
+								  <li><a tabindex="-1" 
+									href="#target=txx&action=edit&name=txflag&value={{#if correctedValues.isFlagged}}false{{else}}true{{/if}}&id={{id}}">
 									{{#if correctedValues.isFlagged}}
 										<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
 									{{else}}

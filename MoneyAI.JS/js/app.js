@@ -19,12 +19,13 @@
         //Global event handler for hash change for jslink anchors
         $(window).bind("hashchange", function (e) {
             var action = e.getState("action");
-            utils.logger.log("hashchange occured with action: ", action);
-            if ($("#txExplorer").length) {
-                var year = e.getState("year");
-                var month = e.getState("month");
+            var target = e.getState("target") || "main";
 
-                txExplorerView.refresh(year, month);
+            utils.logger.log("hashchange occured with action: ", action, " target: ", target);
+            
+            if ((target === "txx" || target === "main") && $("#txExplorer").length) {
+                var params = $.deparam(e.fragment);
+                txExplorerView.onHashChange(params);
             }
             //else ignore unknown state
         });

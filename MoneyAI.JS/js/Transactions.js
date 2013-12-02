@@ -1,8 +1,17 @@
-﻿define("Transactions", ["common/utils", "TransactionEdit", "Transaction", "EditedValues"], function (utils, TransactionEdit, Transaction, editedValues) {
+﻿define("Transactions", ["common/utils", "TransactionEdit", "Transaction", "EditedValues", "userProfile"], 
+    function (utils, TransactionEdit, Transaction, editedValues, userProfile) {
     "use strict";
 
     //static privates
-    var Transactions = function () {
+    var Transactions = function (jsonData) {
+        if (jsonData) {
+            utils.extend(this, jsonData);
+
+            this.itemsById = new utils.Dictionary();
+            utils.forEach(this.items, function (item) {
+                this.itemsById.add(item.id, item);
+            }, this);
+        }
     };
 
     var transactionsPrototype = (function () {
@@ -27,8 +36,8 @@
         filterTransactions = function (edit) {
             if (edit.scope.type === editedValues.scopeTypeLookup.transactionId) {
                 return utils.map(edit.scope.parameters, function (transactionId) {
-                    return this.itemsById(transactionId);
-                });
+                    return this.itemsById.get(transactionId);
+                }, this);
             }
             else {
                 return utils.filter(this.items,
@@ -50,14 +59,9 @@
                 }
             }
         },
-        initialize = function () {
-            this.itemsById = new utils.Dictionary();
-            utils.forEach(this.items, function (item) {
-                this.itemsById.add(item.id, item);
-            });
-        },
         addEditForScope = function (scopeType, scopeParameters) {
-            var edit = new editedValues.EditScope(scopeType, scopeParameters);
+            var editScope = new editedValues.EditScope(scopeType, scopeParameters);
+            var edit = new TransactionEdit(editScope, userProfile.getEditsSourceId());
             this.edits.edits.push(edit);
 
             return edit;
@@ -67,14 +71,8 @@
 
         //publics
         return {
-            createFromJson: function (jsonData) {
-                var txs = new Transactions();
-                utils.extend(txs, jsonData);
-                initialize.call(txs);
-            },
-
-            setIsUserFlagged: function (tx, isUserFlagged) {
-                var edit = addEditForScope.call(this, editedValues.scopeTypeLookup.transactionId, [tx.id]);
+            setIsUserFlagged: function (id, isUserFlagged) {
+                var edit = addEditForScope.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
                 edit.values.isFlagged = isUserFlagged !== undefined ?
                     (new editedValues.EditValue(isUserFlagged)) :
                     editedValues.EditValue.voidedEditValue(false);

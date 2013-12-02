@@ -1,14 +1,14 @@
-﻿define("repository", ["jquery", "common/utils"], function ($, utils) {
+﻿define("repository", ["jquery", "common/utils", "Transactions"], function ($, utils, Transactions) {
     "use strict";
 
     //privates
-    var cahedValues = {};
+    var cachedValues = {};
     var currentAjaxRequest, callers;
 
     //public interface
     return {
         getTransactions: function (callerId, onGet, onFail, forceRefresh) {
-            if (forceRefresh || !cahedValues.transactions) {
+            if (forceRefresh || !cachedValues.transactions) {
 
                 //If there is a pending request, don"t start new one
                 if (!currentAjaxRequest || currentAjaxRequest.state() !== "pending") {
@@ -23,8 +23,14 @@
 
                     currentAjaxRequest.done(function (data, textStatus) {
                         utils.logger.log("getJSON success: ", textStatus, "callerId", callerId);
-                        cahedValues.transactions = data;
-                        onGet(data);
+
+                        var txs = new Transactions(data);
+
+                        cachedValues.transactions = txs;
+                        var updatedTxs = onGet(txs);
+                        if (updatedTxs instanceof Transactions) {
+                            cachedValues.transactions = updatedTxs;
+                        }
                     });
 
                     currentAjaxRequest.fail(function (jqxhr, textStatus, error) {
@@ -43,12 +49,16 @@
                 }
             }
             else {
-                onGet(cahedValues.transactions);
+                onGet(cachedValues.transactions);
             }
         },
 
-        invalidateTransactions: function () {
-            delete cahedValues.transactions;
+        invalidateCache: function () {
+            delete cachedValues.transactions;
+        },
+
+        updateCache: function (txs) {
+            cachedValues = txs;
         }
     };
 });

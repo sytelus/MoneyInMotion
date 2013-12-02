@@ -34,7 +34,7 @@
                         _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function (monthString) {
                             var monthInt = parseInt(monthString, 10) - 1;
                             var monthName = utils.getMonthName(monthInt);
-                            var urlHash = "#" + $.param({ action:"showmonth", year: yearString, month: monthString });
+                            var urlHash = "#" + $.param({ target: "txx", action:"showmonth", year: yearString, month: monthString });
                             return { monthName: monthName, urlHash: urlHash, monthString: monthString };
                         })
                 };

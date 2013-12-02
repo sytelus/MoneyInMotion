@@ -8,14 +8,14 @@
     //static privates
     var AuditInfo = function(previousAuditInfo) {
         if (!!previousAuditInfo) {
-            this.createdBy = getCurrentUserId();
-            this.createDate = new Date();
-        }
-        else {
             this.createdBy = previousAuditInfo.createdBy;
             this.createDate = previousAuditInfo.createDate;
             this.updatedBy = getCurrentUserId();
             this.updateDate = new Date();
+        }
+        else {
+            this.createdBy = getCurrentUserId();
+            this.createDate = new Date();
         }
     };
 

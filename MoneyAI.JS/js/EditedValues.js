@@ -48,7 +48,7 @@
     EditValue.prototype.getValueOrDefault = function (defaultValue) {
         return !this.isVoided ? this.value : defaultValue;
     };
-    EditValue.prototype.voidedEditValue = function (defaultValue) {
+    EditValue.voidedEditValue = function (defaultValue) {
         return new EditValue(defaultValue, true);
     };
 

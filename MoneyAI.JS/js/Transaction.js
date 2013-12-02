@@ -109,7 +109,11 @@
                     proto.transactionReasonTitleLookup[transactionReason.toString()];
             },
 
-            ensureAllCorrectedValues: function () {
+            ensureAllCorrectedValues: function (invalidateExisting) {
+                if (invalidateExisting) {
+                    this.correctedValues = undefined;
+                }
+
                 if (!this.correctedValues || !this.correctedValues.isPopulated) {
 
                     var that = this;
@@ -131,11 +135,13 @@
                     this.appliedEditIdsDescending = [];
                 }
                 else {
-                    this.mergedEdit.merge(edit);
+                    this.mergedEdit.merge(edit.values);
                 }
 
                 this.auditInfo = userProfile.updateAuditInfo(this.auditInfo);
                 this.appliedEditIdsDescending.unshift(edit.id);
+
+                proto.ensureAllCorrectedValues.call(this, true);
             }
         };
     })();
