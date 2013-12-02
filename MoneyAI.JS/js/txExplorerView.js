@@ -1,7 +1,7 @@
 ﻿define("txExplorerView", ["txListView", "txNavigationView", "common/utils", "repository"], function (txListView, txNavigationView, utils, repository) {
     "use strict";
 
-    var toggleTxFlag = function (id, value) {
+    var setTxFlag = function (id, value) {
         repository.getTransactions("txExplorerView.toggleTxFlag", function (txs) {
             txs.setIsUserFlagged(id, value === "true");
 
@@ -10,10 +10,21 @@
 
         return true;    //refresh
     },
+    setTxGroupFlag = function (id, value) {
+        var groupTx = txListView.getTransactionIdsInGroup(id, true);
+        repository.getTransactions("txExplorerView.toggleTxFlag", function (txs) {
+            utils.forEach(groupTx, function (txId) { txs.setIsUserFlagged(txId, value === "true"); });
+            return txs; //Ask repository to update cache
+        });
+
+        return true;    //refresh
+    },
     executeEdit = function (params) {
         switch (params.name) {
             case "txflag":
-                return toggleTxFlag(params.id, params.value);
+                return setTxFlag(params.id, params.value);
+            case "txgroupflag":
+                return setTxGroupFlag(params.id, params.value);
             default:
                 utils.logger.error("Unsupported edit was routed to txExplorerView", params);
                 return false;

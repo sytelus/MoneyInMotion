@@ -3,8 +3,8 @@
 					<!-- no header for single item non-top groups -->
 					{{#unless isSingleItemTopLevelSelfOrChild}}	
 						<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless isTopLevelSelfOrChild}} txRowCollapsed{{/unless}}" 
-						id="Exp{{groupId}}"
-						data-expanderid="Exp{{parentGroupId}}"
+						data-groupid="{{groupId}}"
+						data-parentgroupid="{{parentGroupId}}"
 						data-iscollapsed={{isTopLevelSelfOrChild}}>
 							{{#if isTopLevel}}
 								<td><!-- + column--></td>
@@ -29,6 +29,7 @@
 
 									<!-- Tx icons -->
 									<small>
+									<!-- note icon -->
 									{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
 										<i class="noteIcon"></i>
 									{{else}}
@@ -36,6 +37,8 @@
 											<i class="notePartIcon"></i>
 										{{/compare}}
 									{{/compare}}
+
+									<!-- flag icon -->
 									{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
 										<i class="todoPendingIcon"></i>
 									{{else}}
@@ -73,7 +76,29 @@
 									</span>
 								</td>
 								<td>
-									<i class="editIcon"></i>
+									<div class="dropdown">
+										<a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
+											&nbsp;<i class="editIcon"></i>&nbsp;
+										</a>
+										<ul class="dropdown-menu" role="menu">
+											<li>
+												{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
+													<a tabindex="-1" href="#target=txx&action=edit&name=txgroupflag&value=false&id={{groupId}}">
+														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flags
+													</a>
+												{{else}}
+													<a tabindex="-1" href="#target=txx&action=edit&name=txgroupflag&value=true&id={{groupId}}">
+														<i class="todoPendingIcon"></i>&nbsp;&nbsp; Set all flags
+													</a>
+													{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
+														<a tabindex="-1" href="#target=txx&action=edit&name=txgroupflag&value=false&id={{groupId}}">
+															<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all flags
+														</a>
+													{{/compare}}
+												{{/compare}}
+											</li>
+										</ul>
+									</div>
 								</td>
 							{{/if}}
 						</tr>

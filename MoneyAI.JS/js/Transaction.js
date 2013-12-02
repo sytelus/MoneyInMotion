@@ -135,7 +135,7 @@
                     this.appliedEditIdsDescending = [];
                 }
                 else {
-                    this.mergedEdit.merge(edit.values);
+                    editedValues.EditedValues.prototype.merge.call(this.mergedEdit, edit.values);
                 }
 
                 this.auditInfo = userProfile.updateAuditInfo(this.auditInfo);

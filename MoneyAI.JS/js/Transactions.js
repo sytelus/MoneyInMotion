@@ -41,7 +41,7 @@
             }
             else {
                 return utils.filter(this.items,
-                    function (item) { return filterTransaction(edit, item); });
+                    function (item) { return filterTransaction(edit, item); }, this);
             }
         },
         

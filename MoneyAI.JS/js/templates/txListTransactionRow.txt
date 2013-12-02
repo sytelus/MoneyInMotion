@@ -1,7 +1,8 @@
 ﻿				{{#each toTxArray}}
-					<tr data-expanderid="Exp{{../groupId}}" 
+					<tr data-parentgroupid="{{../groupId}}" 
 						class="{{#unless ../isSingleItemTopLevelSelfOrChild}}txTxRow txRowCollapsed{{/unless}}
-						data-iscollapsed={{../isSingleItemTopLevelSelfOrChild}}">
+						data-iscollapsed={{../isSingleItemTopLevelSelfOrChild}}"
+						data-txid="{{id}}">
 						<td>
 						</td>
 						<td>

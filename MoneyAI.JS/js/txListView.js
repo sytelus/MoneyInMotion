@@ -92,8 +92,8 @@
     };
 
     var collapseExpandRows = function (parentRow, expand) {
-        var expanderId = parentRow.attr("id");
-        var childRows = parentRow.nextAll("tr[data-expanderid=\"" + expanderId + "\"]");
+        var groupId = parentRow.attr("data-groupid");
+        var childRows = parentRow.nextAll("tr[data-parentgroupid=\"" + groupId + "\"]");
         var expanderTitle = parentRow.find(".expanderTitle");
 
         if (expand) {
@@ -152,6 +152,31 @@
             var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
             $("#txListControl").html(templateHtml);
+        },
+
+
+        getTransactionIdsInGroup: function (groupId, allLevels) {
+            var parentRows = $("[data-groupid=\"" + groupId + "\"]");
+            if (parentRows.length === 0) {
+                throw new Error("No table rows found for groupId " + groupId);
+            }
+
+            var txIds = [], childRows;
+
+            do {
+                parentRows.each(function () {
+                    var row = $(this);
+                    childRows = parentRows.nextAll("tr[data-parentgroupid=\"" + row.data("groupid") + "\"]");
+                    childRows.filter("[data-txid]").each(function () {
+                        var row = $(this);
+                        txIds.push(row.data("txid"));
+                    });
+                });
+
+                parentRows = childRows.filter("[data-groupid]");
+            } while (parentRows.length > 0 && !!allLevels);
+
+            return txIds;
         }
     };
 });
