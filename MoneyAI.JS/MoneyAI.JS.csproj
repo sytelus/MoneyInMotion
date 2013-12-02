@@ -26,17 +26,20 @@
     <Content Include="index.html" />
     <Content Include="js\app.js" />
     <Content Include="js\common\templateHelpers.js" />
+    <Content Include="js\EditedValues.js" />
+    <Content Include="js\Transactions.js" />
+    <Content Include="js\userProfile.js" />
+    <Content Include="js\TemplateConstructorFunctions.js" />
     <Content Include="js\templateHelpers.js" />
     <Content Include="js\templates\txList.txt" />
     <Content Include="js\common\utils.js" />
-    <Content Include="js\ext\jquery-1.10.2.js" />
-    <Content Include="js\ext\require.js" />
     <Content Include="js\repository.js" />
     <Content Include="js\main.js" />
     <Content Include="js\templates\txListTransactionGroup.txt" />
     <Content Include="js\templates\txListTransactionRow.txt" />
     <Content Include="js\common\keyCounter.js" />
     <Content Include="js\TransactionAggregator.js" />
+    <Content Include="js\TransactionEdit.js" />
     <Content Include="js\txExplorerView.js" />
     <Content Include="js\Transaction.js" />
     <Content Include="js\txListView.js" />
@@ -61,7 +64,9 @@
       <DependentUpon>web.config</DependentUpon>
     </None>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="js\ext\" />
+  </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>

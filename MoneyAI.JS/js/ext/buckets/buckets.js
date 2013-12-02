@@ -759,6 +759,25 @@ var buckets = {};
         return ret;
     };
     /**
+     * Adds an association for the specified value with the specified key.
+     * If the dictionary previously contained a mapping for this key, error
+     * is raised and the key would not be added.
+     * @param {Object} key Key with which the specified value is to be
+     * associated.
+     * @param {Object} value Value to be associated with the specified key.
+     * @return {*} undefined.
+     */
+    buckets.Dictionary.prototype.add = function(key, value) {
+		var exists = this.containsKey(key);
+		if (exists) {
+			var k = this.toStr(key);
+			throw new Error("The specified key \"" + k + "\" already exist in the dictionary");
+		}
+		else {
+			this.set(key, value);
+		}
+    };
+    /**
      * Removes the mapping for this key from this dictionary if it is present.
      * @param {Object} key Key whose mapping is to be removed from the
      * dictionary.

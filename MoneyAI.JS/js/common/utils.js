@@ -1,5 +1,6 @@
-﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "common/keyCounter"],
-    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter) {
+﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "common/keyCounter",
+    "cryptojs.md5", "cryptojs.base64", "uuidjs"],
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs) {
 
    "use strict";
 
@@ -88,6 +89,12 @@
             return result;
         },
 
+        getMD5Hash: function(valueString) {
+            var hash = CryptoJS.MD5(valueString);
+            return hash.toString(CryptoJS.enc.Base64);
+        },
+        createUUID: function () { return UUIDjs.create(); },
+
         forEach: _.forEach,
         toValueArray: _.values,
         isFunction: $.isFunction,
@@ -96,10 +103,30 @@
         filter: _.filter,
         map: _.map,
         isEmpty: _.isEmpty,
-        max:_.max,
+        max: _.max,
+        clone: _.clone,
+        extend: _.extend,
+        applyDefaults: _.partialRight(_.assign, function (a, b) {
+                return typeof a === "undefined" ? b : a;
+        }),
         toKeyValueArray: function (obj) {
             return _.map(obj, function (value, key) { return { key: key, value: value }; });
-        }
+        },
+        compareStrings: function (string1, string2, ignoreCase, useLocale) {
+            if (!!ignoreCase) {
+                if (!!useLocale) {
+                    string1 = string1.toLocaleLowerCase();
+                    string2 = string2.toLocaleLowerCase();
+                }
+                else {
+                    string1 = string1.toLowerCase();
+                    string2 = string2.toLowerCase();
+                }
+            }
+
+            return string1 === string2;
+        },
+        noop: function () { }
     };
 
     //Set up members with cyclic dependecy

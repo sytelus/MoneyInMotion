@@ -203,4 +203,25 @@ function() {
 
     });
 	
+    it('Add key when it exists or not',
+    function() {
+
+        expect(dict.get("exist")).toBeUndefined();
+
+        // test with string keys
+        for (var i = 0; i < elems; i++) {
+            expect(dict.add("" + i, i + 1)).toBeUndefined();
+        }
+        expect(dict.size()).toEqual(elems);
+
+        for (var i = 0; i < elems; i++) {
+            expect(dict.get("" + i)).toEqual(i + 1);
+        }
+
+        // try adding same keys again
+        for (var i = 0; i < elems; i++) {
+            expect(function() { dict.add("" + i, i + 1) }).toThrow(new Error("The specified key \"" + i + "\" already exist in the dictionary"));
+        }
+
+    });
 });

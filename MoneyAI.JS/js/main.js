@@ -21,7 +21,10 @@
         "jquery.ba-bbq": "ext/jquery.ba-bbq/jquery.ba-bbq",
         "debug": "ext/javascript-debug/ba-debug",
         "accounting": "ext/accounting/accounting",
-        "jquery.layout": "ext/jquery.layout/dist/jquery.layout-latest"
+        "cryptojs.core": "ext/cryptojslib/components/core",
+        "cryptojs.md5": "ext/cryptojslib/components/md5",
+        "cryptojs.base64": "ext/cryptojslib/components/enc-base64",
+        "uuidjs": "ext/uuid-js/lib/uuid"
     },
     shim: {
         "debug": {
@@ -35,16 +38,6 @@
             deps: ["jquery"],
             exports: "jQuery"
         },
-        "jquery.layout": {
-            deps: ["jqueryui"],
-            exports: "jQuery"
-        },
-        /*
-        "jstree": {
-            deps: ["jquery", "jqueryui", "jquery.hotkeys", "jquery.cookie"],
-            exports: "jQuery.fn.jstree"
-        },
-        */
         "jquery.hotkeys": {
             deps: ["jquery"],
             exports: "jQuery"
@@ -59,6 +52,20 @@
         },
         "handlebars": {
             exports: "Handlebars"
+        },
+        "cryptojs.core": {
+            exports: "CryptoJS"
+        },
+        "cryptojs.md5": {
+            deps: ["cryptojs.core"],
+            exports: "CryptoJS" //You can also use "CryptoJS.MD5"
+        },
+        "cryptojs.base64": {
+            deps: ["cryptojs.core"],
+            exports: "CryptoJS" //You can also use "CryptoJS.enc.Base64"
+        },
+        "uuidjs": {
+            exports: "UUIDjs"
         }
     }
 });

@@ -62,7 +62,7 @@
 .expanderTitle {
 }
 
-.txRowExpanderControl {
+.hoverLinkButton {
     text-decoration:none;
     color:inherit;
     cursor:pointer;
@@ -78,6 +78,10 @@
     }
 }
 
+.txRowExpanderControl:extend(.hoverLinkButton) {
+
+}
+
 .topLevelGroupSummary {
     .text-right;
     .text-muted;
@@ -88,7 +92,7 @@
 @flag-rotation: 10deg;
 .todoPendingIcon:extend(.fa all):extend(.fa-flag all) {
     .rotate(@flag-rotation);
-    color: deeppink;
+    color: firebrick;
 }
 .todoPartPendingIcon:extend(.fa all):extend(.fa-flag-checkered all) {
     .rotate(@flag-rotation / 2);
@@ -104,10 +108,10 @@
 
 /*  Note icon */
 .noteIcon:extend(.fa all):extend(.fa-file all) {
-    color: yellow;
+    color: goldenrod;
 }
 .notePartIcon:extend(.fa all):extend(.fa-files all) {
-    color: yellow;
+    color: goldenrod;
 }
 .noteColumnIcon:extend(.fa all):extend(.fa-file-o all) {
     .text-muted;

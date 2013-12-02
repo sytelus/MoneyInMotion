@@ -26,9 +26,6 @@ namespace MoneyAI
             [DataMember(EmitDefaultValue = false, Name = "parameters")]
             public string[] Parameters { get; private set; }
 
-            [DataMember(IsRequired = true, Name = "id")]
-            public string Id { get; private set; }
-
             public EditScope(ScopeType scopeType, string[] scopeParameters)
             {
                 var errors = Validate(scopeType, scopeParameters);
@@ -37,13 +34,13 @@ namespace MoneyAI
 
                 this.Type = scopeType;
                 this.Parameters = scopeParameters;
-
-                this.Id = GetScopeHash(scopeType, scopeParameters);
             }
 
-            private static string GetScopeHash(ScopeType scopeType, IEnumerable<string> scopeParameters)
+            public static string GetScopeHash(ScopeType scopeType, IEnumerable<string> scopeParameters)
             {
-                return Utils.GetMD5HashString(string.Join("\t", scopeType.ToString().AsEnumerable().Concat(scopeParameters.EmptyIfNull())));
+                return Utils.GetMD5HashString(string.Join("\t", 
+                    ((int)scopeType).ToStringInvariant().AsEnumerable()
+                        .Concat(scopeParameters.EmptyIfNull())));
             }
 
             public static string Validate(ScopeType scopeType, string[] scopeParameters)
@@ -107,18 +104,18 @@ namespace MoneyAI
             public Transaction.EditValue<string[]> CategoryPath { get; internal set; }
 
 
-            internal EditedValues(EditedValues other = null)
+            internal EditedValues(EditedValues cloneFrom = null)
             {
-                if (other == null)
+                if (cloneFrom == null)
                     return; //leave everyting to default
 
-                this.TransactionReason = other.TransactionReason;
-                this.TransactionDate = other.TransactionDate;
-                this.Amount = other.Amount;
-                this.EntityName = other.EntityName;
-                this.IsFlagged = other.IsFlagged;
-                this.Note = other.Note;
-                this.CategoryPath = other.CategoryPath;
+                this.TransactionReason = cloneFrom.TransactionReason;
+                this.TransactionDate = cloneFrom.TransactionDate;
+                this.Amount = cloneFrom.Amount;
+                this.EntityName = cloneFrom.EntityName;
+                this.IsFlagged = cloneFrom.IsFlagged;
+                this.Note = cloneFrom.Note;
+                this.CategoryPath = cloneFrom.CategoryPath;
             }
 
             internal void Merge(EditedValues other)

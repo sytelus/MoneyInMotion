@@ -1,4 +1,4 @@
-﻿define("Transaction", ["common/utils"], function (utils) {
+﻿define("Transaction", ["common/utils", "EditedValues", "userProfile"], function (utils, editedValues, userProfile) {
     "use strict";
     var $this = function Transaction() {
     };
@@ -123,6 +123,19 @@
 
                     this.correctedValues.isPopulated = true;
                 }
+            },
+
+            applyEdit: function (edit) {
+                if (!this.mergedEdit) {
+                    this.mergedEdit = new editedValues.EditedValues(edit.values);
+                    this.appliedEditIdsDescending = [];
+                }
+                else {
+                    this.mergedEdit.merge(edit);
+                }
+
+                this.auditInfo = userProfile.updateAuditInfo(this.auditInfo);
+                this.appliedEditIdsDescending.unshift(edit.id);
             }
         };
     })();

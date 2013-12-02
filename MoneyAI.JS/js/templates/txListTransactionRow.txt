@@ -35,7 +35,20 @@
 							{{accountId}}
 						</td>
 						<td>
-							<i class="editIcon"></i>
+							<div class="dropdown">
+								<a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
+									&nbsp;<i class="editIcon"></i>&nbsp;
+								</a>
+								<ul class="dropdown-menu" role="menu">
+								  <li><a tabindex="-1" href="#action=flag&state=toggle&itemtype=tx&id={{id}}">
+									{{#if correctedValues.isFlagged}}
+										<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
+									{{else}}
+										<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag this
+									{{/if}}								  
+								  </a></li>
+								</ul>
+							</div>
 						</td>
 					</tr>
 				{{/each}}

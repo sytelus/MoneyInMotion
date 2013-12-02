@@ -27,7 +27,7 @@
                     function (kvp) {
                         return kvp.value + " " +
                             Transaction.prototype.getTransactionReasonTitle(kvp.key, kvp.value);
-                    }).join(", ")
+                    }).join(", ");
                 return sortedReasons;
             });
         }

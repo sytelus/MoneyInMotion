@@ -143,8 +143,8 @@ namespace MoneyAI
                 }
             }
             transaction.LineNumber = lineNumber;
-            transaction.ContentHash = Utils.GetMD5HashString(string.Join("\t", transaction.GetContent()));
-            transaction.Id = Utils.GetMD5HashString(string.Join("\t", transaction.GetContent().Concat(lineNumber.ToStringInvariant())));
+            transaction.ContentHash = Utils.GetMD5HashString(string.Join("\t", transaction.GetContent()), true);
+            transaction.Id = Utils.GetMD5HashString(string.Join("\t", transaction.GetContent().Concat(lineNumber.ToStringInvariant())), true);
 
             transaction.Validate();
             return transaction;

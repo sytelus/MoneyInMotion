@@ -78,9 +78,9 @@
                 this.accountCounter.finalize();
                 this.transactionDateCounter.finalize();
                 
-                this.isTopLevel = this.depth == 1;
+                this.isTopLevel = this.depth === 1;
                 this.isTopLevelSelfOrChild = this.depth <= 2;
-                this.isSingleItem = this.count == 1;
+                this.isSingleItem = this.count === 1;
                 this.isSingleItemTopLevelSelfOrChild = this.isSingleItem && this.isTopLevelSelfOrChild;
 
                 utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });

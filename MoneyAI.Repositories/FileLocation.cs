@@ -20,7 +20,7 @@ namespace MoneyAI.Repositories
             if (isImportInfo)
             {
                 var updateDate = File.GetLastWriteTimeUtc(this.Address);
-                var importId = Utils.GetMD5HashString(string.Join("\t", relativeFilePath));
+                var importId = Utils.GetMD5HashString(string.Join("\t", relativeFilePath), true);
                 this.ImportInfo = new ImportInfo(importId, relativeFilePath, updateDate, File.GetCreationTimeUtc(this.Address), importId);
             }
             this.AccountConfig = accountConfig;

@@ -806,9 +806,15 @@ namespace CommonUtils
             else return null;
         }
 
-        public static string GetMD5HashString(string s)
+        public static string GetMD5HashString(string s, bool hexStringOutput = false)
         {
-            return ByteArrayToBase64String(GetMD5Hash(s));
+            var hash = GetMD5Hash(s);
+            return hexStringOutput ? ByteArrayToHexString(hash) : ByteArrayToBase64String(hash);
+        }
+
+        public static string ByteArrayToHexString(byte[] bytes)
+        {
+            return BitConverter.ToString(bytes).Replace("-", string.Empty).ToLowerInvariant();
         }
 
         public static UInt64 GetMD5HashUInt64(string s, MD5 md5Hasher)
@@ -816,9 +822,10 @@ namespace CommonUtils
             return BitConverter.ToUInt64(md5Hasher.ComputeHash(Encoding.UTF8.GetBytes(s)), 0);
         }
 
-        public static string GetMD5HashString(byte[] bytes)
+        public static string GetMD5HashString(byte[] bytes, bool hexStringOutput = false)
         {
-            return ByteArrayToBase64String(GetMD5Hash(bytes));
+            var hash = GetMD5Hash(bytes);
+            return hexStringOutput ? ByteArrayToHexString(hash) : ByteArrayToBase64String(hash);
         }
 
         public static byte[] GetMD5Hash(byte[] bytes)

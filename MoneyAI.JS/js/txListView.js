@@ -35,7 +35,7 @@
             }
         }
 
-        if (categoryDepth == undefined) {
+        if (categoryDepth === undefined) {
             aggregatorName = "NAM_" + tx.correctedValues.entityNameBest;
             aggregatorTitle = tx.correctedValues.entityNameBest;
         }

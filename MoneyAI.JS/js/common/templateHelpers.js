@@ -14,6 +14,8 @@
         "!typeof": function (l, r) { return typeof l !== r; }
     };
 
+    var sequenceNumber = 0;
+
     var helpers = [
         function formatCurrency(utils) {
             utils.registerTemplateHelper("formatCurrency", function (value) {
@@ -23,6 +25,17 @@
                 }
 
                 return utils.formateCurrency(value);
+            });
+        },
+
+        function getSequenceNumber(utils) {
+            utils.registerTemplateHelper("sequenceNumber", function (value) {
+                if (!!value) {
+                    return sequenceNumber;
+                }
+                else {
+                    return ++sequenceNumber;
+                }
             });
         },
 
