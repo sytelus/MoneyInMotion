@@ -49,6 +49,9 @@
 										<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag this
 									{{/if}}								  
 								  </a></li>
+								  <li>
+									  <a tabindex="-1" data-toggle="modal" data-target="#noteEditorModal" data-txid="{{id}}">Edit Note</a>
+								  </li>
 								</ul>
 							</div>
 						</td>

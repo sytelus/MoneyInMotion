@@ -121,6 +121,7 @@
     //publics
     return {
         initialize: function () {
+            //Clicks for +/- buttons
             $("#txListControl").delegate(".txRowExpanderControl", "click", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
                 var parentRow = $(this).closest("tr");
                 var isCollapsed = parentRow.data("iscollapsed").toString() === "true";    //default is undefined
@@ -128,6 +129,13 @@
                 collapseExpandRows(parentRow, isCollapsed);
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
+            });
+
+            //Clicks for set note menu
+            $("#txListControl").delegate("[data-target=\"#noteEditorModal\"]", "click", function (event) {
+                var element = $(this);
+                var txId = element.data("txid");
+                $("#noteEditorModal #noteInput").val(txId);
             });
         },
 
