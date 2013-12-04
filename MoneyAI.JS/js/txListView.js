@@ -118,9 +118,13 @@
         }
     };
 
+    var cachedValues;
+
     //publics
     return {
         initialize: function () {
+            cachedValues = undefined;
+
             //Clicks for +/- buttons
             $("#txListControl").delegate(".txRowExpanderControl", "click", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
                 var parentRow = $(this).closest("tr");
@@ -131,15 +135,48 @@
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
             });
 
+
+            $(document).on("keyup", function (e) {
+                if (e.which === 27) {   //ESC
+                    //Destroy potentially open popup
+                    $("#txListControl").find(".dropdown-toggle").filter(function () { return $(this).data("bs.popover") !== undefined; }).popover("destroy");
+                }
+            });
+
+
             //Clicks for set note menu
-            $("#txListControl").delegate("[data-target=\"#noteEditorModal\"]", "click", function (event) {
-                var element = $(this);
-                var txId = element.data("txid");
-                $("#noteEditorModal #noteInput").val(txId);
+            $("#txListControl").delegate("[data-menuitem=\"editNote\"]", "click", function (event) {
+                var editNoteElement = $(this),
+                cell = editNoteElement.closest("td"),
+                dropdownElement = cell.find(".dropdown-toggle").first(),
+                row = cell.closest("tr"),
+                txId = row.data("txid"),
+                tx = cachedValues.txs.itemsById.get(txId),
+                note = tx.correctedValues ? tx.correctedValues.note : undefined;
+
+                dropdownElement.popover({
+                    animation: true,
+                    html: true,
+                    trigger: "manual",
+                    title: "Edit Note",
+                    content: note || "",
+                    keyboard: true
+                })
+                .dropdown("toggle")
+                .popover("show");
+
+                //Make sure popovers gets killed when hidden
+                $("#txListControl").one("hidden.bs.popover show.bs.dropdown", ".dropdown-toggle", function (e) {
+                    dropdownElement.popover("destroy");
+                });
+
+                event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
             });
         },
 
         refresh: function (txs, selectedYear, selectedMonth) {
+            cachedValues = undefined;
+
             //first filter out the transactions
             var selectedTxs = utils.filter(txs.items, function (tx) {
                 return tx.correctedValues.transactionYearString === selectedYear && tx.correctedValues.transactionMonthString === selectedMonth;
@@ -160,10 +197,13 @@
             var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
             $("#txListControl").html(templateHtml);
+
+            cachedValues = { txs:txs, netAggregator: netAggregator };
         },
 
 
         getTransactionIdsInGroup: function (groupId, allLevels) {
+            //TODO: get this from cachedValues instead of DOM
             var parentRows = $("[data-groupid=\"" + groupId + "\"]");
             if (parentRows.length === 0) {
                 throw new Error("No table rows found for groupId " + groupId);

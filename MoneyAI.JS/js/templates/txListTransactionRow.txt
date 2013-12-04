@@ -37,20 +37,28 @@
 						</td>
 						<td>
 							<div class="dropdown">
+								<!-- edit icon and dropdown trigger -->
 								<a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
 									&nbsp;<i class="editIcon"></i>&nbsp;
 								</a>
+
+								<!-- dropdown -->
 								<ul class="dropdown-menu" role="menu">
-								  <li><a tabindex="-1" 
-									href="#target=txx&action=edit&name=txflag&value={{#if correctedValues.isFlagged}}false{{else}}true{{/if}}&id={{id}}">
-									{{#if correctedValues.isFlagged}}
-										<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
-									{{else}}
-										<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag this
-									{{/if}}								  
-								  </a></li>
 								  <li>
-									  <a tabindex="-1" data-toggle="modal" data-target="#noteEditorModal" data-txid="{{id}}">Edit Note</a>
+									<!-- flag menu -->
+									<a tabindex="-1" 
+										href="#target=txx&action=edit&name=txflag&value={{#if correctedValues.isFlagged}}false{{else}}true{{/if}}&id={{id}}">
+										{{#if correctedValues.isFlagged}}
+											<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
+										{{else}}
+											<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag this
+										{{/if}}								  
+									</a>
+								  </li>
+
+								  <!-- comment menu -->
+								  <li>
+									  <a tabindex="-1" data-menuitem="editNote" href="#">Edit Note</a>
 								  </li>
 								</ul>
 							</div>
