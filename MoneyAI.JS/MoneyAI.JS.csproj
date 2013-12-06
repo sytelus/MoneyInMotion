@@ -27,6 +27,8 @@
     <Content Include="js\app.js" />
     <Content Include="js\common\templateHelpers.js" />
     <Content Include="js\EditedValues.js" />
+    <Content Include="js\templates\noteEditorTitle.txt" />
+    <Content Include="js\templates\noteEditorBody.txt" />
     <Content Include="js\Transactions.js" />
     <Content Include="js\userProfile.js" />
     <Content Include="js\TemplateConstructorFunctions.js" />

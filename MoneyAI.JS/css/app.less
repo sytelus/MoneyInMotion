@@ -3,7 +3,7 @@
 @import (less) "../js/ext/font-awesome/css/font-awesome.css";
 
 @import  "../js/ext/bootstrap/less/mixins.less";
-
+@import  "../js/ext/bootstrap/less/variables.less";
 
 /*  Value formating */
 .negativeAmount {
@@ -107,15 +107,19 @@
 }
 
 /*  Note icon */
-.noteIcon:extend(.fa all):extend(.fa-file all) {
-    color: goldenrod;
+.noteEmptyIcon:extend(.fa all):extend(.fa-file all) {
+    color: #FFCD5A;
 }
-.notePartIcon:extend(.fa all):extend(.fa-files all) {
-    color: goldenrod;
+.noteManyIcon:extend(.fa all):extend(.fa-files all) {
+    color: #FFCD5A;
 }
-.noteColumnIcon:extend(.fa all):extend(.fa-file-o all) {
-    .text-muted;
+.noteLinesIcon:extend(.fa all):extend(.fa-file-text all) {
+    color: #FFCD5A;
 }
+.noteNoneIcon:extend(.fa all):extend(.fa-file-o all) {
+
+}
+
 
 .editIcon:extend(.fa all):extend(.fa-chevron-right all) {
     .text-muted;
@@ -132,4 +136,49 @@
 
 .condencedIcon {
     //font-size: 90%;
+}
+
+
+
+
+// Popover form Footer (copied from modal-footer)
+.popover-form-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  text-align: right; // right align buttons
+  border-top: 1px solid @modal-footer-border-color;
+  .clearfix(); // clear it in case folks use .pull-* classes on buttons
+
+  // Properly space out buttons
+  .btn + .btn {
+    margin-left: 5px;
+    margin-bottom: 0; // account for input[type="submit"] which gets the bottom margin like all other inputs
+  }
+  // but override that for button groups
+  .btn-group .btn + .btn {
+    margin-left: -1px;
+  }
+  // and override it for block buttons as well
+  .btn-block + .btn-block {
+    margin-left: 0;
+  }
+}
+// Popover form header
+.popover-form-header {
+  //border-bottom: 1px solid @modal-header-border-color;
+}
+// Close icon
+.popover-form-header .close {
+  margin-top: -2px;
+}
+//Popover form title
+.popover-form-title {
+  margin: 0;
+}
+#txListControl .popover {
+    max-width:inherit;
+}
+
+.noteControl {
+    width:auto;
 }

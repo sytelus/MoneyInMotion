@@ -1,0 +1,16 @@
+﻿<div>
+	<textarea autofocus class="form-control noteControl" rows="3" cols="25" placeholder="Enter note for the transaction">{{correctedValues.note}}</textarea>
+
+	{{#if correctedValues.note}}
+	<div class="checkbox">
+		<label>
+			<input type="checkbox"> Remove Note
+		</label>
+	</div>
+	{{/if}}
+
+	<div class="popover-form-footer">
+		<button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
+		<button type="button" class="btn btn-primary btn-xs">Save changes</button>
+	</div>
+</div>

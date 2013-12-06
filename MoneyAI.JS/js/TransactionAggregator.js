@@ -3,9 +3,12 @@
 
     //static privates
     var nextId = 1;
+    var allAggregators = [];
 
     var $this = function TransactionAggregator(parent, name, title, retainRows, childAggregateFunction, sortChildAggregatorsFunction, sortTxFunction) {
         this.groupId = nextId++;
+        allAggregators[this.groupId] = this;
+
         this.parentGroupId = parent ? parent.groupId : -1;
 
         this.count = 0;
@@ -58,7 +61,7 @@
                 this.count += 1;
 
                 this.flagCounter.add(tx.correctedValues.isFlagged);
-                this.noteCounter.add(!!tx.correctedValues.note);
+                this.noteCounter.add(tx.correctedValues.note);
                 this.transactionReasonCounter.add(tx.correctedValues.transactionReason);
                 this.accountCounter.add(tx.accountId);
                 this.transactionDateCounter.add(tx.correctedValues.transactionDateParsed);
@@ -99,6 +102,21 @@
                     this.rows = this.sortTxFunction(this.rows);
                 }
                 return this.rows;
+            },
+
+            getByGroupId: function(groupId) {
+                return allAggregators[groupId];
+            },
+
+            getAllTx: function () {
+                var allTx = [];
+
+                var aggs = [this];
+                while (aggs.length) {
+                    utils.forEach(aggs, function (agg) { allTx = allTx.concat(agg.rows); });
+
+                    aggs = utils.toValueArray(this.childAggregators);
+                }
             }
         };
     })();

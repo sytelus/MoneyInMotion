@@ -7,6 +7,8 @@
             this.keyMapFunction = keyMapFunction;
             this.keyCounts = {};
             this.count = 0;
+            this.missedCount = 0;
+            this.notMissedCount = 0;
         };
 
         var proto = (function () {
@@ -23,6 +25,11 @@
                     if (key !== undefined || !this.ignoreUndefinedKey) {
                         var newCount = (this.keyCounts[key] || 0) + 1;
                         this.keyCounts[key] = newCount;
+
+                        this.notMissedCount++;
+                    }
+                    else {
+                        this.missedCount++;
                     }
 
                     this.count++;

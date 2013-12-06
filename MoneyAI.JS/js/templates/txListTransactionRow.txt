@@ -1,67 +1,70 @@
-﻿				{{#each toTxArray}}
-					<tr data-parentgroupid="{{../groupId}}" 
-						class="{{#unless ../isSingleItemTopLevelSelfOrChild}}txTxRow txRowCollapsed{{/unless}}
-						data-iscollapsed={{../isSingleItemTopLevelSelfOrChild}}"
-						data-txid="{{id}}">
-						<td>
-						</td>
-						<td>
-							{{#unless ../isSingleItemTopLevelSelfOrChild}}
-								{{repeatString "&nbsp" ../../depth 4 4}}
-							{{else}}
-								{{repeatString "&nbsp" ../../depth 4 0}}
-							{{/unless}}
-							{{correctedValues.entityNameBest}}
+﻿                {{#each toTxArray}}
+                    <tr data-parentgroupid="{{../groupId}}" 
+                        class="{{#unless ../isSingleItemTopLevelSelfOrChild}}txTxRow txRowCollapsed{{/unless}}
+                        data-iscollapsed={{../isSingleItemTopLevelSelfOrChild}}"
+                        data-txid="{{id}}">
+                        <td>
+                        </td>
+                        <td>
+                            {{#unless ../isSingleItemTopLevelSelfOrChild}}
+                                {{repeatString "&nbsp" ../../depth 4 4}}
+                            {{else}}
+                                {{repeatString "&nbsp" ../../depth 4 0}}
+                            {{/unless}}
+                            {{correctedValues.entityNameBest}}
 
-							<!-- tx Icons -->
-							{{#if correctedValues.note}}<i class="noteIcon"></i>{{/if}}
-							{{#if correctedValues.isFlagged}}
-								<i class="todoPendingIcon"></i>
-							{{else}}
-								{{#compare correctedValues.isFlagged "!typeof" "undefined"}}
-									<i class="todoDoneIcon"></i>
-								{{/compare}}
-							{{/if}}
-						</td>
-						<td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
-							{{formatCurrency correctedValues.amount}}
-						</td>
-						<td>
-							1 {{txTransactionReasonDisplay correctedValues.transactionReason}}
-						</td>
-						<td>
-							{{txTransactionDateDisplay correctedValues.transactionDateParsed}}
-						</td>
-						<td>
-							{{accountId}}
-						</td>
-						<td>
-							<div class="dropdown">
-								<!-- edit icon and dropdown trigger -->
-								<a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
-									&nbsp;<i class="editIcon"></i>&nbsp;
-								</a>
+                            <!-- tx Icons -->
+                            {{#if correctedValues.note}}<i class="noteLinesIcon"></i>{{/if}}
+                            {{#if correctedValues.isFlagged}}
+                                <i class="todoPendingIcon"></i>
+                            {{else}}
+                                {{#compare correctedValues.isFlagged "!typeof" "undefined"}}
+                                    <i class="todoDoneIcon"></i>
+                                {{/compare}}
+                            {{/if}}
+                        </td>
+                        <td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
+                            {{formatCurrency correctedValues.amount}}
+                        </td>
+                        <td>
+                            1 {{txTransactionReasonDisplay correctedValues.transactionReason}}
+                        </td>
+                        <td>
+                            {{txTransactionDateDisplay correctedValues.transactionDateParsed}}
+                        </td>
+                        <td>
+                            {{accountId}}
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <!-- edit icon and dropdown trigger -->
+                                <a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
+                                    &nbsp;<i class="editIcon"></i>&nbsp;
+                                </a>
 
-								<!-- dropdown -->
-								<ul class="dropdown-menu" role="menu">
-								  <li>
-									<!-- flag menu -->
-									<a tabindex="-1" 
-										href="#target=txx&action=edit&name=txflag&value={{#if correctedValues.isFlagged}}false{{else}}true{{/if}}&id={{id}}">
-										{{#if correctedValues.isFlagged}}
-											<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
-										{{else}}
-											<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag this
-										{{/if}}								  
-									</a>
-								  </li>
+                                <!-- dropdown -->
+                                <ul class="dropdown-menu" role="menu">
+                                  <li>
+                                    <!-- flag menu -->
+                                    <a tabindex="-1" data-menuitem="setTxFlag" href="#"
+										data-isset="{{#if correctedValues.isFlagged}}false{{else}}true{{/if}}">
 
-								  <!-- comment menu -->
-								  <li>
-									  <a tabindex="-1" data-menuitem="editNote" href="#">Edit Note</a>
-								  </li>
-								</ul>
-							</div>
-						</td>
-					</tr>
-				{{/each}}
+                                        {{#if correctedValues.isFlagged}}
+                                            <i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
+                                        {{else}}
+                                            <i class="todoPendingIcon"></i>&nbsp;&nbsp;Flag this
+                                        {{/if}}								  
+                                    </a>
+                                  </li>
+
+                                  <!-- comment menu -->
+                                  <li>
+                                      <a tabindex="-1" data-menuitem="editTxNote" href="#">
+                                        {{#if correctedValues.note}}<i class="noteLinesIcon"></i>&nbsp;&nbsp;Edit Note{{else}}<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add Note{{/if}}										  
+                                      </a>
+                                  </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                {{/each}}

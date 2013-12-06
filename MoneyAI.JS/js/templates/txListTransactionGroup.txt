@@ -25,16 +25,16 @@
 								</td>
 								<td>
 									{{repeatString "&nbsp" depth 4}}
-									{{title}}
+									{{title}}&nbsp;&nbsp;
 
 									<!-- Tx icons -->
 									<small>
 									<!-- note icon -->
 									{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
-										<i class="noteIcon"></i>
+										<i class="noteManyIcon"></i>
 									{{else}}
 										{{#compare noteCounter.keyCounts.trueValue ">=" 1}}
-											<i class="notePartIcon"></i>
+											<i class="noteLinesIcon"></i>
 										{{/compare}}
 									{{/compare}}
 
@@ -77,26 +77,48 @@
 								</td>
 								<td>
 									<div class="dropdown">
+										<!-- edit icon and dropdown trigger -->
 										<a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
 											&nbsp;<i class="editIcon"></i>&nbsp;
 										</a>
+
+										<!-- dropdown -->
 										<ul class="dropdown-menu" role="menu">
-											<li>
-												{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-													<a tabindex="-1" href="#target=txx&action=edit&name=txgroupflag&value=false&id={{groupId}}">
-														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flags
+										<li>
+											{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
+												<a tabindex="-1" data-menuitem="setGroupFlag" data-isset="false" href="#">
+													<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all {{flagCounter.count}} flags
+												</a>
+											{{else}}
+												<a tabindex="-1" data-menuitem="setGroupFlag" data-isset="true" href="#">
+													<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.count}} items
+												</a>
+												{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
+													<a tabindex="-1" data-menuitem="setGroupFlag" data-isset="false" href="#">
+														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.count}} flags
+													</a>
+												{{/compare}}
+											{{/compare}}
+										</li>
+
+										  <!-- comment menu -->
+										  <li>
+											{{#compare noteCounter.missedCount "===" noteCounter.count}}
+												<a tabindex="-1" data-menuitem="editGroupNote" href="#">
+													<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add notes <small>(for {{flagCounter.count}} transaction)</small>
+												</a>
+											{{else}}
+												{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
+													<a tabindex="-1" data-menuitem="editGroupNote" href="#">
+														<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit notes <small>(for {{flagCounter.count}} transaction)</small>
 													</a>
 												{{else}}
-													<a tabindex="-1" href="#target=txx&action=edit&name=txgroupflag&value=true&id={{groupId}}">
-														<i class="todoPendingIcon"></i>&nbsp;&nbsp; Set all flags
+													<a tabindex="-1" data-menuitem="expandParent" href="#">
+														<i class="noteNoneIcon"></i>&nbsp;&nbsp;To see notes, expand <small>(for {{flagCounter.count}} transaction)</small>
 													</a>
-													{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-														<a tabindex="-1" href="#target=txx&action=edit&name=txgroupflag&value=false&id={{groupId}}">
-															<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all flags
-														</a>
-													{{/compare}}
 												{{/compare}}
-											</li>
+											{{/compare}}
+										  </li>
 										</ul>
 									</div>
 								</td>
