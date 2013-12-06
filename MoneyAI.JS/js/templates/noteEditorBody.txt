@@ -4,13 +4,13 @@
 	{{#if correctedValues.note}}
 	<div class="checkbox">
 		<label>
-			<input type="checkbox"> Remove Note
+			<input class="isRemoveControl" type="checkbox"> Remove Note
 		</label>
 	</div>
 	{{/if}}
 
 	<div class="popover-form-footer">
 		<button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
-		<button type="button" class="btn btn-primary btn-xs">Save changes</button>
+		<button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>
 	</div>
 </div>

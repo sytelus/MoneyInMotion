@@ -77,6 +77,14 @@
                     (new editedValues.EditValue(isUserFlagged)) :
                     editedValues.EditValue.voidedEditValue(false);
                 applyEditInternal.call(this, edit);
+            },
+
+            setNote: function (id, note, isRemove) {
+                var edit = addEditForScope.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
+                edit.values.note = !!!isRemove ?
+                    (new editedValues.EditValue(note)) :
+                    editedValues.EditValue.voidedEditValue(false);
+                applyEditInternal.call(this, edit);
             }
         };
     })();

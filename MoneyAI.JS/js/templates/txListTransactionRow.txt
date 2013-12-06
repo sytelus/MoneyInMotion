@@ -14,12 +14,13 @@
                             {{correctedValues.entityNameBest}}
 
                             <!-- tx Icons -->
-                            {{#if correctedValues.note}}<i class="noteLinesIcon"></i>{{/if}}
+                            {{#if correctedValues.note}}&nbsp;&nbsp;<i class="noteLinesIcon"></i>{{/if}}
+
                             {{#if correctedValues.isFlagged}}
-                                <i class="todoPendingIcon"></i>
+                                &nbsp;&nbsp;<i class="todoPendingIcon"></i>
                             {{else}}
                                 {{#compare correctedValues.isFlagged "!typeof" "undefined"}}
-                                    <i class="todoDoneIcon"></i>
+                                    &nbsp;&nbsp;<i class="todoDoneIcon"></i>
                                 {{/compare}}
                             {{/if}}
                         </td>
@@ -46,8 +47,8 @@
                                 <ul class="dropdown-menu" role="menu">
                                   <li>
                                     <!-- flag menu -->
-                                    <a tabindex="-1" data-menuitem="setTxFlag" href="#"
-										data-isset="{{#if correctedValues.isFlagged}}false{{else}}true{{/if}}">
+                                    <a tabindex="-1" data-menuitem="setFlag" href="#"
+										data-menuparams="{ &quot;isSet&quot;: {{#if correctedValues.isFlagged}}false{{else}}true{{/if}} }">
 
                                         {{#if correctedValues.isFlagged}}
                                             <i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
@@ -59,8 +60,10 @@
 
                                   <!-- comment menu -->
                                   <li>
-                                      <a tabindex="-1" data-menuitem="editTxNote" href="#">
-                                        {{#if correctedValues.note}}<i class="noteLinesIcon"></i>&nbsp;&nbsp;Edit Note{{else}}<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add Note{{/if}}										  
+                                      <a tabindex="-1" data-menuitem="editNote" href="#">
+                                        {{#if correctedValues.note}}<i class="noteLinesIcon"></i>&nbsp;&nbsp;Edit Note
+										{{else}}<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add Note
+										{{/if}}										  
                                       </a>
                                   </li>
                                 </ul>

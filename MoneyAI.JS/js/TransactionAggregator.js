@@ -17,7 +17,7 @@
         this.sum = 0;
 
         this.flagCounter = new utils.KeyCounter(true, utils.KeyCounter.booleanKeyMap);
-        this.noteCounter = new utils.KeyCounter(true, utils.KeyCounter.booleanKeyMap);
+        this.noteCounter = new utils.KeyCounter(true);
         this.transactionReasonCounter = new utils.KeyCounter(true);
         this.accountCounter = new utils.KeyCounter(true);
         this.transactionDateCounter = new utils.KeyCounter(true);
@@ -117,6 +117,8 @@
 
                     aggs = utils.toValueArray(this.childAggregators);
                 }
+
+                return allTx;
             }
         };
     })();

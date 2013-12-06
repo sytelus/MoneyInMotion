@@ -25,32 +25,30 @@
 								</td>
 								<td>
 									{{repeatString "&nbsp" depth 4}}
-									{{title}}&nbsp;&nbsp;
+									{{title}}
 
 									<!-- Tx icons -->
-									<small>
 									<!-- note icon -->
-									{{#compare noteCounter.keyCounts.trueValue "===" noteCounter.count}}
-										<i class="noteManyIcon"></i>
+									{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
+										&nbsp;&nbsp;<i class="noteManyIcon"></i>
 									{{else}}
-										{{#compare noteCounter.keyCounts.trueValue ">=" 1}}
-											<i class="noteLinesIcon"></i>
+										{{#compare noteCounter.notMissedCount ">=" 1}}
+											&nbsp;&nbsp;<i class="noteLinesIcon"></i>
 										{{/compare}}
 									{{/compare}}
 
 									<!-- flag icon -->
 									{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-										<i class="todoPendingIcon"></i>
+										&nbsp;&nbsp;<i class="todoPendingIcon"></i>
 									{{else}}
 										{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-											<i class="todoPartPendingIcon"></i>
+											&nbsp;&nbsp;<i class="todoPartPendingIcon"></i>
 										{{else}}
 											{{#compare flagCounter.keyCounts.falseValue ">" 0}}
-												<i class="todoDoneIcon"></i>
+												&nbsp;&nbsp;<i class="todoDoneIcon"></i>
 											{{/compare}}
 										{{/compare}}
 									{{/compare}}
-									</small>
 								</td>
 								<td>
 									<span class="txRowExpanderControl">
@@ -86,16 +84,16 @@
 										<ul class="dropdown-menu" role="menu">
 										<li>
 											{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-												<a tabindex="-1" data-menuitem="setGroupFlag" data-isset="false" href="#">
+												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
 													<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all {{flagCounter.count}} flags
 												</a>
 											{{else}}
-												<a tabindex="-1" data-menuitem="setGroupFlag" data-isset="true" href="#">
-													<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.count}} items
+												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: true}" href="#">
+													<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.keyCounts.falseValue}} transactions
 												</a>
 												{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-													<a tabindex="-1" data-menuitem="setGroupFlag" data-isset="false" href="#">
-														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.count}} flags
+													<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
+														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.keyCounts.trueValue}} flags
 													</a>
 												{{/compare}}
 											{{/compare}}
@@ -104,17 +102,22 @@
 										  <!-- comment menu -->
 										  <li>
 											{{#compare noteCounter.missedCount "===" noteCounter.count}}
-												<a tabindex="-1" data-menuitem="editGroupNote" href="#">
-													<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add notes <small>(for {{flagCounter.count}} transaction)</small>
+												<a tabindex="-1" data-menuitem="editNote" href="#">
+													<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add note</small>
 												</a>
 											{{else}}
 												{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
-													<a tabindex="-1" data-menuitem="editGroupNote" href="#">
-														<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit notes <small>(for {{flagCounter.count}} transaction)</small>
+													<a tabindex="-1" data-menuitem="editNote" href="#">
+														<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit note</small>
 													</a>
 												{{else}}
-													<a tabindex="-1" data-menuitem="expandParent" href="#">
-														<i class="noteNoneIcon"></i>&nbsp;&nbsp;To see notes, expand <small>(for {{flagCounter.count}} transaction)</small>
+													<a tabindex="-1" data-menuitem="editNote" href="#">
+														<i class="noteManyIcon"></i>&nbsp;&nbsp;Change notes for all</small>
+														{{#compare noteCounter.keyCount ">" 1}}
+															<p class="small text-danger">
+																WARNING: {{noteCounter.keyCount}} different notes
+															</p>
+														{{/compare}}
 													</a>
 												{{/compare}}
 											{{/compare}}

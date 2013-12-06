@@ -5,6 +5,7 @@
     /*jshint -W080 */   //Allow explicit initialization with undefined
     
     var compiledTemplate;   //cache compiled template
+    var lastSelectedYearMonth;
 
     return {
         initialize: function () {
@@ -12,6 +13,9 @@
         },
 
         refresh: function (txs, selectYearString, selectMonthString) {
+            selectYearString = selectYearString || (lastSelectedYearMonth ? lastSelectedYearMonth.yearString : undefined);
+            selectMonthString = selectMonthString || (lastSelectedYearMonth ? lastSelectedYearMonth.monthString : undefined);
+
             var yearMonths = new utils.Dictionary();
 
             for(var i = 0; i < txs.items.length; i++) {
@@ -61,13 +65,13 @@
                 selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (templateData[selectYearIndex].months.length ? 0 : undefined);
             }
 
-            var selectedYearMonth = {yearString: undefined, monthString: undefined};
+            lastSelectedYearMonth = { yearString: undefined, monthString: undefined };
             if (selectYearIndex >= 0) {
-                selectedYearMonth.yearString = templateData[selectYearIndex].yearString;
+                lastSelectedYearMonth.yearString = templateData[selectYearIndex].yearString;
                 templateData[selectYearIndex].isSelected = true;
 
                 if (selectMonthIndex >= 0) {
-                    selectedYearMonth.monthString = templateData[selectYearIndex].months[selectMonthIndex].monthString;
+                    lastSelectedYearMonth.monthString = templateData[selectYearIndex].months[selectMonthIndex].monthString;
                     templateData[selectYearIndex].months[selectMonthIndex].isSelected = true;
                 }
             }
@@ -77,7 +81,7 @@
 
             $("#txNavigationControl").html(templateHtml);
 
-            return selectedYearMonth;
+            return lastSelectedYearMonth;
         }
     };
 });

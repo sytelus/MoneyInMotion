@@ -6,6 +6,7 @@
     //private statcs
     var cachedValues;
     var compiledTemplates = {};   //cache compiled template
+    var lastSelectedYearMonth;
 
     var sortTxRows = function (txRows) {
         txRows.sort(utils.compareFunction(false, function (tx) { return tx.amount; }));
@@ -123,12 +124,19 @@
         $("#txListControl").find(".popover").prev().popover("destroy");
     },
 
-    refresh = function (txs, selectedYear, selectedMonth) {
-        cachedValues = undefined;
+    refresh = function (txs, selectYearString, selectMonthString) {
+        if (txs) {
+            cachedValues = undefined;
+        };
+
+        txs = txs || cachedValues.txs;
+        
+        selectYearString = selectYearString || lastSelectedYearMonth.yearString;
+        selectMonthString = selectMonthString || lastSelectedYearMonth.monthString;
 
         //first filter out the transactions
         var selectedTxs = utils.filter(txs.items, function (tx) {
-            return tx.correctedValues.transactionYearString === selectedYear && tx.correctedValues.transactionMonthString === selectedMonth;
+            return tx.correctedValues.transactionYearString === selectYearString && tx.correctedValues.transactionMonthString === selectMonthString;
         });
 
         var netAggregator = new TransactionAggregator(undefined, "Net", "Net/Net", false, incomeExpenseChildAggregator, sortNetChildAggregators, sortTxRows);
@@ -137,7 +145,7 @@
             Transaction.prototype.ensureAllCorrectedValues.call(tx);
             netAggregator.add(tx);
         });
-            
+
         netAggregator.finalize();
 
         var templateData = netAggregator;
@@ -147,17 +155,22 @@
 
         $("#txListControl").html(templateHtml);
 
-        cachedValues = { txs:txs, netAggregator: netAggregator };
+        cachedValues = { txs: txs, netAggregator: netAggregator };
+        lastSelectedYearMonth = { yearString: selectYearString, monthString: selectMonthString };
     },
 
-    editTxNoteMenuItemClick = function (tx, dropdownElement) {
+    editNoteMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
+        var firstTx = selectedTx[0];
+
         compiledTemplates.noteEditorTitle = compiledTemplates.noteEditorTitle || utils.compileTemplate(noteEditorTitleText);
-        var titleHtml = utils.runTemplate(compiledTemplates.noteEditorTitle, tx);
+        var titleHtml = utils.runTemplate(compiledTemplates.noteEditorTitle, firstTx);
 
         compiledTemplates.noteEditorBody = compiledTemplates.noteEditorBody || utils.compileTemplate(noteEditorBodyText);
-        var bodyHtml = utils.runTemplate(compiledTemplates.noteEditorBody, tx);
-        
-        dropdownElement.popover({
+        var bodyHtml = utils.runTemplate(compiledTemplates.noteEditorBody, firstTx);
+
+        dropdownElement
+        .dropdown("toggle")
+        .popover({
             animation: false,
             html: true,
             trigger: "manual",
@@ -165,34 +178,31 @@
             content: bodyHtml,
             placement: "bottom"
         })
-        .dropdown("toggle")
         .popover("show");
+
+        var popoverContainer = dropdownElement.next();
+
+        popoverContainer.one("click", ".saveControl", function () {
+            var note = popoverContainer.find(".noteControl").val();
+            var isRemove = popoverContainer.find(".isRemoveControl").is(':checked');
+            utils.forEach(selectedTx, function (tx) { cachedValues.txs.setNote(tx.id, note, isRemove); });
+
+            dropdownElement.popover("destroy");
+
+            refresh();
+        });
 
         //Make sure popovers gets killed when hidden
         $("#txListControl").one("hidden.bs.popover", ".dropdown-toggle", function (e) {
             dropdownElement.popover("destroy");
         });
 
-        refresh();
+        //Do not refresh or popover will go over
     },
 
-    setTxFlag = function (txId, isSet) {
-        cachedValues.txs.setIsUserFlagged(id, isSet);
-    },
-
-    setTxGroupFlag = function (groupId, isSet) {
-        var groupTx = cachedValues.netAggregator.getById(groupId).getAllTx();
-        utils.forEach(groupTx, function (txId) { setTxFlag(txId, isSet); });
-    },
-
-    setTxFlagMenuItemClick = function (tx) {
-        setTxFlag(tx.id, !!!tx.correctedValues.isFlagged);
-
-        refresh();
-    },
-    setGroupFlagMenuItemClick = function (tx) {
-        setTxFlag(tx.id, !!!tx.correctedValues.isFlagged);
-
+    setFlagMenuItemClick = function (menuParams, selectedTx) {
+        var isSet = menuParams.isSet;
+        utils.forEach(selectedTx, function (tx) { cachedValues.txs.setIsUserFlagged(tx.id, isSet); });
         refresh();
     };
 
@@ -228,28 +238,36 @@
             //Clicks for set note menu
             $("#txListControl").on("click", "[data-menuitem]", function (event) {
                 var menuItemElement = $(this),
-                menuItem = menuItemElement.data("menuitem");
+                menuItem = menuItemElement.data("menuitem"),
+                menuParams = menuItemElement.data("menuparams"),
                 cell = menuItemElement.closest("td"),
                 dropdownElement = cell.find(".dropdown-toggle").first(),
-                row = cell.closest("tr"),
-                txId = row.data("txid"),
-                groupId = row.data("groupid");
-
-                tx = txId !== undefined ? cachedValues.txs.itemsById.get(txId) : undefined;
-                agg = groupId !== undefined ? cachedValues.netAggregator.getById(parseInt(groupId, 10)) : undefined;
+                row = cell.closest("tr");
+                
+                //Is this group row?
+                var groupId = row.data("groupid");
+                var selectedTx;
+                if (groupId !== undefined) {
+                    var agg = cachedValues.netAggregator.getByGroupId(parseInt(groupId, 10));
+                    selectedTx = agg.getAllTx();
+                }
+                else {
+                    var txId = row.data("txid");
+                    selectedTx = [cachedValues.txs.itemsById.get(txId)];
+                }
 
                 switch (menuItem) {
-                    case "setTxFlag": setTxFlagMenuItemClick(tx, dropdownElement); break;
-                    case "editTxNote": editNoteMenuItemClick(tx, dropdownElement); break;
-                    case "setGroupFlag": setGroupFlagMenuItemClick(agg, dropdownElement); break;
-                    case "editGroupNote": editNoteMenuItemClick(agg, dropdownElement); break;
+                    case "setFlag": setFlagMenuItemClick(menuParams, selectedTx, dropdownElement); break;
+                    case "editNote": editNoteMenuItemClick(menuParams, selectedTx, dropdownElement); break;
                     default:
                         throw new Error("menuItem " + menuItem + " is not supported");
                 }
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
             });
-        }
+        },
+
+        refresh: refresh
 
     };
 });
