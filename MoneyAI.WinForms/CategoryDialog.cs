@@ -44,7 +44,7 @@ namespace MoneyAI.WinForms
 
                 var currentScope = lastCategoryEdit.IfNotNull(e => e.Scope) 
                         ?? new TransactionEdit.EditScope(TransactionEdit.ScopeType.EntityNameNormalized, new string[] {firstSelectedTransaction.EntityNameNormalized});
-                var currentCategoryPath = lastCategoryEdit.IfNotNull(e => e.Values.IfNotNull(v => v.CategoryPath.GetValueOrDefault()))
+                var currentCategoryPath = lastCategoryEdit.IfNotNull(e => e.Values.IfNotNull(v => v.CategoryPath.IfNotNull(c => c.GetValueOrDefault())))
                         ?? Utils.EmptyStringArray;
 
                 string radioButtonNameText = null, textBoxNameWordsText = null, radioButtonNormalizedNameText = null, radioButtonOnlySelectedText = null;

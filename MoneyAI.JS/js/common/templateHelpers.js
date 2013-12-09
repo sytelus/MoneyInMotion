@@ -14,7 +14,7 @@
         "!typeof": function (l, r) { return typeof l !== r; }
     };
 
-    var sequenceNumber = 0;
+    var lastSequenceNumber = 0;
 
     var helpers = [
         function formatCurrency(utils) {
@@ -28,13 +28,36 @@
             });
         },
 
-        function getSequenceNumber(utils) {
+        function sequenceNumber(utils) {
             utils.registerTemplateHelper("sequenceNumber", function (value) {
                 if (!!value) {
-                    return sequenceNumber;
+                    return lastSequenceNumber;
                 }
                 else {
-                    return ++sequenceNumber;
+                    return ++lastSequenceNumber;
+                }
+            });
+        },
+
+        function not(utils) {
+            utils.registerTemplateHelper("not", function (value) {
+                return !!!value;
+            });
+        },
+
+        function stringify(utils) {
+            utils.registerTemplateHelper("stringify", function (value) {
+                if (value === undefined) {
+                    return "undefined";
+                }
+                else if (value === null) {
+                    return "null";
+                }
+                else if (utils.isObject(value)) {
+                    return utils.stringify(value);
+                }
+                else {
+                    return value.toString();
                 }
             });
         },

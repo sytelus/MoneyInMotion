@@ -2,14 +2,18 @@
     "use strict";
 
     //static privates
-    var nextId = 1;
-    var allAggregators = [];
+    var allAggregators = {};
 
-    var $this = function TransactionAggregator(parent, name, title, retainRows, childAggregateFunction, sortChildAggregatorsFunction, sortTxFunction) {
-        this.groupId = nextId++;
+    var $this = function TransactionAggregator(parent, name, title, retainRows, childAggregateFunction,
+        sortChildAggregatorsFunction, sortTxFunction, isCategoryGroup) {
+
+        this.groupId = (parent ? parent.name : "") + "." + name;
+
+        var previousValue = allAggregators[this.groupId];
+        this.isChildrenVisible = previousValue ? previousValue.isChildrenVisible : undefined;
         allAggregators[this.groupId] = this;
 
-        this.parentGroupId = parent ? parent.groupId : -1;
+        this.parent = parent;
 
         this.count = 0;
         this.positiveSum = 0;
@@ -26,7 +30,7 @@
 
         this.name = name;
         this.title = title;
-
+        this.isCategoryGroup = !!isCategoryGroup;
         this.rows = [];
         this.retainRows = !!retainRows;
 
@@ -35,6 +39,8 @@
         this.childAggregateFunction = childAggregateFunction;
         this.sortChildAggregatorsFunction = sortChildAggregatorsFunction;
         this.sortTxFunction = sortTxFunction;
+
+        this.isFinal = false;
     };
 
     var proto = (function () {
@@ -82,10 +88,31 @@
                 this.transactionDateCounter.finalize();
                 
                 this.isTopLevel = this.depth === 1;
-                this.isTopLevelSelfOrChild = this.depth <= 2;
-                this.isSingleItem = this.count === 1;
-                this.isSingleItemTopLevelSelfOrChild = this.isSingleItem && this.isTopLevelSelfOrChild;
 
+                /*
+                    EParent = nearest non-optional parent
+                    IsVisible = Root || (EParent.IsVisible && EParent.IsChildrenVisible && !IsOptional)
+                    HasChildren = ItemCount > 0
+                    IsChildrenVisible = (user driven)
+
+                    On Expand/Collapse: Set IsChildrenVisible, Update IsVisible for all children
+                    On refresh: Copy IsChildrenVisible from last state
+                */
+                this.isOptional = this.count === 1 && !this.isCategoryGroup && !this.isTopLevel;
+                this.effectiveParent = this.parent ?
+                    (this.parent.isOptional ? this.parent.effectiveParent : this.parent) : this;
+                this.isVisible = this.isTopLevel ||
+                    (this.effectiveParent.isVisible && this.effectiveParent.isChildrenVisible && !this.isOptional);
+                this.isChildrenVisible = this.isTopLevel || this.isOptional ||
+                    (this.isChildrenVisible === undefined ? !this.effectiveParent.isTopLevel : this.isChildrenVisible);
+
+                //Short cut method for template
+                this.effectiveParentForTx = this.isOptional ? this.effectiveParent : this;
+                this.isTxVisible = this.effectiveParentForTx.isVisible && this.effectiveParentForTx.isChildrenVisible;
+
+                this.isFinal = true;
+
+                //Child must be done after visibility for parent is setup
                 utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });
             },
 
@@ -111,9 +138,11 @@
             getAllTx: function () {
                 var allTx = [];
 
-                var aggs = [this];
+                var aggs = [this],
+                    collectTx = function (agg) { allTx = allTx.concat(agg.rows); };
+
                 while (aggs.length) {
-                    utils.forEach(aggs, function (agg) { allTx = allTx.concat(agg.rows); });
+                    utils.forEach(aggs, collectTx);
 
                     aggs = utils.toValueArray(this.childAggregators);
                 }

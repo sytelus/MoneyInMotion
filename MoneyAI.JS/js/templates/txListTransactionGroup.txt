@@ -1,133 +1,131 @@
 ﻿				{{#toChildAggregatorsArray}}
 					
 					<!-- no header for single item non-top groups -->
-					{{#unless isSingleItemTopLevelSelfOrChild}}	
-						<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless isTopLevelSelfOrChild}} txRowCollapsed{{/unless}}" 
-						data-groupid="{{groupId}}"
-						data-parentgroupid="{{parentGroupId}}"
-						data-iscollapsed={{isTopLevelSelfOrChild}}>
-							{{#if isTopLevel}}
-								<td><!-- + column--></td>
-								<td colspan="1">
-									{{title}}
-								</td>
-								<td colspan="4" class="topLevelGroupSummary">
-									<small>
-										{{formatCurrency sum}} in {{txTransactionReasonCounterDisplay transactionReasonCounter}}
-									</small>
-								</td>
-								<td><!--edit column--></td>
-							{{else}}
-								<td>
-									<a class="txRowExpanderControl">
-										&nbsp;<span class="expanderTitle">+</span>&nbsp;
-									</a>							
-								</td>
-								<td>
-									{{repeatString "&nbsp" depth 4}}
-									{{title}}
+					<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless isVisible}} txRowInvisible{{/unless}}" 
+					data-groupid="{{groupId}}"
+					data-parentgroupid="{{parent.groupId}}"
+					data-ischildrenvisible="{{isChildrenVisible}}">
+						{{#if isTopLevel}}
+							<td><!-- + column--></td>
+							<td colspan="1">
+								{{title}}
+							</td>
+							<td colspan="4" class="topLevelGroupSummary">
+								<small>
+									{{formatCurrency sum}} in {{txTransactionReasonCounterDisplay transactionReasonCounter}}
+								</small>
+							</td>
+							<td><!--edit column--></td>
+						{{else}}
+							<td>
+								<a class="txRowExpanderControl">
+									&nbsp;<span class="expanderTitle">+</span>&nbsp;
+								</a>							
+							</td>
+							<td>
+								{{repeatString "&nbsp" depth 4}}
+								{{title}}
 
-									<!-- Tx icons -->
-									<!-- note icon -->
-									{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
-										&nbsp;&nbsp;<i class="noteManyIcon"></i>
+								<!-- Tx icons -->
+								<!-- note icon -->
+								{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
+									&nbsp;&nbsp;<i class="noteManyIcon"></i>
+								{{else}}
+									{{#compare noteCounter.notMissedCount ">=" 1}}
+										&nbsp;&nbsp;<i class="noteLinesIcon"></i>
+									{{/compare}}
+								{{/compare}}
+
+								<!-- flag icon -->
+								{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
+									&nbsp;&nbsp;<i class="todoPendingIcon"></i>
+								{{else}}
+									{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
+										&nbsp;&nbsp;<i class="todoPartPendingIcon"></i>
 									{{else}}
-										{{#compare noteCounter.notMissedCount ">=" 1}}
-											&nbsp;&nbsp;<i class="noteLinesIcon"></i>
+										{{#compare flagCounter.keyCounts.falseValue ">" 0}}
+											&nbsp;&nbsp;<i class="todoDoneIcon"></i>
 										{{/compare}}
 									{{/compare}}
+								{{/compare}}
+							</td>
+							<td>
+								<span class="txRowExpanderControl">
+									<span {{#compare sum "<" 0}}class="negativeAmount"{{/compare}}> 
+										{{formatCurrency sum}} 
+									</span>
+									<span class="moreIndicator">&hellip;</span>
+								</span>
+							</td>
+							<td>
+								{{txTransactionReasonCounterDisplay transactionReasonCounter}}
+							</td>
+							<td>
+								<span {{#compare transactionDateCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
+									{{txTransactionDateDisplay transactionDateCounter.top.key}}
+									{{#compare transactionDateCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
+								</span>
+							</td>
+							<td>
+								<span {{#compare accountCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
+									{{accountCounter.top.key}}
+									{{#compare accountCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
+								</span>
+							</td>
+							<td>
+								<div class="dropdown">
+									<!-- edit icon and dropdown trigger -->
+									<a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
+										&nbsp;<i class="editIcon"></i>&nbsp;
+									</a>
 
-									<!-- flag icon -->
-									{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-										&nbsp;&nbsp;<i class="todoPendingIcon"></i>
-									{{else}}
-										{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-											&nbsp;&nbsp;<i class="todoPartPendingIcon"></i>
+									<!-- dropdown -->
+									<ul class="dropdown-menu" role="menu">
+									<li>
+										{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
+											<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
+												<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all {{flagCounter.count}} flags
+											</a>
 										{{else}}
-											{{#compare flagCounter.keyCounts.falseValue ">" 0}}
-												&nbsp;&nbsp;<i class="todoDoneIcon"></i>
+											<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: true}" href="#">
+												<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.keyCounts.falseValue}} transactions
+											</a>
+											{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
+												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
+													<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.keyCounts.trueValue}} flags
+												</a>
 											{{/compare}}
 										{{/compare}}
-									{{/compare}}
-								</td>
-								<td>
-									<span class="txRowExpanderControl">
-										<span {{#compare sum "<" 0}}class="negativeAmount"{{/compare}}> 
-											{{formatCurrency sum}} 
-										</span>
-										<span class="moreIndicator">&hellip;</span>
-									</span>
-								</td>
-								<td>
-									{{txTransactionReasonCounterDisplay transactionReasonCounter}}
-								</td>
-								<td>
-									<span {{#compare transactionDateCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
-										{{txTransactionDateDisplay transactionDateCounter.top.key}}
-										{{#compare transactionDateCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
-									</span>
-								</td>
-								<td>
-									<span {{#compare accountCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
-										{{accountCounter.top.key}}
-										{{#compare accountCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
-									</span>
-								</td>
-								<td>
-									<div class="dropdown">
-										<!-- edit icon and dropdown trigger -->
-										<a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
-											&nbsp;<i class="editIcon"></i>&nbsp;
-										</a>
+									</li>
 
-										<!-- dropdown -->
-										<ul class="dropdown-menu" role="menu">
+										<!-- comment menu -->
 										<li>
-											{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
-													<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all {{flagCounter.count}} flags
-												</a>
-											{{else}}
-												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: true}" href="#">
-													<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.keyCounts.falseValue}} transactions
-												</a>
-												{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-													<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
-														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.keyCounts.trueValue}} flags
-													</a>
-												{{/compare}}
-											{{/compare}}
-										</li>
-
-										  <!-- comment menu -->
-										  <li>
-											{{#compare noteCounter.missedCount "===" noteCounter.count}}
+										{{#compare noteCounter.missedCount "===" noteCounter.count}}
+											<a tabindex="-1" data-menuitem="editNote" href="#">
+												<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add note</small>
+											</a>
+										{{else}}
+											{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
 												<a tabindex="-1" data-menuitem="editNote" href="#">
-													<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add note</small>
+													<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit note</small>
 												</a>
 											{{else}}
-												{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
-													<a tabindex="-1" data-menuitem="editNote" href="#">
-														<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit note</small>
-													</a>
-												{{else}}
-													<a tabindex="-1" data-menuitem="editNote" href="#">
-														<i class="noteManyIcon"></i>&nbsp;&nbsp;Change notes for all</small>
-														{{#compare noteCounter.keyCount ">" 1}}
-															<p class="small text-danger">
-																WARNING: {{noteCounter.keyCount}} different notes
-															</p>
-														{{/compare}}
-													</a>
-												{{/compare}}
+												<a tabindex="-1" data-menuitem="editNote" href="#">
+													<i class="noteManyIcon"></i>&nbsp;&nbsp;Change notes for all</small>
+													{{#compare noteCounter.keyCount ">" 1}}
+														<p class="small text-danger">
+															WARNING: {{noteCounter.keyCount}} different notes
+														</p>
+													{{/compare}}
+												</a>
 											{{/compare}}
-										  </li>
-										</ul>
-									</div>
-								</td>
-							{{/if}}
-						</tr>
-					{{/unless}}
+										{{/compare}}
+										</li>
+									</ul>
+								</div>
+							</td>
+						{{/if}}
+					</tr>
 
 					<!-- if leaf group, print transactions as child else print child groups -->
 					{{#if rows}}		

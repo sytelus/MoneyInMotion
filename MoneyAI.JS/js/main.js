@@ -24,7 +24,8 @@
         "cryptojs.core": "ext/cryptojslib/components/core",
         "cryptojs.md5": "ext/cryptojslib/components/md5",
         "cryptojs.base64": "ext/cryptojslib/components/enc-base64",
-        "uuidjs": "ext/uuid-js/lib/uuid"
+        "uuidjs": "ext/uuid-js/lib/uuid",
+        "json3": "ext/json3/lib/json3"
     },
     shim: {
         "debug": {

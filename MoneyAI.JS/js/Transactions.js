@@ -1,4 +1,4 @@
-﻿define("Transactions", ["common/utils", "TransactionEdit", "Transaction", "EditedValues", "userProfile"], 
+﻿define("Transactions", ["common/utils", "TransactionEdit", "Transaction", "EditedValues", "userProfile"],
     function (utils, TransactionEdit, Transaction, editedValues, userProfile) {
     "use strict";
 

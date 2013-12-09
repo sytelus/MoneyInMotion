@@ -77,7 +77,7 @@ namespace MoneyAI.WinForms
 
             var firstTx = (Transaction)((OLVListItem)rows[0]).RowObject;
             var lastCategoryEdit = this.appState.LatestMerged.GetEditsDescending(firstTx)
-                .FirstOrDefault(edit => edit.Values.IfNotNull(v => v.CategoryPath.GetValueOrDefault()) != null);
+                .FirstOrDefault(edit => edit.Values.IfNotNull(v => v.CategoryPath.IfNotNull(c => c.GetValueOrDefault())) != null);
 
             var newScopePathTuple = CategoryDialogForm.GetCategoryEditFromUser(lastCategoryEdit, firstTx
                  , rows.Cast<OLVListItem>().Select(r => ((Transaction)r.RowObject).Id).ToList(), this);

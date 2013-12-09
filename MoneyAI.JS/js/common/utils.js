@@ -1,6 +1,6 @@
 ﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "common/keyCounter",
-    "cryptojs.md5", "cryptojs.base64", "uuidjs"],
-    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs) {
+    "cryptojs.md5", "cryptojs.base64", "uuidjs", "json3"],
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs, json3) {
 
    "use strict";
 
@@ -34,6 +34,11 @@
         logger: debug,
         Dictionary: buckets.Dictionary,
         Set: buckets.Set,
+        isObject: _.isObject,
+
+        stringify: function(value) {
+            return json3.stringify(value);
+        },
 
         getMonthName: function (monthNumber) {
             return moment({ month: monthNumber }).format("MMMM");

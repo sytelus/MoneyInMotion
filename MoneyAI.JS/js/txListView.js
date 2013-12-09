@@ -45,11 +45,11 @@
         var aggregator = childAggregators[aggregatorName];
         if (!aggregator) {
             if (categoryDepth !== undefined) {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows);
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, true);
                 aggregator.categoryDepth = categoryDepth;
             }
             else {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, true, undefined, sortNameChildAggregators, sortTxRows);
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, true, undefined, sortNameChildAggregators, sortTxRows, false);
             }
 
             childAggregators[aggregatorName] = aggregator;
@@ -59,7 +59,7 @@
     };
 
     var getExpenseChildAggregator = function expense(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Expense", "Expenses", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows);
+        var agg = new TransactionAggregator(parentAggregator, "Expense", "Expenses", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
         agg.sortOrder = 0;
 
         return agg;
@@ -68,7 +68,7 @@
     //    return new TransactionAggregator(parentAggregator, "Income", "Income", false, entityNameChildAggregator, aggregatorSortMap, false);
     //},
     getTransfersChildAggregator = function transfers(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Transfers", "Transfers", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows);
+        var agg = new TransactionAggregator(parentAggregator, "Transfers", "Transfers", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
         agg.sortOrder = 10;
 
         return agg;
@@ -93,29 +93,39 @@
         return childAggregators[aggregatorFunction.name];
     };
 
-    var collapseExpandRows = function (parentRow, expand) {
+    var collapseExpandRows = function (parentRow, isChildrenVisible, level) {
         var groupId = parentRow.attr("data-groupid");
+        if (groupId === undefined) {    //Tx rows
+            return; 
+        }
+
         var childRows = parentRow.nextAll("tr[data-parentgroupid=\"" + groupId + "\"]");
         var expanderTitle = parentRow.find(".expanderTitle");
 
-        if (expand) {
+        if (!!!level) {
+            var agg = cachedValues.netAggregator.getByGroupId(groupId);
+            agg.isChildrenVisible = isChildrenVisible;
+            parentRow.data("ischildrenvisible", isChildrenVisible.toString());
+        }
+
+        if (isChildrenVisible) {
             expanderTitle.html("&ndash;");
-            parentRow.data("iscollapsed", "false");
             childRows.each(function () {
                 var row = $(this);
-                row.removeClass("txRowCollapsed");
+                row.removeClass("txRowInvisible");
                 row.addClass("txRowVisible");
-                collapseExpandRows(row, expand);
+                if (row.attr("data-ischildrenvisible") === "true") {    //kep going until we hit closed node
+                    collapseExpandRows(row, isChildrenVisible, (level || 0) + 1);
+                }
             });
         }
         else {
             expanderTitle.text("+");
-            parentRow.data("iscollapsed", "true");
             childRows.each(function () {
                 var row = $(this);
                 row.removeClass("txRowVisible");
-                row.addClass("txRowCollapsed");
-                collapseExpandRows(row, expand);
+                row.addClass("txRowInvisible");
+                collapseExpandRows(row, isChildrenVisible, (level || 0) + 1);
             });
         }
     };
@@ -127,7 +137,7 @@
     refresh = function (txs, selectYearString, selectMonthString) {
         if (txs) {
             cachedValues = undefined;
-        };
+        }
 
         txs = txs || cachedValues.txs;
         
@@ -139,7 +149,7 @@
             return tx.correctedValues.transactionYearString === selectYearString && tx.correctedValues.transactionMonthString === selectMonthString;
         });
 
-        var netAggregator = new TransactionAggregator(undefined, "Net", "Net/Net", false, incomeExpenseChildAggregator, sortNetChildAggregators, sortTxRows);
+        var netAggregator = new TransactionAggregator(undefined, "Net", "Net/Net", false, incomeExpenseChildAggregator, sortNetChildAggregators, sortTxRows, false);
 
         utils.forEach(selectedTxs, function (tx) {
             Transaction.prototype.ensureAllCorrectedValues.call(tx);
@@ -184,7 +194,7 @@
 
         popoverContainer.one("click", ".saveControl", function () {
             var note = popoverContainer.find(".noteControl").val();
-            var isRemove = popoverContainer.find(".isRemoveControl").is(':checked');
+            var isRemove = popoverContainer.find(".isRemoveControl").is(":checked");
             utils.forEach(selectedTx, function (tx) { cachedValues.txs.setNote(tx.id, note, isRemove); });
 
             dropdownElement.popover("destroy");
@@ -193,7 +203,7 @@
         });
 
         //Make sure popovers gets killed when hidden
-        $("#txListControl").one("hidden.bs.popover", ".dropdown-toggle", function (e) {
+        $("#txListControl").one("hidden.bs.popover", ".dropdown-toggle", function () {
             dropdownElement.popover("destroy");
         });
 
@@ -215,9 +225,9 @@
             //Clicks for +/- buttons
             $("#txListControl").on("click", ".txRowExpanderControl", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
                 var parentRow = $(this).closest("tr");
-                var isCollapsed = parentRow.data("iscollapsed").toString() === "true";    //default is undefined
+                var isChildrenVisible = parentRow.data("ischildrenvisible").toString() === "true";
 
-                collapseExpandRows(parentRow, isCollapsed);
+                collapseExpandRows(parentRow, !isChildrenVisible);
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
             });
@@ -231,7 +241,7 @@
             });
 
             //Clicks for popover close buttons
-            $(document).on("click", "[data-dismiss=\"popover\"]", function (e) {
+            $(document).on("click", "[data-dismiss=\"popover\"]", function () {
                 destoryPopovers();
             });
 
@@ -248,7 +258,7 @@
                 var groupId = row.data("groupid");
                 var selectedTx;
                 if (groupId !== undefined) {
-                    var agg = cachedValues.netAggregator.getByGroupId(parseInt(groupId, 10));
+                    var agg = cachedValues.netAggregator.getByGroupId(groupId);
                     selectedTx = agg.getAllTx();
                 }
                 else {

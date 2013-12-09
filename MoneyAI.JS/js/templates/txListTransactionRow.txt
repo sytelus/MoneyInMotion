@@ -1,16 +1,12 @@
 ﻿                {{#each toTxArray}}
                     <tr data-parentgroupid="{{../groupId}}" 
-                        class="{{#unless ../isSingleItemTopLevelSelfOrChild}}txTxRow txRowCollapsed{{/unless}}
-                        data-iscollapsed={{../isSingleItemTopLevelSelfOrChild}}"
+                        class="{{#unless ../effectiveParentForTx.isTopLevel}}txTxRow{{/unless}}{{#unless ../isTxVisible}} txRowInvisible{{/unless}}"
                         data-txid="{{id}}">
                         <td>
                         </td>
                         <td>
-                            {{#unless ../isSingleItemTopLevelSelfOrChild}}
-                                {{repeatString "&nbsp" ../../depth 4 4}}
-                            {{else}}
-                                {{repeatString "&nbsp" ../../depth 4 0}}
-                            {{/unless}}
+                            {{repeatString "&nbsp" ../effectiveParentForTx.depth 4 4}}
+
                             {{correctedValues.entityNameBest}}
 
                             <!-- tx Icons -->
