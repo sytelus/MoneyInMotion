@@ -101,26 +101,39 @@
 
         var agg = cachedValues.netAggregator.getByGroupId(groupId);
         var childRows = row.nextAll("tr[data-parentgroupid=\"" + groupId + "\"]");
+        var expanderTitle = row.find(".expanderTitle");
 
-        return { groupId: groupId , aggregator: agg, childRows: childRows, row: row };
+        return { groupId: groupId, aggregator: agg, childRows: childRows, row: row, expanderTitle: expanderTitle };
     },
-    showHideRow = function (rowInfo) {
-        if (rowInfo.aggregator.isVisible) {
-            rowInfo.row.removeClass("txRowInvisible");
-            rowInfo.row.addClass("txRowVisible");
+    updateRowVisibilityAttribute = function(row, isVisible) {
+        if (isVisible) {
+            row.removeClass("txRowInvisible");
+            row.addClass("txRowVisible");
         }
         else {
-            rowInfo.row.removeClass("txRowVisible");
-            rowInfo.row.addClass("txRowInvisible");
+            row.removeClass("txRowVisible");
+            row.addClass("txRowInvisible");
+        }
+    },
+    showHideRow = function (rowInfo) {
+        updateRowVisibilityAttribute(rowInfo.row, rowInfo.aggregator.isVisible);
+
+        if (rowInfo.aggregator.isChildrenVisible) {
+            rowInfo.expanderTitle.html("&ndash;");
+        }
+        else {
+            rowInfo.expanderTitle.text("+");
         }
 
         rowInfo.childRows.each(function () {
-            var childRowInfo = getRowInfo($(this));
+            var row = $(this);
+            var childRowInfo = getRowInfo(row);
             if (childRowInfo === undefined) {
-                return;
+                updateRowVisibilityAttribute(row, rowInfo.aggregator.isTxVisible);
             }
-
-            showHideRow(childRowInfo);
+            else {
+                showHideRow(childRowInfo);
+            }
         });
     },
     collapseExpandRows = function (parentRow, isChildrenVisible) {
@@ -131,14 +144,6 @@
 
         rowInfo.aggregator.setChildrenVisible(isChildrenVisible);
         parentRow.data("ischildrenvisible", isChildrenVisible.toString());
-
-        var expanderTitle = parentRow.find(".expanderTitle");
-        if (isChildrenVisible) {
-            expanderTitle.html("&ndash;");
-        }
-        else {
-            expanderTitle.text("+");
-        }
 
         showHideRow(rowInfo);
     };

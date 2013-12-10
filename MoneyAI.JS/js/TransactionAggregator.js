@@ -103,7 +103,9 @@
                 this.isVisible = this.isTopLevel ||
                     (this.effectiveParent.isVisible && this.effectiveParent.isChildrenVisible && !this.isOptional);
                 this.isChildrenVisible = this.isTopLevel || this.isOptional ||
-                    (this.isChildrenVisible === undefined ? !this.effectiveParent.isTopLevel : this.isChildrenVisible);
+                    (this.isChildrenVisible === undefined ?
+                        !this.effectiveParent.isTopLevel && !utils.isEmpty(this.childAggregators) :
+                        this.isChildrenVisible);
 
                 //Short cut method for template
                 this.effectiveParentForTx = this.isOptional ? this.effectiveParent : this;
@@ -111,7 +113,7 @@
 
                 if (isRecursive) {
                     //Child must be done after visibility for parent is setup
-                    utils.forEach(this.childAggregators, function (agg) { agg.refreshVisibility(); });
+                    utils.forEach(this.childAggregators, function (agg) { agg.refreshVisibility(isRecursive); });
                 }
             },
 

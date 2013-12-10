@@ -19,7 +19,11 @@
 						{{else}}
 							<td>
 								<a class="txRowExpanderControl">
-									&nbsp;<span class="expanderTitle">+</span>&nbsp;
+									{{#if isChildrenVisible}}
+										&nbsp;<span class="expanderTitle">&ndash;</span>&nbsp;
+									{{else}}
+										&nbsp;<span class="expanderTitle">+</span>&nbsp;
+									{{/if}}
 								</a>							
 							</td>
 							<td>
