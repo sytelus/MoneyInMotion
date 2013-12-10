@@ -93,41 +93,54 @@
         return childAggregators[aggregatorFunction.name];
     };
 
-    var collapseExpandRows = function (parentRow, isChildrenVisible, level) {
-        var groupId = parentRow.attr("data-groupid");
-        if (groupId === undefined) {    //Tx rows
-            return; 
+    var getRowInfo = function (row) {
+        var groupId = row.attr("data-groupid");
+        if (groupId === undefined) {
+            return undefined;
         }
 
-        var childRows = parentRow.nextAll("tr[data-parentgroupid=\"" + groupId + "\"]");
+        var agg = cachedValues.netAggregator.getByGroupId(groupId);
+        var childRows = row.nextAll("tr[data-parentgroupid=\"" + groupId + "\"]");
+
+        return { groupId: groupId , aggregator: agg, childRows: childRows, row: row };
+    },
+    showHideRow = function (rowInfo) {
+        if (rowInfo.aggregator.isVisible) {
+            rowInfo.row.removeClass("txRowInvisible");
+            rowInfo.row.addClass("txRowVisible");
+        }
+        else {
+            rowInfo.row.removeClass("txRowVisible");
+            rowInfo.row.addClass("txRowInvisible");
+        }
+
+        rowInfo.childRows.each(function () {
+            var childRowInfo = getRowInfo($(this));
+            if (childRowInfo === undefined) {
+                return;
+            }
+
+            showHideRow(childRowInfo);
+        });
+    },
+    collapseExpandRows = function (parentRow, isChildrenVisible) {
+        var rowInfo = getRowInfo(parentRow);
+        if (rowInfo === undefined) {    //Tx rows
+            return;
+        }
+
+        rowInfo.aggregator.setChildrenVisible(isChildrenVisible);
+        parentRow.data("ischildrenvisible", isChildrenVisible.toString());
+
         var expanderTitle = parentRow.find(".expanderTitle");
-
-        if (!!!level) {
-            var agg = cachedValues.netAggregator.getByGroupId(groupId);
-            agg.isChildrenVisible = isChildrenVisible;
-            parentRow.data("ischildrenvisible", isChildrenVisible.toString());
-        }
-
         if (isChildrenVisible) {
             expanderTitle.html("&ndash;");
-            childRows.each(function () {
-                var row = $(this);
-                row.removeClass("txRowInvisible");
-                row.addClass("txRowVisible");
-                if (row.attr("data-ischildrenvisible") === "true") {    //kep going until we hit closed node
-                    collapseExpandRows(row, isChildrenVisible, (level || 0) + 1);
-                }
-            });
         }
         else {
             expanderTitle.text("+");
-            childRows.each(function () {
-                var row = $(this);
-                row.removeClass("txRowVisible");
-                row.addClass("txRowInvisible");
-                collapseExpandRows(row, isChildrenVisible, (level || 0) + 1);
-            });
         }
+
+        showHideRow(rowInfo);
     };
 
     var destoryPopovers = function () {

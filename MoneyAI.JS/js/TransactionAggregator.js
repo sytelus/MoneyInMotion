@@ -80,13 +80,12 @@
                 }
             },
 
-            finalize: function() {
-                this.flagCounter.finalize();
-                this.noteCounter.finalize();
-                this.transactionReasonCounter.finalize();
-                this.accountCounter.finalize();
-                this.transactionDateCounter.finalize();
-                
+            setChildrenVisible: function(isChildrenVisible) {
+                this.isChildrenVisible = isChildrenVisible;
+                this.refreshVisibility(true);
+            },
+
+            refreshVisibility: function(isRecursive) {
                 this.isTopLevel = this.depth === 1;
 
                 /*
@@ -109,6 +108,21 @@
                 //Short cut method for template
                 this.effectiveParentForTx = this.isOptional ? this.effectiveParent : this;
                 this.isTxVisible = this.effectiveParentForTx.isVisible && this.effectiveParentForTx.isChildrenVisible;
+
+                if (isRecursive) {
+                    //Child must be done after visibility for parent is setup
+                    utils.forEach(this.childAggregators, function (agg) { agg.refreshVisibility(); });
+                }
+            },
+
+            finalize: function() {
+                this.flagCounter.finalize();
+                this.noteCounter.finalize();
+                this.transactionReasonCounter.finalize();
+                this.accountCounter.finalize();
+                this.transactionDateCounter.finalize();
+                
+                this.refreshVisibility();
 
                 this.isFinal = true;
 
