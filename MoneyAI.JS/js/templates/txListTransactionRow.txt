@@ -62,6 +62,16 @@
 										{{/if}}										  
                                       </a>
                                   </li>
+
+                                  <!-- category menu -->
+                                  <li>
+                                      <a tabindex="-1" data-menuitem="editCategory" href="#">
+										<i class="categoryIcon"></i>&nbsp;&nbsp;
+                                        {{#if correctedValues.categoryPath}}Edit Category
+										{{else}}Add Category
+										{{/if}}										  
+                                      </a>
+                                  </li>
                                 </ul>
                             </div>
                         </td>

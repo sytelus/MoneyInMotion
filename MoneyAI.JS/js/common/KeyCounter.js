@@ -61,6 +61,7 @@
                 finalize: function() {
                     this.keyCount = this.getKeyCount();
                     this.top = this.getTop();
+                    this.allSame = this.notMissedCount === this.count && this.keyCount === 1;
                 }
             };
         })();

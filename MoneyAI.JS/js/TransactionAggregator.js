@@ -25,6 +25,7 @@
         this.transactionReasonCounter = new utils.KeyCounter(true);
         this.accountCounter = new utils.KeyCounter(true);
         this.transactionDateCounter = new utils.KeyCounter(true);
+        this.categoryPathStringCounter = new utils.KeyCounter(true);
 
         this.depth = parent ? parent.depth + 1 : 0;
 
@@ -71,6 +72,7 @@
                 this.transactionReasonCounter.add(tx.correctedValues.transactionReason);
                 this.accountCounter.add(tx.accountId);
                 this.transactionDateCounter.add(tx.correctedValues.transactionDateParsed);
+                this.categoryPathStringCounter.add(tx.correctedValues.categoryPathString);
 
                 if (this.childAggregateFunction) {
                     var childAggregator = this.childAggregateFunction(this, tx);
@@ -123,6 +125,7 @@
                 this.transactionReasonCounter.finalize();
                 this.accountCounter.finalize();
                 this.transactionDateCounter.finalize();
+                this.categoryPathStringCounter.finalize();
                 
                 this.refreshVisibility();
 

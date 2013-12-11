@@ -102,27 +102,51 @@
 										{{/compare}}
 									</li>
 
-										<!-- comment menu -->
+										<!-- note menu -->
 										<li>
 										{{#compare noteCounter.missedCount "===" noteCounter.count}}
 											<a tabindex="-1" data-menuitem="editNote" href="#">
-												<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add note</small>
+												<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add note
 											</a>
 										{{else}}
-											{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
+											{{#if noteCounter.allSame}}
 												<a tabindex="-1" data-menuitem="editNote" href="#">
-													<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit note</small>
+													<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit note
 												</a>
 											{{else}}
 												<a tabindex="-1" data-menuitem="editNote" href="#">
-													<i class="noteManyIcon"></i>&nbsp;&nbsp;Change notes for all</small>
+													<i class="noteManyIcon"></i>&nbsp;&nbsp;Change notes for all
 													{{#compare noteCounter.keyCount ">" 1}}
 														<p class="small text-danger">
 															WARNING: {{noteCounter.keyCount}} different notes
 														</p>
 													{{/compare}}
 												</a>
-											{{/compare}}
+											{{/if}}
+										{{/compare}}
+										</li>
+
+										<!-- category menu -->
+										<li>
+										{{#compare categoryPathStringCounter.missedCount "===" categoryPathStringCounter.count}}
+											<a tabindex="-1" data-menuitem="editCategory" href="#">
+												<i class="categoryIcon"></i>&nbsp;&nbsp;Add category
+											</a>
+										{{else}}
+											{{#if categoryPathStringCounter.allSame}}
+												<a tabindex="-1" data-menuitem="editCategory" href="#">
+													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Edit category
+												</a>
+											{{else}}
+												<a tabindex="-1" data-menuitem="editCategory" href="#">
+													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Change categories for all
+													{{#compare categoryPathStringCounter.keyCount ">" 1}}
+														<p class="small text-danger">
+															WARNING: {{categoryPathStringCounter.keyCount}} different categories
+														</p>
+													{{/compare}}
+												</a>
+											{{/if}}
 										{{/compare}}
 										</li>
 									</ul>

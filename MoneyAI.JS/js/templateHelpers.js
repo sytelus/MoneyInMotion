@@ -5,7 +5,7 @@
     var helpers = [
         function (utils) {
             utils.registerTemplateHelper("txCategoryPathDisplay", function (tx) {
-                return (tx.correctedValues.categoryPath || []).join(" > ");
+                return tx.correctedValues.categoryPathString;
             });
         },
 

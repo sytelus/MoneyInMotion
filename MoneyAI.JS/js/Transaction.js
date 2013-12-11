@@ -125,6 +125,8 @@
                     proto.getTransactionMonthString.call(this);
                     proto.getEntityNameBest.call(this);
 
+                    this.correctedValues.categoryPathString = (this.correctedValues.categoryPath || []).join(" > ");
+
                     this.correctedValues.isPopulated = true;
                 }
             },
