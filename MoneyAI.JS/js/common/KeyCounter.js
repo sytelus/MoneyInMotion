@@ -66,7 +66,7 @@
         })();
 
         //class statics
-        $this.booleanKeyMap = function (boolValue) { return boolValue === true ? "trueValue" : (boolValue === false ? "falseValue" : undefined); };
+        $this.booleanKeyMap = function (boolValue) { return !!boolValue === true ? "trueValue" : (!!boolValue === false ? "falseValue" : undefined); };
 
         proto.constructor = $this;
 

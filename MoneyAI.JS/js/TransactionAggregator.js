@@ -45,7 +45,7 @@
 
     var proto = (function () {
         //privates
-        
+
 
         //publics
         return {
@@ -152,17 +152,8 @@
             },
 
             getAllTx: function () {
-                var allTx = [];
-
-                var aggs = [this],
-                    collectTx = function (agg) { allTx = allTx.concat(agg.rows); };
-
-                while (aggs.length) {
-                    utils.forEach(aggs, collectTx);
-
-                    aggs = utils.toValueArray(this.childAggregators);
-                }
-
+                var allTx = this.rows;
+                utils.forEach(this.childAggregators, function (agg) { allTx = allTx.concat(agg.getAllTx()); })
                 return allTx;
             }
         };
