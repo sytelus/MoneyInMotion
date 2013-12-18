@@ -109,6 +109,14 @@
                     proto.transactionReasonTitleLookup[transactionReason.toString()];
             },
 
+            getCategoryPathString: function(categoryPath) {
+                return (categoryPath || []).join(" > ");
+            },
+
+            getCategoryPath: function (categoryPathString) {
+                return utils.filter(utils.map((categoryPathString || "").split(">"), function (s) { return utils.trim(s); }), function (s) { return !!s; });
+            },
+
             ensureAllCorrectedValues: function (invalidateExisting) {
                 if (invalidateExisting) {
                     this.correctedValues = undefined;
@@ -125,8 +133,10 @@
                     proto.getTransactionMonthString.call(this);
                     proto.getEntityNameBest.call(this);
 
-                    this.correctedValues.categoryPathString = (this.correctedValues.categoryPath || []).join(" > ");
-
+                    if (this.correctedValues.categoryPath) {
+                        this.correctedValues.categoryPathString = proto.getCategoryPathString.call(this, this.correctedValues.categoryPath);
+                    }
+                    
                     this.correctedValues.isPopulated = true;
                 }
             },

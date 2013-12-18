@@ -1,0 +1,35 @@
+﻿<div>
+	<textarea autofocus class="form-control categoryControl popoverMainControl" rows="3" cols="25" placeholder="Example: Food > Dinners > Eating Out">{{tx.correctedValues.categoryPathString}}</textarea>
+
+	{{#if tx.correctedValues.categoryPathString}}
+	<div class="checkbox">
+		<label>
+			<input class="isRemoveControl" type="checkbox"> Delete Category
+		</label>
+	</div>
+	{{/if}}
+
+	<input type="hidden" name="entityNameNormalized" value="{{tx.entityNameNormalized}}">
+
+	<div class="radio">
+	  <label>
+		<input type="radio" name="scopeType" value="3" checked>
+		Do this for all <strong>{{tx.correctedValues.entityNameBest}}</strong> transactions
+	  </label>
+	</div>
+	<div class="radio">
+	  <label>
+		<input type="radio" name="scopeType" value="100">
+		{{#compare selectedTx.length "===" 1}}
+			Do this for only 1 selected transaction
+		{{else}}
+			Do this for only {{selectedTx.length}} selected transactions
+		{{/compare}}
+	  </label>
+	</div>
+
+	<div class="popover-form-footer">
+		<button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
+		<button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>
+	</div>
+</div>

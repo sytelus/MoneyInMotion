@@ -156,7 +156,7 @@
 
             getAllTx: function () {
                 var allTx = this.rows;
-                utils.forEach(this.childAggregators, function (agg) { allTx = allTx.concat(agg.getAllTx()); })
+                utils.forEach(this.childAggregators, function (agg) { allTx = allTx.concat(agg.getAllTx()); });
                 return allTx;
             }
         };

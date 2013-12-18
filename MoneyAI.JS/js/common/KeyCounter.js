@@ -67,7 +67,15 @@
         })();
 
         //class statics
-        $this.booleanKeyMap = function (boolValue) { return !!boolValue === true ? "trueValue" : (!!boolValue === false ? "falseValue" : undefined); };
+        $this.booleanKeyMap = function (value) {
+            if (value === undefined) {
+                return undefined;
+            }
+            else {
+                var boolValue = !!value;
+                return boolValue === true ? "trueValue" : (boolValue === false ? "falseValue" : undefined);
+            }
+        };
 
         proto.constructor = $this;
 

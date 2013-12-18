@@ -85,22 +85,47 @@
 
 									<!-- dropdown -->
 									<ul class="dropdown-menu" role="menu">
-									<li>
-										{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-											<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
-												<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all {{flagCounter.count}} flags
+										<!-- category menu -->
+										<li>
+										{{#compare categoryPathStringCounter.missedCount "===" categoryPathStringCounter.count}}
+											<a tabindex="-1" data-menuitem="editCategory" href="#">
+												<i class="categoryIcon"></i>&nbsp;&nbsp;Add category
 											</a>
 										{{else}}
-											<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: true}" href="#">
-												<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.keyCounts.falseValue}} transactions
-											</a>
-											{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
-													<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.keyCounts.trueValue}} flags
+											{{#if categoryPathStringCounter.allSame}}
+												<a tabindex="-1" data-menuitem="editCategory" href="#">
+													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Edit category
 												</a>
-											{{/compare}}
+											{{else}}
+												<a tabindex="-1" data-menuitem="editCategory" href="#">
+													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Change categories for all
+													{{#compare categoryPathStringCounter.keyCount ">" 1}}
+														<p class="small text-danger">
+															WARNING: {{categoryPathStringCounter.keyCount}} different categories
+														</p>
+													{{/compare}}
+												</a>
+											{{/if}}
 										{{/compare}}
-									</li>
+										</li>
+
+										<!-- flag menu -->
+										<li>
+											{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
+												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
+													<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all {{flagCounter.count}} flags
+												</a>
+											{{else}}
+												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: true}" href="#">
+													<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.keyCounts.falseValue}} transactions
+												</a>
+												{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
+													<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
+														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.keyCounts.trueValue}} flags
+													</a>
+												{{/compare}}
+											{{/compare}}
+										</li>
 
 										<!-- note menu -->
 										<li>
@@ -119,30 +144,6 @@
 													{{#compare noteCounter.keyCount ">" 1}}
 														<p class="small text-danger">
 															WARNING: {{noteCounter.keyCount}} different notes
-														</p>
-													{{/compare}}
-												</a>
-											{{/if}}
-										{{/compare}}
-										</li>
-
-										<!-- category menu -->
-										<li>
-										{{#compare categoryPathStringCounter.missedCount "===" categoryPathStringCounter.count}}
-											<a tabindex="-1" data-menuitem="editCategory" href="#">
-												<i class="categoryIcon"></i>&nbsp;&nbsp;Add category
-											</a>
-										{{else}}
-											{{#if categoryPathStringCounter.allSame}}
-												<a tabindex="-1" data-menuitem="editCategory" href="#">
-													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Edit category
-												</a>
-											{{else}}
-												<a tabindex="-1" data-menuitem="editCategory" href="#">
-													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Change categories for all
-													{{#compare categoryPathStringCounter.keyCount ">" 1}}
-														<p class="small text-danger">
-															WARNING: {{categoryPathStringCounter.keyCount}} different categories
 														</p>
 													{{/compare}}
 												</a>

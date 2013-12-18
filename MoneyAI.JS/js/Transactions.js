@@ -12,6 +12,8 @@
                 this.itemsById.add(item.id, item);
             }, this);
         }
+
+        this.cachedValues = {};
     };
 
     var transactionsPrototype = (function () {
@@ -59,10 +61,22 @@
                 }
             }
         },
+
+        ensureEditsByIdCache = function() {
+            if (!this.cachedValues.editsById) {
+                this.cachedValues.editsById = {};
+
+                utils.forEach(this.edits.edits, function(edit) { this.cachedValues.editsById[edit.id.toString()] = edit; }, this);
+            }
+        },
+
         addEditForScope = function (scopeType, scopeParameters) {
             var editScope = new editedValues.EditScope(scopeType, scopeParameters);
             var edit = new TransactionEdit(editScope, userProfile.getEditsSourceId());
             this.edits.edits.push(edit);
+
+            ensureEditsByIdCache.call(this);
+            this.cachedValues.editsById[edit.id.toString()] = edit;
 
             return edit;
         };
@@ -85,6 +99,49 @@
                     (new editedValues.EditValue(note)) :
                     editedValues.EditValue.voidedEditValue(false);
                 applyEditInternal.call(this, edit);
+            },
+
+            setCategoryByScope: function (categoryPathString, isRemove, scopeType, scopeParameters) {
+                var edit = addEditForScope.call(this, scopeType, scopeParameters);
+
+                var categoryPath = Transaction.prototype.getCategoryPath.call(undefined, categoryPathString);
+
+                edit.values.categoryPath = !!!isRemove ?
+                    (new editedValues.EditValue(categoryPath)) :
+                    editedValues.EditValue.voidedEditValue(false);
+                applyEditInternal.call(this, edit);
+            },
+
+            getDefaultCategoryEdit: function(tx) {
+                var edit = addEditForScope.call(this, editedValues.scopeTypeLookup.entityNameNormalized, [tx.entityNameNormalized]);
+                edit.values.categoryPath = tx.correctedValues.categoryPath;
+                return edit;
+            },
+
+            getEditById: function(editId) {
+                ensureEditsByIdCache.call(this);
+                return this.cachedValues.editsById[editId.toString()];
+            },
+
+            getLastCategoryEdit: function (tx, defaultIfNone) {
+                /*jshint -W080 */   //Disable explicit undefined assignment
+                var lastCategoryEdit = undefined;
+                if (tx.appliedEditIdsDescending) {
+                    for (var i = 0; i < tx.appliedEditIdsDescending.length; i++) {
+                        var editId = tx.appliedEditIdsDescending[i];
+                        var edit = this.getEditById(editId);
+                        if (edit === undefined) {
+                            throw new Error("Edit for ID " + editId + " was not found");
+                        }
+
+                        if (edit.values && edit.values.categoryPath) {
+                            lastCategoryEdit = edit;
+                            break;
+                        }
+                    }
+                }
+
+                return lastCategoryEdit || (defaultIfNone ? this.getDefaultCategoryEdit(tx) : undefined);
             }
         };
     })();

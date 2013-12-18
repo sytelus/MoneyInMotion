@@ -1,5 +1,7 @@
-﻿define("txListView", ["jquery", "Transaction", "common/utils", "text!templates/txList.txt", "text!templates/noteEditorTitle.txt", "text!templates/noteEditorBody.txt", "TransactionAggregator"],
-    function ($, Transaction, utils, txListTemplateText, noteEditorTitleText, noteEditorBodyText, TransactionAggregator) {
+﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues",
+    "text!templates/txList.txt", "text!templates/noteEditorTitle.txt", "text!templates/noteEditorBody.txt", "text!templates/categoryEditorTitle.txt", "text!templates/categoryEditorBody.txt"],
+    function ($, Transaction, utils, TransactionAggregator, editedValues,
+        txListTemplateText, noteEditorTitleText, noteEditorBodyText, categoryEditorTitleText, categoryEditorBodyText) {
 
     "use strict";
 
@@ -187,6 +189,64 @@
         lastSelectedYearMonth = { yearString: selectYearString, monthString: selectMonthString };
     },
 
+    editCategoryMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
+        var firstTx = selectedTx[0],
+            lastCategoryEdit = cachedValues.txs.getLastCategoryEdit(firstTx),
+            editScopeType = lastCategoryEdit ? lastCategoryEdit.scope.type : editedValues.scopeTypeLookup.entityNameNormalized,
+            dialogInputs = { tx: firstTx, editScopeType: editScopeType, selectedTx: selectedTx };
+
+
+        compiledTemplates.categoryEditorTitle = compiledTemplates.categoryEditorTitle || utils.compileTemplate(categoryEditorTitleText);
+        var titleHtml = utils.runTemplate(compiledTemplates.categoryEditorTitle, dialogInputs);
+
+        compiledTemplates.categoryEditorBody = compiledTemplates.categoryEditorBody || utils.compileTemplate(categoryEditorBodyText);
+        var bodyHtml = utils.runTemplate(compiledTemplates.categoryEditorBody, dialogInputs);
+
+        dropdownElement
+        .dropdown("toggle")
+        .popover({
+            animation: false,
+            html: true,
+            trigger: "manual",
+            title: titleHtml,
+            content: bodyHtml,
+            placement: "bottom"
+        })
+        .popover("show");
+
+        var popoverContainer = dropdownElement.next();
+
+        popoverContainer.one("click", ".saveControl", function () {
+            var category = popoverContainer.find(".categoryControl").val();
+            var isRemove = popoverContainer.find(".isRemoveControl").is(":checked");
+            var scopeType = utils.parseInt(popoverContainer.find("input[name=scopeType]:checked").val());
+            var entityNameNormalized = popoverContainer.find("input[name=entityNameNormalized]").val();
+            switch (scopeType) {
+                case editedValues.scopeTypeLookup.entityNameNormalized:
+                    cachedValues.txs.setCategoryByScope(category, isRemove, scopeType, [entityNameNormalized]);
+                    break;
+                case editedValues.scopeTypeLookup.transactionId:
+                    utils.forEach(selectedTx, function (tx) {
+                        cachedValues.txs.setCategoryByScope(category, isRemove, scopeType, [tx.id]);
+                    });
+                    break;
+                default:
+                    throw new Error("scopeType " + scopeType + " is not supported");
+            }
+
+            dropdownElement.popover("destroy");
+
+            refresh();
+        });
+
+        //Make sure popovers gets killed when hidden
+        $("#txListControl").one("hidden.bs.popover", ".dropdown-toggle", function () {
+            dropdownElement.popover("destroy");
+        });
+
+        //Do not refresh or popover will go over
+    },
+
     editNoteMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
         var firstTx = selectedTx[0];
 
@@ -287,6 +347,7 @@
                 switch (menuItem) {
                     case "setFlag": setFlagMenuItemClick(menuParams, selectedTx, dropdownElement); break;
                     case "editNote": editNoteMenuItemClick(menuParams, selectedTx, dropdownElement); break;
+                    case "editCategory": editCategoryMenuItemClick(menuParams, selectedTx, dropdownElement); break;
                     default:
                         throw new Error("menuItem " + menuItem + " is not supported");
                 }

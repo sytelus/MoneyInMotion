@@ -1,5 +1,5 @@
 ﻿<div>
-	<textarea autofocus class="form-control noteControl" rows="3" cols="25" placeholder="Enter note for the transaction">{{correctedValues.note}}</textarea>
+	<textarea autofocus class="form-control noteControl popoverMainControl" rows="3" cols="25" placeholder="Enter note for the transaction">{{correctedValues.note}}</textarea>
 
 	{{#if correctedValues.note}}
 	<div class="checkbox">

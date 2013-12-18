@@ -41,8 +41,18 @@
 
                                 <!-- dropdown -->
                                 <ul class="dropdown-menu" role="menu">
+                                  <!-- category menu -->
                                   <li>
+                                      <a tabindex="-1" data-menuitem="editCategory" href="#">
+										<i class="categoryIcon"></i>&nbsp;&nbsp;
+                                        {{#if correctedValues.categoryPath}}Edit Category
+										{{else}}Add Category
+										{{/if}}										  
+                                      </a>
+                                  </li>
+
                                     <!-- flag menu -->
+                                  <li>
                                     <a tabindex="-1" data-menuitem="setFlag" href="#"
 										data-menuparams="{ &quot;isSet&quot;: {{#if correctedValues.isFlagged}}false{{else}}true{{/if}} }">
 
@@ -59,16 +69,6 @@
                                       <a tabindex="-1" data-menuitem="editNote" href="#">
                                         {{#if correctedValues.note}}<i class="noteLinesIcon"></i>&nbsp;&nbsp;Edit Note
 										{{else}}<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add Note
-										{{/if}}										  
-                                      </a>
-                                  </li>
-
-                                  <!-- category menu -->
-                                  <li>
-                                      <a tabindex="-1" data-menuitem="editCategory" href="#">
-										<i class="categoryIcon"></i>&nbsp;&nbsp;
-                                        {{#if correctedValues.categoryPath}}Edit Category
-										{{else}}Add Category
 										{{/if}}										  
                                       </a>
                                   </li>

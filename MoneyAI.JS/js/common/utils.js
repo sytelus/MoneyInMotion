@@ -94,6 +94,10 @@
             return result;
         },
 
+        trim: $.trim,
+        parseInt: function(value) {
+            return parseInt(value, 10);
+        },
         getMD5Hash: function(valueString) {
             var hash = CryptoJS.MD5(valueString);
             return hash.toString(CryptoJS.enc.Base64);
@@ -108,6 +112,7 @@
         filter: _.filter,
         map: _.map,
         isEmpty: _.isEmpty,
+        findFirst: _.find,
         max: _.max,
         clone: _.clone,
         extend: _.extend,
