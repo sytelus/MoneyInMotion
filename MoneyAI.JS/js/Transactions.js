@@ -60,6 +60,8 @@
                     throw new Error("Edit targetted transactions with " + edit.Scope.parameters.length + " IDs but only " + count + " were found in this collection");
                 }
             }
+
+            utils.triggerEvent(this, "editApplied", [edit, affectedTransactions])
         },
 
         ensureEditsByIdCache = function() {

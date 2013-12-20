@@ -102,7 +102,7 @@
             var hash = CryptoJS.MD5(valueString);
             return hash.toString(CryptoJS.enc.Base64);
         },
-        createUUID: function () { return UUIDjs.create(); },
+        createUUID: function () { return UUIDjs.create().toString(); },
 
         forEach: _.forEach,
         toValueArray: _.values,
@@ -135,6 +135,15 @@
             }
 
             return string1 === string2;
+        },
+        triggerEvent: function (source, eventName, eventDataArray) {
+            $(source || document).triggerHandler(eventName, eventDataArray);
+        },
+        addEventHandler: function (source, eventName, handler) {
+            $(source || document).on(eventName, handler);
+        },
+        removeEventHandler: function (source, eventName) {
+            $(source || document).off(eventName);
         },
         noop: function () { }
     };

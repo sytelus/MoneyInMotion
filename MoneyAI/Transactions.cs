@@ -229,14 +229,19 @@ namespace MoneyAI
             }
         }
 
+        public IEnumerable<Transaction> Apply(TransactionEdit edit, bool ignoreMissingIds = true)
+        {
+            this.edits.Add(edit);
+
+            // ReSharper disable once IteratorMethodResultIsIgnored
+            return this.ApplyInternal(edit, ignoreMissingIds);
+        }
+
         public void Apply(TransactionEdits editsToApply, bool ignoreMissingIds = true)
         {
             foreach (var edit in editsToApply)
             {
-                this.edits.Add(edit);
-
-                // ReSharper disable once IteratorMethodResultIsIgnored
-                this.ApplyInternal(edit, ignoreMissingIds);
+                this.Apply(edit, ignoreMissingIds);
             }
         }
 

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.21126.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonUtils", "CommonUtils\CommonUtils.csproj", "{D60B2856-0341-4481-AFDD-DE70532B6884}"
 EndProject
@@ -27,6 +27,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Notes", "Notes", "{881BCE99
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8C0C9E7F-518D-49F0-ABF2-ABB5697A9206}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoneyAI.WebApi", "MoneyAI.WebApi\MoneyAI.WebApi.csproj", "{F26E47EB-3A19-427B-ADC0-0657E313D00B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -128,6 +130,16 @@ Global
 		{549F5C8B-4066-4CF7-9A91-185DA4F95A1A}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{549F5C8B-4066-4CF7-9A91-185DA4F95A1A}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{549F5C8B-4066-4CF7-9A91-185DA4F95A1A}.Release|x86.ActiveCfg = Release|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{F26E47EB-3A19-427B-ADC0-0657E313D00B}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

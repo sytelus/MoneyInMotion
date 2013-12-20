@@ -36,7 +36,8 @@
 **/~$*
 
 #PII/large files
-**/data/*.json
+**/data/
+**/App_Data/
 
 #JS build
 **/.tmp
