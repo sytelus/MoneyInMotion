@@ -12,51 +12,46 @@ namespace MoneyAI.WebApi.Models
         internal TransactionCache(string userId)
         {
             this.UserId = userId;
+            this.dataPath = GetDataPath(userId);
+
+            this.serializedJson = new Lazy<string>(() => File.ReadAllText(dataPath), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+            this.transactions = new Lazy<Transactions>(() => Transactions.DeserializeFromJson(this.SerializedJson), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
-        public Transactions Transactions { get; set; }
-        public string SerializedJson { get; set; }
+        private Lazy<Transactions> transactions;
+        private Lazy<string> serializedJson;
+        private string dataPath;
+        private Transactions Transactions { get { return transactions.Value; } }
+        public string SerializedJson { get { return serializedJson.Value; } }
         public string UserId { get; private set; }
-
-        public string GetDataPath()
-        {
-            return Path.Combine(AppDomain.CurrentDomain.GetData("DataDirectory").ToString(), this.UserId, "LatestMerged.json"); 
-        }
 
         private static string GetDataPath(string userId)
         {
-            return Path.Combine(AppDomain.CurrentDomain.GetData("DataDirectory").ToString(), userId, "LatestMerged.json"); 
+            return Path.Combine(AppDomain.CurrentDomain.GetData("DataDirectory").ToString(), userId, "LatestMerged.json");
+        }
+
+        public int ApplyEdit(TransactionEdit edit)
+        {
+            lock (this.Transactions)
+            {
+                var affectedTransactionCount = this.Transactions.Apply(edit, false).Count();
+                if (this.serializedJson != null && this.serializedJson.IsValueCreated)
+                    this.serializedJson = new Lazy<string>(() => SerializeTransactions(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+                this.Save();
+                return affectedTransactionCount;
+            }
+        }
+
+        private string SerializeTransactions()
+        {
+            lock (this.Transactions)
+                return this.Transactions.SerializeToJson();
         }
 
         public void Save()
         {
-            this.EnsureSerializedJson();
-            File.WriteAllText(this.GetDataPath(), this.SerializedJson);
+            File.WriteAllText(this.dataPath, this.SerializedJson);
         }
-
-        internal void EnsureSerializedJson()
-        {
-            if (this.SerializedJson == null)
-            {
-                var dataPath = GetDataPath();
-
-                var json = File.ReadAllText(dataPath);
-                this.SerializedJson = json;
-                this.Transactions = null;
-            }
-        }
-
-        internal void EnsureTransactions()
-        {
-            var dataPath = GetDataPath();
-
-            if (this.Transactions == null)
-            {
-                this.EnsureSerializedJson();
-                this.Transactions = Transactions.DeserializeFromJson(this.SerializedJson);
-            }
-        }
-
 
         public static TransactionCache GetItem(string userId)
         {

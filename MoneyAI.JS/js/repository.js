@@ -53,8 +53,8 @@
         }
     },
         
-    editAppliedHandler = function (event, edit, affectedTransactions, txs) {
-        var postRequest = $.post("api/transactionedits", { "": utils.stringify(edit) }, function (data, textStatus, xhr) {
+    editAppliedHandler = function (event, edit) {
+        $.post("api/transactionedits", { "": utils.stringify(edit) }, function (data, textStatus) {
             utils.logger.info("edit", edit.id, "successfully posted", "textStatus", textStatus, "data", data);
         })
         .fail(function (jqxhr, textStatus, error) {

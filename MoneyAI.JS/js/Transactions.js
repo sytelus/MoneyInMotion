@@ -61,7 +61,7 @@
                 }
             }
 
-            utils.triggerEvent(this, "editApplied", [edit, affectedTransactions])
+            utils.triggerEvent(this, "editApplied", [edit, affectedTransactions]);
         },
 
         ensureEditsByIdCache = function() {
