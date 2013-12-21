@@ -226,9 +226,7 @@
                     cachedValues.txs.setCategoryByScope(category, isRemove, scopeType, [entityNameNormalized]);
                     break;
                 case editedValues.scopeTypeLookup.transactionId:
-                    utils.forEach(selectedTx, function (tx) {
-                        cachedValues.txs.setCategoryByScope(category, isRemove, scopeType, [tx.id]);
-                    });
+                    cachedValues.txs.setCategoryByScope(category, isRemove, scopeType, utils.map(selectedTx, function (tx) { return tx.id; }));
                     break;
                 default:
                     throw new Error("scopeType " + scopeType + " is not supported");
@@ -273,7 +271,7 @@
         popoverContainer.one("click", ".saveControl", function () {
             var note = popoverContainer.find(".noteControl").val();
             var isRemove = popoverContainer.find(".isRemoveControl").is(":checked");
-            utils.forEach(selectedTx, function (tx) { cachedValues.txs.setNote(tx.id, note, isRemove); });
+            cachedValues.txs.setNote(utils.map(selectedTx, function (tx) { return tx.id; }), note, isRemove);
 
             dropdownElement.popover("destroy");
 
@@ -290,7 +288,7 @@
 
     setFlagMenuItemClick = function (menuParams, selectedTx) {
         var isSet = menuParams.isSet;
-        utils.forEach(selectedTx, function (tx) { cachedValues.txs.setIsUserFlagged(tx.id, isSet); });
+        cachedValues.txs.setIsUserFlagged(utils.map(selectedTx, function (tx) { return tx.id; }), isSet);
         refresh();
     };
 

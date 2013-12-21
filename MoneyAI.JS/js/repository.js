@@ -24,7 +24,7 @@
 
                     var txs = new Transactions(data);
 
-                    utils.addEventHandler(txs, "editApplied", editAppliedHandler);
+                    utils.addEventHandler(txs, "editsApplied", editAppliedHandler);
 
                     cachedValues.transactions = txs;
                     var updatedTxs = onGet(txs);
@@ -33,13 +33,13 @@
                     }
                 });
 
-                currentAjaxRequest.fail(function (jqxhr, textStatus, error) {
+                currentAjaxRequest.fail(function (xhr, textStatus, error) {
                     utils.logger.error("getJSON failed: ", textStatus, error, "callerId", callerId);
                     if (!!onFail) {
-                        onFail(error);
+                        onFail(error, xhr.responseText);
                     }
                     else {
-                        throw error;
+                        throw new Error(error + " " + xhr.responseText);
                     }
                 });
 
@@ -53,13 +53,13 @@
         }
     },
         
-    editAppliedHandler = function (event, edit) {
-        $.post("api/transactionedits", { "": utils.stringify(edit) }, function (data, textStatus) {
-            utils.logger.info("edit", edit.id, "successfully posted", "textStatus", textStatus, "data", data);
+    editAppliedHandler = function (event, edits) {
+        $.post("api/transactionedits", { "": utils.stringify(edits) }, function (data, textStatus) {
+            utils.logger.info("edits", edits.length, "successfully posted", "textStatus", textStatus, "data", data);
         })
-        .fail(function (jqxhr, textStatus, error) {
+        .fail(function (xhr, textStatus, error) {
             //TODO: handle this!
-            utils.logger.error("edit", edit.id, "failed to posted", "textStatus", textStatus, "error", error);
+            utils.logger.error("edits", edits.length, "failed to posted", "textStatus", textStatus, "error", error, "responseText", xhr.responseText);
         })
         ;
     };

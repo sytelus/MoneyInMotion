@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommonUtils;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -13,12 +14,12 @@ namespace MoneyAI.WebApi.Models
             return cachedItem.SerializedJson;
         }
 
-        public static int ApplyEdit(string userId, string serializedEdit)
+        public static int ApplyEdit(string userId, string serializedEdits)
         {
             var cachedItem = TransactionCache.GetItem(userId);
 
-            var edit = TransactionEdit.DeserializeFromJson(serializedEdit);
-            return cachedItem.ApplyEdit(edit);
+            var edits = JsonSerializer<TransactionEdit[]>.Deserialize(serializedEdits);
+            return cachedItem.ApplyEdits(edits);
         }
     }
 }

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Web;
 using System.Web;
 using System.IO;
+using System.Web.Caching;
+using System.Diagnostics;
 
 namespace MoneyAI.WebApi.Models
 {
@@ -30,14 +32,20 @@ namespace MoneyAI.WebApi.Models
             return Path.Combine(AppDomain.CurrentDomain.GetData("DataDirectory").ToString(), userId, "LatestMerged.json");
         }
 
-        public int ApplyEdit(TransactionEdit edit)
+        public int ApplyEdits(TransactionEdit[] edits)
         {
             lock (this.Transactions)
             {
-                var affectedTransactionCount = this.Transactions.Apply(edit, false).Count();
+                var affectedTransactionCount = 0;
+                foreach(var edit in edits)
+                {
+                    affectedTransactionCount += this.Transactions.Apply(edit, false).Count();
+                }
+
                 if (this.serializedJson != null && this.serializedJson.IsValueCreated)
                     this.serializedJson = new Lazy<string>(() => SerializeTransactions(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
                 this.Save();
+
                 return affectedTransactionCount;
             }
         }
@@ -53,14 +61,28 @@ namespace MoneyAI.WebApi.Models
             File.WriteAllText(this.dataPath, this.SerializedJson);
         }
 
+        private static void OnCacheItemRemoved(string key, object o, CacheItemRemovedReason r)
+        {
+            Debug.WriteLine("%s %s %s", key, o.ToString(), r.ToString());
+        }
+
+        private static readonly object cacheGetOrAddLock = new object();
         public static TransactionCache GetItem(string userId)
         {
             var dataPath = GetDataPath(userId);
-            var cachedValue = HttpContext.Current.Cache[dataPath] as TransactionCache;
+            var cachedValue = HttpRuntime.Cache[dataPath] as TransactionCache;
             if (cachedValue == null)
             {
-                cachedValue = new TransactionCache(userId);
-                HttpContext.Current.Cache.Insert(dataPath, cachedValue, new System.Web.Caching.CacheDependency(dataPath));
+                lock (cacheGetOrAddLock)
+                {
+                    cachedValue = HttpRuntime.Cache[dataPath] as TransactionCache;
+                    if (cachedValue == null)
+                    {
+                        cachedValue = new TransactionCache(userId);
+                        HttpRuntime.Cache.Add(dataPath, cachedValue, null
+                            , Cache.NoAbsoluteExpiration, Cache.NoSlidingExpiration, CacheItemPriority.Normal, OnCacheItemRemoved);
+                    }
+                }
             }
 
             return cachedValue;
