@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
+using MoneyAI.Repositories.CsvParsers;
 
 namespace MoneyAI.Repositories
 {
@@ -53,17 +54,37 @@ namespace MoneyAI.Repositories
             return System.IO.File.Exists(location.Address);
         }
 
+        private static CsvParserBase GetCsvParser(AccountInfo accountInfo)
+        {
+            switch(accountInfo.InstituteName)
+            {
+                case "ChaseBank":
+                    return new ChaseCsvParser();
+                case "OpusBank":
+                    return new OpusBankCsvParser();
+                case "AmericanExpress":
+                    return new AmexCsvParser();
+                case "BarclayBank":
+                    return new ChaseCsvParser();
+                default:
+                    throw new Exception("CsvParser for institute {0} is not supported".FormatEx(accountInfo.InstituteName));
+            }
+        }
+
         private static void AddTransactionsFromCsvFile(Transactions transactions, string file, AccountInfo accountInfo, ImportInfo importInfo)
         {
-            var lines = System.IO.File.ReadLines(file).RemoveNullOrEmpty().ToList();
-            var headerColumns = (string[])null;
-            for (var lineNumber = 0; lineNumber < lines.Count; lineNumber++)
+            var csvParser = GetCsvParser(accountInfo);
+            var lines = System.IO.File.ReadLines(file).RemoveNullOrEmpty();
+            var lineNumber = 0;
+            foreach (var line in lines)
             {
-                var line = lines[lineNumber];
-                if (headerColumns == null)
-                    headerColumns = Utils.ParseCsvLine(line).ToArray();
-                else
-                    transactions.AddFromCsvLine(headerColumns, line, lineNumber, accountInfo, importInfo);
+                var importedValues = csvParser.GetTransactionImportedValues(line);
+                if (importedValues != null)
+                {
+                    var transaction = new Transaction(importInfo.Id, accountInfo.Id, lineNumber, importedValues);
+                    transactions.AddNew(transaction, accountInfo, importInfo, true);
+                }
+                lineNumber++;
             }
         }
     }

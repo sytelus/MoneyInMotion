@@ -53,7 +53,8 @@ namespace MoneyAI.WinForms
                 var year = treeNodeData.YearFilter.Value;
                 var month = treeNodeData.MonthFilter.Value;
 
-                parentTransactions = parentTransactions ?? allTransactions.Where(t => t.CorrectedTransactionDate.Year == year).Where(t => t.CorrectedTransactionDate.Month == month);
+                parentTransactions = parentTransactions ?? allTransactions.Where(t => t.CorrectedTransactionDate.Year == year)
+                    .Where(t => t.CorrectedTransactionDate.Month == month);
 
                 var categoryPathsAndSum = parentTransactions
                     .GroupBy(t => t.DisplayCategoryPathOrNameCocatenated)

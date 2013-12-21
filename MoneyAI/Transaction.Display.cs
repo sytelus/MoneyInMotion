@@ -136,8 +136,8 @@ namespace MoneyAI
             get
             {
                 if (cachedCorrectedTransactionDate == null)
-                    cachedCorrectedTransactionDate = this.MergedEdit.IfNotNull(u => u.TransactionDate.IfNotNull(e => e.Value, this.transactionDate.Value)
-                        , this.transactionDate.Value);
+                    cachedCorrectedTransactionDate = this.MergedEdit.IfNotNull(u => u.TransactionDate.IfNotNull(e => e.Value, this.TransactionDate)
+                        , this.TransactionDate);
 
                 return cachedCorrectedTransactionDate.Value;
             }

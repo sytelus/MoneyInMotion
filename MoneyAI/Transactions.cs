@@ -126,7 +126,8 @@ namespace MoneyAI
             this.edits.Merge(other.edits, this.uniqueContentHashes);
         }
 
-        private bool AddNew(Transaction transaction, bool allowDuplicate, AccountInfo accountInfo, ImportInfo importInfo)
+        /// <param name="allowDuplicate">Should be true when importing transactions from a file but false when merging items from two files</param>
+        public bool AddNew(Transaction transaction, AccountInfo accountInfo, ImportInfo importInfo, bool allowDuplicate)
         {
             if (allowDuplicate || !uniqueContentHashes.Contains(transaction.ContentHash))
             {
@@ -139,15 +140,6 @@ namespace MoneyAI
             }
             else return false;
         }
-
-        public Transaction AddFromCsvLine(string[] headerColumns, string line, int lineNumber, AccountInfo accountInfo, ImportInfo importInfo, bool allowDuplicate = true)
-        {
-            var transaction = Transaction.CreateFromCsvLine(headerColumns, line, accountInfo.Id, importInfo.Id, lineNumber);
-            this.AddNew(transaction, allowDuplicate, accountInfo, importInfo);
-
-            return transaction;
-        }
-
 
         #region ICollection 
 

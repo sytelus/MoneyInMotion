@@ -41,6 +41,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CsvParsers\AmexCsvParser.cs" />
+    <Compile Include="CsvParsers\BarclayBankCsvParser.cs" />
+    <Compile Include="CsvParsers\OpusBankCsvParser.cs" />
+    <Compile Include="CsvParsers\ChaseCsvParser.cs" />
+    <Compile Include="CsvParserBase.cs" />
     <Compile Include="TransactionEditsStorage.cs" />
     <Compile Include="TransactionsStorage.cs" />
     <Compile Include="FileLocation.cs" />
@@ -57,6 +62,7 @@
       <Name>MoneyAI</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -736,12 +736,15 @@ namespace CommonUtils
                     if (yieldValue)
                     {
                         yield return columnValue.ToString();
+
                         if (!isLastChar)
                         {
                             columnValue.Clear();
                             yieldValue = false;
                             state = CsvParserState.ValueStart;
                         }
+                        else if (currentChar == delimiter)
+                            yield return string.Empty;
                     }
                 }
             }

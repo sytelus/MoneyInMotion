@@ -21,9 +21,16 @@ namespace MoneyAI
         InterAccountPayment = 4, 
         Return = 8,
         InterAccountTransfer = 16,
+        PointsCredit = 32,
+        OtherCredit = 64,
+        CheckPayment = 128,
+        CheckRecieved = 256,
+        AtmWithdrawal = 512,
+        Interest = 1024,
+        LoanPayment = 2048,
 
-        NetOutgoing = Purchase | Fee,
-        NetIncoming = Return,
+        NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment,
+        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest,
         NetInterAccount = InterAccountPayment | InterAccountTransfer
     }
 
@@ -33,22 +40,17 @@ namespace MoneyAI
         [DataMember(IsRequired = true, Name = "transactionReason")]
         public TransactionReason TransactionReason { get; private set; }
 
-        [DataMember(IsRequired = true)]
-        private DateTime? transactionDate;
-        public DateTime TransactionDate
-        {
-            get { return this.transactionDate.Value; }
-        }
+        [DataMember(IsRequired = true, Name = "transactionDate")]
+        public DateTime TransactionDate { get; private set; }
 
-        [DataMember(EmitDefaultValue = false, Name = "postDate")]
-        public DateTime? PostDate { get; private set; }
+        [DataMember(EmitDefaultValue = false, Name = "postedDate")]
+        public DateTime? PostedDate { get; private set; }
 
         [DataMember(IsRequired = true, Name = "entityName")]
         public string EntityName { get; private set; }
 
         [DataMember(IsRequired = true, Name = "amount")]
-        private decimal? amount;
-        public decimal Amount { get { return this.amount.Value; } }
+        public decimal Amount { get; private set; }
 
         [DataMember(IsRequired = true, Name = "contentHash")]
         public string ContentHash { get; private set; }
@@ -76,6 +78,23 @@ namespace MoneyAI
 
         [DataMember(EmitDefaultValue = false, Name = "entityNameNormalized")]
         public string EntityNameNormalized { get; private set; }
+
+        [DataMember(EmitDefaultValue = false, Name = "instituteReference")]
+        public string InstituteReference { get; set; }
+        [DataMember(EmitDefaultValue = false, Name = "providerCategoryName")]
+        public string ProviderCategoryName { get; set; }
+        [DataMember(EmitDefaultValue = false, Name = "phoneNumber")]
+        public string PhoneNumber { get; set; }
+        [DataMember(EmitDefaultValue = false, Name = "address")]
+        public string Address { get; set; }
+        [DataMember(EmitDefaultValue = false, Name = "subAccountName")]
+        public string SubAccountName { get; set; }
+        [DataMember(EmitDefaultValue = false, Name = "otherInfo")]
+        public string OtherInfo { get; set; }
+        [DataMember(EmitDefaultValue = false, Name = "accountNumber")]
+        public string AccountNumber { get; set; }
+        [DataMember(EmitDefaultValue = false, Name = "checkReference")]
+        public string CheckReference { get; set; }
 
         public Transaction Clone()
         {
@@ -108,46 +127,35 @@ namespace MoneyAI
             this.cachedCorrectedTransactionDate = null;
         }
 
-        private Transaction()
+        public Transaction(string importId, string accountId, int lineNumber, ImportedValues importedValues)
         {
             this.AuditInfo = new AuditInfo();
-        }
 
-        //We only allow to create instance through the parent collection
-        internal static Transaction CreateFromCsvLine(string[] headerColumns, string line, string accountId, string importId, int lineNumber)
-        {
-            var transaction = new Transaction();
-            transaction.ImportId = importId;
-            transaction.AccountId = accountId;
-            var columns = Utils.ParseCsvLine(line).ToArray();
-            for (var columnIndex = 0; columnIndex < headerColumns.Length; columnIndex++)
-            {
-                var headerColumn = headerColumns[columnIndex];
-                var columnValue = columns[columnIndex];
-                switch (headerColumn)
-                {
-                    case "Type":
-                        transaction.TransactionReason = GetTransactionType(columnValue); break;
-                    case "Trans Date":
-                        transaction.transactionDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
-                    case "Post Date":
-                        transaction.PostDate = DateTime.Parse(columnValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal); break;
-                    case "Description":
-                        transaction.EntityName = columnValue;
-                        transaction.EntityNameNormalized = GetEntityNameNormalized(columnValue) ?? "";
-                        break;
-                    case "Amount":
-                        transaction.amount = Decimal.Parse(columnValue, NumberStyles.Currency); break;
-                    default:
-                        throw new Exception("Heade column '{0}' is not recognized".FormatEx(headerColumn));
-                }
-            }
-            transaction.LineNumber = lineNumber;
-            transaction.ContentHash = Utils.GetMD5HashString(string.Join("\t", transaction.GetContent()), true);
-            transaction.Id = Utils.GetMD5HashString(string.Join("\t", transaction.GetContent().Concat(lineNumber.ToStringInvariant())), true);
+            this.ImportId = importId;
+            this.AccountId = accountId;
 
-            transaction.Validate();
-            return transaction;
+            importedValues.Validate();
+
+            this.Amount = importedValues.Amount.Value;
+            this.EntityName = importedValues.EntityName;
+            this.EntityNameNormalized = GetEntityNameNormalized(this.EntityName);
+            this.PostedDate = importedValues.PostedDate;
+            this.TransactionDate = importedValues.TransactionDate.Value;
+            this.TransactionReason = importedValues.TransactionReason.Value;
+            this.InstituteReference = importedValues.InstituteReference;
+            this.ProviderCategoryName = importedValues.ProviderCategoryName;
+            this.PhoneNumber = importedValues.PhoneNumber;
+            this.Address = importedValues.Address;
+            this.SubAccountName = importedValues.SubAccountName;
+            this.OtherInfo = importedValues.OtherInfo;
+            this.AccountNumber = importedValues.AccountNumber;
+            this.CheckReference = importedValues.CheckReference;
+
+            this.LineNumber = lineNumber;
+            this.ContentHash = Utils.GetMD5HashString(string.Join("\t", this.GetContent()), true);
+            this.Id = Utils.GetMD5HashString(string.Join("\t", this.GetContent().Concat(lineNumber.ToStringInvariant())), true);
+
+            this.Validate();
         }
 
         private IEnumerable<string> GetContent()
@@ -155,7 +163,7 @@ namespace MoneyAI
             return Utils.AsEnumerable(
                 this.AccountId, this.TransactionReason.ToString(),
                 this.Amount.ToString(), this.EntityName.EmptyIfNull().ToUpperInvariant()
-                , this.PostDate.IfNotNullValue(p => p.ToString("u")), this.TransactionDate.ToString("u"));
+                , this.PostedDate.IfNotNullValue(p => p.ToString("u")), this.TransactionDate.ToString("u"));
         }
 
         private void Validate()
@@ -165,34 +173,11 @@ namespace MoneyAI
                 errors.Append("ImportId must have value.", " ");
             if (string.IsNullOrEmpty(this.AccountId))
                 errors.Append("AccountId must have value.", " ");
-            if (this.amount == null)
-                errors.Append("Amount must have value.", " ");
-            if (this.transactionDate == null)
-                errors.Append("TransactionDate must have value.", " ");
             if (string.IsNullOrEmpty(this.EntityName))
                 errors.Append("EntityName must have value.", " ");
 
             if (!string.IsNullOrEmpty(errors))
                 throw new InvalidDataException(errors);
-        }
-
-        private static TransactionReason GetTransactionType(string rawTransactionType)
-        {
-            switch (rawTransactionType.ToUpperInvariant())
-            {
-                case "SALE":
-                    return TransactionReason.Purchase;
-                case "PAYMENT":
-                    return TransactionReason.InterAccountPayment;
-                case "ADJUSTMENT":
-                    return TransactionReason.Adjustment;
-                case "RETURN":
-                    return TransactionReason.Return;
-                case "FEE":
-                    return TransactionReason.Fee;
-                default:
-                    throw new ArgumentException("rawTransactionType {0} is not known".FormatEx(rawTransactionType), "rawTransactionType");
-            }
         }
 
         public string SerializeToJson()
