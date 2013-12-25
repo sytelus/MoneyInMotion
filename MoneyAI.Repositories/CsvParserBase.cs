@@ -113,7 +113,7 @@ namespace MoneyAI.Repositories
                         importedValues.Amount = this.ParseAmount(columnValue);
                         break;
                     case CsvColumnType.EntityName:
-                        importedValues.EntityName = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.EntityName = this.SetImportedValueText(importedValues.EntityName, columnValue, columnType);
                         break;
                     case CsvColumnType.PostedDate:
                         importedValues.PostedDate = this.ParsePostednDate(columnValue);
@@ -125,28 +125,28 @@ namespace MoneyAI.Repositories
                         importedValues.TransactionReason = this.ParseTransactionReason(columnValue, columns);
                         break;
                     case CsvColumnType.InstituteReference:
-                        importedValues.InstituteReference = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.InstituteReference = this.SetImportedValueText(importedValues.InstituteReference, columnValue, columnType);
                         break;
                     case CsvColumnType.ProviderCategoryName:
-                        importedValues.ProviderCategoryName = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.ProviderCategoryName = this.SetImportedValueText(importedValues.ProviderCategoryName, columnValue, columnType);
                         break;
                     case CsvColumnType.PhoneNumber:
-                        importedValues.PhoneNumber = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.PhoneNumber = this.SetImportedValueText(importedValues.PhoneNumber, columnValue, columnType);
                         break;
                     case CsvColumnType.Address:
-                        importedValues.Address = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.Address = this.SetImportedValueText(importedValues.Address, columnValue, columnType);
                         break;
                     case CsvColumnType.SubAccountName:
-                        importedValues.SubAccountName = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.SubAccountName = this.SetImportedValueText(importedValues.SubAccountName, columnValue, columnType);
                         break;
                     case CsvColumnType.OtherInfo:
-                        importedValues.OtherInfo = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.OtherInfo = this.SetImportedValueText(importedValues.OtherInfo, columnValue, columnType);
                         break;
                     case CsvColumnType.AccountNumber:
-                        importedValues.AccountNumber = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.AccountNumber = this.SetImportedValueText(importedValues.AccountNumber, columnValue, columnType);
                         break;
                     case CsvColumnType.CheckReference:
-                        importedValues.CheckReference = this.PreProcessColumnValue(columnValue, columnType);
+                        importedValues.CheckReference = this.SetImportedValueText(importedValues.CheckReference, columnValue, columnType);
                         break;
                     case CsvColumnType.DebitAmount:
                         if (!string.IsNullOrWhiteSpace(columnValue))
@@ -202,6 +202,21 @@ namespace MoneyAI.Repositories
                     return TransactionReason.OtherCredit;
             }
             else return importedValues.TransactionReason;
+        }
+
+        protected virtual string SetImportedValueText(string oldValue, string newValue, CsvColumnType columnType)
+        {
+            newValue = this.PreProcessColumnValue(newValue, columnType);
+
+            if (string.IsNullOrWhiteSpace(newValue))
+            {
+                if (!string.IsNullOrWhiteSpace(oldValue))
+                    return oldValue;
+                else
+                    return null;
+            }
+            else
+                return newValue;
         }
 
         protected virtual string PreProcessColumnValue(string columnValue, CsvColumnType columnType)

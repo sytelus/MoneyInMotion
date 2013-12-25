@@ -37,6 +37,7 @@ namespace MoneyAI
             get { return this.editsById[id]; }
         }
 
+        public int Count { get { return this.edits.Count; } }
 
         private TransactionEdit AddEditForScope(TransactionEdit.EditScope scope)
         {

@@ -43,7 +43,14 @@
                 Fee: 2,
                 InterAccountPayment: 4,
                 Return: 8,
-                InterAccountTransfer: 16
+                InterAccountTransfer: 16,
+                PointsCredit: 32,
+                OtherCredit: 64,
+                CheckPayment: 128,
+                CheckRecieved: 256,
+                AtmWithdrawal: 512,
+                Interest: 1024,
+                LoanPayment: 2048
             },
 
             transactionReasonTitleLookup: {
@@ -52,7 +59,14 @@
                 "2": "Fee",
                 "4": "Inter Account Payment",
                 "8": "Return",
-                "16": "Inter Account Transfer"
+                "16": "Inter Account Transfer",
+                "32": "Points",
+                "64": "Other Credit",
+                "128": "Check Paid",
+                "256": "Check Recieved",
+                "512": "ATM Withdrawal",
+                "1024": "Interest Recieved",
+                "2048": "Loan Payment",
             },
 
             transactionReasonPluralTitleLookup: {
@@ -61,7 +75,14 @@
                 "2": "Fees",
                 "4": "Inter Account Payments",
                 "8": "Returns",
-                "16": "Inter Account Transfers"
+                "16": "Inter Account Transfers",
+                "32": "Points Credits",
+                "64": "Other Credits",
+                "128": "Checks Paid",
+                "256": "Checks Recieved",
+                "512": "ATM Withdrawals",
+                "1024": "Interest Recieved",
+                "2048": "Loan Payments"
             },
 
             getMergedEditValue: function (name) {

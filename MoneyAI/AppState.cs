@@ -17,12 +17,12 @@ namespace MoneyAI
             this.Repository = repository;
         }
 
-        public void SaveLatestMerged()
+        public void SaveLatestMerged(bool saveEdits)
         {
             var latestMergedLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedLocationName);
             var transactionEditsLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedEditsLocationName);
 
-            this.Repository.TransactionsStorage.Save(latestMergedLocation, this.LatestMerged, transactionEditsLocation);
+            this.Repository.TransactionsStorage.Save(latestMergedLocation, this.LatestMerged, saveEdits ? transactionEditsLocation : null);
         }
 
         public void LoadLatestMerged()
@@ -32,6 +32,12 @@ namespace MoneyAI
                 this.LatestMerged = this.Repository.TransactionsStorage.Load(latestMergedLocation);
             else
                 this.LatestMerged = new Transactions(this.Repository.LastestMergedLocationName);
+        }
+
+        public bool EditsExists()
+        {
+            var transactionEditsLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedEditsLocationName);
+            return this.Repository.TransactionsStorage.Exists(transactionEditsLocation);
         }
 
         public void ApplyEditsToLatestMerged(ILocation location = null)

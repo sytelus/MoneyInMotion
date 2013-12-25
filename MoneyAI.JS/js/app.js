@@ -30,6 +30,23 @@
             //else ignore unknown state
         });
 
+        //MoreOrLess panel handling
+        $(document).on("click", ".moreTrigger, .lessTrigger", function (event) {
+            var trigger = $(this),
+                moreOrLessPanel = trigger.closest(".moreOrLessPanel"),
+                moreTriggerContainer = moreOrLessPanel.children(".moreTriggerContainer"),
+                lessTriggerContainer = moreOrLessPanel.children(".lessTriggerContainer"),
+                lessContentContainer = moreOrLessPanel.children(".lessContentContainer"),
+                moreContentContainer = moreOrLessPanel.children(".moreContentContainer"),
+                isMoreTrigger = trigger.hasClass("moreTrigger") && !trigger.hasClass("lessTrigger");
+
+            moreTriggerContainer.toggle(!isMoreTrigger);
+            moreContentContainer.toggle(isMoreTrigger);
+            lessTriggerContainer.toggle(isMoreTrigger);
+            lessContentContainer.toggle(!isMoreTrigger);
+
+        });
+
         //Force hashchange for the first page load
         $(window).trigger("hashchange");
     });

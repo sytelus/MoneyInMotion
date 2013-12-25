@@ -7,7 +7,7 @@
     var $this = function TransactionAggregator(parent, name, title, retainRows, childAggregateFunction,
         sortChildAggregatorsFunction, sortTxFunction, isCategoryGroup) {
 
-        this.groupId = (parent ? parent.name : "") + "." + name;
+        this.groupId = (parent ? parent.groupId : "") + "." + name;
 
         var previousValue = allAggregators[this.groupId];
         this.isChildrenVisible = previousValue ? previousValue.isChildrenVisible : undefined;

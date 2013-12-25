@@ -62,16 +62,19 @@
 
     var getExpenseChildAggregator = function expense(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Expense", "Expenses", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
-        agg.sortOrder = 0;
+        agg.sortOrder = 1; //Show it after income
 
         return agg;
     },
-    //getIncomeChildAggregator = function income() {
-    //    return new TransactionAggregator(parentAggregator, "Income", "Income", false, entityNameChildAggregator, aggregatorSortMap, false);
-    //},
+    getIncomeChildAggregator = function income(parentAggregator) {
+        var agg = new TransactionAggregator(parentAggregator, "Income", "Income", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
+        agg.sortOrder = 0; //Show it first (because it has smaller line items)
+
+        return agg;
+    },
     getTransfersChildAggregator = function transfers(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Transfers", "Transfers", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
-        agg.sortOrder = 10;
+        agg.sortOrder = 10; //Show it at the end
 
         return agg;
     };
@@ -82,7 +85,14 @@
         "2": getExpenseChildAggregator, //Fee
         "4": getTransfersChildAggregator, //InterAccountPayment
         "8": getExpenseChildAggregator, //Return
-        "16": getTransfersChildAggregator //InterAccountTransfer
+        "16": getTransfersChildAggregator, //InterAccountTransfer
+        "32": getIncomeChildAggregator,
+        "64": getIncomeChildAggregator,
+        "128": getExpenseChildAggregator,
+        "256": getIncomeChildAggregator,
+        "512": getExpenseChildAggregator,
+        "1024": getIncomeChildAggregator,
+        "2048": getExpenseChildAggregator
     };
 
     var incomeExpenseChildAggregator = function (parentAggregator, tx) {
@@ -169,8 +179,8 @@
             return tx.correctedValues.transactionYearString === selectYearString && tx.correctedValues.transactionMonthString === selectMonthString;
         });
 
-        var netAggregator = new TransactionAggregator(undefined, "Net", "Net/Net", false, incomeExpenseChildAggregator, sortNetChildAggregators, sortTxRows, false);
-
+        var netAggregator = new TransactionAggregator(undefined, "Net" + "." + selectYearString + "." + selectMonthString,
+            "Net/Net", false, incomeExpenseChildAggregator, sortNetChildAggregators, sortTxRows, false);
         utils.forEach(selectedTxs, function (tx) {
             Transaction.prototype.ensureAllCorrectedValues.call(tx);
             netAggregator.add(tx);
@@ -351,6 +361,15 @@
                 }
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
+            });
+
+            //Enable/Disble checkbox addon input groups
+            $("#txListControl").on("click", ".input-group-addon input[type=checkbox]", function (event) {
+                var checkbox = $(this),
+                    inputGroup = checkbox.closest(".input-group"),
+                    controls = inputGroup.find(".form-control");
+
+                controls.prop('disabled', !checkbox.is(":checked"));
             });
         },
 

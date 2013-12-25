@@ -74,7 +74,11 @@ namespace MoneyAI.WinForms
         
         private void buttonSaveLatestMerged_Click(object sender, EventArgs e)
         {
-            appState.SaveLatestMerged();
+            bool saveEdits = true;
+            if (appState.LatestMerged.EditsCount == 0 && appState.EditsExists())
+                saveEdits = MessageBox.Show(this, "Save Edits", "There are no edits made to these transactions but there exists previous edits. Do you want to overwrite previous edits file?", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == System.Windows.Forms.DialogResult.Yes;
+
+            appState.SaveLatestMerged(saveEdits);
         }
 
         private void FormMain_KeyDown(object sender, KeyEventArgs e)

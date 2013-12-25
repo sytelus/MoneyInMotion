@@ -30,6 +30,17 @@
                     }).join(", ");
                 return sortedReasons;
             });
+        },
+
+        function (utils) {
+            utils.registerTemplateHelper("txTransactionReasonSelectOptionsHtml", function (tx) {
+                return utils.map(Transaction.prototype.transactionReasonTitleLookup, function (reasonTitle, reasonValue) {
+                    return "<option value=\"" + reasonValue + "\" " +
+                        (tx.correctedValues.transactionReason.toString() === reasonValue ? " selected " : "") + " >" + reasonTitle +
+                        (tx.transactionReason.toString() === reasonValue ? " (keep original)" : "") +
+                        "</option>";
+                }).join("\n");
+            });
         }
     ];
 

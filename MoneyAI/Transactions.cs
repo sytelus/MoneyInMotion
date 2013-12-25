@@ -262,6 +262,11 @@ namespace MoneyAI
             this.itemsById = this.items.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)).ToDictionary();
         }
 
+        public int EditsCount
+        {
+            get { return this.edits.Count; }
+        }
+
         public TransactionEdits GetClonedEdits()
         {
             return this.edits.Clone();

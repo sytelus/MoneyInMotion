@@ -1,33 +1,60 @@
-﻿<div>
-	<textarea autofocus class="form-control categoryControl popoverMainControl" rows="3" cols="25" placeholder="Example: Food > Dinners > Eating Out">{{tx.correctedValues.categoryPathString}}</textarea>
+﻿<div class="popoverContainer form" role="form">
 
-	{{#if tx.correctedValues.categoryPathString}}
-	<div class="checkbox">
-		<label>
-			<input class="isRemoveControl" type="checkbox"> Delete Category
-		</label>
+	<!-- Category -->
+	<div class="form-group">
+		<label for="cat_{{tx.id}}">Set Category</label>
+		<input type="text" id="cat_{{tx.id}}" autofocus autocomplete="on" class="form-control input-sm categoryControl " placeholder="Example: Food > Dinners > Eating Out" value="{{tx.correctedValues.categoryPathString}}">
 	</div>
-	{{/if}}
-
-	<input type="hidden" name="entityNameNormalized" value="{{tx.entityNameNormalized}}">
-
-	<div class="radio">
-	  <label>
-		<input type="radio" name="scopeType" value="3" checked>
-		Do this for all <strong>{{tx.correctedValues.entityNameBest}}</strong> transactions
-	  </label>
-	</div>
-	<div class="radio">
-	  <label>
-		<input type="radio" name="scopeType" value="100">
-		{{#compare selectedTx.length "===" 1}}
-			Do this for only 1 selected transaction
-		{{else}}
-			Do this for only {{selectedTx.length}} selected transactions
-		{{/compare}}
-	  </label>
+	
+	<div class="moreOrLessPanel">  
+		<div class="moreTriggerContainer"><p><a class="moreTrigger" href="#">Edit other details</a></p></div>
+		<div class="moreContentContainer">
+			<!-- Transaction reason -->
+			<div class="form-group">
+				<label for="res_{{tx.id}}">Change Type</label>
+				<select class="form-control input-sm">
+					{{{txTransactionReasonSelectOptionsHtml tx}}}
+				</select>
+			</div>
+			
+			<!-- Name -->
+			<div class="form-group">
+				<label for="nam_{{tx.id}}">Change Name</label>
+				<input type="text" id="nam_{{tx.id}}" autocomplete="on" class="form-control input-sm categoryControl" value="{{tx.correctedValues.entityNameBest}}">
+			</div>
+		</div>
 	</div>
 
+	<!-- Scope selection -->
+	<div class="moreOrLessPanel">
+		<div class="moreTriggerContainer"><p><a class="moreTrigger" href="#">Options</a></p></div>
+		<div class="well well-sm moreContentContainer">
+			Do this for...
+			<div class="radio">
+				<label>
+				<input type="radio" name="scopeType" value="3" checked>
+				All <strong>{{tx.correctedValues.entityNameBest}}</strong> items
+				</label>
+			</div>
+			<div class="radio">
+				<label>
+				<input type="radio" name="scopeType" value="100">
+				{{#compare selectedTx.length "===" 1}}
+					Only 1 selected item
+				{{else}}
+					Only {{selectedTx.length}} selected items
+				{{/compare}}
+				</label>
+				<input type="hidden" name="entityNameNormalized" value="{{tx.entityNameNormalized}}">
+			</div>
+			<div class="moreOrLessPanel">
+				<div class="moreTriggerContainer text-right small"><a class="moreTrigger" href="#">Even more options</a></div>
+				<div class="moreContentContainer text-right small">These are more options!</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Submit/Cancel -->
 	<div class="popover-form-footer">
 		<button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
 		<button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>

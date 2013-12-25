@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CommonUtils;
+using System.Diagnostics;
 
 namespace MoneyAI
 {
@@ -163,6 +164,9 @@ namespace MoneyAI
             {
                 if (cachedDisplayCategory == null)
                     cachedDisplayCategory = string.Join(" > ", this.CategoryPath.IfNullOrEmpty(() => this.DisplayEntityNameNormalized.AsArray()));
+
+                if (string.IsNullOrWhiteSpace(cachedDisplayCategory))
+                    Debugger.Break();
 
                 return cachedDisplayCategory;
             }
