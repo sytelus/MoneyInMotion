@@ -1,0 +1,17 @@
+{
+  "name": "knockout",
+  "main": "./build/output/knockout.js",
+  "ignore": [
+    "**/.*"
+  ],
+  "dependencies": {},
+  "homepage": "https://github.com/sytelus/knockout",
+  "_release": "78bf1c1d8f",
+  "_resolution": {
+    "type": "commit",
+    "commit": "78bf1c1d8fbd9be1e92abf97949885dc6ff9a7ab"
+  },
+  "_source": "git://github.com/sytelus/knockout.git",
+  "_target": "78bf1c1d8fbd9be1e92abf97949885dc6ff9a7ab",
+  "_originalSource": "git://github.com/sytelus/knockout"
+}

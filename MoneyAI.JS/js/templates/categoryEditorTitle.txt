@@ -1,4 +1,4 @@
 ﻿<div class="popover-form-header">
 	<button type="button" class="close" data-dismiss="popover" aria-hidden="true">&times;</button>
 	<h4 class="popover-form-title"><i class="categoryIcon"></i>&nbsp;{{#if correctedValues.categoryPathString}}Edit{{else}}Add{{/if}} Category</h4>
-</div
+</div>

@@ -160,10 +160,6 @@
         showHideRow(rowInfo);
     };
 
-    var destoryPopovers = function () {
-        $("#txListControl").find(".popover").prev().popover("destroy");
-    },
-
     refresh = function (txs, selectYearString, selectMonthString) {
         if (txs) {
             cachedValues = undefined;
@@ -316,19 +312,6 @@
                 collapseExpandRows(parentRow, !isChildrenVisible);
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
-            });
-
-            //Close popovers on ESC
-            $(document).on("keyup", function (e) {
-                if (e.which === 27) {   //ESC
-                    //Destroy potentially open popup
-                    destoryPopovers();
-                }
-            });
-
-            //Clicks for popover close buttons
-            $(document).on("click", "[data-dismiss=\"popover\"]", function () {
-                destoryPopovers();
             });
 
             //Clicks for set note menu

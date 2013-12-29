@@ -25,7 +25,8 @@
         "cryptojs.md5": "ext/cryptojslib/components/md5",
         "cryptojs.base64": "ext/cryptojslib/components/enc-base64",
         "uuidjs": "ext/uuid-js/lib/uuid",
-        "json3": "ext/json3/lib/json3"
+        "json3": "ext/json3/lib/json3",
+        "knockout": "ext/knockoutjs/build/output/knockout.js"
     },
     shim: {
         "debug": {

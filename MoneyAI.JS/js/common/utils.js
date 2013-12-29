@@ -179,7 +179,7 @@
 
                 var elementValue;
 
-                if (tagName == "INPUT") {
+                if (tagName === "INPUT") {
                     //Checkbox/radio returns "on" when there is no value attribute and if they are selected otherwise undefined. If value attribute
                     //is available then :checked returned undefined or that value.
                     var inputType = element.attr("type");
@@ -197,9 +197,9 @@
                     elementValue = element.val();
                 }
                 
-                if (elementValue === undefined)
+                if (elementValue === undefined) {
                     return; //Prevent unset radiobox to overwrite properties
-
+                }
                 if (converter) {
                     if (isConverterFunction) {
                         elementValue = converter.call(thisArg, elementValue, propertyName);

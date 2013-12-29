@@ -1,0 +1,44 @@
+﻿
+//----------------------------------------POPOVER-----------------------------------------------------------
+// Popover form Footer (copied from modal-footer)
+.popover-form-footer {
+  margin-top: 5px;
+  padding-top: 5px;
+  text-align: right; // right align buttons
+  border-top: 1px solid @modal-footer-border-color;
+  .clearfix(); // clear it in case folks use .pull-* classes on buttons
+
+  // Properly space out buttons
+  .btn + .btn {
+    margin-left: 5px;
+    margin-bottom: 0; // account for input[type="submit"] which gets the bottom margin like all other inputs
+  }
+  // but override that for button groups
+  .btn-group .btn + .btn {
+    margin-left: -1px;
+  }
+  // and override it for block buttons as well
+  .btn-block + .btn-block {
+    margin-left: 0;
+  }
+}
+// Popover form header
+.popover-form-header {
+  //border-bottom: 1px solid @modal-header-border-color;
+}
+// Close icon
+.popover-form-header .close {
+  margin-top: -2px;
+}
+//Popover form title
+.popover-form-title {
+  margin: 0;
+}
+.popoverContainer .form-control {
+    width:auto;
+}
+.popoverContainer .currencyInput {
+    width: 8em;
+}
+
+//----------------------------------------POPOVER-----------------------------------------------------------

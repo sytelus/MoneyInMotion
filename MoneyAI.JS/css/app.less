@@ -1,36 +1,13 @@
-﻿@import (less)  "../js/ext/bootstrap/dist/css/bootstrap.css";
-@import (less)  "../js/ext/bootstrap/dist/css/bootstrap-theme.css";
-@import (less) "../js/ext/font-awesome/css/font-awesome.css";
-
-@import  "../js/ext/bootstrap/less/mixins.less";
-@import  "../js/ext/bootstrap/less/variables.less";
+﻿@import  "common/common.less";
+@import  "icons.less";
 
 /*  Value formating */
 .negativeAmount {
     color:red;
 }
 
-/*   Tight grid */
-.table-condensed2 > thead > tr > th,
-.table-condensed2 > tbody > tr > th,
-.table-condensed2 > tfoot > tr > th,
-.table-condensed2 > thead > tr > td,
-.table-condensed2 > tbody > tr > td,
-.table-condensed2 > tfoot > tr > td {
-  .small;
-}
-
-.condencedDataGrid
-    :extend(.table all)
-    :extend(.table-hover all) 
-    :extend(.table-responsive all)
-    :extend(.table-condensed all)
-    :extend(.table-condensed2 all) {
-}
-
 .groupValuesTop {
 }
-
 
 .txRowVisible {
     display:table-row;
@@ -51,41 +28,6 @@
     border-bottom: 2px solid #dddddd;
 }
 
-.moreIndicator {
-    .small;
-    .text-muted;
-    text-align:right;
-    padding:0;
-    margin:0;
-}
-
-.moreContentContainer, .checkBoxGroupHidePanel {
-    display: none;
-}
-
-.expanderTitle {
-}
-
-.jslink {
-    text-decoration:none;
-}
-
-.hoverLinkButton {
-    text-decoration:none;
-    color:inherit;
-    cursor:pointer;
-
-    border: outset;
-    border-width: 1px;
-    padding: 3px;
-    border-color: transparent;
-
-    &:hover {
-        text-decoration:none;
-        border-color: initial;
-    }
-}
-
 .txRowExpanderControl:extend(.hoverLinkButton all) {
 
 }
@@ -96,120 +38,6 @@
     .small;
 }
 
-/*  Todo icon */
-@flag-rotation: 10deg;
-.todoPendingIcon:extend(.fa all):extend(.fa-flag all) {
-    .rotate(@flag-rotation);
-    color: firebrick;
-}
-.todoPartPendingIcon:extend(.fa all):extend(.fa-flag-checkered all) {
-    .rotate(@flag-rotation / 2);
-    color: firebrick;
-}
-.todoColumnIcon:extend(.fa all):extend(.fa-flag-o all) {
-    .rotate(@flag-rotation / 2);
-    .text-muted;
-}
-.todoDoneIcon:extend(.fa all):extend(.fa-check all) {
-    .text-muted;
-}
-
-/*  Note icon */
-.noteEmptyIcon:extend(.fa all):extend(.fa-file all) {
-    color: #FFCD5A;
-}
-.noteManyIcon:extend(.fa all):extend(.fa-files-o all) {
-    color: #FF6600;
-}
-.noteLinesIcon:extend(.fa all):extend(.fa-file-text all) {
-    color: #FFCD5A;
-}
-.noteNoneIcon:extend(.fa all):extend(.fa-file-o all) {
-}
-
-/*  Category icon */
-.categoryIcon:extend(.fa all):extend(.fa-bookmark all) {
-    color: #000066;
-}
-.categoryManyIcon:extend(.fa all):extend(.fa-bookmark-o all) {
-    color: #FF6600;
-}
-
-
-
-.editIcon:extend(.fa all):extend(.fa-chevron-right all) {
-    .text-muted;
-}
-
-.rowsExpandIcon:extend(.fa all):extend(.fa-plus-square-o all) {
-}
-.rowsCollapseIcon:extend(.fa all):extend(.fa-minus-square-o all) {
-}
-
-.nbspIcon:extend(.fa all):extend(.fa-square all) {
-    visibility:hidden;
-}
-
-.condencedIcon {
-    //font-size: 90%;
-}
-
-
-
-
-// Popover form Footer (copied from modal-footer)
-.popover-form-footer {
-  margin-top: 5px;
-  padding-top: 5px;
-  text-align: right; // right align buttons
-  border-top: 1px solid @modal-footer-border-color;
-  .clearfix(); // clear it in case folks use .pull-* classes on buttons
-
-  // Properly space out buttons
-  .btn + .btn {
-    margin-left: 5px;
-    margin-bottom: 0; // account for input[type="submit"] which gets the bottom margin like all other inputs
-  }
-  // but override that for button groups
-  .btn-group .btn + .btn {
-    margin-left: -1px;
-  }
-  // and override it for block buttons as well
-  .btn-block + .btn-block {
-    margin-left: 0;
-  }
-}
-// Popover form header
-.popover-form-header {
-  //border-bottom: 1px solid @modal-header-border-color;
-}
-// Close icon
-.popover-form-header .close {
-  margin-top: -2px;
-}
-//Popover form title
-.popover-form-title {
-  margin: 0;
-}
 #txListControl .popover {
     max-width:inherit;
-}
-
-.popoverContainer .form-control {
-    width:auto;
-}
-
-.popoverContainer .currencyInput {
-    width: 8em;
-}
-
-.inlineBlock {
-    display: inline-block;
-}
-.inline {
-    display: inline;
-}
-
-.currencyInput {
-    width: 5em;
 }

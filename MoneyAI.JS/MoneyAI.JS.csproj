@@ -25,6 +25,8 @@
     <Content Include="images\note.png" />
     <Content Include="index.html" />
     <Content Include="js\app.js" />
+    <Content Include="js\common\jQueryPluginTemplate.js" />
+    <Content Include="js\common\popoverForm.js" />
     <Content Include="js\common\templateHelpers.js" />
     <Content Include="js\common\globalEvents.js" />
     <Content Include="js\EditedValues.js" />
@@ -65,6 +67,9 @@
     <Content Include="package.json" />
     <Content Include="css\layout.debug.css" />
     <Content Include="css\app.less" />
+    <Content Include="css\common\common.less" />
+    <Content Include="css\common\components.less" />
+    <Content Include="css\icons.less" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>
