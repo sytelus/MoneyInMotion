@@ -45,6 +45,12 @@
             });
         },
 
+        function math(utils) {
+            utils.registerTemplateHelper("math", function (functionName, param1, param2, param3) {
+                return Math[functionName](param1, param2, param3);
+            });
+        },
+
         function stringify(utils) {
             utils.registerTemplateHelper("stringify", function (value) {
                 if (value === undefined) {

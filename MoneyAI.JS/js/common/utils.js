@@ -1,6 +1,6 @@
 ﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "common/keyCounter",
-    "cryptojs.md5", "cryptojs.base64", "uuidjs", "json3"],
-    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs, json3) {
+    "cryptojs.md5", "cryptojs.base64", "uuidjs", "jquery.ba-bbq", "json3"],
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs, jQueryBbq, json3) {
 
    "use strict";
 
@@ -8,6 +8,13 @@
        pos: "%s %v",   // for positive values, eg. "$ 1.00" (required)
        neg: "%s (%v)", // for negative values, eg. "$ (1.00)" [optional]
        zero: "%s %v"  // for zero values, eg. "$  --" [optional]
+   };
+
+        //Fix textarea CR/LF issue - http://api.jquery.com/val/
+   $.valHooks.textarea = {
+       get: function( elem ) {
+           return elem.value.replace( /\r?\n/g, "\r\n" );
+       }
    };
 
     var utilsInstance = {
@@ -139,12 +146,81 @@
         triggerEvent: function (source, eventName, eventDataArray) {
             $(source || document).triggerHandler(eventName, eventDataArray);
         },
-        addEventHandler: function (source, eventName, handler) {
+
+        //non-DOM related events
+        subscribe: function (source, eventName, handler) {
             $(source || document).on(eventName, handler);
         },
-        removeEventHandler: function (source, eventName) {
+        unsubscribe: function (source, eventName) {
             $(source || document).off(eventName);
         },
+
+        addEventHandler: function(source, events, selector, handler) {
+            $(source || document).on(events, selector, handler);
+        },
+
+        setUrlHash: function(url) {
+            $.bbq.pushState(url);
+        },
+
+        dom: function(obj) {
+            return $(obj || document);
+        },
+
+        dom2obj: function (selector, obj, converter, thisArg) {
+            var dom = $(selector),
+                elements = dom.find("[data-set-prop]");
+
+            $.each(elements, function(element) {
+                var propertyName = element.attr("data-set-prop"),
+                    tagName = element.prop("tagName"),
+                    isConverterFunction = $.isFunction(converter),
+                    isObjFunction = $.isFunction(obj);
+
+                var elementValue;
+
+                if (tagName == "INPUT") {
+                    //Checkbox/radio returns "on" when there is no value attribute and if they are selected otherwise undefined. If value attribute
+                    //is available then :checked returned undefined or that value.
+                    var inputType = element.attr("type");
+                    if (inputType === "checkbox" || inputType === "radio") {
+                        elementValue = element.filter(":checked").val();
+                        if (elementValue === undefined && inputType === "checkbox") {
+                            elementValue = false;
+                        }
+                        else if (elementValue === "on") {
+                            elementValue = true;
+                        }
+                    }
+                }
+                else {
+                    elementValue = element.val();
+                }
+                
+                if (elementValue === undefined)
+                    return; //Prevent unset radiobox to overwrite properties
+
+                if (converter) {
+                    if (isConverterFunction) {
+                        elementValue = converter.call(thisArg, elementValue, propertyName);
+                    }
+                    else {
+                        var converterFunction = converter[propertyName];
+                        if (converterFunction) {
+                            elementValue = converterFunction.call(thisArg, elementValue, propertyName);
+                        }
+                    }
+                }
+
+                if (isObjFunction) {
+                    obj.call(thisArg, elementValue, propertyName);
+                }
+                else {
+                    obj[propertyName] = elementValue;
+                }
+            });
+        },
+
         noop: function () { }
     };
 

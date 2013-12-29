@@ -1,0 +1,69 @@
+﻿	<!-- Scope selection -->
+	<div class="moreOrLessPanel">
+		<div class="moreTriggerContainer text-right"><a class="moreTrigger" href="#">Options</a></div>
+		<div class="well well-sm moreContentContainer">
+			<div class="checkbox">
+				<label class="checkboxGroup">
+					<input type="checkbox" class="checkboxGroupChecked" data-set-prop="isEntityNameFilter" checked>
+					<input type="hidden" name="entityNameNormalized" data-set-prop="entityName" value="{{tx.entityNameNormalized}}">
+					Apply to all <strong>{{tx.correctedValues.entityNameBest}}</strong> items
+
+					<div class="checkBoxGroupOnUncheckedPanel checkBoxGroupHidePanel">
+						<div class="radio">
+							<label>
+							<input type="radio" name="filterType" data-set-prop="isOnlySelected" value="100">
+							{{#compare selectedTx.length "===" 1}}
+								Apply to only this item
+							{{else}}
+								Apply to only these {{selectedTx.length}} items
+							{{/compare}}
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="filterType" value="10" data-set-prop="isEntityNameTokensFilter"> Apply only if item has these words:
+								<input type="text" autocomplete="on" class="form-control input-sm filterEntityNameWords" 
+									 data-set-prop="entityNameTokensFilter" value="{{tx.correctedValues.entityNameBest}}">
+								<span class="help-block"><small>Seperate words by space.</small></span>
+							</label>
+						</div>
+					</div>
+				</label>
+			</div><!-- checkbox group -->
+
+			<div class="checkbox">
+				<label>
+					<input type="checkbox" data-set-prop="isCheckFilter" > Apply only if it's check
+				</label>
+			</div>
+
+			<div class="checkbox">
+				<label>
+					<input type="checkbox" data-set-prop="isAccountIdFilter"> Apply only for account {{tx.accountId}}
+					<input type="hidden" name="accountId" data-set-prop="accountId" value="{{tx.accountId}}">
+				</label>
+			</div>
+
+			<div class="checkbox">
+				<label>
+					<input type="checkbox" data-set-prop="isTransactionReasonFilter"> Apply only when it's {{txTransactionReasonDisplay tx.transactionReason}}
+					<input type="hidden" name="accountId" data-set-prop="transactionReason" value="{{tx.transactionReason}}">
+				</label>
+			</div>
+
+			<div class="checkbox">
+				<label class="checkboxGroup">
+					<input type="checkbox" class="checkboxGroupChecked" data-set-prop="isAmountRangeFilter">
+						Apply only if {{#compare tx.correctedValues.amount "<" 0}}expense{{else}}amount{{/compare}} is between...
+					<div class="checkBoxGroupOnCheckedPanel checkBoxGroupHidePanel">
+						<input type="number" class="form-control input-sm inline currencyInput" 
+							data-set-prop="minAmount" value="{{amountFilterRange true tx.correctedValues.amount}}"> to
+						<input type="number" class="form-control input-sm inline currencyInput"
+							data-set-prop="maxAmount" value="{{amountFilterRange false tx.correctedValues.amount}}">
+					</div>
+				</label>
+			</div>
+
+
+		</div>
+	</div>

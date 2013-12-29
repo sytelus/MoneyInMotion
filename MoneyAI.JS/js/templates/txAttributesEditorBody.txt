@@ -1,0 +1,25 @@
+﻿<div class="popoverContainer form" role="form">
+
+	<!-- Transaction reason -->
+	<div class="form-group">
+		<label for="res_{{tx.id}}">Change Type</label>
+		<select class="form-control input-sm">
+			{{{txTransactionReasonSelectOptionsHtml tx}}}
+		</select>
+	</div>
+			
+	<!-- Name -->
+	<div class="form-group">
+		<label for="nam_{{tx.id}}">Change Name</label>
+		<input type="text" id="nam_{{tx.id}}" autocomplete="on" class="form-control input-sm categoryControl" value="{{tx.correctedValues.entityNameBest}}">
+	</div>
+
+	<!-- Scope selection -->
+	{{> txEditRule }}
+		
+	<!-- Submit/Cancel -->
+	<div class="popover-form-footer">
+		<button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
+		<button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>
+	</div>
+</div>

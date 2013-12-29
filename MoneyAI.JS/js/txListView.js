@@ -362,15 +362,6 @@
 
                 event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
             });
-
-            //Enable/Disble checkbox addon input groups
-            $("#txListControl").on("click", ".input-group-addon input[type=checkbox]", function (event) {
-                var checkbox = $(this),
-                    inputGroup = checkbox.closest(".input-group"),
-                    controls = inputGroup.find(".form-control");
-
-                controls.prop('disabled', !checkbox.is(":checked"));
-            });
         },
 
         refresh: refresh

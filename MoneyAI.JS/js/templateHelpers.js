@@ -1,5 +1,5 @@
-﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt", "text!templates/txListTransactionGroup.txt", "Transaction"],
-    function (txListTransactionRowText, txListTransactionGroupText, Transaction) {
+﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt", "text!templates/txListTransactionGroup.txt", "text!templates/txEditRule.txt", "Transaction"],
+    function (txListTransactionRowText, txListTransactionGroupText, txEditRuleText, Transaction) {
     "use strict";
 
     var helpers = [
@@ -33,6 +33,14 @@
         },
 
         function (utils) {
+            utils.registerTemplateHelper("amountFilterRange", function (isMin, amount) {
+                var absAmount = Math.abs(amount);
+                absAmount = Math.round(absAmount * (isMin ? 0.9 : 1.1));
+                return absAmount;
+            });
+        },
+
+        function (utils) {
             utils.registerTemplateHelper("txTransactionReasonSelectOptionsHtml", function (tx) {
                 return utils.map(Transaction.prototype.transactionReasonTitleLookup, function (reasonTitle, reasonValue) {
                     return "<option value=\"" + reasonValue + "\" " +
@@ -50,6 +58,9 @@
         },
         txGroup: function (utils) {
             return utils.compileTemplate(txListTransactionGroupText);
+        },
+        txEditRule: function (utils) {
+            return utils.compileTemplate(txEditRuleText);
         }
     };
 

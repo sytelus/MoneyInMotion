@@ -24,7 +24,7 @@
 
                     var txs = new Transactions(data);
 
-                    utils.addEventHandler(txs, "editsApplied", editAppliedHandler);
+                    utils.subscribe(txs, "editsApplied", editAppliedHandler);
 
                     cachedValues.transactions = txs;
                     var updatedTxs = onGet(txs);
