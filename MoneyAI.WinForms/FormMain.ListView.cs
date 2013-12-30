@@ -87,10 +87,7 @@ namespace MoneyAI.WinForms
 
             var affedtedTx = this.appState.LatestMerged.SetCategory(newScopePathTuple.Item1, newScopePathTuple.Item2);
 
-            if (newScopePathTuple.Item1.Type == TransactionEdit.ScopeType.TransactionId)
-                RefreshItems(rows);
-            else
-                this.txnListView.RefreshObjects(affedtedTx.ToList());
+            this.txnListView.RefreshObjects(affedtedTx.ToList());
         }
 
         private void ApplyNoteForRows(IList rows, Transactions transactions)
@@ -104,25 +101,30 @@ namespace MoneyAI.WinForms
             if (currentNote == newNote)
                 return;
 
-            RefreshItems(rows, tx => transactions.SetNote(tx, newNote).ToVoid());
+            RefreshItems(rows, txs => transactions.SetNote(txs, newNote).ToVoid());
         }
 
-        private static void RefreshItems(IEnumerable rows, Action<Transaction> transactionAction = null)
+        private static void RefreshItems(IEnumerable rows, Action<IEnumerable<Transaction>> transactionsAction = null)
+        {
+            if (transactionsAction != null)
+                transactionsAction(RowsToTransactions(rows));
+
+            foreach (OLVListItem item in rows)
+                ((ObjectListView)item.ListView).RefreshItem(item);
+        }
+
+        private static IEnumerable<Transaction> RowsToTransactions(IEnumerable rows)
         {
             foreach (OLVListItem item in rows)
-            {
-                if (transactionAction != null)
-                {
-                    var tx = (Transaction)item.RowObject;
-                    transactionAction(tx);
-                }
-                ((ObjectListView)item.ListView).RefreshItem(item);
-            }
+                yield return (Transaction)item.RowObject;
         }
 
         private static void ToggleFlagsRows(IEnumerable rows, Transactions transactions)
         {
-            RefreshItems(rows, tx => transactions.SetIsUserFlagged(tx, tx.IsUserFlagged.IfNotNullValue(f => !f, true)).ToVoid());
+            RefreshItems(rows, txs => {
+                foreach(var tx in txs)
+                    transactions.SetIsUserFlagged(tx.AsEnumerable(), tx.IsUserFlagged.IfNotNullValue(f => !f, true)).ToVoid();
+            });
         }
 
         private void txnListView_CellClick(object sender, CellClickEventArgs e)

@@ -39,41 +39,37 @@ namespace MoneyAI
 
         public int Count { get { return this.edits.Count; } }
 
-        private TransactionEdit AddEditForScope(TransactionEdit.EditScope scope)
+        private TransactionEdit AddEditForScope(IEnumerable<TransactionEdit.ScopeFilter> scopeFilters)
         {
-            var edit = new TransactionEdit(scope, this.SourceId);
+            var edit = new TransactionEdit(scopeFilters, this.SourceId);
             this.Add(edit);
 
             return edit;
         }
 
-        private TransactionEdit AddEditForScope(TransactionEdit.ScopeType scopeType, string[] scopeParameters)
+        public TransactionEdit CreateEditIsUserFlagged(IEnumerable<string> trasactionIds, bool? isUserFlagged)
         {
-            var scope = new TransactionEdit.EditScope(scopeType, scopeParameters);
-            return AddEditForScope(scope);
-        }
-
-        public TransactionEdit CreateEditIsUserFlagged(string trasactionId, bool? isUserFlagged)
-        {
-            var edit = AddEditForScope(TransactionEdit.ScopeType.TransactionId, new[] { trasactionId });
+            var scopeFilter = new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.TransactionId, trasactionIds.ToArray());
+            var edit = AddEditForScope(scopeFilter.AsEnumerable());
 
             edit.Values.IsFlagged = isUserFlagged.HasValue ? new Transaction.EditValue<bool>(isUserFlagged.Value) : Transaction.EditValue<bool>.VoidedEditValue;
 
             return edit;
         }
 
-        public TransactionEdit CreateEditCategory(TransactionEdit.EditScope scope, string[] categoryPath)
+        public TransactionEdit CreateEditCategory(IEnumerable<TransactionEdit.ScopeFilter> scopeFilters, string[] categoryPath)
         {
-            var edit = AddEditForScope(scope);
+            var edit = AddEditForScope(scopeFilters);
 
             edit.Values.CategoryPath = categoryPath != null ? new Transaction.EditValue<string[]>(categoryPath) : Transaction.EditValue<string[]>.VoidedEditValue;
 
             return edit;
         }
 
-        public TransactionEdit CreateEditNote(string trasactionId, string note)
+        public TransactionEdit CreateEditNote(IEnumerable<string> trasactionIds, string note)
         {
-            var edit = AddEditForScope(TransactionEdit.ScopeType.TransactionId, new[] { trasactionId });
+            var scopeFilter = new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.TransactionId, trasactionIds.ToArray());
+            var edit = AddEditForScope(scopeFilter.AsEnumerable());
 
             edit.Values.Note = note != null ? new Transaction.EditValue<string>(note) : Transaction.EditValue<string>.VoidedEditValue;
 
@@ -98,12 +94,8 @@ namespace MoneyAI
 
         internal void Merge(TransactionEdits other, ICollection<string> knownTransactionIds)
         {
-            foreach (var otherEdit in other
-                .Where(otherEdit => otherEdit.Scope.Type != TransactionEdit.ScopeType.TransactionId 
-                                    || knownTransactionIds.Contains(otherEdit.Scope.Parameters[0])))
-            {
+            foreach (var otherEdit in other)
                 AddEditClone(otherEdit);
-            }
         }
 
         #region IEnumerable

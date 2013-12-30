@@ -12,13 +12,13 @@ namespace MoneyAI
     {
         public enum ScopeType : int
         {
-             None = 0, All = 1,
-             EntityName = 2, EntityNameNormalized = 3, EntityNameAnyTokens = 4,
-             TransactionId = 100
+             None = 0, All = 1, TransactionId = 2,
+             EntityName = 3, EntityNameNormalized = 4, EntityNameAnyTokens = 5, EntityNameAllTokens = 6,
+             AccountId = 7, TransactionReason = 8, AmountRange = 9
         }
 
         [DataContract]
-        public class EditScope
+        public class ScopeFilter
         {
             [DataMember(IsRequired = true, Name = "type")]
             public ScopeType Type { get; private set; }
@@ -26,10 +26,10 @@ namespace MoneyAI
             [DataMember(EmitDefaultValue = false, Name = "parameters")]
             public string[] Parameters { get; private set; }
 
-            public EditScope(ScopeType scopeType, string[] scopeParameters)
+            public ScopeFilter(ScopeType scopeType, string[] scopeParameters)
             {
                 var errors = Validate(scopeType, scopeParameters);
-                if (errors != null)
+                if (!string.IsNullOrEmpty(errors))
                     throw new Exception("EditScope parameters are invalid: {0}".FormatEx(errors));
 
                 this.Type = scopeType;
@@ -43,35 +43,22 @@ namespace MoneyAI
                         .Concat(scopeParameters.EmptyIfNull())));
             }
 
+
+            private readonly static Dictionary<string, Tuple<int, int>> minMaxParametersLength = new Dictionary<string, Tuple<int, int>>() 
+            { 
+                {ScopeType.None.ToString(), Tuple.Create(0, 0)} , {ScopeType.All.ToString(), Tuple.Create(0, 0)},
+                {ScopeType.TransactionId.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.EntityName.ToString(), Tuple.Create(1, int.MaxValue)},
+                {ScopeType.EntityNameNormalized.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.EntityNameAnyTokens.ToString(), Tuple.Create(1, int.MaxValue)},
+                {ScopeType.EntityNameAllTokens.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.AccountId.ToString(), Tuple.Create(1, int.MaxValue)},
+                {ScopeType.TransactionReason.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.AmountRange.ToString(), Tuple.Create(2, 2)}
+            };
             public static string Validate(ScopeType scopeType, string[] scopeParameters)
             {
-                string errors = null;
-                switch (scopeType)
-                {
-                    case ScopeType.TransactionId:
-                        if (scopeParameters.IsNullOrEmpty())
-                            errors = errors.Append("1 or more Scope Parameters are required for Scope Type {0}".FormatEx(scopeType));
-                        break;
-                    case ScopeType.EntityName:
-                        if (scopeParameters.IsNullOrEmpty() || scopeParameters.Length > 1)
-                            errors = errors.Append("Only 1 Scope Parameter must be supplied for Scope Type {0}".FormatEx(scopeType));
-                        break;
-                    case ScopeType.EntityNameAnyTokens:
-                        if (scopeParameters.IsNullOrEmpty())
-                            errors = errors.Append("1 or more Scope Parameters are required for Scope Type {0}".FormatEx(scopeType));
-                        break;
-                    case ScopeType.EntityNameNormalized:
-                        if (scopeParameters.IsNullOrEmpty() || scopeParameters.Length > 1)
-                            errors = errors.Append("Only 1 Scope Parameter must be supplied for Scope Type {0}".FormatEx(scopeType));
-                        break;
-                    case ScopeType.None:
-                    case ScopeType.All:
-                        if (!scopeParameters.IsNullOrEmpty())
-                            errors = errors.Append("Zero Scope Parameters are expected for Scope Type {0}".FormatEx(scopeType));
-                        break;
-                    default:
-                        throw new NotSupportedException("Edit Scope Type {0} is not supported".FormatEx(scopeType));
-                }
+                string errors = "";
+                var parametersLength = minMaxParametersLength[scopeType.ToString()];
+                if (scopeParameters.Length < parametersLength.Item1 || scopeParameters.Length > parametersLength.Item2)
+                    errors += "ScopeType {0} must have atleast {1} parameters and no more than {2} but it has {3}".FormatEx(scopeType.ToString(), parametersLength.Item1, parametersLength.Item2, scopeParameters.Length);
+
                 return errors;
             }
         }

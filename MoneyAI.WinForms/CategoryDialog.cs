@@ -35,37 +35,42 @@ namespace MoneyAI.WinForms
                         : s, false);
         }
 
-        public static Tuple<TransactionEdit.EditScope, string[]> GetCategoryEditFromUser(TransactionEdit lastCategoryEdit
+        public static Tuple<TransactionEdit.ScopeFilter[], string[]> GetCategoryEditFromUser(TransactionEdit lastCategoryEdit
             , Transaction firstSelectedTransaction, ICollection<string> selectedTransactionIds, IWin32Window parentForm)
         {
             using (var dialog = new CategoryDialogForm())
             {
                 dialog.entityNameNormalized = firstSelectedTransaction.EntityNameNormalized;
 
-                var currentScope = lastCategoryEdit.IfNotNull(e => e.Scope) 
-                        ?? new TransactionEdit.EditScope(TransactionEdit.ScopeType.EntityNameNormalized, new string[] {firstSelectedTransaction.EntityNameNormalized});
+                var currentScopeFilters = lastCategoryEdit.IfNotNull(e => e.ScopeFilters) 
+                        ?? new [] { new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.EntityNameNormalized, new string[] {firstSelectedTransaction.EntityNameNormalized}) };
                 var currentCategoryPath = lastCategoryEdit.IfNotNull(e => e.Values.IfNotNull(v => v.CategoryPath.IfNotNull(c => c.GetValueOrDefault())))
                         ?? Utils.EmptyStringArray;
 
+                if (currentScopeFilters.Length != 1)
+                    throw new NotSupportedException("Multiple scopes for categories in Windows application is not supported");
+
+                var currentScopeFilter = currentScopeFilters[0];
+
                 string radioButtonNameText = null, textBoxNameWordsText = null, radioButtonNormalizedNameText = null, radioButtonOnlySelectedText = null;
 
-                switch (currentScope.Type)
+                switch (currentScopeFilter.Type)
                 {
                     case TransactionEdit.ScopeType.EntityName:
                         dialog.radioButtonName.Checked = true;
-                        radioButtonNameText = dialog.radioButtonName.Text.FormatEx(currentScope.Parameters[0]); break;
+                        radioButtonNameText = dialog.radioButtonName.Text.FormatEx(currentScopeFilter.Parameters[0]); break;
                     case TransactionEdit.ScopeType.EntityNameAnyTokens:
                         dialog.radioButtonNameWords.Checked = true;
-                        textBoxNameWordsText = GetTextBoxNameWordsText(currentScope.Parameters); break;
+                        textBoxNameWordsText = GetTextBoxNameWordsText(currentScopeFilter.Parameters); break;
                     case TransactionEdit.ScopeType.EntityNameNormalized:
                         dialog.radioButtonNormalizedName.Checked = true;
-                        radioButtonNormalizedNameText = dialog.radioButtonNormalizedName.Text.FormatEx(currentScope.Parameters[0]); break;
+                        radioButtonNormalizedNameText = dialog.radioButtonNormalizedName.Text.FormatEx(currentScopeFilter.Parameters[0]); break;
                     case TransactionEdit.ScopeType.TransactionId:
                         dialog.radioButtonOnlySelected.Checked = true;
-                        radioButtonOnlySelectedText = dialog.radioButtonOnlySelected.Text.FormatEx(currentScope.Parameters.Length
-                            , currentScope.Parameters.Length == 1 ? string.Empty : "s"); break;
+                        radioButtonOnlySelectedText = dialog.radioButtonOnlySelected.Text.FormatEx(currentScopeFilter.Parameters.Length
+                            , currentScopeFilter.Parameters.Length == 1 ? string.Empty : "s"); break;
                     default:
-                        throw new Exception("Scope Type {0} is not supported for creating category based edit".FormatEx(currentScope.Type));
+                        throw new Exception("Scope Type {0} is not supported for creating category based edit".FormatEx(currentScopeFilter.Type));
                 }
 
                 dialog.radioButtonName.Text = radioButtonNameText ?? dialog.radioButtonName.Text.FormatEx(firstSelectedTransaction.EntityName);
@@ -106,11 +111,11 @@ namespace MoneyAI.WinForms
                     }
                     else throw new Exception("None of the expected checkboxes are selected!");
 
-                    var scope = new TransactionEdit.EditScope(scopeType, scopeParameters);
+                    var scope = new TransactionEdit.ScopeFilter(scopeType, scopeParameters);
                     var categoryPath = Utils.ParseCsvLine(dialog.textBoxCategory.Text, '>')
                             .Select(s => s.Trim()).RemoveNullOrEmpty().ToArray().NullIfEmpty();
 
-                    return Tuple.Create(scope, categoryPath);
+                    return Tuple.Create(new [] {scope}, categoryPath);
                 }
                 else return null;
             }

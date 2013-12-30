@@ -18,8 +18,8 @@ namespace MoneyAI
         [DataMember(IsRequired = true, Name = "auditInfo")]
         public AuditInfo AuditInfo { get; private set; }
 
-        [DataMember(IsRequired = true, Name = "scope")]
-        public EditScope Scope { get; private set; }
+        [DataMember(IsRequired = true, Name = "scopeFilters")]
+        public ScopeFilter[] ScopeFilters { get; private set; }
 
         [DataMember(EmitDefaultValue = false, Name = "values")]
         public EditedValues Values { get; private set; }
@@ -30,23 +30,18 @@ namespace MoneyAI
         [DataMember(IsRequired = true, Name = "id")]
         public string Id { get; private set; }
 
-        internal TransactionEdit(EditScope scope, string sourceId, EditedValues editValues = null)
+        internal TransactionEdit(IEnumerable<ScopeFilter> scopeFilters, string sourceId, EditedValues editValues = null)
         {
             this.AuditInfo = new AuditInfo();
-            this.Scope = scope;
+            this.ScopeFilters = scopeFilters.ToArray();
             this.SourceId = sourceId;
             this.Values = new EditedValues(editValues);
             this.Id = Guid.NewGuid().ToBase64String();
         }
 
-        internal TransactionEdit(TransactionEdit edit): this(edit.Scope, edit.SourceId, edit.Values)
+        internal TransactionEdit(TransactionEdit edit)
+            : this(edit.ScopeFilters, edit.SourceId, edit.Values)
         {
-        }
-
-        internal void Merge(TransactionEdit otherEdit)
-        {
-            this.Values.Merge(otherEdit.Values);
-            this.AuditInfo = new AuditInfo(this.AuditInfo, true);
         }
 
         public string SerializeToJson()

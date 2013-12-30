@@ -79,6 +79,9 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false, Name = "entityNameNormalized")]
         public string EntityNameNormalized { get; private set; }
 
+        [DataMember(EmitDefaultValue = false, Name = "entityNameTokens")]   //TODO: could be eliminated from serialization if OnDeserialized is handled
+        public string[] EntityNameTokens { get; private set; }
+
         [DataMember(EmitDefaultValue = false, Name = "instituteReference")]
         public string InstituteReference { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "providerCategoryName")]
@@ -139,6 +142,7 @@ namespace MoneyAI
             this.Amount = importedValues.Amount.Value;
             this.EntityName = importedValues.EntityName;
             this.EntityNameNormalized = GetEntityNameNormalized(this.EntityName);
+            this.EntityNameTokens = (this.EntityName ?? string.Empty).Split(null);
             this.PostedDate = importedValues.PostedDate;
             this.TransactionDate = importedValues.TransactionDate.Value;
             this.TransactionReason = importedValues.TransactionReason.Value;

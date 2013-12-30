@@ -83,21 +83,21 @@ namespace MoneyAI
                 return transaction.AppliedEditIdsDescending.Select(editId => this.edits[editId]);
         }
 
-        public IEnumerable<Transaction> SetIsUserFlagged(Transaction transaction, bool isUserFlagged)
+        public IEnumerable<Transaction> SetIsUserFlagged(IEnumerable<Transaction> transactions, bool isUserFlagged)
         {
-            var edit = this.edits.CreateEditIsUserFlagged(transaction.Id, isUserFlagged);
+            var edit = this.edits.CreateEditIsUserFlagged(transactions.Select(t => t.Id), isUserFlagged);
             return this.ApplyInternal(edit);
         }
 
-        public IEnumerable<Transaction> SetCategory(TransactionEdit.EditScope scope, string[] categoryPath)
+        public IEnumerable<Transaction> SetCategory(IEnumerable<TransactionEdit.ScopeFilter> scopeFilters, string[] categoryPath)
         {
-            var edit = this.edits.CreateEditCategory(scope, categoryPath);
+            var edit = this.edits.CreateEditCategory(scopeFilters, categoryPath);
             return this.ApplyInternal(edit);
         }
 
-        public IEnumerable<Transaction> SetNote(Transaction transaction, string note)
+        public IEnumerable<Transaction> SetNote(IEnumerable<Transaction> transactions, string note)
         {
-            var edit = this.edits.CreateEditNote(transaction.Id, note);
+            var edit = this.edits.CreateEditNote(transactions.Select(t => t.Id), note);
             return this.ApplyInternal(edit);
         }
 
@@ -196,28 +196,40 @@ namespace MoneyAI
         #region Apply Edit
         private IEnumerable<Transaction> FilterTransactions(TransactionEdit edit)
         {
-            if (edit.Scope.Type == TransactionEdit.ScopeType.TransactionId)
-                return edit.Scope.Parameters.Select(id => this.itemsById[id]);
-            else
-                return this.items.Where(t => FilterTransaction(edit, t));
+            var filteredTransactions = this.items;
+            foreach (var scopeFilter in edit.ScopeFilters)
+                filteredTransactions = filteredTransactions.Where(t => FilterTransaction(scopeFilter, t)).ToList();
+
+            return filteredTransactions;
         }
 
-        private static bool FilterTransaction(TransactionEdit edit, Transaction transaction)
+        private static bool FilterTransaction(TransactionEdit.ScopeFilter scopeFilter, Transaction transaction)
         {
-            switch (edit.Scope.Type)
+            //TODO: remove re-prasing
+            switch (scopeFilter.Type)
             {
                 case TransactionEdit.ScopeType.All:
                     return true;
                 case TransactionEdit.ScopeType.None:
                     return false;
                 case TransactionEdit.ScopeType.EntityName:
-                    return string.Equals(transaction.EntityName, edit.Scope.Parameters[0], StringComparison.CurrentCultureIgnoreCase);
+                    return scopeFilter.Parameters.Any(p => string.Equals(transaction.EntityName, p, StringComparison.CurrentCultureIgnoreCase));
                 case TransactionEdit.ScopeType.EntityNameNormalized:
-                    return string.Equals(transaction.EntityNameNormalized, edit.Scope.Parameters[0], StringComparison.CurrentCultureIgnoreCase);
+                    return scopeFilter.Parameters.Any(p => string.Equals(transaction.EntityNameNormalized, p, StringComparison.CurrentCultureIgnoreCase));
                 case TransactionEdit.ScopeType.TransactionId:
-                    return string.Equals(transaction.Id, edit.Scope.Parameters[0], StringComparison.Ordinal);
+                    return scopeFilter.Parameters.Any(p => string.Equals(transaction.Id, p, StringComparison.Ordinal));
+                case TransactionEdit.ScopeType.EntityNameAnyTokens:
+                    return scopeFilter.Parameters.Any(p => transaction.EntityNameTokens.Any(t => string.Equals(t, p, StringComparison.CurrentCultureIgnoreCase)));
+                case TransactionEdit.ScopeType.EntityNameAllTokens:
+                    return scopeFilter.Parameters.All(p => transaction.EntityNameTokens.Any(t => string.Equals(t, p, StringComparison.CurrentCultureIgnoreCase)));
+                case TransactionEdit.ScopeType.AccountId:
+                    return scopeFilter.Parameters.Any(p => string.Equals(transaction.AccountId, p, StringComparison.Ordinal));
+                case TransactionEdit.ScopeType.TransactionReason:
+                    return scopeFilter.Parameters.Any(p => (TransactionReason)Enum.Parse(typeof(TransactionReason), p) == transaction.TransactionReason);
+                case TransactionEdit.ScopeType.AmountRange:
+                    return transaction.Amount >= Decimal.Parse(scopeFilter.Parameters[0]) && transaction.Amount <= Decimal.Parse(scopeFilter.Parameters[1]);
                 default:
-                    throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported".FormatEx(edit.Scope.Type.ToString()));
+                    throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported in FilterTransaction".FormatEx(scopeFilter.Type.ToString()));
             }
         }
 
@@ -251,8 +263,8 @@ namespace MoneyAI
                 count++;
             }
 
-            if (!ignoreMissingIds && edit.Scope.Type == TransactionEdit.ScopeType.TransactionId && count != edit.Scope.Parameters.Length)
-                throw new Exception("Edit targetted transactions with {0} IDs but only {1} were found in this collection".FormatEx(edit.Scope.Parameters.Length, count));
+            if (!ignoreMissingIds && edit.ScopeFilters.Length == 1 && edit.ScopeFilters[0].Type == TransactionEdit.ScopeType.TransactionId && count != edit.ScopeFilters[0].Parameters.Length)
+                throw new Exception("Edit targetted transactions with {0} IDs but only {1} were found in this collection".FormatEx(edit.ScopeFilters[0].Parameters.Length, count));
         }
         #endregion
 
