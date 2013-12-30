@@ -1,7 +1,7 @@
-﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues",
-    "text!templates/txList.txt", "text!templates/noteEditorTitle.txt", "text!templates/noteEditorBody.txt", "text!templates/categoryEditorTitle.txt", "text!templates/categoryEditorBody.txt"],
-    function ($, Transaction, utils, TransactionAggregator, editedValues,
-        txListTemplateText, noteEditorTitleText, noteEditorBodyText, categoryEditorTitleText, categoryEditorBodyText) {
+﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues", "common/popoverForm",
+    "text!templates/txList.txt", "text!templates/noteEditorBody.txt", "text!templates/categoryEditorBody.txt"],
+    function ($, Transaction, utils, TransactionAggregator, editedValues, popoverForm,
+        txListTemplateText, noteEditorBodyText, categoryEditorBodyText) {
 
     "use strict";
 
@@ -158,7 +158,7 @@
         parentRow.data("ischildrenvisible", isChildrenVisible.toString());
 
         showHideRow(rowInfo);
-    };
+    },
 
     refresh = function (txs, selectYearString, selectMonthString) {
         if (txs) {
@@ -197,99 +197,85 @@
 
     editCategoryMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
         var firstTx = selectedTx[0],
-            lastCategoryEdit = cachedValues.txs.getLastCategoryEdit(firstTx),
-            editScopeType = lastCategoryEdit ? lastCategoryEdit.scope.type : editedValues.scopeTypeLookup.entityNameNormalized,
-            dialogInputs = { tx: firstTx, editScopeType: editScopeType, selectedTx: selectedTx };
+            lastCategoryEdit = cachedValues.txs.getLastCategoryEdit(firstTx);
 
+        var viewModel = {
+            tx: firstTx,
 
-        compiledTemplates.categoryEditorTitle = compiledTemplates.categoryEditorTitle || utils.compileTemplate(categoryEditorTitleText);
-        var titleHtml = utils.runTemplate(compiledTemplates.categoryEditorTitle, dialogInputs);
+            //User editable values
+            scopeType: lastCategoryEdit ? lastCategoryEdit.scope.type : editedValues.scopeTypeLookup.entityNameNormalized,
+            categoryPathString: firstTx.correctedValues.categoryPathString,
+
+            selectedTx: selectedTx,
+            scopeTypeLookup: editedValues.scopeTypeLookup,
+            getTitle: function () {
+                return firstTx.correctedValues.categoryPathString ? "Edit Category" : "Add Category";
+            },
+            save: function (viewModel) {
+                switch (viewModel.scopeType) {
+                    case editedValues.scopeTypeLookup.entityNameNormalized:
+                        cachedValues.txs.setCategoryByScope(viewModel.categoryPathString, !!!viewModel.categoryPathString,
+                            viewModel.scopeType, [viewModel.tx.entityNameNormalized]);
+                        break;
+                    case editedValues.scopeTypeLookup.transactionId:
+                        cachedValues.txs.setCategoryByScope(viewModel.categoryPathString, !!!viewModel.categoryPathString,
+                            viewModel.scopeType, utils.map(viewModel.selectedTx, function (tx) { return tx.id; }));
+                        break;
+                    default:
+                        throw new Error("scopeType " + viewModel.scopeType + " is not supported");
+                }
+            },
+            afterClose: function (isOkOrCancel) {
+                if (isOkOrCancel) {
+                    refresh();
+                }
+            }
+        };
 
         compiledTemplates.categoryEditorBody = compiledTemplates.categoryEditorBody || utils.compileTemplate(categoryEditorBodyText);
-        var bodyHtml = utils.runTemplate(compiledTemplates.categoryEditorBody, dialogInputs);
+        var bodyHtml = utils.runTemplate(compiledTemplates.categoryEditorBody, viewModel); //Render partial templates within templates
 
         dropdownElement
         .dropdown("toggle")
-        .popover({
-            animation: false,
-            html: true,
-            trigger: "manual",
-            title: titleHtml,
-            content: bodyHtml,
-            placement: "bottom"
-        })
-        .popover("show");
-
-        var popoverContainer = dropdownElement.next();
-
-        popoverContainer.one("click", ".saveControl", function () {
-            var category = popoverContainer.find(".categoryControl").val();
-            var isRemove = popoverContainer.find(".isRemoveControl").is(":checked");
-            var scopeType = utils.parseInt(popoverContainer.find("input[name=scopeType]:checked").val());
-            var entityNameNormalized = popoverContainer.find("input[name=entityNameNormalized]").val();
-            switch (scopeType) {
-                case editedValues.scopeTypeLookup.entityNameNormalized:
-                    cachedValues.txs.setCategoryByScope(category, isRemove, scopeType, [entityNameNormalized]);
-                    break;
-                case editedValues.scopeTypeLookup.transactionId:
-                    cachedValues.txs.setCategoryByScope(category, isRemove, scopeType, utils.map(selectedTx, function (tx) { return tx.id; }));
-                    break;
-                default:
-                    throw new Error("scopeType " + scopeType + " is not supported");
-            }
-
-            dropdownElement.popover("destroy");
-
-            refresh();
+        .popoverForm(bodyHtml, viewModel, {
+            titleIconClass: "categoryIcon",
+            titleText: viewModel.getTitle(),
+            onSave: viewModel.save,
+            afterClose: viewModel.afterClose
         });
-
-        //Make sure popovers gets killed when hidden
-        $("#txListControl").one("hidden.bs.popover", ".dropdown-toggle", function () {
-            dropdownElement.popover("destroy");
-        });
-
-        //Do not refresh or popover will go over
     },
 
     editNoteMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
         var firstTx = selectedTx[0];
 
-        compiledTemplates.noteEditorTitle = compiledTemplates.noteEditorTitle || utils.compileTemplate(noteEditorTitleText);
-        var titleHtml = utils.runTemplate(compiledTemplates.noteEditorTitle, firstTx);
+        var viewModel = {
+            tx: firstTx,
+            note: firstTx.correctedValues.note,  //user edited value will go here
+            selectedTx: selectedTx,
+            getTitle: function() {
+                return firstTx.correctedValues.note ? "Edit Note" : "Add Note";
+            },
+            save: function (viewModel) {
+                cachedValues.txs.setNote(utils.map(viewModel.selectedTx, function (tx) { return tx.id; }), viewModel.note, !!!viewModel.note);
+            },
+            afterClose: function (isOkOrCancel) {
+                if (isOkOrCancel) {
+                    refresh();
+                }
+            }
+        };
 
         compiledTemplates.noteEditorBody = compiledTemplates.noteEditorBody || utils.compileTemplate(noteEditorBodyText);
-        var bodyHtml = utils.runTemplate(compiledTemplates.noteEditorBody, firstTx);
+        var bodyHtml = utils.runTemplate(compiledTemplates.noteEditorBody, viewModel); //There is no need for this as we don't have partial in this template but we'll follow the pattern
 
         dropdownElement
         .dropdown("toggle")
-        .popover({
-            animation: false,
-            html: true,
-            trigger: "manual",
-            title: titleHtml,
-            content: bodyHtml,
-            placement: "bottom"
-        })
-        .popover("show");
-
-        var popoverContainer = dropdownElement.next();
-
-        popoverContainer.one("click", ".saveControl", function () {
-            var note = popoverContainer.find(".noteControl").val();
-            var isRemove = popoverContainer.find(".isRemoveControl").is(":checked");
-            cachedValues.txs.setNote(utils.map(selectedTx, function (tx) { return tx.id; }), note, isRemove);
-
-            dropdownElement.popover("destroy");
-
-            refresh();
+        .popoverForm(bodyHtml, viewModel, {
+            titleIconClass: "noteIcon",
+            titleText: viewModel.getTitle(),
+            onSave: viewModel.save,
+            afterClose: viewModel.afterClose
         });
-
-        //Make sure popovers gets killed when hidden
-        $("#txListControl").one("hidden.bs.popover", ".dropdown-toggle", function () {
-            dropdownElement.popover("destroy");
-        });
-
-        //Do not refresh or popover will go over
     },
 
     setFlagMenuItemClick = function (menuParams, selectedTx) {

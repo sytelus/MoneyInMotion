@@ -1,18 +1,10 @@
-﻿<div class="popoverContainer form" role="form">
-
-	<!-- Category -->
+﻿	<!-- Category -->
 	<div class="form-group">
 		<label class="sr-only" for="cat_{{tx.id}}">Set Category</label>
-		<input type="text" id="cat_{{tx.id}}" autofocus autocomplete="on" class="form-control input-sm categoryControl " 
-			size="25" placeholder="Example: Food > Dinners > Eating Out" value="{{tx.correctedValues.categoryPathString}}">
+		<input type="text" id="cat_{{tx.id}}" autofocus autocomplete="on" class="form-control input-sm categoryControl" 
+			size="25" placeholder="Example: Food > Dinners > Eating Out"
+			data-bind="value: categoryPathString">
 	</div>
 	
 	<!-- Scope selection -->
 	{{> txEditRule }}
-	
-	<!-- Submit/Cancel -->
-	<div class="popover-form-footer">
-		<button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
-		<button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>
-	</div>
-</div>

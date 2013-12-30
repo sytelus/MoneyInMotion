@@ -33,9 +33,6 @@
     <Content Include="js\templates\txEditRule.txt" />
     <Content Include="js\templates\txAttributesEditorBody.txt" />
     <Content Include="js\templates\categoryEditorBody.txt" />
-    <Content Include="js\templates\txAttributesEditorTitle.txt" />
-    <Content Include="js\templates\categoryEditorTitle.txt" />
-    <Content Include="js\templates\noteEditorTitle.txt" />
     <Content Include="js\templates\noteEditorBody.txt" />
     <Content Include="js\Transactions.js" />
     <Content Include="js\userProfile.js" />
@@ -55,6 +52,7 @@
     <Content Include="js\txListView.js" />
     <Content Include="js\txNavigationView.js" />
     <Content Include="js\templates\txNavigatorPane.txt" />
+    <Content Include="tmp\HtmlPage1.html" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>

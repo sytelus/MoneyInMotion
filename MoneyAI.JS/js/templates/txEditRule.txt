@@ -4,19 +4,15 @@
 		<div class="well well-sm moreContentContainer">
 			<div class="checkbox">
 				<label class="checkboxGroup">
-					<input type="checkbox" class="checkboxGroupChecked" data-set-prop="isEntityNameFilter" checked>
-					<input type="hidden" name="entityNameNormalized" data-set-prop="entityName" value="{{tx.entityNameNormalized}}">
-					Apply to all <strong>{{tx.correctedValues.entityNameBest}}</strong> items
+					<input type="checkbox" class="checkboxGroupChecked" 
+						data-bind="checked: scopeType === scopeTypeLookup.entityNameNormalized">
+					Apply to all <strong data-bind="text: tx.correctedValues.entityNameBest"/> items
 
 					<div class="checkBoxGroupOnUncheckedPanel checkBoxGroupHidePanel">
 						<div class="radio">
 							<label>
 							<input type="radio" name="filterType" data-set-prop="isOnlySelected" value="100">
-							{{#compare selectedTx.length "===" 1}}
-								Apply to only this item
-							{{else}}
-								Apply to only these {{selectedTx.length}} items
-							{{/compare}}
+							Apply to only <span data-bind="text: selectedTx.length === 1 ? 'this item' : 'these ' + selectedTx.length + ' items'" />
 							</label>
 						</div>
 						<div class="radio">
