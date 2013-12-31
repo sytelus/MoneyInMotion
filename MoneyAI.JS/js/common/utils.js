@@ -105,11 +105,15 @@
         parseInt: function(value) {
             return parseInt(value, 10);
         },
+        parseFloat: function(value) {
+            return parseFloat(value);
+        },
         getMD5Hash: function(valueString) {
             var hash = CryptoJS.MD5(valueString);
             return hash.toString(CryptoJS.enc.Base64);
         },
         createUUID: function () { return UUIDjs.create().toString(); },
+        int32Max: 2147483647,
 
         forEach: _.forEach,
         toValueArray: _.values,
@@ -119,8 +123,20 @@
         filter: _.filter,
         map: _.map,
         isEmpty: _.isEmpty,
-        findFirst: _.find,
+        distinct: _.uniq,
+        findFirst: function (collection, callback, thisArg, mapFunctionForFound, defaultIfNotFound) {
+            var found = _.find(collection, callback, thisArg);
+
+            if (mapFunctionForFound && found !== undefined) {
+                found = mapFunctionForFound.call(thisArg, mapFunctionForFound);
+            }
+
+            return found === undefined ? defaultIfNotFound : found;
+        },
         max: _.max,
+        min: _.min,
+        any: _.any,
+        all: _.all,
         clone: _.clone,
         extend: _.extend,
         applyDefaults: _.partialRight(_.assign, function (a, b) {
@@ -166,7 +182,7 @@
         dom: function(obj) {
             return $(obj || document);
         },
-
+        splitWhiteSpace: function(s) { return (s || "").split("\\s+"); },
         dom2obj: function (selector, obj, converter, thisArg) {
             var dom = $(selector),
                 elements = dom.find("[data-set-prop]");

@@ -18,37 +18,63 @@
 
     var transactionsPrototype = (function () {
         //privates
-        var filterTransaction = function (edit, transaction) {
-            switch (edit.scope.type) {
+        //TODO: remove re-parsing parameters on each call
+        var filterTransactionByScope = function (scopeFilter, transaction) {
+            switch (scopeFilter.type) {
                 case editedValues.scopeTypeLookup.all:
                     return true;
                 case editedValues.scopeTypeLookup.none:
                     return false;
                 case editedValues.scopeTypeLookup.entityName:
-                    return utils.compareStrings(transaction.entityName, edit.scope.parameters[0], true, true);
+                    return utils.any(scopeFilter.parameters, function (param) {
+                        return utils.compareStrings(transaction.entityName, param, true, true);
+                    });
                 case editedValues.scopeTypeLookup.entityNameNormalized:
-                    return utils.compareStrings(transaction.entityNameNormalized, edit.scope.parameters[0], true, true);
+                    return utils.any(scopeFilter.parameters, function (param) {
+                       return utils.compareStrings(transaction.entityNameNormalized, param, true, true);
+                    });
                 case editedValues.scopeTypeLookup.transactionId:
-                    return utils.compareStrings(transaction.id, edit.scope.parameters[0], false);
+                    return utils.any(scopeFilter.parameters, function (param) {
+                        return utils.compareStrings(transaction.id, param, false);
+                    });
+                case editedValues.scopeTypeLookup.entityNameAnyTokens:
+                    return utils.any(scopeFilter.parameters, function (param) {
+                        utils.any(transaction.entityNameTokens, function (entityNameToken) {
+                            return utils.compareStrings(entityNameToken, param, true, true);
+                        });
+                    });
+                case editedValues.scopeTypeLookup.entityNameAllTokens:
+                    return utils.all(scopeFilter.parameters, function (param) {
+                        utils.any(transaction.entityNameTokens, function (entityNameToken) {
+                            return utils.compareStrings(entityNameToken, param, true, true);
+                        });
+                    });
+                case editedValues.scopeTypeLookup.accountId:
+                    return utils.any(scopeFilter.parameters, function (param) {
+                        return utils.compareStrings(transaction.accountId, param, false);
+                    });
+                case editedValues.scopeTypeLookup.transactionReason:
+                    return utils.any(scopeFilter.parameters, function (param) {
+                        return transaction.transactionReason === utils.parseInt(param);
+                    });
+                case editedValues.scopeTypeLookup.amountRange:
+                    return transaction.amount >= utils.parseFloat(scopeFilter.parameters[0]) &&
+                        transaction.amount <= utils.parseFloat(scopeFilter.parameters[1]);
                 default:
-                    throw new Error("TransactionEdit.scope value of " + edit.scope.type + " is not supported");
+                    throw new Error("TransactionEdit.scopeFilter.type " + scopeFilter.type + " is not supported by filterTransactionByScope");
             }
         },
 
         filterTransactions = function (edit) {
-            if (edit.scope.type === editedValues.scopeTypeLookup.transactionId) {
-                return utils.map(edit.scope.parameters, function (transactionId) {
-                    var tx = this.itemsById.get(transactionId);
-                    if (tx === undefined) {
-                        throw new Error("Transaction for id " + transactionId + " was not found");
-                    }
-                    return tx;
+            var filteredTransactions = this.items;
+
+            utils.forEach(edit.scopeFilters, function (scopeFilter) {
+                filteredTransactions = utils.filter(filteredTransactions, function (tx) {
+                    filterTransactionByScope(scopeFilter, tx);
                 }, this);
-            }
-            else {
-                return utils.filter(this.items,
-                    function (item) { return filterTransaction(edit, item); }, this);
-            }
+            }, this);
+
+            return filteredTransactions;
         },
         
         applyEditsInternal = function (edits, ignoreMissingIds) {
@@ -60,9 +86,9 @@
                     count++;
                 }, this);
 
-                if (!!!ignoreMissingIds && edit.scope.type === editedValues.scopeTypeLookup.transactionId) {
-                    if (count !== edit.scope.parameters.length) {
-                        throw new Error("Edit targetted transactions with " + edit.Scope.parameters.length + " IDs but only " + count + " were found in this collection");
+                if (!!!ignoreMissingIds && edit.scopeFilteres.length === 1 && edit.scopeFilteres[0].type === editedValues.scopeTypeLookup.transactionId) {
+                    if (count !== edit.scopeFilteres[0].parameters.length) {
+                        throw new Error("Edit targetted transactions with " + edit.scopeFilteres[0].parameters.length + " IDs but only " + count + " were found in this collection");
                     }
                 }
             }, this);
@@ -78,9 +104,13 @@
             }
         },
 
-        addEditForScope = function (scopeType, scopeParameters) {
-            var editScope = new editedValues.EditScope(scopeType, scopeParameters);
-            var edit = new TransactionEdit(editScope, userProfile.getEditsSourceId());
+        addEditForScopeType = function (scopeType, scopeParameters) {
+            var scopeFilter = new editedValues.EditScope(scopeType, scopeParameters);
+            addEdit.call(this, [scopeFilter]);
+        },
+        
+        addEdit = function (scopeFilters) {
+            var edit = new TransactionEdit(scopeFilters, userProfile.getEditsSourceId());
             this.edits.edits.push(edit);
 
             ensureEditsByIdCache.call(this);
@@ -88,7 +118,6 @@
 
             return edit;
         };
-
 
 
         //publics
@@ -99,7 +128,7 @@
                     editedValues.EditValue.voidedEditValue(false);
 
                 var edits = utils.map(ids, function (id) {
-                    var edit = addEditForScope.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
+                    var edit = addEditForScopeType.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
                     edit.values.isFlagged = isFlaggedEditValue;
                     return edit;
                 }, this);
@@ -113,7 +142,7 @@
                     editedValues.EditValue.voidedEditValue(false);
 
                 var edits = utils.map(ids, function (id) {
-                    var edit = addEditForScope.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
+                    var edit = addEditForScopeType.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
                     edit.values.note = noteEditValue;
                     return edit;
                 }, this);
@@ -121,8 +150,8 @@
                 applyEditsInternal.call(this, edits);
             },
 
-            setCategoryByScope: function (categoryPathString, isRemove, scopeType, scopeParameters) {
-                var edit = addEditForScope.call(this, scopeType, scopeParameters);
+            setCategoryByScope: function (scopeFilteres, categoryPathString, isRemove) {
+                var edit = addEdit.call(this, scopeFilteres);
 
                 var categoryPath = Transaction.prototype.getCategoryPath.call(undefined, categoryPathString);
 
@@ -133,7 +162,7 @@
             },
 
             getDefaultCategoryEdit: function(tx) {
-                var edit = addEditForScope.call(this, editedValues.scopeTypeLookup.entityNameNormalized, [tx.entityNameNormalized]);
+                var edit = addEditForScopeType.call(this, editedValues.scopeTypeLookup.entityNameNormalized, [tx.entityNameNormalized]);
                 edit.values.categoryPath = tx.correctedValues.categoryPath;
                 return edit;
             },

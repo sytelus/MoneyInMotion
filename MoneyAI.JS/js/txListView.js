@@ -1,7 +1,7 @@
 ﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues", "common/popoverForm",
-    "text!templates/txList.txt", "text!templates/noteEditorBody.txt", "text!templates/categoryEditorBody.txt"],
+    "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html"],
     function ($, Transaction, utils, TransactionAggregator, editedValues, popoverForm,
-        txListTemplateText, noteEditorBodyText, categoryEditorBodyText) {
+        txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml) {
 
     "use strict";
 
@@ -186,7 +186,7 @@
 
         var templateData = netAggregator;
 
-        compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateText);
+        compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateHtml);
         var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, templateData);
 
         $("#txListControl").html(templateHtml);
@@ -197,33 +197,22 @@
 
     editCategoryMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
         var firstTx = selectedTx[0],
-            lastCategoryEdit = cachedValues.txs.getLastCategoryEdit(firstTx);
+            lastCategoryEdit = cachedValues.txs.getLastCategoryEdit(firstTx, true);
 
         var viewModel = {
             tx: firstTx,
-
-            //User editable values
-            scopeType: lastCategoryEdit ? lastCategoryEdit.scope.type : editedValues.scopeTypeLookup.entityNameNormalized,
-            categoryPathString: firstTx.correctedValues.categoryPathString,
-
             selectedTx: selectedTx,
             scopeTypeLookup: editedValues.scopeTypeLookup,
+
+            //User editable values
+            scopeFiltersViewModel: new editedValues.ScopeFiltersViewModel(lastCategoryEdit.scopeFilters),
+            categoryPathString: firstTx.correctedValues.categoryPathString,
+
             getTitle: function () {
                 return firstTx.correctedValues.categoryPathString ? "Edit Category" : "Add Category";
             },
             save: function (viewModel) {
-                switch (viewModel.scopeType) {
-                    case editedValues.scopeTypeLookup.entityNameNormalized:
-                        cachedValues.txs.setCategoryByScope(viewModel.categoryPathString, !!!viewModel.categoryPathString,
-                            viewModel.scopeType, [viewModel.tx.entityNameNormalized]);
-                        break;
-                    case editedValues.scopeTypeLookup.transactionId:
-                        cachedValues.txs.setCategoryByScope(viewModel.categoryPathString, !!!viewModel.categoryPathString,
-                            viewModel.scopeType, utils.map(viewModel.selectedTx, function (tx) { return tx.id; }));
-                        break;
-                    default:
-                        throw new Error("scopeType " + viewModel.scopeType + " is not supported");
-                }
+                cachedValues.txs.setCategoryByScope(viewModel.scopeFiltersViewModel.toScopeFilters(), viewModel.categoryPathString, !!!viewModel.categoryPathString);
             },
             afterClose: function (isOkOrCancel) {
                 if (isOkOrCancel) {
@@ -232,7 +221,7 @@
             }
         };
 
-        compiledTemplates.categoryEditorBody = compiledTemplates.categoryEditorBody || utils.compileTemplate(categoryEditorBodyText);
+        compiledTemplates.categoryEditorBody = compiledTemplates.categoryEditorBody || utils.compileTemplate(categoryEditorBodyHtml);
         var bodyHtml = utils.runTemplate(compiledTemplates.categoryEditorBody, viewModel); //Render partial templates within templates
 
         dropdownElement
@@ -265,7 +254,7 @@
             }
         };
 
-        compiledTemplates.noteEditorBody = compiledTemplates.noteEditorBody || utils.compileTemplate(noteEditorBodyText);
+        compiledTemplates.noteEditorBody = compiledTemplates.noteEditorBody || utils.compileTemplate(noteEditorBodyHtml);
         var bodyHtml = utils.runTemplate(compiledTemplates.noteEditorBody, viewModel); //There is no need for this as we don't have partial in this template but we'll follow the pattern
 
         dropdownElement

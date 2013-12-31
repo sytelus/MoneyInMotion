@@ -2,11 +2,11 @@
     "use strict";
 
     //static privates
-    var TransactionEdit = function (scope, sourceId, editValues) {
+    var TransactionEdit = function (scopeFilters, sourceId, editValues) {
         this.auditInfo = userProfile.createAuditInfo();
         this.id = utils.createUUID();
 
-        this.scope = scope;
+        this.scopeFilters = scopeFilters;
         this.sourceId = userProfile.getEditsSourceId();
         this.values = new editedValues.EditedValues(editValues);
     };

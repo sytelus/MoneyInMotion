@@ -1,5 +1,5 @@
-﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.txt", "common/utils"],
-    function (_, Transaction, templateText, utils) {
+﻿define("txNavigationView", ["lodash", "Transaction", "text!templates/txNavigatorPane.html", "common/utils"],
+    function (_, Transaction, txNavigatorPaneHtml, utils) {
 
     "use strict";
     /*jshint -W080 */   //Allow explicit initialization with undefined
@@ -76,7 +76,7 @@
                 }
             }
 
-            compiledTemplate = compiledTemplate || utils.compileTemplate(templateText);
+            compiledTemplate = compiledTemplate || utils.compileTemplate(txNavigatorPaneHtml);
             var templateHtml = utils.runTemplate(compiledTemplate, templateData);
 
             $("#txNavigationControl").html(templateHtml);

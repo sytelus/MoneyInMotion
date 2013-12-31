@@ -1,5 +1,5 @@
-﻿define("templateHelpers", ["text!templates/txListTransactionRow.txt", "text!templates/txListTransactionGroup.txt", "text!templates/txEditRule.txt", "Transaction"],
-    function (txListTransactionRowText, txListTransactionGroupText, txEditRuleText, Transaction) {
+﻿define("templateHelpers", ["text!templates/txListTransactionRow.html", "text!templates/txListTransactionGroup.html", "text!templates/txEditRule.html", "Transaction"],
+    function (txListTransactionRowHtml, txListTransactionGroupHtml, txEditRuleHtml, Transaction) {
     "use strict";
 
     var helpers = [
@@ -54,13 +54,13 @@
 
     var partials = {
         tx: function (utils) {
-            return utils.compileTemplate(txListTransactionRowText);
+            return utils.compileTemplate(txListTransactionRowHtml);
         },
         txGroup: function (utils) {
-            return utils.compileTemplate(txListTransactionGroupText);
+            return utils.compileTemplate(txListTransactionGroupHtml);
         },
         txEditRule: function (utils) {
-            return utils.compileTemplate(txEditRuleText);
+            return utils.compileTemplate(txEditRuleHtml);
         }
     };
 

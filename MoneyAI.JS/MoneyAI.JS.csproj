@@ -30,20 +30,20 @@
     <Content Include="js\common\templateHelpers.js" />
     <Content Include="js\common\globalEvents.js" />
     <Content Include="js\EditedValues.js" />
-    <Content Include="js\templates\txEditRule.txt" />
-    <Content Include="js\templates\txAttributesEditorBody.txt" />
-    <Content Include="js\templates\categoryEditorBody.txt" />
-    <Content Include="js\templates\noteEditorBody.txt" />
+    <Content Include="js\templates\txEditRule.html" />
+    <Content Include="js\templates\txAttributesEditorBody.html" />
+    <Content Include="js\templates\categoryEditorBody.html" />
+    <Content Include="js\templates\noteEditorBody.html" />
     <Content Include="js\Transactions.js" />
     <Content Include="js\userProfile.js" />
     <Content Include="js\TemplateConstructorFunctions.js" />
     <Content Include="js\templateHelpers.js" />
-    <Content Include="js\templates\txList.txt" />
+    <Content Include="js\templates\txList.html" />
     <Content Include="js\common\utils.js" />
     <Content Include="js\repository.js" />
     <Content Include="js\main.js" />
-    <Content Include="js\templates\txListTransactionGroup.txt" />
-    <Content Include="js\templates\txListTransactionRow.txt" />
+    <Content Include="js\templates\txListTransactionGroup.html" />
+    <Content Include="js\templates\txListTransactionRow.html" />
     <Content Include="js\common\keyCounter.js" />
     <Content Include="js\TransactionAggregator.js" />
     <Content Include="js\TransactionEdit.js" />
@@ -51,7 +51,7 @@
     <Content Include="js\Transaction.js" />
     <Content Include="js\txListView.js" />
     <Content Include="js\txNavigationView.js" />
-    <Content Include="js\templates\txNavigatorPane.txt" />
+    <Content Include="js\templates\txNavigatorPane.html" />
     <Content Include="tmp\HtmlPage1.html" />
     <Content Include="web.config" />
   </ItemGroup>

@@ -1,0 +1,54 @@
+﻿	<!-- Scope selection -->
+	<div data-bind="with: scopeFiltersViewModel" class="moreOrLessPanel">
+    <div class="moreTriggerContainer text-right"><a class="moreTrigger" href="#">Options</a></div>
+    <div class="well well-sm moreContentContainer">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" data-bind="checked: isEntityNameNormalizedFilter && !(isTransactionIdFilter || isEntityNameTokensFilter)">
+                Apply to all <strong data-bind="text: entityNameNormalized" /> items
+            </label>
+            <div data-bind="visible: !isEntityNameNormalizedFilter">
+                <div class="radio">
+                    <label>
+                        <input type="radio" name="filterType" data-bind="checked: isTransactionIdFilter">
+                        Apply to only <span data-bind="text: transactionId.length === 1 ? 'this item' : 'these ' + selectedTx.length + ' items'" />
+                    </label>
+                </div>
+                <div class="radio">
+                    <label>
+                        <input type="radio" name="filterType" data-bind="checked: isEntityNameTokensAllFilter"> Apply only if item has these words:
+                        <input type="text" autocomplete="on" class="form-control input-sm" data-bind="value: entityNameAllTokens">
+                        <span class="help-block"><small>Seperate words by space.</small></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" data-bind="checked: isAccountIdFilter"> Apply only for account <span data-bind="text: accountId"></span>
+            </label>
+        </div>
+
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" data-bind="checked: isTransactionReasonFilter"> Apply only when it's <span data-bind="text: transactionReason"></span>
+            </label>
+        </div>
+
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" data-bind="checked: isAmountRangeFilter">
+                Apply only if <span data-bind="text: amountTypeString"></span> is between...
+            </label>
+            <div data-bind="visible: isAmountRangeFilter">
+                <input type="number" class="form-control input-sm inline currencyInput"
+                       data-bind="value: minAmount"> to
+                <input type="number" class="form-control input-sm inline currencyInput"
+                       data-bind="value: maxAmount">
+            </div>
+        </div>
+
+
+    </div>
+</div>
