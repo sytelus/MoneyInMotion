@@ -34,7 +34,7 @@
                 });
 
                 currentAjaxRequest.fail(function (xhr, textStatus, error) {
-                    utils.log(["getJSON failed: ", textStatus, error, "callerId", callerId], 0, "error");
+                    utils.log(["getJSON failed: ", textStatus, error, "callerId", callerId, xhr.responseText], 0, "error");
                     if (!!onFail) {
                         onFail(error, xhr.responseText);
                     }

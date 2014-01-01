@@ -122,7 +122,7 @@
         statusBoxUpdateEventName: "statusBoxUpdate",
         /* jshint -W110 */ //Mixed double and single quotes.
         htmlTemplate:
-            '\n<div data-bind="foreach: {data: alerts, afterAdd: afterElementAdd, beforeRemove: beforeElementRemove}">\n' +
+            '\n<div data-bind="foreach: {data: alerts}">\n' +
                 '<div data-bind="css: cssClass">\n' +
                     '<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>\n' +
                     '<span data-bind="text: text" />\n' +
