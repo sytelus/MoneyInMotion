@@ -22,6 +22,30 @@
         },
 
         function (utils) {
+            utils.registerTemplateHelper("notePreview", function (noteOrNoteKeys) {
+                var totalLength, previewString;
+                if (!noteOrNoteKeys || utils.isString(noteOrNoteKeys)) {
+                    previewString = (noteOrNoteKeys || "").substring(0, 10);
+                    totalLength = (noteOrNoteKeys || "").length;
+                }
+                else {
+                    var fullPartialNotes = utils.map(utils.filter(utils.keys(noteOrNoteKeys), function (key) { return key; }),
+                        function (key) { return key.substring(0, 10); }).join(", ");
+                    previewString = fullPartialNotes.substring(0, 15);
+                    totalLength = fullPartialNotes.length;
+                }
+
+                if (previewString.length < totalLength) {
+                    previewString += "..";
+                }
+
+                previewString = utils.splitWhiteSpace(previewString).join(" "); //Remove tabs, CR, LF
+
+                return previewString;
+            });
+        },
+
+        function (utils) {
             utils.registerTemplateHelper("txTransactionReasonCounterDisplay", function (transactionReasonCounter) {
                 var sortedReasons = utils.map(transactionReasonCounter.getSorted(true),
                     function (kvp) {

@@ -51,7 +51,10 @@
         Dictionary: buckets.Dictionary,
         Set: buckets.Set,
         isObject: _.isObject,
-
+        isPlainObject: _.isPlainObject,
+        isString: _.isString,
+        isFunction: $.isFunction,
+        
         stringify: function(value) {
             return json3.stringify(value);
         },
@@ -126,7 +129,6 @@
 
         forEach: _.forEach,
         toValueArray: _.values,
-        isFunction: $.isFunction,
         size: _.size,
         forOwn: _.forOwn,
         filter: _.filter,
@@ -154,6 +156,7 @@
         toKeyValueArray: function (obj) {
             return _.map(obj, function (value, key) { return { key: key, value: value }; });
         },
+        keys: _.keys,
         compareStrings: function (string1, string2, ignoreCase, useLocale) {
             if (!!ignoreCase) {
                 if (!!useLocale) {

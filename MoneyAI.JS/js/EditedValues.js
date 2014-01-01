@@ -21,7 +21,7 @@
         accountId: { min: 1, max: utils.int32Max }, transactionReason: { min: 1, max: utils.int32Max }, amountRange: { min: 2, max: utils.int32Max }
     },
 
-    validdateEditScope = function (scopeType, scopeParameters) {
+    validateEditScope = function (scopeType, scopeParameters) {
         var errors = "";
 
         var paramLengths = minMaxParameterLength[scopeTypeReverseLookup[scopeType.toString()]];
@@ -35,7 +35,7 @@
 
     /************      EditScope  ***********/
     var EditScope = function (scopeType, scopeParameters) {
-        var errors = validdateEditScope(scopeType, scopeParameters);
+        var errors = validateEditScope(scopeType, scopeParameters);
         if (errors !== "") {
             throw new Error(errors);
         }
@@ -79,6 +79,8 @@
         this.maxAmount = this.isAmountRangeFilter() ? amountRangeParameters[1] :
             Math.abs((utils.max(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 1.1).toFixed(2);
         this.amountTypeString = utils.min(selectedTx, function (tx) { return tx.correctedValues.amount; }) < 0 ? "expense" : "amount";
+
+        this.selectedTx = selectedTx;
     };
     ScopeFiltersViewModel.prototype.toScopeFilters = function () {
         var scopeFilters = [];

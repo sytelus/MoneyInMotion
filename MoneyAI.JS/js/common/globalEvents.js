@@ -43,7 +43,6 @@
 
            event.stopPropagation();
        });
-
    };
 
 });

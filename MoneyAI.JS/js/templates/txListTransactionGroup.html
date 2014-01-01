@@ -34,9 +34,11 @@
 								<!-- note icon -->
 								{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
 									&nbsp;&nbsp;<i class="noteManyIcon"></i>
+                                    <span class="small text-muted">{{notePreview noteCounter.keyCounts}}</span>
 								{{else}}
 									{{#compare noteCounter.notMissedCount ">=" 1}}
 										&nbsp;&nbsp;<i class="noteLinesIcon"></i>
+                                        <span class="small text-muted">{{notePreview correctedValues.keyCounts}}</span>
 									{{/compare}}
 								{{/compare}}
 

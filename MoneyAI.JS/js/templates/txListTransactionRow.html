@@ -10,7 +10,12 @@
                             {{correctedValues.entityNameBest}}
 
                             <!-- tx Icons -->
-                            {{#if correctedValues.note}}&nbsp;&nbsp;<i class="noteLinesIcon"></i>{{/if}}
+                            {{#if correctedValues.note}}
+                            <span class="app-hint" data-hint="{{correctedValues.note}}">
+                                &nbsp;&nbsp;<i class="noteLinesIcon"></i>
+                                <span class="small text-muted">{{notePreview correctedValues.note}}</span>
+                            </span>
+                            {{/if}}
 
                             {{#if correctedValues.isFlagged}}
                                 &nbsp;&nbsp;<i class="todoPendingIcon"></i>

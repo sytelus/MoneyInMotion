@@ -64,9 +64,7 @@
         //window.clearTimeout(alert.timeOutHandle);
         alert.timeOutHandle = window.setTimeout(function () {
             viewModel.alerts.remove(alert);
-            console.log(["REMOVED", alert.level(), alert.text(), alert.closeAfter()]);
         }, alert.closeAfter());
-        console.log([alert.level(), alert.text(), alert.closeAfter()]);
     },
     statusUpdateHandler = function (event, text, level, priority, key, closeAfter) {
         if (level === "info" && priority < $.fn.statusBox.defaults.minPriorityForInfo) {
