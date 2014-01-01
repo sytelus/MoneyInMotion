@@ -4,10 +4,10 @@
     <div class="well well-sm moreContentContainer">
         <div class="checkbox">
             <label>
-                <input type="checkbox" data-bind="checked: isEntityNameNormalizedFilter && !(isTransactionIdFilter || isEntityNameTokensFilter)">
+                <input type="checkbox" data-bind="checked: isEntityNameNormalizedFilter">
                 Apply to all <strong data-bind="text: entityNameNormalized" /> items
             </label>
-            <div data-bind="visible: !isEntityNameNormalizedFilter">
+            <div data-bind="visible: !isEntityNameNormalizedFilter()">
                 <div class="radio">
                     <label>
                         <input type="radio" name="filterType" data-bind="checked: isTransactionIdFilter">
@@ -16,7 +16,7 @@
                 </div>
                 <div class="radio">
                     <label>
-                        <input type="radio" name="filterType" data-bind="checked: isEntityNameTokensAllFilter"> Apply only if item has these words:
+                        <input type="radio" name="filterType" data-bind="checked: isEntityNameAllTokensFilter"> Apply only if item has these words:
                         <input type="text" autocomplete="on" class="form-control input-sm" data-bind="value: entityNameAllTokens">
                         <span class="help-block"><small>Seperate words by space.</small></span>
                     </label>

@@ -1,14 +1,17 @@
-﻿define("app", ["domReady", "bootstrap", "txExplorerView", "common/utils", "templateHelpers", "common/globalEvents"],
-    function (domReady, $, txExplorerView, utils, templateHelpers, globalEvents) {
+﻿define("app", ["domReady", "bootstrap", "txExplorerView", "common/utils", "templateHelpers", "common/statusBox", "common/globalEvents"],
+    function (domReady, $, txExplorerView, utils, templateHelpers, statusBox, globalEvents) {
     "use strict";
     domReady(function () {
-        utils.logger.log("Loaded on: ", new Date());
+        utils.log(["Loaded on: ", new Date()]);
 
         globalEvents(utils);
 
         //Setup app specific template helpers
         templateHelpers.registerAll(utils);
 
+        $("#statusBox").statusBox();
+
+        //App specific initializations
         txExplorerView.initialize();
 
         //Global event handler for hash change for jslink anchors
@@ -16,7 +19,7 @@
             var action = e.getState("action");
             var target = e.getState("target") || "main";
 
-            utils.logger.log("hashchange occured with action: ", action, " target: ", target);
+            utils.log(["hashchange occured with action: ", action, " target: ", target]);
             
             if ((target === "txx" || target === "main") && $("#txExplorer").length) {
                 var params = $.deparam(e.fragment);

@@ -27,6 +27,7 @@
     <Content Include="js\app.js" />
     <Content Include="js\common\jQueryPluginTemplate.js" />
     <Content Include="js\common\popoverForm.js" />
+    <Content Include="js\common\statusBox.js" />
     <Content Include="js\common\templateHelpers.js" />
     <Content Include="js\common\globalEvents.js" />
     <Content Include="js\EditedValues.js" />
@@ -52,7 +53,6 @@
     <Content Include="js\txListView.js" />
     <Content Include="js\txNavigationView.js" />
     <Content Include="js\templates\txNavigatorPane.html" />
-    <Content Include="tmp\HtmlPage1.html" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -77,6 +77,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="js\ext\" />
+    <Folder Include="tmp\" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

@@ -70,7 +70,7 @@
 
             utils.forEach(edit.scopeFilters, function (scopeFilter) {
                 filteredTransactions = utils.filter(filteredTransactions, function (tx) {
-                    filterTransactionByScope(scopeFilter, tx);
+                    return filterTransactionByScope(scopeFilter, tx);
                 }, this);
             }, this);
 
@@ -78,22 +78,33 @@
         },
         
         applyEditsInternal = function (edits, ignoreMissingIds) {
+            var editsAffectedCount = 0;
             utils.forEach(edits, function (edit) {
                 var affectedTransactions = filterTransactions.call(this, edit);
-                var count = 0;
+                
+                //TODO: convert to warning
+                if (affectedTransactions.length > 100 || affectedTransactions.length === 0) {
+                    throw new Error("This edit modified " + affectedTransactions.length + " which does not look correct");
+                }
+                
+                var editAffectedCount = 0;
                 utils.forEach(affectedTransactions, function (tx) {
                     Transaction.prototype.applyEdit.call(tx, edit);
-                    count++;
+                    editAffectedCount++;
                 }, this);
 
-                if (!!!ignoreMissingIds && edit.scopeFilteres.length === 1 && edit.scopeFilteres[0].type === editedValues.scopeTypeLookup.transactionId) {
-                    if (count !== edit.scopeFilteres[0].parameters.length) {
-                        throw new Error("Edit targetted transactions with " + edit.scopeFilteres[0].parameters.length + " IDs but only " + count + " were found in this collection");
+                if (!!!ignoreMissingIds && edit.scopeFilters.length === 1 && edit.scopeFilters[0].type === editedValues.scopeTypeLookup.transactionId) {
+                    if (editAffectedCount !== edit.scopeFilters[0].parameters.length) {
+                        throw new Error("Edit targetted transactions with " + edit.scopeFilters[0].parameters.length + " IDs but only " + editAffectedCount + " were found in this collection");
                     }
                 }
+
+                editsAffectedCount += editAffectedCount;
             }, this);
 
-            utils.triggerEvent(this, "editsApplied", [edits]);
+            utils.triggerEvent(this, "editsApplied", [edits, editsAffectedCount]);
+
+            return editsAffectedCount;
         },
 
         ensureEditsByIdCache = function() {
@@ -106,7 +117,7 @@
 
         addEditForScopeType = function (scopeType, scopeParameters) {
             var scopeFilter = new editedValues.EditScope(scopeType, scopeParameters);
-            addEdit.call(this, [scopeFilter]);
+            return addEdit.call(this, [scopeFilter]);
         },
         
         addEdit = function (scopeFilters) {
@@ -133,7 +144,7 @@
                     return edit;
                 }, this);
 
-                applyEditsInternal.call(this, edits);
+                return applyEditsInternal.call(this, edits);
             },
 
             setNote: function (ids, note, isRemove) {
@@ -147,7 +158,7 @@
                     return edit;
                 }, this);
 
-                applyEditsInternal.call(this, edits);
+                return applyEditsInternal.call(this, edits);
             },
 
             setCategoryByScope: function (scopeFilteres, categoryPathString, isRemove) {
@@ -158,7 +169,7 @@
                 edit.values.categoryPath = !!!isRemove ?
                     (new editedValues.EditValue(categoryPath)) :
                     editedValues.EditValue.voidedEditValue(false);
-                applyEditsInternal.call(this, [edit]);
+                return applyEditsInternal.call(this, [edit]);
             },
 
             getDefaultCategoryEdit: function(tx) {

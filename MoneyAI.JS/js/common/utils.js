@@ -38,7 +38,16 @@
             };
         },
 
-        logger: debug,
+        log: function (textOrArray, statusBoxPriority, type) {
+            type = type || "log";
+
+            (debug[type] || debug.log).apply(debug, textOrArray);
+
+            if (statusBoxPriority !== undefined) {
+                $(document).triggerHandler("statusBoxUpdate", [textOrArray, type, statusBoxPriority]);
+            }
+        },
+        
         Dictionary: buckets.Dictionary,
         Set: buckets.Set,
         isObject: _.isObject,

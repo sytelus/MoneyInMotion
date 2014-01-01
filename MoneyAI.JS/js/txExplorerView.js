@@ -9,10 +9,10 @@
         },
 
         refresh: function (yearString, monthString) {
-            utils.logger.log("Refresh Request for:", "yearString: ", yearString, " monthString: ", monthString);
+            utils.log(["Refresh Request for:", "yearString: ", yearString, " monthString: ", monthString]);
 
             repository.getTransactions("txExplorerView.refresh", function (txs) {
-                utils.logger.log("txs Data: ", "Items: ", txs.items.length, "First createdate: ", txs.items[0].auditInfo.createDate);
+                utils.log(["txs Data: ", "Items: ", txs.items.length, "First createdate: ", txs.items[0].auditInfo.createDate]);
                 var lastSelectedYearMonth = txNavigationView.refresh(txs, yearString, monthString);
                 txListView.refresh(txs, lastSelectedYearMonth.yearString, lastSelectedYearMonth.monthString);
             });
@@ -25,7 +25,7 @@
                     this.refresh(params.year, params.month);
                     break;
                 default:
-                    utils.logger.error("Unsupported hashchange was routed to txExplorerView", params);
+                    utils.log(["Unsupported hashchange was routed to txExplorerView", params], 5, "error");
                     this.refresh(params.year, params.month);
                     break;
             }

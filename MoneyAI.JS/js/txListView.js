@@ -205,7 +205,7 @@
             scopeTypeLookup: editedValues.scopeTypeLookup,
 
             //User editable values
-            scopeFiltersViewModel: new editedValues.ScopeFiltersViewModel(lastCategoryEdit.scopeFilters),
+            scopeFiltersViewModel: new editedValues.ScopeFiltersViewModel(lastCategoryEdit.scopeFilters, selectedTx),
             categoryPathString: firstTx.correctedValues.categoryPathString,
 
             getTitle: function () {
@@ -229,7 +229,7 @@
         .popoverForm(bodyHtml, viewModel, {
             titleIconClass: "categoryIcon",
             titleText: viewModel.getTitle(),
-            onSave: viewModel.save,
+            onOk: viewModel.save,
             afterClose: viewModel.afterClose
         });
     },
@@ -262,7 +262,7 @@
         .popoverForm(bodyHtml, viewModel, {
             titleIconClass: "noteIcon",
             titleText: viewModel.getTitle(),
-            onSave: viewModel.save,
+            onOk: viewModel.save,
             afterClose: viewModel.afterClose
         });
     },

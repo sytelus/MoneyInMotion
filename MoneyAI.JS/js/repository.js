@@ -12,7 +12,7 @@
             if (!currentAjaxRequest || currentAjaxRequest.state() !== "pending") {
                 currentAjaxRequest = $.getJSON("api/transactions");
                 callers = {};   //list of callers waiting for request
-                utils.logger.log("Started Ajax request", "callerId", callerId);
+                utils.log(["Started Ajax request", "callerId", callerId], 100);
             }
 
             //if this caller is not in the list, add it and queue up its callbacks to existing request
@@ -20,7 +20,7 @@
                 callers.callerId = callerId;
 
                 currentAjaxRequest.done(function (data, textStatus) {
-                    utils.logger.log("getJSON success: ", textStatus, "callerId", callerId);
+                    utils.log(["getJSON success: ", textStatus, "callerId", callerId], 10, "success");
 
                     var txs = new Transactions(data);
 
@@ -34,7 +34,7 @@
                 });
 
                 currentAjaxRequest.fail(function (xhr, textStatus, error) {
-                    utils.logger.error("getJSON failed: ", textStatus, error, "callerId", callerId);
+                    utils.log(["getJSON failed: ", textStatus, error, "callerId", callerId], 0, "error");
                     if (!!onFail) {
                         onFail(error, xhr.responseText);
                     }
@@ -44,7 +44,7 @@
                 });
 
                 currentAjaxRequest.always(function () {
-                    utils.logger.info("getTransactions complete", "callerId", callerId);
+                    utils.log(["getTransactions complete", "callerId", callerId]);
                 });
             }
         }
@@ -53,13 +53,16 @@
         }
     },
         
-    editAppliedHandler = function (event, edits) {
+    editAppliedHandler = function (event, edits, affectedTransactionsCount) {
         $.post("api/transactionedits", { "": utils.stringify(edits) }, function (data, textStatus) {
-            utils.logger.info("edits", edits.length, "successfully posted", "textStatus", textStatus, "data", data);
+            utils.log(["edits", edits.length, "successfully posted", "textStatus", textStatus, "data", data]);
+        })
+        .done(function (data, textStatus) {
+            utils.log(["edits", edits.length, "successfully applied", "textStatus", textStatus, "data", data], 10, "success");
         })
         .fail(function (xhr, textStatus, error) {
             //TODO: handle this!
-            utils.logger.error("edits", edits.length, "failed to posted", "textStatus", textStatus, "error", error, "responseText", xhr.responseText);
+            utils.log(["edits", edits.length, "failed to posted", "textStatus", textStatus, "error", error, "responseText", xhr.responseText], 0, "error");
         })
         ;
     };
