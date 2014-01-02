@@ -33,12 +33,16 @@
 								<!-- Tx icons -->
 								<!-- note icon -->
 								{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
-									&nbsp;&nbsp;<i class="noteManyIcon"></i>
-                                    <span class="small text-muted">{{notePreview noteCounter.keyCounts}}</span>
+                                    <span class="tooltip-info" data-html="true"  title="{{noteFullView noteCounter.keyCounts}}">
+									    &nbsp;&nbsp;<i class="noteManyIcon"></i>
+                                        <span class="small text-muted">{{{notePreview noteCounter.keyCounts}}}</span>
+                                    </span>
 								{{else}}
 									{{#compare noteCounter.notMissedCount ">=" 1}}
-										&nbsp;&nbsp;<i class="noteLinesIcon"></i>
-                                        <span class="small text-muted">{{notePreview correctedValues.keyCounts}}</span>
+                                        <span class="tooltip-info" data-html="true" title="{{noteFullView noteCounter.keyCounts}}">
+										    &nbsp;&nbsp;<i class="noteLinesIcon"></i>
+                                            <span class="small text-muted">{{{notePreview correctedValues.keyCounts}}}</span>
+                                        </span>
 									{{/compare}}
 								{{/compare}}
 

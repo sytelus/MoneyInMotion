@@ -52,13 +52,7 @@
     };
 
     var viewModel = {
-        alerts: ko.observableArray(),
-        afterElementAdd: function (element) {
-            //element.alert();
-        },
-        beforeElementRemove: function (element) {
-            //element.alert("close");
-        }
+        alerts: ko.observableArray()
     },
     setAlertTimeOut = function (alert) {
         //window.clearTimeout(alert.timeOutHandle);

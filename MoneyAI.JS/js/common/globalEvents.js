@@ -43,6 +43,9 @@
 
            event.stopPropagation();
        });
+
+       //Activate bootstrap tooltips
+       $(document.body).tooltip({ selector: "[title]" });
    };
 
 });

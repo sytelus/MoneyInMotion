@@ -59,6 +59,24 @@
             return json3.stringify(value);
         },
 
+        convertLineBreaksToHtml: function(text) {
+            return (text || "").replace(/(\r\n|\n|\r)/gm, "<br/>");
+        },
+
+        htmlEncode: function (html) {
+            return String(html)
+                      .replace(/&/g, "&amp;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/'/g, "&#39;")   //http://stackoverflow.com/questions/2083754/why-shouldnt-apos-be-used-to-escape-single-quotes
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;");
+        },
+
+        htmlDecode: function (html) {
+            var a = document.createElement( "a" ); a.innerHTML = html;
+            return a.textContent;
+        },
+
         getMonthName: function (monthNumber) {
             return moment({ month: monthNumber }).format("MMMM");
         },

@@ -11,9 +11,10 @@
 
                             <!-- tx Icons -->
                             {{#if correctedValues.note}}
-                            <span class="app-hint" data-hint="{{correctedValues.note}}">
-                                &nbsp;&nbsp;<i class="noteLinesIcon"></i>
-                                <span class="small text-muted">{{notePreview correctedValues.note}}</span>
+                            <span data-html="true" class="tooltip-info"  title="{{noteFullView correctedValues.note}}">
+                                &nbsp;&nbsp;
+                                <i class="noteLinesIcon"></i>
+                                <span class="small text-muted">{{{notePreview correctedValues.note}}}</span>
                             </span>
                             {{/if}}
 

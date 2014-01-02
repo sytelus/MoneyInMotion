@@ -51,6 +51,14 @@
             });
         },
 
+        function breakline(utils) {
+            utils.registerTemplateHelper("breakline", function (text) {
+                text = Handlebars.Utils.escapeExpression(text);
+                text = utils.convertLineBreaksToHtml(text);
+                return new Handlebars.SafeString(text);
+            });
+        },
+
         function stringify(utils) {
             utils.registerTemplateHelper("stringify", function (value) {
                 if (value === undefined) {

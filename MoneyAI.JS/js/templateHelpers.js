@@ -41,7 +41,27 @@
 
                 previewString = utils.splitWhiteSpace(previewString).join(" "); //Remove tabs, CR, LF
 
-                return previewString;
+                return utils.htmlEncode("1" + previewString);
+            });
+        },
+
+        function (utils) {
+            utils.registerTemplateHelper("noteFullView", function (noteOrNoteKeys) {
+                var noteFullView;
+                if (!noteOrNoteKeys || utils.isString(noteOrNoteKeys)) {
+                    noteFullView = noteOrNoteKeys;
+                }
+                else {
+                    noteFullView = utils.map(utils.filter(utils.keys(noteOrNoteKeys), function (key) { return key; }),
+                        function (key) { return utils.htmlEncode(key.substring(0, 500)); }).join("\n\n");
+                }
+
+                if (noteFullView.length > 500) {
+                    noteFullView = noteFullView.substring(0, 498) + "..";
+                }
+
+                noteFullView = utils.convertLineBreaksToHtml(noteFullView); //replace line breaks with <br>
+                return noteFullView;
             });
         },
 
