@@ -30,7 +30,9 @@
                 }
                 else {
                     var fullPartialNotes = utils.map(utils.filter(utils.keys(noteOrNoteKeys), function (key) { return key; }),
-                        function (key) { return key.substring(0, 10); }).join(", ");
+                        function (key) {
+                            return key.substring(0, 10) + (key.length > 10 ? ".." : "");
+                        }).join(", ");
                     previewString = fullPartialNotes.substring(0, 15);
                     totalLength = fullPartialNotes.length;
                 }
