@@ -15,6 +15,17 @@
 
     var destroyPopover = function (popoverElement) {
         popoverElement.popover("destroy");
+    },
+        
+    boolToDeferredPromise = function (value) {
+        //If not already a deferred object?
+        if (value === undefined || !$.isFunction(value.done) || !$.isFunction(value.fail)) {
+            var deferred = new $.Deferred();
+            deferred = !!value ? deferred.resolve() : deferred.reject();
+            return deferred.promise();
+        }
+            
+        return value;
     };
 
     $.fn.popoverForm = function (formHtml, viewModel, options) {
@@ -36,16 +47,20 @@
 
             var popoverContainer = popoverElement.next(),
                 onOkWrapper = function (data, event) {
-                    if (!opts.onOk.call(viewModel, viewModel, opts, event, popoverElement, popoverContainer)) {
+                    var okResponse = opts.onOk.call(viewModel, viewModel, opts, event, popoverElement, popoverContainer);
+                    var promise = boolToDeferredPromise(okResponse);
+                    promise.done(function () {
                         destroyPopover(popoverElement);
                         opts.afterClose.call(viewModel, true, viewModel, opts, event, popoverElement);
-                    }
+                    });
                 },
                 onCancelWrapper = function (data, event) {
-                    if (!opts.onCancel.call(viewModel, viewModel, opts, event, popoverElement, popoverContainer)) {
+                    var cancelResponse = opts.onCancel.call(viewModel, viewModel, opts, event, popoverElement, popoverContainer);
+                    var promise = boolToDeferredPromise(cancelResponse);
+                    promise.done(function() {
                         destroyPopover(popoverElement);
                         opts.afterClose.call(viewModel, false, viewModel, opts, event, popoverElement);
-                    }
+                    });
                 };
 
             opts.enableTitle = opts.enableTitle === undefined ?
@@ -70,8 +85,8 @@
     };
 
     /*jshint unused: vars */
-    var defaultOkCancelHandler = function (viewModel, options, event, popoverElement, popoverContainer) { return false; },
-        defaultAfterCloseHandler = function (isOkOrCancel, viewModel, options, event, popoverElement) { return false; };
+    var defaultOkCancelHandler = function (viewModel, options, event, popoverElement, popoverContainer) { return true; },
+        defaultAfterCloseHandler = function (isOkOrCancel, viewModel, options, event, popoverElement) { return true; };
     /*jshint unused: true */
 
 

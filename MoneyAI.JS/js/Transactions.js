@@ -95,14 +95,7 @@
             return allAffectedTransactions;
         },
         
-        applyEditsInternal = function (edits, ignoreMissingIds, reviewAffectedTransactionsCallback) {
-            var allAffectedTransactions = getAffectedTransactions.call(this, edits, ignoreMissingIds),
-                allAffectedTransactionsCount = utils.sum(allAffectedTransactions, function (editTxs) { return editTxs.affectedTransactions.length; });
-
-            if (reviewAffectedTransactionsCallback && reviewAffectedTransactionsCallback(allAffectedTransactions, allAffectedTransactionsCount)) {
-                return; //Cancel save
-            }
-
+        applyEditsToAffectedTransactions = function (edits, allAffectedTransactions, allAffectedTransactionsCount) {
             utils.forEach(allAffectedTransactions, function (editTxs) {
                 utils.forEach(editTxs.affectedTransactions, function (tx) {
                     Transaction.prototype.applyEdit.call(tx, editTxs.edit);
@@ -110,8 +103,26 @@
             }, this);
 
             utils.triggerEvent(this, "editsApplied", [edits, allAffectedTransactionsCount]);
+        },
 
-            return allAffectedTransactionsCount;
+        applyEditsInternal = function (edits, ignoreMissingIds, reviewAffectedTransactionsCallback) {
+            var self = this;
+            var allAffectedTransactions = getAffectedTransactions.call(self, edits, ignoreMissingIds),
+                allAffectedTransactionsCount = utils.sum(allAffectedTransactions, function (editTxs) {
+                    return editTxs.affectedTransactions.length;
+                });
+
+            var reviewResult = true;
+            if (reviewAffectedTransactionsCallback) {
+                reviewResult = reviewAffectedTransactionsCallback(allAffectedTransactions, allAffectedTransactionsCount);
+            }
+
+            var promise = utils.boolToDeferredPromise(reviewResult);
+            promise.done(function () {
+                applyEditsToAffectedTransactions.call(self, edits, allAffectedTransactions, allAffectedTransactionsCount);
+            });
+
+            return promise;
         },
 
         ensureEditsByIdCache = function() {

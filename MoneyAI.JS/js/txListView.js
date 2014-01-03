@@ -1,7 +1,8 @@
 ﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues", "common/popoverForm", "knockout",
-    "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html", "text!templates/txAttributesEditorBody.html"],
+    "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html",
+    "text!templates/txAttributesEditorBody.html", "text!templates/saveEditsConfirmModal.html"],
     function ($, Transaction, utils, TransactionAggregator, editedValues, popoverForm, ko,
-        txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml, txAttributesEditorBodyHtml) {
+        txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml, txAttributesEditorBodyHtml, saveEditsConfirmModalHtml) {
 
     "use strict";
 
@@ -195,30 +196,41 @@
         lastSelectedYearMonth = { yearString: selectYearString, monthString: selectMonthString };
     },
 
-    defaultReviewAffectedTransactionsCallback = function (allAffectedTransactions, allAffectedTransactionsCount, saveAllAffectedTransactions) {
+    defaultReviewAffectedTransactionsCallback = function (allAffectedTransactions, allAffectedTransactionsCount) {
         if (allAffectedTransactionsCount !== 1) {
+            compiledTemplates.saveEditsConfirmModalTemplate = compiledTemplates.saveEditsConfirmModalTemplate || utils.compileTemplate(saveEditsConfirmModalHtml);
+            var templateHtml = utils.runTemplate(compiledTemplates.saveEditsConfirmModalTemplate);
+            var container = $("#txListConfirmEditSaveModalContainer").html(templateHtml);
 
-            var modalTarget = $("#txListConfirmEditSaveModal");
+            var modalTarget = container.children("#txListConfirmEditSaveModal");
             modalTarget = modalTarget.modal();
 
-            var viewModel = {
-                allAffectedTransactions: allAffectedTransactions,
-                allAffectedTransactionsCount: allAffectedTransactionsCount,
-                onOk: function () {
-                    saveAllAffectedTransactions();
-                    modalTarget.modal("hide");
-                },
-                onCancel: function () {
-                    modalTarget.modal("hide");
-                }
+            var deferredPromise = utils.createDeferred(),
+                viewModel = {
+                    allAffectedTransactions: allAffectedTransactions,
+                    allAffectedTransactionsCount: allAffectedTransactionsCount,
+                    onOk: function () {
+                        //Resolve only after hide or elements would be recreated
+                        modalTarget.one("hidden.bs.modal", function () { deferredPromise.resolve(); });
+                        modalTarget.modal("hide");
+                    },
+                    onCancel: function () {
+                        //Resolve only after hide or elements would be recreated
+                        modalTarget.one("hidden.bs.modal", function () { deferredPromise.resolve(); });
+                        modalTarget.modal("hide");
+                    }
             };
 
             ko.applyBindings(viewModel, modalTarget[0]);
+
+            return deferredPromise.promise();
         }
+        
+        return true;
     },
 
     defaultOnSaveHandler = function (lastEdit, scopeFilters, userEditableFieldsModel) {
-        cachedValues.txs.addUpdateEdit(lastEdit, scopeFilters, userEditableFieldsModel, defaultReviewAffectedTransactionsCallback);
+        return cachedValues.txs.addUpdateEdit(lastEdit, scopeFilters, userEditableFieldsModel, defaultReviewAffectedTransactionsCallback);
     },
 
     getRuleBasedMenuItemClickHandler = function (menuParams, selectedTx, dropdownElement,
@@ -277,7 +289,7 @@
 
                 return {
                     isAmountChanged: ko.observable(lastEdit.values.amount !== undefined),
-                    amount: lastEdit.values.amount ? lastEdit.values.amount.value : 
+                    amount: lastEdit.values.amount ? lastEdit.values.amount.value :
                         utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.amount; }),
 
                     isTransactionReasonChanged: ko.observable(lastEdit.values.transactionReason !== undefined),

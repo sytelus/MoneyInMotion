@@ -59,6 +59,26 @@
             return json3.stringify(value);
         },
 
+        isDeferredPromise: function (value) {
+            //instanceof $.Deferred doesn't seem to work (also if it's promise)
+            return !(value === undefined || !$.isFunction(value.done) || !$.isFunction(value.fail));
+        },
+
+        createDeferred: function() {
+            return new $.Deferred();
+        },
+
+        boolToDeferredPromise: function (value) {
+            //If not already a deferred object?
+            if (!utilsInstance.isDeferredPromise(value)) {
+                var deferred = utilsInstance.createDeferred();
+                deferred = !!value ? deferred.resolve() : deferred.reject();
+                return deferred.promise();
+            }
+            
+            return value;
+        },
+
         convertLineBreaksToHtml: function(text) {
             return (text || "").replace(/(\r\n|\n|\r)/gm, "<br/>");
         },
