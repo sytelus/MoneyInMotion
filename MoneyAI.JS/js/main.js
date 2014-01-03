@@ -26,7 +26,8 @@
         "cryptojs.base64": "ext/cryptojslib/components/enc-base64",
         "uuidjs": "ext/uuid-js/lib/uuid",
         "json3": "ext/json3/lib/json3",
-        "knockout": "ext/knockoutjs/build/output/knockout"
+        "knockout": "ext/knockoutjs/build/output/knockout",
+        "datatables": "ext/datatables/media/js/jquery.dataTables"
     },
     shim: {
         "debug": {

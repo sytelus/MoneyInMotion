@@ -216,7 +216,7 @@
                     },
                     onCancel: function () {
                         //Resolve only after hide or elements would be recreated
-                        modalTarget.one("hidden.bs.modal", function () { deferredPromise.resolve(); });
+                        modalTarget.one("hidden.bs.modal", function () { deferredPromise.reject(); });
                         modalTarget.modal("hide");
                     }
             };
