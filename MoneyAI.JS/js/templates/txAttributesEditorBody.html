@@ -1,25 +1,48 @@
-﻿<div class="popoverContainer form" role="form">
+﻿<div data-bind="with: userEditableFields" class="popoverContainer form" role="form">
 
-	<!-- Transaction reason -->
-	<div class="form-group">
-		<label for="res_{{tx.id}}">Change Type</label>
-		<select class="form-control input-sm">
-			{{{txTransactionReasonSelectOptionsHtml tx}}}
-		</select>
-	</div>
-			
-	<!-- Name -->
-	<div class="form-group">
-		<label for="nam_{{tx.id}}">Change Name</label>
-		<input type="text" id="nam_{{tx.id}}" autocomplete="on" class="form-control input-sm categoryControl" value="{{tx.correctedValues.entityNameBest}}">
-	</div>
+    <!-- Transaction reason -->
+    <div class="checkbox">
+        <label>
+            <input type="checkbox" data-bind="checked: isTransactionReasonChanged"> Change Type
+        </label>
+        <div class="form-group" data-bind="enable: isTransactionReasonChanged">
+            <label class="sr-only" for="res_{{tx.id}}">Change Type</label>
+            <select data-bind="value:   transactionReason,
+                                options: allTransactionReasons,
+                                optionsText: value" class="form-control input-sm"></select>
+        </div>
+    </div>
 
-	<!-- Scope selection -->
-	{{> txEditRule }}
-		
-	<!-- Submit/Cancel -->
-	<div class="popover-form-footer">
-		<button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
-		<button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>
-	</div>
+    <!-- Name -->
+    <div class="checkbox">
+        <label>
+            <input type="checkbox" data-bind="checked: isEntityNameChanged"> Change Name
+        </label>
+        <div class="form-group" data-bind="enable: isEntityNameChanged">
+            <label class="sr-only" for="nam_{{tx.id}}">Change Name</label>
+            <input type="text" id="nam_{{tx.id}}" autocomplete="on" class="form-control input-sm" data-bind="value: entityName">
+        </div>
+    </div>
+
+    <!-- Amount -->
+    <!-- TODO: validate +/- amount with transaction type -->
+    <div class="checkbox">
+        <label>
+            <input type="checkbox" data-bind="checked: isAmountChanged"> Change Amount
+        </label>
+        <div class="form-group" data-bind="enable: isAmountChanged">
+            <label class="sr-only" for="nam_{{tx.id}}">Change Amount</label>
+            <input type="number" id="nam_{{tx.id}}" autocomplete="on" class="form-control input-sm" data-bind="value: amount">
+        </div>
+    </div>
+
+
+    <!-- Scope selection -->
+    {{> txEditRule }}
+
+    <!-- Submit/Cancel -->
+    <div class="popover-form-footer">
+        <button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
+        <button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>
+    </div>
 </div>

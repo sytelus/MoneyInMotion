@@ -95,16 +95,19 @@
 										<li>
 										{{#compare categoryPathStringCounter.missedCount "===" categoryPathStringCounter.count}}
 											<a tabindex="-1" data-menuitem="editCategory" href="#">
-												<i class="categoryIcon"></i>&nbsp;&nbsp;Add category
+												<i class="categoryIcon"></i>&nbsp;&nbsp;
+                                                Add category
 											</a>
 										{{else}}
 											{{#if categoryPathStringCounter.allSame}}
 												<a tabindex="-1" data-menuitem="editCategory" href="#">
-													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Edit category
+													<i class="categoryManyIcon"></i>&nbsp;&nbsp;
+                                                    Edit category
 												</a>
 											{{else}}
 												<a tabindex="-1" data-menuitem="editCategory" href="#">
-													<i class="categoryManyIcon"></i>&nbsp;&nbsp;Change categories for all
+													<i class="categoryManyIcon"></i>&nbsp;&nbsp;
+                                                    Change categories for all
 													{{#compare categoryPathStringCounter.keyCount ">" 1}}
 														<p class="small text-danger">
 															WARNING: {{categoryPathStringCounter.keyCount}} different categories
@@ -115,19 +118,30 @@
 										{{/compare}}
 										</li>
 
+                                        <!-- Fix errors menu -->
+                                        <li>
+                                            <a tabindex="-1" data-menuitem="fixAttributeErrors" href="#">
+                                                <i class="fixAttributeErrorsIcon"></i>&nbsp;&nbsp;
+                                                Fix Errors
+                                            </a>
+                                        </li>
+
 										<!-- flag menu -->
 										<li>
 											{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
 												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
-													<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove all {{flagCounter.count}} flags
+													<i class="todoDoneIcon"></i>&nbsp;&nbsp;
+                                                    Remove all {{flagCounter.count}} flags
 												</a>
 											{{else}}
 												<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: true}" href="#">
-													<i class="todoPendingIcon"></i>&nbsp;&nbsp; Flag {{flagCounter.keyCounts.falseValue}} transactions
+													<i class="todoPendingIcon"></i>&nbsp;&nbsp;
+                                                    Flag {{flagCounter.keyCounts.falseValue}} transactions
 												</a>
 												{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
 													<a tabindex="-1" data-menuitem="setFlag" data-menuparams="{&quot;isSet&quot;: false}" href="#">
-														<i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove {{flagCounter.keyCounts.trueValue}} flags
+														<i class="todoDoneIcon"></i>&nbsp;&nbsp;
+                                                        Remove {{flagCounter.keyCounts.trueValue}} flags
 													</a>
 												{{/compare}}
 											{{/compare}}
@@ -137,16 +151,19 @@
 										<li>
 										{{#compare noteCounter.missedCount "===" noteCounter.count}}
 											<a tabindex="-1" data-menuitem="editNote" href="#">
-												<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add note
+												<i class="noteEmptyIcon"></i>&nbsp;&nbsp;
+                                                Add note
 											</a>
 										{{else}}
 											{{#if noteCounter.allSame}}
 												<a tabindex="-1" data-menuitem="editNote" href="#">
-													<i class="noteManyIcon"></i>&nbsp;&nbsp;Edit note
+													<i class="noteManyIcon"></i>&nbsp;&nbsp;
+                                                    Edit note
 												</a>
 											{{else}}
 												<a tabindex="-1" data-menuitem="editNote" href="#">
-													<i class="noteManyIcon"></i>&nbsp;&nbsp;Change notes for all
+													<i class="noteManyIcon"></i>&nbsp;&nbsp;
+                                                    Change notes for all
 													{{#compare noteCounter.keyCount ">" 1}}
 														<p class="small text-danger">
 															WARNING: {{noteCounter.keyCount}} different notes

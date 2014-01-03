@@ -43,7 +43,7 @@
 
                 previewString = utils.splitWhiteSpace(previewString).join(" "); //Remove tabs, CR, LF
 
-                return utils.htmlEncode("1" + previewString);
+                return utils.htmlEncode(previewString);
             });
         },
 

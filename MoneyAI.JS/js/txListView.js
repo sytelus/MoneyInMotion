@@ -1,7 +1,7 @@
-﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues", "common/popoverForm",
-    "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html"],
-    function ($, Transaction, utils, TransactionAggregator, editedValues, popoverForm,
-        txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml) {
+﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues", "common/popoverForm", "knockout",
+    "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html", "text!templates/txAttributesEditorBody.html"],
+    function ($, Transaction, utils, TransactionAggregator, editedValues, popoverForm, ko,
+        txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml, txAttributesEditorBodyHtml) {
 
     "use strict";
 
@@ -117,7 +117,7 @@
 
         return { groupId: groupId, aggregator: agg, childRows: childRows, row: row, expanderTitle: expanderTitle };
     },
-    updateRowVisibilityAttribute = function(row, isVisible) {
+    updateRowVisibilityAttribute = function (row, isVisible) {
         if (isVisible) {
             row.removeClass("txRowInvisible");
             row.addClass("txRowVisible");
@@ -166,7 +166,7 @@
         }
 
         txs = txs || cachedValues.txs;
-        
+
         selectYearString = selectYearString || lastSelectedYearMonth.yearString;
         selectMonthString = selectMonthString || lastSelectedYearMonth.monthString;
 
@@ -195,82 +195,175 @@
         lastSelectedYearMonth = { yearString: selectYearString, monthString: selectMonthString };
     },
 
-    editCategoryMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
-        var firstTx = selectedTx[0],
-            lastCategoryEdit = cachedValues.txs.getLastCategoryEdit(firstTx, true);
+    defaultReviewAffectedTransactionsCallback = function (allAffectedTransactions, allAffectedTransactionsCount, saveAllAffectedTransactions) {
+        if (allAffectedTransactionsCount !== 1) {
+
+            var modalTarget = $("#txListConfirmEditSaveModal");
+            modalTarget = modalTarget.modal();
+
+            var viewModel = {
+                allAffectedTransactions: allAffectedTransactions,
+                allAffectedTransactionsCount: allAffectedTransactionsCount,
+                onOk: function () {
+                    saveAllAffectedTransactions();
+                    modalTarget.modal("hide");
+                },
+                onCancel: function () {
+                    modalTarget.modal("hide");
+                }
+            };
+
+            ko.applyBindings(viewModel, modalTarget[0]);
+        }
+    },
+
+    defaultOnSaveHandler = function (lastEdit, scopeFilters, userEditableFieldsModel) {
+        cachedValues.txs.addUpdateEdit(lastEdit, scopeFilters, userEditableFieldsModel, defaultReviewAffectedTransactionsCallback);
+    },
+
+    getRuleBasedMenuItemClickHandler = function (menuParams, selectedTx, dropdownElement,
+        toUserEditableFields, fromUserEditableFields, getTitle, formIconClass, formBodyHtml,
+        lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, onSave) {
+
+        var lastEdits = cachedValues.txs.getLastEdit(selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters);
+        var lastEdit = lastEdits[0];    //choose one if there are conflicting edits
 
         var viewModel = {
-            tx: firstTx,
             selectedTx: selectedTx,
             scopeTypeLookup: editedValues.scopeTypeLookup,
+            lastEdits: lastEdits,
+            lastEdit: lastEdit,
 
             //User editable values
-            scopeFiltersViewModel: new editedValues.ScopeFiltersViewModel(lastCategoryEdit.scopeFilters, selectedTx),
-            categoryPathString: firstTx.correctedValues.categoryPathString,
-
-            getTitle: function () {
-                return firstTx.correctedValues.categoryPathString ? "Edit Category" : "Add Category";
-            },
-            save: function (viewModel) {
-                cachedValues.txs.setCategoryByScope(viewModel.scopeFiltersViewModel.toScopeFilters(), viewModel.categoryPathString, !!!viewModel.categoryPathString);
-            },
-            afterClose: function (isOkOrCancel) {
-                if (isOkOrCancel) {
-                    refresh();
-                }
+            scopeFiltersViewModel: new editedValues.ScopeFiltersViewModel(lastEdit.scopeFilters, selectedTx),
+            userEditableFields: toUserEditableFields(lastEdit, selectedTx),
+        },
+        afterCloseHandler = function (isOkOrCancel) {
+            if (isOkOrCancel) {
+                refresh();
             }
         };
 
-        compiledTemplates.categoryEditorBody = compiledTemplates.categoryEditorBody || utils.compileTemplate(categoryEditorBodyHtml);
-        var bodyHtml = utils.runTemplate(compiledTemplates.categoryEditorBody, viewModel); //Render partial templates within templates
+        var onSaveWrapper = function () {
+            return (onSave || defaultOnSaveHandler)(
+                lastEdit, viewModel.scopeFiltersViewModel.toScopeFilters(), fromUserEditableFields(viewModel.userEditableFields, lastEdit, selectedTx));
+        };
 
-        dropdownElement
-        .dropdown("toggle")
-        .popoverForm(bodyHtml, viewModel, {
-            titleIconClass: "categoryIcon",
-            titleText: viewModel.getTitle(),
-            onOk: viewModel.save,
-            afterClose: viewModel.afterClose
-        });
+        if (formBodyHtml !== undefined) {
+            compiledTemplates[formBodyHtml] = compiledTemplates[formBodyHtml] || utils.compileTemplate(formBodyHtml);
+            var bodyHtml = utils.runTemplate(compiledTemplates[formBodyHtml], viewModel); //Render partial templates within templates
+
+            dropdownElement
+            .dropdown("toggle")
+            .popoverForm(bodyHtml, viewModel, {
+                titleIconClass: formIconClass,
+                titleText: getTitle(lastEdit, selectedTx),
+                onOk: onSaveWrapper,
+                afterClose: afterCloseHandler
+            });
+        }
+        else {
+            //No UI, run Save directly
+            onSaveWrapper();
+            afterCloseHandler(true);
+        }
+    },
+
+    fixAttributeErrorsMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
+        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+            function (lastEdit, selectedTx) {
+                var transactionReasonLookup = selectedTx.length > 1 ?
+                        Transaction.prototype.transactionReasonPluralTitleLookup : Transaction.prototype.transactionReasonTitleLookup;
+
+                return {
+                    isAmountChanged: ko.observable(lastEdit.values.amount !== undefined),
+                    amount: lastEdit.values.amount ? lastEdit.values.amount.value : 
+                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.amount; }),
+
+                    isTransactionReasonChanged: ko.observable(lastEdit.values.transactionReason !== undefined),
+                    transactionReason: transactionReasonLookup[(lastEdit.values.transactionReason ?
+                        lastEdit.values.transactionReason.value :
+                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.transactionReason; })).toString()],
+
+                    isEntityNameChanged: ko.observable(lastEdit.values.entityName !== undefined),
+                    entityName: lastEdit.values.entityName ? lastEdit.values.entityName.value :
+                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.entityNameBest; }),
+
+                    allTransactionReasons: utils.toKeyValueArray(transactionReasonLookup)
+                };
+            },
+            function (userEditableFields) {
+                return {
+                    amount: userEditableFields.isAmountChanged() ? utils.parseFloat(userEditableFields.amount.toString()) : undefined,
+                    transactionReason: userEditableFields.isTransactionReasonChanged() ? utils.parseInt(userEditableFields.transactionReason.key) : undefined,
+                    entityName: userEditableFields.isEntityNameChanged() ? utils.trim(userEditableFields.entityName) : undefined
+                };
+            },
+            function () { return "Fix Errors"; },
+            "fixAttributeErrorsIcon", txAttributesEditorBodyHtml,
+            function (edit) { return editedValues.EditedValues.prototype.isUnvoided.call(edit.values, ["entityName", "transactionReason" ,"amount"]); },
+            editedValues.scopeTypeLookup.entityNameNormalized, utils.map(utils.distinct(selectedTx, "entityNameNormalized"), "entityNameNormalized")
+        );
+    },
+
+    editCategoryMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
+        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+            function (lastEdit, selectedTx) {
+                var lastEditCategoryPath = editedValues.EditValue.prototype.getValueOrDefault.call(lastEdit.values.categoryPath);
+                return {
+                    categoryPathString:
+                        lastEditCategoryPath !== undefined ? Transaction.prototype.toCategoryPathString(lastEditCategoryPath) :
+                            utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.categoryPathString; })
+                };
+            },
+            function (userEditableFields) {
+                return {
+                    categoryPath: Transaction.prototype.fromCategoryPathString(utils.trim(userEditableFields.categoryPathString))
+                };
+            },
+            function (lastEdit) { return lastEdit.values.categoryPath ? "Edit Category" : "Add Category"; },
+            "categoryIcon", categoryEditorBodyHtml,
+            function (edit) { return editedValues.EditedValues.prototype.isUnvoided.call(edit.values, "categoryPath"); },
+            editedValues.scopeTypeLookup.entityNameNormalized, utils.map(utils.distinct(selectedTx, "entityNameNormalized"), "entityNameNormalized")
+        );
     },
 
     editNoteMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
-        var firstTx = selectedTx[0];
-
-        var viewModel = {
-            tx: firstTx,
-            note: firstTx.correctedValues.note,  //user edited value will go here
-            selectedTx: selectedTx,
-            getTitle: function() {
-                return firstTx.correctedValues.note ? "Edit Note" : "Add Note";
+        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+            function (lastEdit, selectedTx) {
+                return {
+                    note: editedValues.EditValue.prototype.getValueOrDefault.call(lastEdit.values.note,
+                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.note; }))
+                };
             },
-            save: function (viewModel) {
-                cachedValues.txs.setNote(utils.map(viewModel.selectedTx, function (tx) { return tx.id; }), viewModel.note, !!!viewModel.note);
+            function (userEditableFields) {
+                return {
+                    note: utils.trim(userEditableFields.note)
+                };
             },
-            afterClose: function (isOkOrCancel) {
-                if (isOkOrCancel) {
-                    refresh();
-                }
-            }
-        };
-
-        compiledTemplates.noteEditorBody = compiledTemplates.noteEditorBody || utils.compileTemplate(noteEditorBodyHtml);
-        var bodyHtml = utils.runTemplate(compiledTemplates.noteEditorBody, viewModel); //There is no need for this as we don't have partial in this template but we'll follow the pattern
-
-        dropdownElement
-        .dropdown("toggle")
-        .popoverForm(bodyHtml, viewModel, {
-            titleIconClass: "noteIcon",
-            titleText: viewModel.getTitle(),
-            onOk: viewModel.save,
-            afterClose: viewModel.afterClose
-        });
+            function (lastEdit) { return lastEdit.values.note ? "Edit Note" : "Add Note"; },
+            "noteIcon", noteEditorBodyHtml,
+            function (edit) { return editedValues.EditedValues.prototype.isUnvoided.call(edit.values, "note"); },
+            editedValues.scopeTypeLookup.transactionId, utils.map(selectedTx, "id")
+        );
     },
 
-    setFlagMenuItemClick = function (menuParams, selectedTx) {
+    setFlagMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
         var isSet = menuParams.isSet;
-        cachedValues.txs.setIsUserFlagged(utils.map(selectedTx, function (tx) { return tx.id; }), isSet);
-        refresh();
+
+        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+            function (lastEdit, selectedTx) {
+                return {
+                    isFlagged: editedValues.EditValue.prototype.getValueOrDefault.call(lastEdit.values.isFlagged,
+                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.isFlagged; }))
+                };
+            },
+            function () { return { isFlagged: isSet }; },
+            undefined,  //form title
+            undefined, undefined,   //form icon, form HTML
+            undefined,  //Last edit filter
+            editedValues.scopeTypeLookup.transactionId, utils.map(selectedTx, "id")
+        );
     };
 
 
@@ -314,6 +407,7 @@
                     case "setFlag": setFlagMenuItemClick(menuParams, selectedTx, dropdownElement); break;
                     case "editNote": editNoteMenuItemClick(menuParams, selectedTx, dropdownElement); break;
                     case "editCategory": editCategoryMenuItemClick(menuParams, selectedTx, dropdownElement); break;
+                    case "fixAttributeErrors": fixAttributeErrorsMenuItemClick(menuParams, selectedTx, dropdownElement); break;
                     default:
                         throw new Error("menuItem " + menuItem + " is not supported");
                 }

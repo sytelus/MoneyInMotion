@@ -75,9 +75,9 @@
         var amountRangeParameters = getScopeFilterParameters(scopeFilters, scopeTypeLookup.amountRange);
         this.isAmountRangeFilter = ko.observable(amountRangeParameters !== undefined);
         this.minAmount = this.isAmountRangeFilter() ? amountRangeParameters[0] :
-            Math.abs((utils.min(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 0.9).toFixed(2);
+            Math.abs((utils.min(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 0.9).toFixed(0);
         this.maxAmount = this.isAmountRangeFilter() ? amountRangeParameters[1] :
-            Math.abs((utils.max(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 1.1).toFixed(2);
+            Math.abs((utils.max(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 1.1).toFixed(0);
         this.amountTypeString = utils.min(selectedTx, function (tx) { return tx.correctedValues.amount; }) < 0 ? "expense" : "amount";
 
         this.selectedTx = selectedTx;
@@ -113,7 +113,7 @@
         this.isVoided = !!isVoided;
     };
     EditValue.prototype.getValueOrDefault = function (defaultValue) {
-        return !this.isVoided ? this.value : defaultValue;
+        return (this && !this.isVoided) ? this.value : defaultValue;
     };
     EditValue.voidedEditValue = function (defaultValue) {
         return new EditValue(defaultValue, true);
@@ -122,7 +122,7 @@
     /************      EditedValues  ***********/
     var EditedValues = function (cloneFrom) {
         if (cloneFrom) {
-            //Below are of type EditValue
+            //WARNING: Below are of type EditValue
             this.transactionReason = cloneFrom.transactionReason;
             this.transactionDate = cloneFrom.transactionDate;
             this.amount = cloneFrom.amount;
@@ -132,6 +132,13 @@
             this.categoryPath = cloneFrom.categoryPath;
         }
         //else leave everything as undefined
+    };
+    EditedValues.prototype.isUnvoided = function (valueNames) {
+        if (utils.isString(valueNames)) {
+            valueNames = [valueNames];
+        }
+
+        return utils.any(valueNames, function (valueName) { return this[valueName] && !this[valueName].isVoided; }, this);
     };
     EditedValues.prototype.merge = function (otherEditedValues) {
         // There are 3 possibilities for user intent:

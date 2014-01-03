@@ -53,9 +53,9 @@
 
         function breakline(utils) {
             utils.registerTemplateHelper("breakline", function (text) {
-                text = Handlebars.Utils.escapeExpression(text);
+                text = utils.escapeTemplateExpression(text);
                 text = utils.convertLineBreaksToHtml(text);
-                return new Handlebars.SafeString(text);
+                return utils.templateHtmlString(text);
             });
         },
 

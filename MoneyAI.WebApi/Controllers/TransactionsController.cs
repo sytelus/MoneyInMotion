@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using System.Text;
+using MoneyAI.WebApi.Common;
 
 namespace MoneyAI.WebApi.Controllers
 {
@@ -13,9 +14,7 @@ namespace MoneyAI.WebApi.Controllers
         // GET api/transactions
         public HttpResponseMessage Get()
         {
-            var response = this.Request.CreateResponse(HttpStatusCode.OK);
-            response.Content = new StringContent(Models.TransactionModel.GetSerializedJson("sytelus"), Encoding.UTF8, "application/json");
-            return response;
+            return this.Request.GetJsonResponse(Models.TransactionModel.GetSerializedJson("sytelus"));
         }
     }
 }

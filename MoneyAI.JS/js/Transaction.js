@@ -130,11 +130,11 @@
                     proto.transactionReasonTitleLookup[transactionReason.toString()];
             },
 
-            getCategoryPathString: function(categoryPath) {
+            toCategoryPathString: function(categoryPath) {
                 return (categoryPath || []).join(" > ");
             },
 
-            getCategoryPath: function (categoryPathString) {
+            fromCategoryPathString: function (categoryPathString) {
                 return utils.filter(utils.map((categoryPathString || "").split(">"), function (s) { return utils.trim(s); }), function (s) { return !!s; });
             },
 
@@ -155,7 +155,7 @@
                     proto.getEntityNameBest.call(this);
 
                     if (this.correctedValues.categoryPath) {
-                        this.correctedValues.categoryPathString = proto.getCategoryPathString.call(this, this.correctedValues.categoryPath);
+                        this.correctedValues.categoryPathString = proto.toCategoryPathString.call(this, this.correctedValues.categoryPath);
                     }
                     
                     this.correctedValues.isPopulated = true;

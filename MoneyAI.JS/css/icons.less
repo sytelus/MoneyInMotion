@@ -1,53 +1,59 @@
 ﻿/*  Todo icon */
 @flag-rotation: 10deg;
-.todoPendingIcon:extend(.fa all):extend(.fa-flag all) {
+.todoPendingIcon:extend(.fa all, .fa-flag all) {
     .rotate(@flag-rotation);
     color: firebrick;
+    font-size: 85%;
 }
-.todoPartPendingIcon:extend(.fa all):extend(.fa-flag-checkered all) {
+.todoPartPendingIcon:extend(.fa all, .fa-flag-checkered all) {
     .rotate(@flag-rotation / 2);
     color: firebrick;
+    font-size: 85%;
 }
-.todoColumnIcon:extend(.fa all):extend(.fa-flag-o all) {
+.todoColumnIcon:extend(.fa all, .fa-flag-o all) {
     .rotate(@flag-rotation / 2);
     .text-muted;
 }
-.todoDoneIcon:extend(.fa all):extend(.fa-check all) {
+.todoDoneIcon:extend(.fa all, .fa-check all) {
     .text-muted;
+    font-size: 85%;
 }
 
 /*  Note icon */
-.noteEmptyIcon:extend(.fa all):extend(.fa-file all) {
+.noteEmptyIcon:extend(.fa all, .fa-file all) {
     color: #FFCD5A;
 }
-.noteManyIcon:extend(.fa all):extend(.fa-files-o all) {
+.noteManyIcon:extend(.fa all, .fa-files-o all) {
     color: #FF6600;
 }
-.noteLinesIcon:extend(.fa all):extend(.fa-file-text all) {
+.noteLinesIcon:extend(.fa all, .fa-file-text all) {
     color: #FFCD5A;
 }
-.noteNoneIcon:extend(.fa all):extend(.fa-file-o all) {
+.noteNoneIcon:extend(.fa all, .fa-file-o all) {
 }
 
 /*  Category icon */
-.categoryIcon:extend(.fa all):extend(.fa-bookmark all) {
+.categoryIcon:extend(.fa all, .fa-folder-open all) {
     color: #000066;
 }
-.categoryManyIcon:extend(.fa all):extend(.fa-bookmark-o all) {
+.categoryManyIcon:extend(.fa all, .fa-folder-open-o all) {
     color: #FF6600;
 }
 
+/* Fix errors icon */
+.fixAttributeErrorsIcon:extend(.fa all, .fa-wrench all) {
+    color: burlywood;
+}
 
-
-.editIcon:extend(.fa all):extend(.fa-chevron-right all) {
+.editIcon:extend(.fa all, .fa-chevron-right all) {
     .text-muted;
 }
 
-.rowsExpandIcon:extend(.fa all):extend(.fa-plus-square-o all) {
+.rowsExpandIcon:extend(.fa all, .fa-plus-square-o all) {
 }
-.rowsCollapseIcon:extend(.fa all):extend(.fa-minus-square-o all) {
+.rowsCollapseIcon:extend(.fa all, .fa-minus-square-o all) {
 }
 
-.nbspIcon:extend(.fa all):extend(.fa-square all) {
+.nbspIcon:extend(.fa all, .fa-square all) {
     visibility:hidden;
 }

@@ -76,35 +76,42 @@
 
             return filteredTransactions;
         },
-        
-        applyEditsInternal = function (edits, ignoreMissingIds) {
-            var editsAffectedCount = 0;
+
+        getAffectedTransactions = function (edits, ignoreMissingIds) {
+            var allAffectedTransactions = [];
+
             utils.forEach(edits, function (edit) {
                 var affectedTransactions = filterTransactions.call(this, edit);
-                
-                //TODO: convert to warning
-                if (affectedTransactions.length > 100 || affectedTransactions.length === 0) {
-                    throw new Error("This edit modified " + affectedTransactions.length + " which does not look correct");
-                }
-                
-                var editAffectedCount = 0;
-                utils.forEach(affectedTransactions, function (tx) {
-                    Transaction.prototype.applyEdit.call(tx, edit);
-                    editAffectedCount++;
-                }, this);
 
                 if (!!!ignoreMissingIds && edit.scopeFilters.length === 1 && edit.scopeFilters[0].type === editedValues.scopeTypeLookup.transactionId) {
-                    if (editAffectedCount !== edit.scopeFilters[0].parameters.length) {
-                        throw new Error("Edit targetted transactions with " + edit.scopeFilters[0].parameters.length + " IDs but only " + editAffectedCount + " were found in this collection");
+                    if (affectedTransactions.length !== edit.scopeFilters[0].parameters.length) {
+                        throw new Error("Edit targetted transactions with " + edit.scopeFilters[0].parameters.length + " IDs but only " + affectedTransactions.length + " were found in this collection");
                     }
                 }
 
-                editsAffectedCount += editAffectedCount;
+                allAffectedTransactions.push({ edit: edit, affectedTransactions: affectedTransactions });
             }, this);
 
-            utils.triggerEvent(this, "editsApplied", [edits, editsAffectedCount]);
+            return allAffectedTransactions;
+        },
+        
+        applyEditsInternal = function (edits, ignoreMissingIds, reviewAffectedTransactionsCallback) {
+            var allAffectedTransactions = getAffectedTransactions.call(this, edits, ignoreMissingIds),
+                allAffectedTransactionsCount = utils.sum(allAffectedTransactions, function (editTxs) { return editTxs.affectedTransactions.length; });
 
-            return editsAffectedCount;
+            if (reviewAffectedTransactionsCallback && reviewAffectedTransactionsCallback(allAffectedTransactions, allAffectedTransactionsCount)) {
+                return; //Cancel save
+            }
+
+            utils.forEach(allAffectedTransactions, function (editTxs) {
+                utils.forEach(editTxs.affectedTransactions, function (tx) {
+                    Transaction.prototype.applyEdit.call(tx, editTxs.edit);
+                }, this);
+            }, this);
+
+            utils.triggerEvent(this, "editsApplied", [edits, allAffectedTransactionsCount]);
+
+            return allAffectedTransactionsCount;
         },
 
         ensureEditsByIdCache = function() {
@@ -115,9 +122,13 @@
             }
         },
 
+        getScopeFilter = function (scopeType, scopeParameters) {
+            return new editedValues.EditScope(scopeType, scopeParameters);
+        },
+
         addEditForScopeType = function (scopeType, scopeParameters) {
-            var scopeFilter = new editedValues.EditScope(scopeType, scopeParameters);
-            return addEdit.call(this, [scopeFilter]);
+            var scopeFilters = [getScopeFilter(scopeType, scopeParameters)];
+            return addEdit.call(this, scopeFilters);
         },
         
         addEdit = function (scopeFilters) {
@@ -128,53 +139,60 @@
             this.cachedValues.editsById[edit.id.toString()] = edit;
 
             return edit;
+        },
+        
+        getNewEditValue = function (lastEditValue, newValue, isRemove) {
+            /*
+                Cases:
+                    1. newValue is undefined, isRemove = true, -> if lastEditValue is defined create new voided EditValue with lastEditValue as default else error
+                    2. newValue is undefined, isRemove = false -> no change, return undefined
+                    3. newValue is defined, isRemove = false -> create new EditValue
+                    4. newValue is defined, isRemove = true -> create new voided EditValue with newValue as default
+            */
+            if (newValue === undefined) {
+                if (isRemove) {
+                    if (lastEditValue) {
+                        return new editedValues.EditValue(lastEditValue.value, true);
+                    }
+                    else {
+                        throw new Error("Cannot void edit value if last edit was not defined");
+                    }
+                }
+                else {
+                    return undefined;
+                }
+            }
+            else {
+                return new editedValues.EditValue(newValue, !!isRemove);
+            }
         };
 
 
         //publics
         return {
-            setIsUserFlagged: function (ids, isUserFlagged) {
-                var isFlaggedEditValue = isUserFlagged !== undefined ?
-                    (new editedValues.EditValue(isUserFlagged)) :
-                    editedValues.EditValue.voidedEditValue(false);
-
-                var edits = utils.map(ids, function (id) {
-                    var edit = addEditForScopeType.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
-                    edit.values.isFlagged = isFlaggedEditValue;
-                    return edit;
-                }, this);
-
-                return applyEditsInternal.call(this, edits);
-            },
-
-            setNote: function (ids, note, isRemove) {
-                var noteEditValue = !!!isRemove ?
-                    (new editedValues.EditValue(note)) :
-                    editedValues.EditValue.voidedEditValue(false);
-
-                var edits = utils.map(ids, function (id) {
-                    var edit = addEditForScopeType.call(this, editedValues.scopeTypeLookup.transactionId, [id]);
-                    edit.values.note = noteEditValue;
-                    return edit;
-                }, this);
-
-                return applyEditsInternal.call(this, edits);
-            },
-
-            setCategoryByScope: function (scopeFilteres, categoryPathString, isRemove) {
+            addUpdateEdit: function (lastEdit, scopeFilteres, newEditedValues, reviewAffectedTransactionsCallback) {
                 var edit = addEdit.call(this, scopeFilteres);
 
-                var categoryPath = Transaction.prototype.getCategoryPath.call(undefined, categoryPathString);
+                utils.forEach(["entityName", "note"], function (prop) {
+                    edit.values[prop] = getNewEditValue(lastEdit[prop], newEditedValues[prop], newEditedValues[prop] === "");
+                });
+                utils.forEach(["categoryPath"], function (prop) {
+                    edit.values[prop] = getNewEditValue(lastEdit[prop], newEditedValues[prop], newEditedValues[prop] === []);
+                });
+                utils.forEach(["amount", "transactionReason"], function (prop) {
+                    edit.values[prop] = getNewEditValue(lastEdit[prop], newEditedValues[prop], newEditedValues[prop] !== undefined && isNaN(newEditedValues[prop]));
+                });
+                utils.forEach(["isFlagged"], function (prop) {
+                    edit.values[prop] = getNewEditValue(lastEdit[prop], newEditedValues[prop], newEditedValues[prop] === null);
+                });
 
-                edit.values.categoryPath = !!!isRemove ?
-                    (new editedValues.EditValue(categoryPath)) :
-                    editedValues.EditValue.voidedEditValue(false);
-                return applyEditsInternal.call(this, [edit]);
+                return applyEditsInternal.call(this, [edit], true, reviewAffectedTransactionsCallback);
             },
 
-            getDefaultCategoryEdit: function(tx) {
-                var edit = addEditForScopeType.call(this, editedValues.scopeTypeLookup.entityNameNormalized, [tx.entityNameNormalized]);
-                edit.values.categoryPath = tx.correctedValues.categoryPath;
+            //TODO: re-check all code for undefined values, raise errors
+
+            getDefaultEdit: function (defaultEditScopeType, defaultEditScopeParameters) {
+                var edit = addEditForScopeType.call(this, defaultEditScopeType, defaultEditScopeParameters);
                 return edit;
             },
 
@@ -183,26 +201,34 @@
                 return this.cachedValues.editsById[editId.toString()];
             },
 
-            getLastCategoryEdit: function (tx, defaultIfNone) {
-                /*jshint -W080 */   //Disable explicit undefined assignment
-                var lastCategoryEdit = undefined;
-                if (tx.appliedEditIdsDescending) {
-                    for (var i = 0; i < tx.appliedEditIdsDescending.length; i++) {
-                        var editId = tx.appliedEditIdsDescending[i];
-                        var edit = this.getEditById(editId);
-                        if (edit === undefined) {
-                            throw new Error("Edit for ID " + editId + " was not found");
-                        }
+            getScopeFilter: getScopeFilter,
 
-                        if (edit.values && edit.values.categoryPath) {
-                            lastCategoryEdit = edit;
-                            break;
+            getLastEdit: function (selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters) {
+                var lastEdits = [];
+
+                if (lastEditFilter) {
+                    utils.forEach(selectedTx, function (tx) {
+                        if (tx.appliedEditIdsDescending) {
+                            for (var i = 0; i < tx.appliedEditIdsDescending.length; i++) {
+                                var editId = tx.appliedEditIdsDescending[i];
+                                var edit = this.getEditById(editId);
+                                if (edit === undefined) {
+                                    throw new Error("Edit for ID " + editId + " was not found");
+                                }
+
+                                if (edit.values && lastEditFilter(edit)) {
+                                    lastEdits.push(edit);
+                                }
+                            }
                         }
-                    }
+                    }, this);
+
+                    lastEdits = utils.distinct(lastEdits);
                 }
 
-                return lastCategoryEdit || (defaultIfNone ? this.getDefaultCategoryEdit(tx) : undefined);
-            }
+                return lastEdits.length > 0 ? lastEdits : (defaultEditScopeType !== undefined ? [this.getDefaultEdit(defaultEditScopeType, defaultEditScopeParameters)] : undefined);
+            },
+
         };
     })();
     transactionsPrototype.constructor = Transactions;

@@ -57,15 +57,25 @@
                                       </a>
                                   </li>
 
+                                    <!-- Fix errors menu -->
+                                    <li>
+                                        <a tabindex="-1" data-menuitem="fixAttributeErrors" href="#">
+                                            <i class="fixAttributeErrorsIcon"></i>&nbsp;&nbsp;
+                                            Fix Errors
+                                        </a>
+                                    </li>
+
                                     <!-- flag menu -->
                                   <li>
                                     <a tabindex="-1" data-menuitem="setFlag" href="#"
 										data-menuparams="{ &quot;isSet&quot;: {{#if correctedValues.isFlagged}}false{{else}}true{{/if}} }">
 
                                         {{#if correctedValues.isFlagged}}
-                                            <i class="todoDoneIcon"></i>&nbsp;&nbsp;Remove flag
+                                            <i class="todoDoneIcon"></i>&nbsp;&nbsp;
+                                            Remove flag
                                         {{else}}
-                                            <i class="todoPendingIcon"></i>&nbsp;&nbsp;Flag this
+                                            <i class="todoPendingIcon"></i>&nbsp;&nbsp;
+                                            Flag this
                                         {{/if}}								  
                                     </a>
                                   </li>
@@ -73,8 +83,11 @@
                                   <!-- comment menu -->
                                   <li>
                                       <a tabindex="-1" data-menuitem="editNote" href="#">
-                                        {{#if correctedValues.note}}<i class="noteLinesIcon"></i>&nbsp;&nbsp;Edit Note
-										{{else}}<i class="noteEmptyIcon"></i>&nbsp;&nbsp;Add Note
+                                        {{#if correctedValues.note}}
+                                            <i class="noteLinesIcon"></i>&nbsp;&nbsp;
+                                            Edit Note
+										{{else}}<i class="noteEmptyIcon"></i>&nbsp;&nbsp;
+                                            Add Note
 										{{/if}}										  
                                       </a>
                                   </li>

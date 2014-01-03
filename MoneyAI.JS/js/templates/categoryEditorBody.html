@@ -1,10 +1,10 @@
 ﻿	<!-- Category -->
-	<div class="form-group">
-		<label class="sr-only" for="cat_{{tx.id}}">Set Category</label>
-		<input type="text" id="cat_{{tx.id}}" autofocus autocomplete="on" class="form-control input-sm categoryControl" 
-			size="25" placeholder="Example: Food > Dinners > Eating Out"
-			data-bind="value: categoryPathString">
-	</div>
+	<div class="form-group" data-bind="with: userEditableFields">
+    <label class="sr-only" for="cat_{{tx.id}}">Set Category</label>
+    <input type="text" id="cat_{{tx.id}}" autofocus autocomplete="on" class="form-control input-sm"
+           size="25" placeholder="Example: Food > Dinners > Eating Out"
+           data-bind="value: categoryPathString">
+</div>
 	
 	<!-- Scope selection -->
 	{{> txEditRule }}

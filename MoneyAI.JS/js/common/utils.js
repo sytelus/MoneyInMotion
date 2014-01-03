@@ -92,6 +92,47 @@
             return moment(date).format(formatString);
         },
 
+        sum: function (collection, callback, thisArg) {
+            if (callback) {
+                collection = _.map(collection, callback, thisArg);
+            }
+
+            var sum = 0;
+            _.forEach(collection, function (value) { sum += value; });
+
+            return sum;
+        },
+
+        mostOccuring: function(collection, callback, thisArg) {
+            if (callback) {
+                collection = _.map(collection, callback, thisArg);
+            }
+
+            var keys = {};
+
+            _.forEach(collection, function (value) {
+                if (value !== undefined) {
+                    var count = keys[value];
+                    if (count === undefined) {
+                        keys[value] = 1;
+                    }
+                    else {
+                        keys[value] = count + 1;
+                    }
+                }
+            });
+
+            var maxKey, maxCount = Number.NEGATIVE_INFINITY;
+            _.forOwn(keys, function (count, key) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    maxKey = key;
+                }
+            });
+
+            return maxKey;
+        },
+
         formateCurrency: function (number) {
             return accounting.formatMoney(number);
         },
@@ -111,7 +152,9 @@
         registerTemplatePartial: function (partialName, partialTemplateCompiled) {
             handlebars.registerPartial(partialName, partialTemplateCompiled);
         },
-
+        escapeTemplateExpression: function (str) {
+            return handlebars.Utils.escapeExpression(str);
+        },
         templateHtmlString: function (str) {
             return new handlebars.SafeString(str);
         },
