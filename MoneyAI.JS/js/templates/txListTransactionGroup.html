@@ -1,22 +1,29 @@
 ﻿				{{#toChildAggregatorsArray}}
 					
+                    {{#if options.groupHeaderVisible}}
 					<!-- no header for single item non-top groups -->
 					<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless isVisible}} txRowInvisible{{/unless}}" 
 					data-groupid="{{groupId}}"
 					data-parentgroupid="{{parent.groupId}}"
 					data-ischildrenvisible="{{isChildrenVisible}}">
 						{{#if isTopLevel}}
+                            {{#if options.enableExpandCollapse}}
 							<td><!-- + column--></td>
+                            {{/if}}
+
 							<td colspan="1">
-								{{title}}
+								{{options.title}}
 							</td>
 							<td colspan="4" class="topLevelGroupSummary">
 								<small>
 									{{formatCurrency sum}} in {{txTransactionReasonCounterDisplay transactionReasonCounter}}
 								</small>
 							</td>
+                            {{#if options.enableEdits}}
 							<td><!--edit column--></td>
+                            {{/if}}
 						{{else}}
+                            {{#if options.enableExpandCollapse}}
 							<td>
 								<a class="txRowExpanderControl">
 									{{#if isChildrenVisible}}
@@ -26,10 +33,11 @@
 									{{/if}}
 								</a>							
 							</td>
-							<td>
-								{{repeatString "&nbsp" depth 4}}
-								{{title}}
+                            {{/if}}
 
+							<td>
+                                <span>{{repeatString "&nbsp" groupIndentLevel 4}}{{options.title}}</span>
+                                {{#if options.enableIndicators}}
 								<!-- Tx icons -->
 								<!-- note icon -->
 								{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
@@ -58,6 +66,7 @@
 										{{/compare}}
 									{{/compare}}
 								{{/compare}}
+                                {{/if}}
 							</td>
 							<td>
 								<span class="txRowExpanderControl">
@@ -82,6 +91,7 @@
 									{{#compare accountCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
 								</span>
 							</td>
+                            {{#if options.enableEdits}}
 							<td>
 								<div class="dropdown">
 									<!-- edit icon and dropdown trigger -->
@@ -174,10 +184,12 @@
 										{{/compare}}
 										</li>
 									</ul>
-								</div>
+								</div><!--dropdown-->
 							</td>
+                            {{/if}}<!--options.enableEdits-->
 						{{/if}}
 					</tr>
+                    {{/if}}
 
 					<!-- if leaf group, print transactions as child else print child groups -->
 					{{#if rows}}		

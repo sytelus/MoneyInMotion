@@ -12,11 +12,11 @@
         params = utils.isEmpty(params) ? { action: "showmonth" } : params;
         switch (params.action) {
             case "showmonth":
-                self.refresh(params.year, params.month);
+                self.refresh({ year: params.year, month: params.month });
                 break;
             default:
                 utils.log(["Unsupported hashchange was routed to txExplorerView", params], 5, "error");
-                this.refresh(params.year, params.month);
+                self.refresh({ year: params.year, month: params.month });
                 break;
         }
     };
@@ -36,7 +36,7 @@
 
             if (target === "txx" || target === "main") {
                 var params = $.deparam(e.fragment);
-                if (params.iid === self.instanceId) {
+                if (params.iid === self.instanceId.toString()) {
                     hashChangeHandler.call(self, params);
                 }
             }
@@ -62,30 +62,32 @@
                 months.add(monthString);
             }
 
-            self.templateData = yearMonths.toArray(function (yearString, monthsSet) {
-                var yearMonthsArray = {
-                    yearString: yearString,
-                    months:
-                        _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function (monthString) {
-                            var monthInt = utils.parseInt(monthString) - 1;
-                            var monthName = utils.getMonthName(monthInt);
-                            var urlHash = "#" + $.param({ target: "txx", action: "showmonth", year: yearString, month: monthString, iid: self.instanceId });
-                            return { monthName: monthName, urlHash: urlHash, monthString: monthString };
-                        })
-                };
+            self.templateData = {};
+            self.templateData.yearMonths = yearMonths.toArray(function (yearString, monthsSet) {
+                    var yearMonthsArray = {
+                        yearString: yearString,
+                        months:
+                            _.map(monthsSet.toArray().sort(utils.compareFunction(true)), function (monthString) {
+                                var monthInt = utils.parseInt(monthString) - 1;
+                                var monthName = utils.getMonthName(monthInt);
+                                var urlHash = "#" + $.param({ target: "txx", action: "showmonth", year: yearString, month: monthString, iid: self.instanceId });
+                                return { monthName: monthName, urlHash: urlHash, monthString: monthString };
+                            })
+                    };
 
-                //Pad month names to be equal length
-                if (yearMonthsArray.months.length > 0) {
-                    var monthLongestLength = utils.max(yearMonthsArray.months, function (m) { return m.monthName.length; }).monthName.length;
-                    for (var i = 0; i < yearMonthsArray.months.length; i++) {
-                        yearMonthsArray.months[i].monthName += utils.repeatString(" ", monthLongestLength - yearMonthsArray.months[i].length);
+                    //Pad month names to be equal length
+                    if (yearMonthsArray.months.length > 0) {
+                        var monthLongestLength = utils.max(yearMonthsArray.months, function (m) { return m.monthName.length; }).monthName.length;
+                        for (var i = 0; i < yearMonthsArray.months.length; i++) {
+                            yearMonthsArray.months[i].monthName += utils.repeatString(" ", monthLongestLength - yearMonthsArray.months[i].length);
+                        }
                     }
-                }
 
-                return yearMonthsArray;
+                    return yearMonthsArray;
             });
+            self.templateData.yearMonths.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.yearString; }));
+            self.templateData.iid = self.instanceId;
 
-            self.templateData.sort(utils.compareFunction(true, function (yearMonths) { return yearMonths.yearString; }));
             self.txs = txs;
         },
 
@@ -97,22 +99,22 @@
             selectMonthString = selectMonthString || (self.lastSelectedYearMonth ? self.lastSelectedYearMonth.monthString : undefined);
 
             //Find indices of selected items
-            var selectYearIndex = _.findIndex(self.templateData, function (yearMonths) { return yearMonths.yearString === selectYearString; });
+            var selectYearIndex = _.findIndex(self.templateData.yearMonths, function (yearMonths) { return yearMonths.yearString === selectYearString; });
             var selectMonthIndex;   //leave it undefined
-            selectYearIndex = selectYearIndex >= 0 ? selectYearIndex : (self.templateData.length ? 0 : undefined);
+            selectYearIndex = selectYearIndex >= 0 ? selectYearIndex : (self.templateData.yearMonths.length ? 0 : undefined);
             if (selectYearIndex >= 0) {
-                selectMonthIndex = _.findIndex(self.templateData[selectYearIndex].months, function (monthInfo) { return monthInfo.monthString === selectMonthString; });
-                selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (self.templateData[selectYearIndex].months.length ? 0 : undefined);
+                selectMonthIndex = _.findIndex(self.templateData.yearMonths[selectYearIndex].months, function (monthInfo) { return monthInfo.monthString === selectMonthString; });
+                selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (self.templateData.yearMonths[selectYearIndex].months.length ? 0 : undefined);
             }
 
             self.lastSelectedYearMonth = { yearString: undefined, monthString: undefined };
             if (selectYearIndex >= 0) {
-                self.lastSelectedYearMonth.yearString = self.templateData[selectYearIndex].yearString;
-                self.templateData[selectYearIndex].isSelected = true;
+                self.lastSelectedYearMonth.yearString = self.templateData.yearMonths[selectYearIndex].yearString;
+                self.templateData.yearMonths[selectYearIndex].isSelected = true;
 
                 if (selectMonthIndex >= 0) {
-                    self.lastSelectedYearMonth.monthString = self.templateData[selectYearIndex].months[selectMonthIndex].monthString;
-                    self.templateData[selectYearIndex].months[selectMonthIndex].isSelected = true;
+                    self.lastSelectedYearMonth.monthString = self.templateData.yearMonths[selectYearIndex].months[selectMonthIndex].monthString;
+                    self.templateData.yearMonths[selectYearIndex].months[selectMonthIndex].isSelected = true;
                 }
             }
 
@@ -128,7 +130,7 @@
             });
 
             utils.triggerEvent(self, "afterRefresh", [self.txs, selectedTxs,
-                self.iid + "." + self.lastSelectedYearMonth.yearString + "." + self.lastSelectedYearMonth.monthString,   //Current view key
+                self.instanceId + "." + self.lastSelectedYearMonth.yearString + "." + self.lastSelectedYearMonth.monthString,   //Current view key
                 self.lastSelectedYearMonth]);
 
             return selectedTxs;

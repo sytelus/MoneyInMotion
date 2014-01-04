@@ -1,13 +1,18 @@
-﻿	<table class="condencedDataGrid" id="txListGrid">
+﻿	<table class="condencedDataGrid">
 		<thead>
 			<tr>
+                {{#if options.enableExpandCollapse}}
 				<th>+</th>
+                {{/if}}
+
 				<th>Name</th>
 				<th>Amount</th>
 				<th>Reason</th>
 				<th>Date</th>
 				<th>Account</th>
+                {{#if options.enableEdits}}
 				<th>Edit</th>
+                {{/if}}
 			</tr>
 		</thead>
 		<tbody>
@@ -16,5 +21,5 @@
 	</table>
 
     <!-- Confirm edit save modal -->
-    <div id="txListConfirmEditSaveModalContainer">
+    <div class="txListConfirmEditSaveModalContainer">
     </div>

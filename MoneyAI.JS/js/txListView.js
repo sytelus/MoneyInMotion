@@ -6,12 +6,19 @@
 
     "use strict";
 
-    var compiledTemplates = {};   //cache compiled template
+    var compiledTemplates = {},   //cache compiled template
+        optionsDefaults = {
+            enableGrouping: true,
+            enableEdits: true,
+            enableIndicators: true //flag, note indicators next to name
+        },
+        saveConfirmModalId = 0;
 
-    var initialize = function (element) {
+    var initialize = function (element, options) {
         var self = this;
         self.cachedValues = undefined;
         self.hostElement = element;
+        self.options = utils.extend({}, optionsDefaults, options);
 
         //Clicks for +/- buttons
         self.hostElement.on("click", ".txRowExpanderControl", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
@@ -117,18 +124,21 @@
     },
 
     defaultReviewAffectedTransactionsCallback = function (allAffectedTransactions, allAffectedTransactionsCount) {
+        var self = this;
+
         if (allAffectedTransactionsCount !== 1) {
             compiledTemplates.saveEditsConfirmModalTemplate = compiledTemplates.saveEditsConfirmModalTemplate || utils.compileTemplate(saveEditsConfirmModalHtml);
             var templateHtml = utils.runTemplate(compiledTemplates.saveEditsConfirmModalTemplate);
-            var container = $("#txListConfirmEditSaveModalContainer").html(templateHtml);
+            var container = self.hostElement.find(".txListConfirmEditSaveModalContainer").html(templateHtml);
 
-            var modalTarget = container.children("#txListConfirmEditSaveModal");
+            var modalTarget = container.children(".txListConfirmEditSaveModal");
             modalTarget = modalTarget.modal();
 
             var deferredPromise = utils.createDeferred(),
                 viewModel = {
                     allAffectedTransactions: allAffectedTransactions,
                     allAffectedTransactionsCount: allAffectedTransactionsCount,
+                    modalId: ++saveConfirmModalId,
                     onOk: function () {
                         //Resolve only after hide or elements would be recreated
                         modalTarget.one("hidden.bs.modal", function () { deferredPromise.resolve(); });
@@ -315,7 +325,7 @@
             }
 
             //Always update aggregator because tx data might have changed
-            self.cachedValues.netAggregator = (new NetAggregator(txItems, txItemsKey)).aggregator;
+            self.cachedValues.netAggregator = (new NetAggregator(txItems, txItemsKey, self.options)).aggregator;
 
             compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateHtml);
             var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, self.cachedValues.netAggregator);

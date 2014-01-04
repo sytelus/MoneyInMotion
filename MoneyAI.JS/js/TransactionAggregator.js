@@ -2,16 +2,41 @@
     "use strict";
 
     //static privates
-    var allAggregators = {};
 
-    var $this = function TransactionAggregator(parent, name, title, retainRows, childAggregateFunction,
-        sortChildAggregatorsFunction, sortTxFunction, isCategoryGroup) {
+    //Store previous aggregators so we can lookup previous state of isChildrenVisible property
+    var allAggregators = {},
+        optionsDefault = {
+            retainRows: false,
+            sortTxFunction: function (txRows) {
+                txRows.sort(utils.compareFunction(false, function (tx) { return tx.amount; }));
+                return txRows;
+            },
+            childAggregateFunction: undefined,
+            sortChildAggregatorsFunction: function (aggs) {
+                aggs.sort(utils.compareFunction(false, function (agg) { return agg.sum; }));
+                return aggs;
+            },
+            isCategoryGroup: false,
+            retainChildrenVisibilityState: true,
+            title: undefined,
+            groupHeaderVisible: true,
+            enableEdits: true,
+            enableIndicators: true,
+            enableExpandCollapse: true,
+            isOptionalGroup: undefined  //auto decide
+        };
 
-        this.groupId = (parent ? parent.groupId : "") + "." + name;
+    var $this = function TransactionAggregator(parent, name, options) {
+        this.options = utils.extend({}, optionsDefault, {title: name}, options);
+        
+        //Disable saving state if name is not provided
+        if (this.options.retainChildrenVisibilityState) {
+            this.groupId = (parent ? parent.groupId : "") + "." + name;
 
-        var previousValue = allAggregators[this.groupId];
-        this.isChildrenVisible = previousValue ? previousValue.isChildrenVisible : undefined;
-        allAggregators[this.groupId] = this;
+            var previousValue = allAggregators[this.groupId];
+            this.isChildrenVisible = previousValue ? previousValue.isChildrenVisible : undefined;
+            allAggregators[this.groupId] = this;
+        }
 
         this.parent = parent;
 
@@ -30,16 +55,9 @@
         this.depth = parent ? parent.depth + 1 : 0;
 
         this.name = name;
-        this.title = title;
-        this.isCategoryGroup = !!isCategoryGroup;
         this.rows = [];
-        this.retainRows = !!retainRows;
 
         this.childAggregators = {};
-
-        this.childAggregateFunction = childAggregateFunction;
-        this.sortChildAggregatorsFunction = sortChildAggregatorsFunction;
-        this.sortTxFunction = sortTxFunction;
 
         this.isFinal = false;
     };
@@ -51,7 +69,7 @@
         //publics
         return {
             add: function (tx) {
-                if (this.retainRows) {
+                if (this.options.retainRows) {
                     this.rows.push(tx);
                 }
 
@@ -72,8 +90,8 @@
                 this.transactionDateCounter.add(tx.correctedValues.transactionDateParsed);
                 this.categoryPathStringCounter.add(tx.correctedValues.categoryPathString);
 
-                if (this.childAggregateFunction) {
-                    var childAggregator = this.childAggregateFunction(this, tx);
+                if (this.options.childAggregateFunction) {
+                    var childAggregator = this.options.childAggregateFunction(this, tx);
                     if (childAggregator) {
                         childAggregator.add(tx);
                     }
@@ -86,7 +104,7 @@
             },
 
             refreshVisibility: function(isRecursive) {
-                this.isTopLevel = this.depth === 1;
+                this.isTopLevel = this.depth <= 1;
 
                 /*
                     EParent = nearest non-optional parent
@@ -97,7 +115,8 @@
                     On Expand/Collapse: Set IsChildrenVisible, Update IsVisible for all children
                     On refresh: Copy IsChildrenVisible from last state
                 */
-                this.isOptional = this.count === 1 && !this.isCategoryGroup && !this.isTopLevel;
+                this.isOptional = this.options.isOptionalGroup !== undefined ? !!this.options.isOptionalGroup :
+                    (this.count === 1 && !this.options.isCategoryGroup && !this.isTopLevel);
                 this.effectiveParent = this.parent ?
                     (this.parent.isOptional ? this.parent.effectiveParent : this.parent) : this;
                 this.isVisible = this.isTopLevel ||
@@ -110,6 +129,8 @@
                 //Short cut method for template
                 this.effectiveParentForTx = this.isOptional ? this.effectiveParent : this;
                 this.isTxVisible = this.effectiveParentForTx.isVisible && this.effectiveParentForTx.isChildrenVisible;
+                this.txIndentLevel = this.effectiveParentForTx.isTopLevel ? 0 : this.effectiveParentForTx.depth;
+                this.groupIndentLevel = this.effectiveParent.isTopLevel ? 0 : this.effectiveParent.depth;
 
                 if (isRecursive) {
                     //Child must be done after visibility for parent is setup
@@ -135,15 +156,15 @@
 
             toChildAggregatorsArray: function () {
                 var childAggregatorsArray = utils.toValueArray(this.childAggregators);
-                if (this.sortChildAggregatorsFunction) {
-                    childAggregatorsArray = this.sortChildAggregatorsFunction(childAggregatorsArray);
+                if (this.options.sortChildAggregatorsFunction) {
+                    childAggregatorsArray = this.options.sortChildAggregatorsFunction(childAggregatorsArray);
                 }
                 return childAggregatorsArray;
             },
 
             toTxArray: function () {
-                if (this.sortTxFunction) {
-                    this.rows = this.sortTxFunction(this.rows);
+                if (this.options.sortTxFunction) {
+                    this.rows = this.options.sortTxFunction(this.rows);
                 }
                 return this.rows;
             },

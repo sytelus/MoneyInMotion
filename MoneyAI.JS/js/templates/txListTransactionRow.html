@@ -2,12 +2,16 @@
                     <tr data-parentgroupid="{{../groupId}}" 
                         class="{{#unless ../effectiveParentForTx.isTopLevel}}txTxRow{{/unless}}{{#unless ../isTxVisible}} txRowInvisible{{/unless}}"
                         data-txid="{{id}}">
+
+                        {{#if ../options.enableExpandCollapse}}
                         <td>
                         </td>
-                        <td>
-                            {{repeatString "&nbsp" ../effectiveParentForTx.depth 4 4}}
+                        {{/if}}
 
-                            {{correctedValues.entityNameBest}}
+                        <td>
+                            <span>{{repeatString "&nbsp" ../effectiveParentForTx.txIndentLevel 4}}{{correctedValues.entityNameBest}}</span>
+
+                            {{#if ../options.enableIndicators}}
 
                             <!-- tx Icons -->
                             {{#if correctedValues.note}}
@@ -25,6 +29,8 @@
                                     &nbsp;&nbsp;<i class="todoDoneIcon"></i>
                                 {{/compare}}
                             {{/if}}
+
+                            {{/if}} <!--enable indicators-->
                         </td>
                         <td {{#compare correctedValues.amount "<" 0}} class="negativeAmount" {{/compare}}>
                             {{formatCurrency correctedValues.amount}}
@@ -38,6 +44,7 @@
                         <td>
                             {{accountId}}
                         </td>
+                        {{#if ../options.enableEdits}}
                         <td>
                             <div class="dropdown">
                                 <!-- edit icon and dropdown trigger -->
@@ -92,7 +99,8 @@
                                       </a>
                                   </li>
                                 </ul>
-                            </div>
+                            </div><!--dropdown-->
                         </td>
+                        {{/if}}<!--options.enableEdits-->
                     </tr>
                 {{/each}}

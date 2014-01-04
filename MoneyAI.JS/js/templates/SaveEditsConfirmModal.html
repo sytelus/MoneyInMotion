@@ -1,35 +1,35 @@
-﻿    <div class="modal fade" id="txListConfirmEditSaveModal" tabindex="-1" role="dialog" aria-labelledby="txListConfirmEditSaveModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" data-bind="click: onCancel" class="close" aria-hidden="true">&times;</button>
-                    <h4 class="modal-title" id="txListConfirmEditSaveModalLabel">Confirm Edit Save</h4>
-                </div>
-                <div class="modal-body">
+﻿    <div class="modal fade txListConfirmEditSaveModal" tabindex="-1" role="dialog" aria-labelledby="txListConfirmEditSaveModalLabel_{{modalId}}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" data-bind="click: onCancel" class="close" aria-hidden="true">&times;</button>
+                <h4 class="modal-title" id="txListConfirmEditSaveModalLabel_{{modalId}}">Confirm Edit Save</h4>
+            </div>
+            <div class="modal-body">
 
-                    <div data-bind="if: allAffectedTransactionsCount > 0">
-                        This will apply changes to <strong data-bind="text: allAffectedTransactionsCount" /> transactions.
-                        <a href="#" class="text-right" data-bind="click: showAffactedTransactions, visible: !isAffactedTransactionsShown()">
-                            View Affected Transactions
-                        </a>
-                        <div class="">
+                <div data-bind="if: allAffectedTransactionsCount > 0">
+                    This will apply changes to <strong data-bind="text: allAffectedTransactionsCount" /> transactions.
+                    <a href="#" class="text-right" data-bind="click: showAffactedTransactions, visible: !isAffactedTransactionsShown()">
+                        View Affected Transactions
+                    </a>
+                    <div class="">
 
-                        </div>
                     </div>
-
-                    <div data-bind="if: allAffectedTransactionsCount === 0">
-                        There are no transactions affected by your change.
-                    </div>
-
-                    <p>
-                        Are you sure?
-                    </p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" data-bind="click: onCancel" class="btn btn-default">Cancel</button>
-                    <button type="button" data-bind="click: onOk" class="btn btn-primary">Save changes</button>
+
+                <div data-bind="if: allAffectedTransactionsCount === 0">
+                    There are no transactions affected by your change.
                 </div>
-            </div><!-- /.modal-content -->
-        </div><!-- /.modal-dialog -->
-    </div><!-- /.modal -->
+
+                <p>
+                    Are you sure?
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" data-bind="click: onCancel" class="btn btn-default">Cancel</button>
+                <button type="button" data-bind="click: onOk" class="btn btn-primary">Save changes</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
 

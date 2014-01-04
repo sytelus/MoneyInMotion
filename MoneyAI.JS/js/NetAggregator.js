@@ -1,15 +1,7 @@
 ﻿define("NetAggregator", ["common/utils", "TransactionAggregator"], function (utils, TransactionAggregator) {
     "use strict";
 
-    var sortTxRows = function (txRows) {
-        txRows.sort(utils.compareFunction(false, function (tx) { return tx.amount; }));
-        return txRows;
-    },
-    sortNameChildAggregators = function (aggs) {
-        aggs.sort(utils.compareFunction(false, function (agg) { return agg.sum; }));
-        return aggs;
-    },
-    sortNetChildAggregators = function (aggs) {
+    var sortNetChildAggregators = function (aggs) {
         aggs.sort(utils.compareFunction(false, function (agg) { return agg.sortOrder; }));
         return aggs;
     },
@@ -37,11 +29,11 @@
         var aggregator = childAggregators[aggregatorName];
         if (!aggregator) {
             if (categoryDepth !== undefined) {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, true);
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, { title: aggregatorTitle, childAggregateFunction: entityNameChildAggregator, isCategoryGroup: true });
                 aggregator.categoryDepth = categoryDepth;
             }
             else {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, true, undefined, sortNameChildAggregators, sortTxRows, false);
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, { title: aggregatorTitle, retainRows: true });
             }
 
             childAggregators[aggregatorName] = aggregator;
@@ -50,19 +42,19 @@
         return aggregator;
     },
     getExpenseChildAggregator = function expense(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Expense", "Expenses", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
+        var agg = new TransactionAggregator(parentAggregator, "Expenses", { childAggregateFunction: entityNameChildAggregator} );
         agg.sortOrder = 1; //Show it after income
 
         return agg;
     },
     getIncomeChildAggregator = function income(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Income", "Income", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
+        var agg = new TransactionAggregator(parentAggregator, "Income", { childAggregateFunction: entityNameChildAggregator });
         agg.sortOrder = 0; //Show it first (because it has smaller line items)
 
         return agg;
     },
     getTransfersChildAggregator = function transfers(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Transfers", "Transfers", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
+        var agg = new TransactionAggregator(parentAggregator, "Transfers", { childAggregateFunction: entityNameChildAggregator });
         agg.sortOrder = 10; //Show it at the end
 
         return agg;
@@ -94,9 +86,29 @@
         return childAggregators[aggregatorFunction.name];
     };
 
-    var $this = function (txItems, txItemsKey) {
-        this.aggregator = new TransactionAggregator(undefined, "Net." + txItemsKey, "Net/Net", false,
-                            incomeExpenseChildAggregator, sortNetChildAggregators, sortTxRows, false);
+    var getFlatAggregator = function(options) {
+        return function (parentAggregator) {
+            var childAggregators = parentAggregator.childAggregators;
+            var aggregator = childAggregators["flatAggregator"];
+            if (!aggregator) {
+                aggregator = new TransactionAggregator(parentAggregator, "flatAggregator", {
+                    retainRows: true, retainChildrenVisibilityState: options.enableGrouping, 
+                    groupHeaderVisible: options.enableGrouping, enableEdits: options.enableEdits,
+                    enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping,
+                    isOptionalGroup: true
+                });
+                childAggregators["flatAggregator"] = aggregator;
+            }
+
+            return aggregator;
+        }
+    };
+
+    var $this = function (txItems, txItemsKey, options) {
+        this.aggregator = new TransactionAggregator(undefined, "Net." + txItemsKey, {
+            childAggregateFunction: options.enableGrouping ? incomeExpenseChildAggregator : getFlatAggregator(options),
+            enableEdits: options.enableEdits, enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping
+        });
 
         utils.forEach(txItems, function (tx) {
             this.aggregator.add(tx);

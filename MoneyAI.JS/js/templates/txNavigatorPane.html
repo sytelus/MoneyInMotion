@@ -1,22 +1,24 @@
-﻿<div class=".panel-group" id="yearAccordion">
-	{{#.}}
+﻿<div class=".panel-group" id="yearAccordion_{{iid}}">
+	{{#yearMonths}}
     <div class="panel panel-default">
         <div class="panel-heading">
             <h4 class="panel-title">
-                <a data-toggle="collapse" data-parent="#yearAccordion" href="#year{{yearString}}">
+                <a data-toggle="collapse" data-parent="#yearAccordion_{{iid}}" href="#year{{yearString}}_{{../iid}}">
                     {{yearString}}
                 </a>
             </h4>
         </div>
-        <div id="year{{yearString}}" class="panel-collapse collapse {{#if isSelected}}in{{/if}}">
+        <div id="year{{yearString}}_{{../iid}}" class="panel-collapse collapse {{#if isSelected}}in{{/if}}">
             <div class="panel-body">
-				<ul class="nav nav-pills">
-					{{#months}}
-						<li {{#if isSelected}}class="active"{{/if}}><a href="{{urlHash}}" class="jslink">{{monthName}}</a></li>
-					{{/months}}
-				</ul>
+                <ul class="nav nav-pills">
+                    {{#months}}
+                    <li {{#if isselected}} class="active" {{/if}}>
+                        <a href="{{urlHash}}" class="jslink">{{monthName}}</a>
+                    </li>
+                    {{/months}}
+                </ul>
             </div>
         </div>
     </div>
-	{{/.}}
+	{{/yearMonths}}
 </div>
