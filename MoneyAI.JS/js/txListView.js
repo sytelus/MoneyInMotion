@@ -239,23 +239,25 @@
         getRuleBasedMenuItemClickHandler.call(this, menuParams, selectedTx, dropdownElement,
             function (lastEdit, selectedTx) {
                 var transactionReasonLookup = selectedTx.length > 1 ?
-                        Transaction.prototype.transactionReasonPluralTitleLookup : Transaction.prototype.transactionReasonTitleLookup;
+                        Transaction.prototype.transactionReasonPluralTitleLookup : Transaction.prototype.transactionReasonTitleLookup,
+                    allTransactionReasons = utils.toKeyValueArray(transactionReasonLookup);
 
                 return {
+                    allTransactionReasons: allTransactionReasons,
+
                     isAmountChanged: ko.observable(lastEdit.values.amount !== undefined),
                     amount: lastEdit.values.amount ? lastEdit.values.amount.value :
                         utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.amount; }),
 
                     isTransactionReasonChanged: ko.observable(lastEdit.values.transactionReason !== undefined),
-                    transactionReason: transactionReasonLookup[(lastEdit.values.transactionReason ?
-                        lastEdit.values.transactionReason.value :
-                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.transactionReason; })).toString()],
+                    transactionReason: utils.findFirst(allTransactionReasons, function (arrayItem) {
+                        return (lastEdit.values.transactionReason ? lastEdit.values.transactionReason.value :
+                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.transactionReason; })).toString() === arrayItem.key;
+                    }),
 
                     isEntityNameChanged: ko.observable(lastEdit.values.entityName !== undefined),
                     entityName: lastEdit.values.entityName ? lastEdit.values.entityName.value :
-                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.entityNameBest; }),
-
-                    allTransactionReasons: utils.toKeyValueArray(transactionReasonLookup)
+                        utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.entityNameBest; })
                 };
             },
             function (userEditableFields) {
@@ -343,7 +345,7 @@
             }
 
             //Always update aggregator because tx data might have changed
-            self.cachedValues.netAggregator = (new NetAggregator(txItems, txItemsKey, self.options)).aggregator;
+            self.cachedValues.netAggregator = (new NetAggregator(self.cachedValues.txItems, self.cachedValues.txItemsKey, self.options)).aggregator;
 
             compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateHtml);
             var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, self.cachedValues.netAggregator);

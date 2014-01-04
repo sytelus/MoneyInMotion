@@ -158,8 +158,8 @@
             this.transactionDate = otherEditedValues.transactionDate.isVoided ? undefined : otherEditedValues.transactionDate;
         }
 
-        if (otherEditedValues.Amount) {
-            this.Amount = otherEditedValues.Amount.isVoided ? undefined : otherEditedValues.Amount;
+        if (otherEditedValues.amount) {
+            this.amount = otherEditedValues.amount.isVoided ? undefined : otherEditedValues.amount;
         }
 
         if (otherEditedValues.entityName) {

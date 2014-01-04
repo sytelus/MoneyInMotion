@@ -9,7 +9,7 @@
             <label class="sr-only" for="res_{{tx.id}}">Change Type</label>
             <select data-bind="value:   transactionReason,
                                 options: allTransactionReasons,
-                                optionsText: value" class="form-control input-sm"></select>
+                                optionsText: 'value'" class="form-control input-sm"></select>
         </div>
     </div>
 
@@ -35,14 +35,7 @@
             <input type="number" id="nam_{{tx.id}}" autocomplete="on" class="form-control input-sm" data-bind="value: amount">
         </div>
     </div>
-
-
-    <!-- Scope selection -->
-    {{> txEditRule }}
-
-    <!-- Submit/Cancel -->
-    <div class="popover-form-footer">
-        <button type="button" class="btn btn-default btn-xs" data-dismiss="popover">Close</button>
-        <button type="button" accesskey="s" class="btn btn-primary btn-xs saveControl">Save changes</button>
-    </div>
 </div>
+
+<!-- Scope selection -->
+{{> txEditRule }}
