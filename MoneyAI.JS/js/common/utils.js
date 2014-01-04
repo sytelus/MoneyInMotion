@@ -41,6 +41,8 @@
         log: function (textOrArray, statusBoxPriority, type) {
             type = type || "log";
 
+            textOrArray = _.isString(textOrArray) ? [textOrArray] : textOrArray;
+
             (debug[type] || debug.log).apply(debug, textOrArray);
 
             if (statusBoxPriority !== undefined) {

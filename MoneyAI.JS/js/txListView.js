@@ -1,118 +1,70 @@
-﻿define("txListView", ["jquery", "Transaction", "common/utils", "TransactionAggregator", "EditedValues", "common/popoverForm", "knockout",
+﻿define("TxListView", ["jquery", "Transaction", "common/utils", "EditedValues", "common/popoverForm", "knockout", "NetAggregator",
     "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html",
     "text!templates/txAttributesEditorBody.html", "text!templates/saveEditsConfirmModal.html"],
-    function ($, Transaction, utils, TransactionAggregator, editedValues, popoverForm, ko,
+    function ($, Transaction, utils, editedValues, popoverForm, ko, NetAggregator,
         txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml, txAttributesEditorBodyHtml, saveEditsConfirmModalHtml) {
 
     "use strict";
 
-    //private statcs
-    var cachedValues;
     var compiledTemplates = {};   //cache compiled template
-    var lastSelectedYearMonth;
 
-    var sortTxRows = function (txRows) {
-        txRows.sort(utils.compareFunction(false, function (tx) { return tx.amount; }));
-        return txRows;
-    };
-    var sortNameChildAggregators = function (aggs) {
-        aggs.sort(utils.compareFunction(false, function (agg) { return agg.sum; }));
-        return aggs;
-    };
-    var sortNetChildAggregators = function (aggs) {
-        aggs.sort(utils.compareFunction(false, function (agg) { return agg.sortOrder; }));
-        return aggs;
-    };
+    var initialize = function (element) {
+        var self = this;
+        self.cachedValues = undefined;
+        self.hostElement = element;
 
-    var entityNameChildAggregator = function (parentAggregator, tx) {
-        var childAggregators = parentAggregator.childAggregators;
-        var categoryPath = tx.correctedValues.categoryPath;
+        //Clicks for +/- buttons
+        self.hostElement.on("click", ".txRowExpanderControl", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
+            var parentRow = $(this).closest("tr");
+            var isChildrenVisible = parentRow.data("ischildrenvisible").toString() === "true";
 
-        var aggregatorName, aggregatorTitle, categoryDepth;
-        if (categoryPath && categoryPath.length) {
-            categoryDepth = parentAggregator.categoryDepth === undefined ? 0 : parentAggregator.categoryDepth + 1;
-            if (categoryDepth < categoryPath.length) {
-                aggregatorName = "CAT_" + categoryPath[categoryDepth]; //avoid name collisons
-                aggregatorTitle = categoryPath[categoryDepth];
+            collapseExpandRows.call(self, parentRow, !isChildrenVisible);
+
+            event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
+        });
+
+        //Clicks for set note menu
+        self.hostElement.on("click", "[data-menuitem]", function (event) {
+            var menuItemElement = $(this),
+            menuItem = menuItemElement.data("menuitem"),
+            menuParams = menuItemElement.data("menuparams"),
+            cell = menuItemElement.closest("td"),
+            dropdownElement = cell.find(".dropdown-toggle").first(),
+            row = cell.closest("tr");
+
+            //Is this group row?
+            var groupId = row.data("groupid");
+            var selectedTx;
+            if (groupId !== undefined) {
+                var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
+                selectedTx = agg.getAllTx();
             }
             else {
-                categoryDepth = undefined;
-            }
-        }
-
-        if (categoryDepth === undefined) {
-            aggregatorName = "NAM_" + tx.correctedValues.entityNameBest;
-            aggregatorTitle = tx.correctedValues.entityNameBest;
-        }
-
-        var aggregator = childAggregators[aggregatorName];
-        if (!aggregator) {
-            if (categoryDepth !== undefined) {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, true);
-                aggregator.categoryDepth = categoryDepth;
-            }
-            else {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, aggregatorTitle, true, undefined, sortNameChildAggregators, sortTxRows, false);
+                var txId = row.data("txid");
+                selectedTx = [self.cachedValues.txs.itemsById.get(txId)];
             }
 
-            childAggregators[aggregatorName] = aggregator;
-        }
+            switch (menuItem) {
+                case "setFlag": setFlagMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
+                case "editNote": editNoteMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
+                case "editCategory": editCategoryMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
+                case "fixAttributeErrors": fixAttributeErrorsMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
+                default:
+                    throw new Error("menuItem " + menuItem + " is not supported");
+            }
 
-        return aggregator;
-    };
-
-    var getExpenseChildAggregator = function expense(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Expense", "Expenses", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
-        agg.sortOrder = 1; //Show it after income
-
-        return agg;
+            event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
+        });
     },
-    getIncomeChildAggregator = function income(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Income", "Income", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
-        agg.sortOrder = 0; //Show it first (because it has smaller line items)
+    getRowInfo = function (row) {
+        var self = this;
 
-        return agg;
-    },
-    getTransfersChildAggregator = function transfers(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Transfers", "Transfers", false, entityNameChildAggregator, sortNameChildAggregators, sortTxRows, false);
-        agg.sortOrder = 10; //Show it at the end
-
-        return agg;
-    };
-
-    var incomeExpenseChildAggregatorMapping = {
-        "0": getExpenseChildAggregator,   //Purchase
-        "1": getExpenseChildAggregator, //Adjustment
-        "2": getExpenseChildAggregator, //Fee
-        "4": getTransfersChildAggregator, //InterAccountPayment
-        "8": getExpenseChildAggregator, //Return
-        "16": getTransfersChildAggregator, //InterAccountTransfer
-        "32": getIncomeChildAggregator,
-        "64": getIncomeChildAggregator,
-        "128": getExpenseChildAggregator,
-        "256": getIncomeChildAggregator,
-        "512": getExpenseChildAggregator,
-        "1024": getIncomeChildAggregator,
-        "2048": getExpenseChildAggregator
-    };
-
-    var incomeExpenseChildAggregator = function (parentAggregator, tx) {
-        var aggregatorFunction = incomeExpenseChildAggregatorMapping[tx.correctedValues.transactionReason.toString()] || getExpenseChildAggregator;
-        var childAggregators = parentAggregator.childAggregators;
-        if (!childAggregators[aggregatorFunction.name]) {
-            childAggregators[aggregatorFunction.name] = aggregatorFunction(parentAggregator);
-        }
-
-        return childAggregators[aggregatorFunction.name];
-    };
-
-    var getRowInfo = function (row) {
         var groupId = row.attr("data-groupid");
         if (groupId === undefined) {
             return undefined;
         }
 
-        var agg = cachedValues.netAggregator.getByGroupId(groupId);
+        var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
         var childRows = row.nextAll("tr[data-parentgroupid=\"" + groupId + "\"]");
         var expanderTitle = row.find(".expanderTitle");
 
@@ -129,7 +81,8 @@
         }
     },
     showHideRow = function (rowInfo) {
-        updateRowVisibilityAttribute(rowInfo.row, rowInfo.aggregator.isVisible);
+        var self = this;
+        updateRowVisibilityAttribute.call(self, rowInfo.row, rowInfo.aggregator.isVisible);
 
         if (rowInfo.aggregator.isChildrenVisible) {
             rowInfo.expanderTitle.html("&ndash;");
@@ -140,17 +93,19 @@
 
         rowInfo.childRows.each(function () {
             var row = $(this);
-            var childRowInfo = getRowInfo(row);
+            var childRowInfo = getRowInfo.call(self, row);
             if (childRowInfo === undefined) {
-                updateRowVisibilityAttribute(row, rowInfo.aggregator.isTxVisible);
+                updateRowVisibilityAttribute.call(self, row, rowInfo.aggregator.isTxVisible);
             }
             else {
-                showHideRow(childRowInfo);
+                showHideRow.call(self, childRowInfo);
             }
         });
     },
     collapseExpandRows = function (parentRow, isChildrenVisible) {
-        var rowInfo = getRowInfo(parentRow);
+        var self = this;
+
+        var rowInfo = getRowInfo.call(self, parentRow);
         if (rowInfo === undefined) {    //Tx rows
             return;
         }
@@ -158,42 +113,7 @@
         rowInfo.aggregator.setChildrenVisible(isChildrenVisible);
         parentRow.data("ischildrenvisible", isChildrenVisible.toString());
 
-        showHideRow(rowInfo);
-    },
-
-    refresh = function (txs, selectYearString, selectMonthString) {
-        if (txs) {
-            cachedValues = undefined;
-        }
-
-        txs = txs || cachedValues.txs;
-
-        selectYearString = selectYearString || lastSelectedYearMonth.yearString;
-        selectMonthString = selectMonthString || lastSelectedYearMonth.monthString;
-
-        //first filter out the transactions
-        var selectedTxs = utils.filter(txs.items, function (tx) {
-            return tx.correctedValues.transactionYearString === selectYearString && tx.correctedValues.transactionMonthString === selectMonthString;
-        });
-
-        var netAggregator = new TransactionAggregator(undefined, "Net" + "." + selectYearString + "." + selectMonthString,
-            "Net/Net", false, incomeExpenseChildAggregator, sortNetChildAggregators, sortTxRows, false);
-        utils.forEach(selectedTxs, function (tx) {
-            Transaction.prototype.ensureAllCorrectedValues.call(tx);
-            netAggregator.add(tx);
-        });
-
-        netAggregator.finalize();
-
-        var templateData = netAggregator;
-
-        compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateHtml);
-        var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, templateData);
-
-        $("#txListControl").html(templateHtml);
-
-        cachedValues = { txs: txs, netAggregator: netAggregator };
-        lastSelectedYearMonth = { yearString: selectYearString, monthString: selectMonthString };
+        showHideRow.call(self, rowInfo);
     },
 
     defaultReviewAffectedTransactionsCallback = function (allAffectedTransactions, allAffectedTransactionsCount) {
@@ -219,25 +139,27 @@
                         modalTarget.one("hidden.bs.modal", function () { deferredPromise.reject(); });
                         modalTarget.modal("hide");
                     }
-            };
+                };
 
             ko.applyBindings(viewModel, modalTarget[0]);
 
             return deferredPromise.promise();
         }
-        
+
         return true;
     },
 
     defaultOnSaveHandler = function (lastEdit, scopeFilters, userEditableFieldsModel) {
-        return cachedValues.txs.addUpdateEdit(lastEdit, scopeFilters, userEditableFieldsModel, defaultReviewAffectedTransactionsCallback);
+        return this.cachedValues.txs.addUpdateEdit(lastEdit, scopeFilters, userEditableFieldsModel, defaultReviewAffectedTransactionsCallback);
     },
 
     getRuleBasedMenuItemClickHandler = function (menuParams, selectedTx, dropdownElement,
         toUserEditableFields, fromUserEditableFields, getTitle, formIconClass, formBodyHtml,
         lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, onSave) {
 
-        var lastEdits = cachedValues.txs.getLastEdit(selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters);
+        var self = this;
+
+        var lastEdits = self.cachedValues.txs.getLastEdit(selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters);
         var lastEdit = lastEdits[0];    //choose one if there are conflicting edits
 
         var viewModel = {
@@ -252,12 +174,12 @@
         },
         afterCloseHandler = function (isOkOrCancel) {
             if (isOkOrCancel) {
-                refresh();
+                self.refresh();
             }
         };
 
         var onSaveWrapper = function () {
-            return (onSave || defaultOnSaveHandler)(
+            return (onSave || defaultOnSaveHandler).call(self,
                 lastEdit, viewModel.scopeFiltersViewModel.toScopeFilters(), fromUserEditableFields(viewModel.userEditableFields, lastEdit, selectedTx));
         };
 
@@ -280,9 +202,10 @@
             afterCloseHandler(true);
         }
     },
-
+    
+    //Menu click events
     fixAttributeErrorsMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
-        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+        getRuleBasedMenuItemClickHandler.call(this, menuParams, selectedTx, dropdownElement,
             function (lastEdit, selectedTx) {
                 var transactionReasonLookup = selectedTx.length > 1 ?
                         Transaction.prototype.transactionReasonPluralTitleLookup : Transaction.prototype.transactionReasonTitleLookup;
@@ -313,13 +236,13 @@
             },
             function () { return "Fix Errors"; },
             "fixAttributeErrorsIcon", txAttributesEditorBodyHtml,
-            function (edit) { return editedValues.EditedValues.prototype.isUnvoided.call(edit.values, ["entityName", "transactionReason" ,"amount"]); },
+            function (edit) { return editedValues.EditedValues.prototype.isUnvoided.call(edit.values, ["entityName", "transactionReason", "amount"]); },
             editedValues.scopeTypeLookup.entityNameNormalized, utils.map(utils.distinct(selectedTx, "entityNameNormalized"), "entityNameNormalized")
         );
     },
 
     editCategoryMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
-        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+        getRuleBasedMenuItemClickHandler.call(this, menuParams, selectedTx, dropdownElement,
             function (lastEdit, selectedTx) {
                 var lastEditCategoryPath = editedValues.EditValue.prototype.getValueOrDefault.call(lastEdit.values.categoryPath);
                 return {
@@ -341,7 +264,7 @@
     },
 
     editNoteMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
-        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+        getRuleBasedMenuItemClickHandler.call(this, menuParams, selectedTx, dropdownElement,
             function (lastEdit, selectedTx) {
                 return {
                     note: editedValues.EditValue.prototype.getValueOrDefault.call(lastEdit.values.note,
@@ -363,7 +286,7 @@
     setFlagMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
         var isSet = menuParams.isSet;
 
-        getRuleBasedMenuItemClickHandler(menuParams, selectedTx, dropdownElement,
+        getRuleBasedMenuItemClickHandler.call(this, menuParams, selectedTx, dropdownElement,
             function (lastEdit, selectedTx) {
                 return {
                     isFlagged: editedValues.EditValue.prototype.getValueOrDefault.call(lastEdit.values.isFlagged,
@@ -378,57 +301,30 @@
         );
     };
 
+    var $this = function (element) {
+        initialize.call(this, element);
+    };
 
     //publics
-    return {
-        initialize: function () {
-            cachedValues = undefined;
+    var proto = {
+        refresh: function (txs, txItems, txItemsKey) {
+            var self = this;
 
-            //Clicks for +/- buttons
-            $("#txListControl").on("click", ".txRowExpanderControl", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
-                var parentRow = $(this).closest("tr");
-                var isChildrenVisible = parentRow.data("ischildrenvisible").toString() === "true";
+            if (txs) {
+                self.cachedValues = { txs: txs, txItems:txItems, txItemsKey: txItemsKey };
+            }
 
-                collapseExpandRows(parentRow, !isChildrenVisible);
+            //Always update aggregator because tx data might have changed
+            self.cachedValues.netAggregator = (new NetAggregator(txItems, txItemsKey)).aggregator;
 
-                event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
-            });
-
-            //Clicks for set note menu
-            $("#txListControl").on("click", "[data-menuitem]", function (event) {
-                var menuItemElement = $(this),
-                menuItem = menuItemElement.data("menuitem"),
-                menuParams = menuItemElement.data("menuparams"),
-                cell = menuItemElement.closest("td"),
-                dropdownElement = cell.find(".dropdown-toggle").first(),
-                row = cell.closest("tr");
-                
-                //Is this group row?
-                var groupId = row.data("groupid");
-                var selectedTx;
-                if (groupId !== undefined) {
-                    var agg = cachedValues.netAggregator.getByGroupId(groupId);
-                    selectedTx = agg.getAllTx();
-                }
-                else {
-                    var txId = row.data("txid");
-                    selectedTx = [cachedValues.txs.itemsById.get(txId)];
-                }
-
-                switch (menuItem) {
-                    case "setFlag": setFlagMenuItemClick(menuParams, selectedTx, dropdownElement); break;
-                    case "editNote": editNoteMenuItemClick(menuParams, selectedTx, dropdownElement); break;
-                    case "editCategory": editCategoryMenuItemClick(menuParams, selectedTx, dropdownElement); break;
-                    case "fixAttributeErrors": fixAttributeErrorsMenuItemClick(menuParams, selectedTx, dropdownElement); break;
-                    default:
-                        throw new Error("menuItem " + menuItem + " is not supported");
-                }
-
-                event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
-            });
-        },
-
-        refresh: refresh
-
+            compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateHtml);
+            var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, self.cachedValues.netAggregator);
+            self.hostElement.html(templateHtml);
+        }
     };
+
+    proto.constructor = $this;
+    $this.prototype = proto;
+
+    return $this;
 });

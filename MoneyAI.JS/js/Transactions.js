@@ -8,12 +8,14 @@
             utils.extend(this, jsonData);
 
             this.itemsById = new utils.Dictionary();
-            utils.forEach(this.items, function (item) {
-                this.itemsById.add(item.id, item);
+            utils.forEach(this.items, function (tx) {
+                this.itemsById.add(tx.id, tx);
+                Transaction.prototype.ensureAllCorrectedValues.call(tx);
             }, this);
         }
 
-        this.cachedValues = {};
+        this.cachedValues = { editsById: {} };
+        utils.forEach(this.edits.edits, function (edit) { this.cachedValues.editsById[edit.id.toString()] = edit; }, this);
     };
 
     var transactionsPrototype = (function () {
@@ -125,14 +127,6 @@
             return promise;
         },
 
-        ensureEditsByIdCache = function() {
-            if (!this.cachedValues.editsById) {
-                this.cachedValues.editsById = {};
-
-                utils.forEach(this.edits.edits, function(edit) { this.cachedValues.editsById[edit.id.toString()] = edit; }, this);
-            }
-        },
-
         getScopeFilter = function (scopeType, scopeParameters) {
             return new editedValues.EditScope(scopeType, scopeParameters);
         },
@@ -146,7 +140,6 @@
             var edit = new TransactionEdit(scopeFilters, userProfile.getEditsSourceId());
             this.edits.edits.push(edit);
 
-            ensureEditsByIdCache.call(this);
             this.cachedValues.editsById[edit.id.toString()] = edit;
 
             return edit;
@@ -208,7 +201,6 @@
             },
 
             getEditById: function(editId) {
-                ensureEditsByIdCache.call(this);
                 return this.cachedValues.editsById[editId.toString()];
             },
 

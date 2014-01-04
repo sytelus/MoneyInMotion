@@ -1,34 +1,34 @@
-﻿define("txExplorerView", ["txListView", "txNavigationView", "common/utils", "repository"], function (txListView, txNavigationView, utils, repository) {
+﻿define("TxExplorerView", ["TxListView", "TxNavigationView", "common/utils", "repository"], function (TxListView, TxNavigationView, utils, repository) {
     "use strict";
 
+    var $this = function TxExplorerView(element) {
+        var self = this;
+        self.hostElement = element;
+
+        var navigationElement = element.find(".txNavigationControl").first();
+        self.txNavigationView = new TxNavigationView(navigationElement);
+
+        utils.subscribe(self.txNavigationView, "afterRefresh", function (event, txs, txItems, txItemsKey) {
+            self.txListView.refresh(txs, txItems, txItemsKey);
+        });
+        
+        var listElement = element.find(".txListControl").first();
+        self.txListView = new TxListView(listElement);
+    };
+    
     //public interface
-    return {
-        initialize: function () {
-            txNavigationView.initialize();
-            txListView.initialize();
-        },
-
-        refresh: function (yearString, monthString) {
-            utils.log(["Refresh Request for:", "yearString: ", yearString, " monthString: ", monthString]);
-
-            repository.getTransactions("txExplorerView.refresh", function (txs) {
-                utils.log(["txs Data: ", "Items: ", txs.items.length, "First createdate: ", txs.items[0].auditInfo.createDate]);
-                var lastSelectedYearMonth = txNavigationView.refresh(txs, yearString, monthString);
-                txListView.refresh(txs, lastSelectedYearMonth.yearString, lastSelectedYearMonth.monthString);
+    var proto = {
+        refresh: function (uxOnlyRefresh) {
+            var self = this;
+            repository.getTransactions(!!!uxOnlyRefresh).done(function (txs) {
+                self.txNavigationView.load(txs);
+                self.txNavigationView.refresh();
             });
-        },
-
-        onHashChange: function (params) {
-            params = utils.isEmpty(params) ? { action: "showmonth" } : params;
-            switch (params.action) {
-                case "showmonth":
-                    this.refresh(params.year, params.month);
-                    break;
-                default:
-                    utils.log(["Unsupported hashchange was routed to txExplorerView", params], 5, "error");
-                    this.refresh(params.year, params.month);
-                    break;
-            }
         }
     };
+
+    proto.constructor = $this;
+    $this.prototype = proto;
+
+    return $this;
 });

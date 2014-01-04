@@ -58,6 +58,14 @@
             //let default handler run
             return false;
         };
+
+       //Global hash change event logging
+        $(window).bind("hashchange", function (e) {
+            var action = e.getState("action");
+            var target = e.getState("target") || "main";
+
+            utils.log(["hashchange occured with action: ", action, " target: ", target]);
+        });
    };
 
 });

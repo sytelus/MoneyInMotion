@@ -2,54 +2,42 @@
     "use strict";
 
     //privates
-    var cachedValues = {};
-    var currentAjaxRequest, callers;
+    var currentRequest, transactionsGetPromise, cachedTransactionsGetPromise;
 
-    var getTransactions = function (callerId, onGet, onFail, forceRefresh) {
-        if (forceRefresh || !cachedValues.transactions) {
+    var getTransactions = function (forceRefresh) {
+        if (forceRefresh || !cachedTransactionsGetPromise) {
+            //If there is a pending request, don't start new one
+            if (!currentRequest || currentRequest.state() !== "pending") {
+                currentRequest = $.getJSON("api/transactions");
+                transactionsGetPromise = utils.createDeferred();
+                utils.log("Started Ajax request", 100);
 
-            //If there is a pending request, don"t start new one
-            if (!currentAjaxRequest || currentAjaxRequest.state() !== "pending") {
-                currentAjaxRequest = $.getJSON("api/transactions");
-                callers = {};   //list of callers waiting for request
-                utils.log(["Started Ajax request", "callerId", callerId], 100);
-            }
-
-            //if this caller is not in the list, add it and queue up its callbacks to existing request
-            if (!callers[callerId]) {
-                callers.callerId = callerId;
-
-                currentAjaxRequest.done(function (data, textStatus) {
-                    utils.log(["getJSON success: ", textStatus, "callerId", callerId], 10, "success");
+                currentRequest.done(function (data, textStatus) {
+                    utils.log(["getJSON success: ", textStatus], 10, "success");
 
                     var txs = new Transactions(data);
 
                     utils.subscribe(txs, "editsApplied", editAppliedHandler);
 
-                    cachedValues.transactions = txs;
-                    var updatedTxs = onGet(txs);
-                    if (updatedTxs instanceof Transactions) {
-                        cachedValues.transactions = updatedTxs;
-                    }
+                    cachedTransactionsGetPromise = transactionsGetPromise;
+
+                    transactionsGetPromise.resolve(txs);
                 });
 
-                currentAjaxRequest.fail(function (xhr, textStatus, error) {
-                    utils.log(["getJSON failed: ", textStatus, error, "callerId", callerId, xhr.responseText], 0, "error");
-                    if (!!onFail) {
-                        onFail(error, xhr.responseText);
-                    }
-                    else {
-                        throw new Error(error + " " + xhr.responseText);
-                    }
+                currentRequest.fail(function (xhr, textStatus, error) {
+                    utils.log(["getJSON failed: ", textStatus, error, xhr.responseText], 0, "error");
+
+                    transactionsGetPromise.reject(error, textStatus, xhr.responseText);
                 });
 
-                currentAjaxRequest.always(function () {
-                    utils.log(["getTransactions complete", "callerId", callerId]);
-                });
+                return transactionsGetPromise;
+            }
+            else {
+                return transactionsGetPromise;
             }
         }
         else {
-            onGet(cachedValues.transactions);
+            return cachedTransactionsGetPromise;
         }
     },
         
@@ -76,11 +64,7 @@
         getTransactions: getTransactions,
 
         invalidateCache: function () {
-            delete cachedValues.transactions;
-        },
-
-        updateCache: function (txs) {
-            cachedValues = txs;
+            cachedTransactionsGetPromise = undefined;
         }
     };
 });

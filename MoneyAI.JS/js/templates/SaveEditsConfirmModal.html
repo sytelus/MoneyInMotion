@@ -6,18 +6,21 @@
                     <h4 class="modal-title" id="txListConfirmEditSaveModalLabel">Confirm Edit Save</h4>
                 </div>
                 <div class="modal-body">
+
                     <div data-bind="if: allAffectedTransactionsCount > 0">
                         This will apply changes to <strong data-bind="text: allAffectedTransactionsCount" /> transactions.
                         <a href="#" class="text-right" data-bind="click: showAffactedTransactions, visible: !isAffactedTransactionsShown()">
                             View Affected Transactions
                         </a>
-                        <div data-bind="visible: isAffactedTransactionsShown">
+                        <div class="">
 
                         </div>
                     </div>
+
                     <div data-bind="if: allAffectedTransactionsCount === 0">
                         There are no transactions affected by your change.
                     </div>
+
                     <p>
                         Are you sure?
                     </p>

@@ -1,4 +1,4 @@
-﻿define("TransactionAggregator", ["common/utils", "Transaction"], function (utils, Transaction) {
+﻿define("TransactionAggregator", ["common/utils"], function (utils) {
     "use strict";
 
     //static privates
@@ -51,8 +51,6 @@
         //publics
         return {
             add: function (tx) {
-                Transaction.prototype.ensureAllCorrectedValues.call(tx);
-
                 if (this.retainRows) {
                     this.rows.push(tx);
                 }

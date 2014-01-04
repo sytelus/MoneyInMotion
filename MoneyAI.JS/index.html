@@ -91,34 +91,36 @@
     </div>
 
     <!-- Main -->
-    <div id="txExplorer" class="container">
-        <div class="page-header visible-lg visible-md">
-            <h1>Transaction Explorer</h1>
-        </div>
-        <div class="row">
-            <div id="txNavigationContainer" class="col-md-2">
-                <div id="txNavigationControl" role="navigation">
-                    Transaction Nav
-                </div>
+    <div id="main">
+        <div class="container txExplorer">
+            <div class="page-header visible-lg visible-md">
+                <h1>Transaction Explorer</h1>
             </div>
-            <div id="txListContainer" class="col-md-8"> <!-- Reorder for small screens -->
-                <div id="txListControl" role="grid">
-                    Transaction List
+            <div class="row">
+                <div class="col-md-2 txNavigationContainer">
+                    <div class="txNavigationControl" role="navigation">
+                        Transaction Nav
+                    </div>
                 </div>
-            </div>
-            <div id="txSummaryContainer" class="col-md-2">
-                <div id="txSummaryControl">
-                    Transaction Summary
+                <div class="col-md-8 txListContainer">
+                    <!-- Reorder for small screens -->
+                    <div class="txListControl" role="grid">
+                        Transaction List
+                    </div>
+                </div>
+                <div class="col-md-2 txSummaryContainer">
+                    <div class="txSummaryControl">
+                        Transaction Summary
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     <!-- /Main -->
 
-    <div id="statusBox" class="statusBoxContainer">
-    </div>
-
-    <footer>
+    <footer id="footer">
+        <div class="statusBox">
+        </div>
         <div class="text-right">Copyrights <a href="http://moneyai.com"><strong>MoneyAI.com</strong></a></div>
     </footer>
 

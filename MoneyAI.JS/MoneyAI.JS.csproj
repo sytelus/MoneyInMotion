@@ -31,6 +31,7 @@
     <Content Include="js\common\templateHelpers.js" />
     <Content Include="js\common\globalEvents.js" />
     <Content Include="js\EditedValues.js" />
+    <Content Include="js\NetAggregator.js" />
     <Content Include="js\templates\saveEditsConfirmModal.html" />
     <Content Include="js\templates\txEditRule.html" />
     <Content Include="js\templates\txAttributesEditorBody.html" />
@@ -49,10 +50,10 @@
     <Content Include="js\common\keyCounter.js" />
     <Content Include="js\TransactionAggregator.js" />
     <Content Include="js\TransactionEdit.js" />
-    <Content Include="js\txExplorerView.js" />
+    <Content Include="js\TxExplorerView.js" />
     <Content Include="js\Transaction.js" />
-    <Content Include="js\txListView.js" />
-    <Content Include="js\txNavigationView.js" />
+    <Content Include="js\TxListView.js" />
+    <Content Include="js\TxNavigationView.js" />
     <Content Include="js\templates\txNavigatorPane.html" />
     <Content Include="web.config" />
   </ItemGroup>
