@@ -62,8 +62,13 @@
 
             event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
         });
-    },
-    getRowInfo = function (row) {
+    };
+
+    var $this = function (element, options) {
+        initialize.call(this, element, options);
+    };
+
+    var getRowInfo = function (row) {
         var self = this;
 
         var groupId = row.attr("data-groupid");
@@ -138,6 +143,21 @@
                 viewModel = {
                     allAffectedTransactions: allAffectedTransactions,
                     allAffectedTransactionsCount: allAffectedTransactionsCount,
+                    
+                    isAffactedTransactionsShown: ko.observable(false),
+                    showAffactedTransactions: function () {
+                        var affectedTransactionsContainer = modalTarget.find(".affactedTransactionsContainer").first();
+                        var affectedTransactionsListView = new $this(affectedTransactionsContainer, {
+                            enableGrouping: false, enableEdits: false, enableIndicators: false
+                        });
+
+                        var flattenedTx = [];
+                        utils.forEach(allAffectedTransactions, function (editTx) { flattenedTx = flattenedTx.concat(editTx.affectedTransactions); });
+
+                        affectedTransactionsListView.refresh(self.cachedValues.txs, flattenedTx, "");
+                        viewModel.isAffactedTransactionsShown(true);
+                    },
+
                     modalId: ++saveConfirmModalId,
                     onOk: function () {
                         //Resolve only after hide or elements would be recreated
@@ -160,7 +180,8 @@
     },
 
     defaultOnSaveHandler = function (lastEdit, scopeFilters, userEditableFieldsModel) {
-        return this.cachedValues.txs.addUpdateEdit(lastEdit, scopeFilters, userEditableFieldsModel, defaultReviewAffectedTransactionsCallback);
+        var self = this;
+        return self.cachedValues.txs.addUpdateEdit(lastEdit, scopeFilters, userEditableFieldsModel, utils.bind(defaultReviewAffectedTransactionsCallback, self));
     },
 
     getRuleBasedMenuItemClickHandler = function (menuParams, selectedTx, dropdownElement,
@@ -311,9 +332,6 @@
         );
     };
 
-    var $this = function (element) {
-        initialize.call(this, element);
-    };
 
     //publics
     var proto = {

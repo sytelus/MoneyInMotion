@@ -8,21 +8,27 @@
             <div class="modal-body">
 
                 <div data-bind="if: allAffectedTransactionsCount > 0">
-                    This will apply changes to <strong data-bind="text: allAffectedTransactionsCount" /> transactions.
-                    <a href="#" class="text-right" data-bind="click: showAffactedTransactions, visible: !isAffactedTransactionsShown()">
-                        View Affected Transactions
-                    </a>
-                    <div class="">
+                    This will apply changes to <strong data-bind="text: allAffectedTransactionsCount" /> transactions. Are you sure?
 
+                    <div data-bind="visible: isAffactedTransactionsShown">
+                        <hr />
+                        <div class="affactedTransactionsContainer">
+
+                        </div>
+                        <hr />
                     </div>
                 </div>
 
                 <div data-bind="if: allAffectedTransactionsCount === 0">
                     There are no transactions affected by your change.
                 </div>
-
-                <p>
-                    Are you sure?
+                
+                <p data-bind="if: !isAffactedTransactionsShown()">
+                    <span class="small">
+                        <a href="#" data-bind="click: showAffactedTransactions">
+                            View Affected Transactions
+                        </a>
+                    </span>
                 </p>
             </div>
             <div class="modal-footer">

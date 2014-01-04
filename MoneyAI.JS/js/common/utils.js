@@ -233,6 +233,7 @@
         all: _.all,
         clone: _.clone,
         extend: _.extend,
+        bind: _.bind,
         applyDefaults: _.partialRight(_.assign, function (a, b) {
                 return typeof a === "undefined" ? b : a;
         }),

@@ -38,17 +38,18 @@
 							<td>
                                 <span>{{repeatString "&nbsp" groupIndentLevel 4}}{{options.title}}</span>
                                 {{#if options.enableIndicators}}
+                                <span>
 								<!-- Tx icons -->
 								<!-- note icon -->
 								{{#compare noteCounter.notMissedCount "===" noteCounter.count}}
                                     <span class="tooltip-info" data-html="true"  title="{{noteFullView noteCounter.keyCounts}}">
-									    &nbsp;&nbsp;<i class="noteManyIcon"></i>
+									    <span>&nbsp;&nbsp;<i class="noteManyIcon"></i></span>
                                         <span class="small text-muted">{{{notePreview noteCounter.keyCounts}}}</span>
                                     </span>
 								{{else}}
 									{{#compare noteCounter.notMissedCount ">=" 1}}
                                         <span class="tooltip-info" data-html="true" title="{{noteFullView noteCounter.keyCounts}}">
-										    &nbsp;&nbsp;<i class="noteLinesIcon"></i>
+										    <span>&nbsp;&nbsp;<i class="noteLinesIcon"></i></span>
                                             <span class="small text-muted">{{{notePreview correctedValues.keyCounts}}}</span>
                                         </span>
 									{{/compare}}
@@ -56,17 +57,18 @@
 
 								<!-- flag icon -->
 								{{#compare flagCounter.keyCounts.trueValue "===" flagCounter.count}}
-									&nbsp;&nbsp;<i class="todoPendingIcon"></i>
+									<span>&nbsp;&nbsp;<i class="todoPendingIcon"></i></span>
 								{{else}}
 									{{#compare flagCounter.keyCounts.trueValue ">=" 1}}
-										&nbsp;&nbsp;<i class="todoPartPendingIcon"></i>
+										<span>&nbsp;&nbsp;<i class="todoPartPendingIcon"></i></span>
 									{{else}}
 										{{#compare flagCounter.keyCounts.falseValue ">" 0}}
-											&nbsp;&nbsp;<i class="todoDoneIcon"></i>
+											<span>&nbsp;&nbsp;<i class="todoDoneIcon"></i></span>
 										{{/compare}}
 									{{/compare}}
 								{{/compare}}
                                 {{/if}}
+                                </span>
 							</td>
 							<td>
 								<span class="txRowExpanderControl">
