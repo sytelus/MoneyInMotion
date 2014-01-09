@@ -1722,7 +1722,12 @@ namespace CommonUtils
         {
             var parsedNullableValue = ParseBoolNullable(value, () => getDefaultValue());
             if (parsedNullableValue == null)
-                return getDefaultValue();
+            {
+                if (getDefaultValue == null)
+                    throw new ArgumentException(@"Cannot parse value '{0}' as bool".FormatEx(value));
+                else
+                    return getDefaultValue();
+            }
             else
                 return parsedNullableValue.Value;
         }

@@ -10,7 +10,8 @@ namespace MoneyAI
         [Flags]
         public enum AccountType
         {
-            CreditCard = 1, BankChecking = 2, BankSavings = 4, Bank = BankChecking | BankSavings
+            CreditCard = 1, BankChecking = 2, BankSavings = 4, Bank = BankChecking | BankSavings,
+            OrderHistory = 5
         }
 
         [DataMember(IsRequired = true)] 
@@ -25,7 +26,11 @@ namespace MoneyAI
         [DataMember(IsRequired = true)]
         public string Id { get; private set; }
 
-        public AccountInfo(AccountType type, string id, string title, string instituteName)
+        [DataMember(IsRequired = false)]
+        public bool RequiresParent { get; private set; }
+
+
+        public AccountInfo(AccountType type, string id, string title, string instituteName, bool requiresParent)
         {
             if (string.IsNullOrEmpty(id))
                 throw new ArgumentNullException("id", "Account Id must be specified");
@@ -34,6 +39,8 @@ namespace MoneyAI
             InstituteName = instituteName;
             Title = title;
             this.Id = id;
+
+            this.RequiresParent = requiresParent;
         }
 
 

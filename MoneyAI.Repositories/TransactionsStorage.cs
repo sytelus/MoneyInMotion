@@ -54,21 +54,35 @@ namespace MoneyAI.Repositories
             return System.IO.File.Exists(location.Address);
         }
 
+        //TODO: make this configurable plugins
         private static CsvParserBase GetCsvParser(AccountInfo accountInfo)
         {
+            CsvParserBase parser = null;
+
             switch(accountInfo.InstituteName)
             {
                 case "ChaseBank":
-                    return new ChaseCsvParser();
+                    parser = new ChaseCsvParser();
+                    break;
                 case "OpusBank":
-                    return new OpusBankCsvParser();
+                    parser= new OpusBankCsvParser();
+                    break;
                 case "AmericanExpress":
-                    return new AmexCsvParser();
+                    parser = new AmexCsvParser();
+                    break;
                 case "BarclayBank":
-                    return new ChaseCsvParser();
-                default:
-                    throw new Exception("CsvParser for institute {0} is not supported".FormatEx(accountInfo.InstituteName));
+                    parser = new ChaseCsvParser();
+                    break;
+                case "Amazon":
+                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory)
+                        parser = new AmazonOrdersCsvParser();
+                    break;
             }
+
+            if (parser == null)
+                throw new Exception("CsvParser for institute {0} and type {1} is not supported".FormatEx(accountInfo.InstituteName, accountInfo.Type.ToString()));
+            else
+                return parser;
         }
 
         private static void AddTransactionsFromCsvFile(Transactions transactions, string file, AccountInfo accountInfo, ImportInfo importInfo)
@@ -81,11 +95,13 @@ namespace MoneyAI.Repositories
                 var importedValues = csvParser.GetTransactionImportedValues(line);
                 if (importedValues != null)
                 {
-                    var transaction = new Transaction(importInfo.Id, accountInfo.Id, lineNumber, importedValues);
+                    var transaction = new Transaction(importInfo.Id, accountInfo, lineNumber, importedValues);
                     transactions.AddNew(transaction, accountInfo, importInfo, true);
                 }
                 lineNumber++;
             }
+
+            transactions.MatchParentChild();
         }
     }
 }

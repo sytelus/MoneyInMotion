@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CsvParsers\AmazonOrdersCsvParser.cs" />
     <Compile Include="CsvParsers\AmexCsvParser.cs" />
     <Compile Include="CsvParsers\BarclayBankCsvParser.cs" />
     <Compile Include="CsvParsers\OpusBankCsvParser.cs" />

@@ -34,7 +34,13 @@ namespace MoneyAI.Repositories
             }
         }
 
-        protected CsvColumnType[] HeaderColumns { get; private set; }
+        public class HeaderColumn
+        {
+            public string ColumnName {get;set;}
+            public CsvColumnType ColumnType { get; set; }
+        }
+
+        protected HeaderColumn[] HeaderColumns { get; private set; }
 
         protected virtual bool ValidateColumns(string[] columns)
         {
@@ -59,10 +65,12 @@ namespace MoneyAI.Repositories
             return columns;
         }
 
-        protected virtual CsvColumnType[] GetHeaderColumns(string[] columns, out string[] transformedColumns)
+        protected virtual HeaderColumn[] GetHeaderColumns(string[] columns, out string[] transformedColumns)
         {
             transformedColumns = null;
-            return columns.Select(columnName => this.GetColumnType(columnName.ToLowerInvariant())).ToArray();
+            return columns
+                .Select(columnName => columnName.ToLowerInvariant())
+                .Select(columnNameCased => new HeaderColumn { ColumnName = columnNameCased, ColumnType = this.GetColumnType(columnNameCased) }).ToArray();
         }
 
         protected virtual CsvColumnType GetColumnType(string columnName)
@@ -78,6 +86,7 @@ namespace MoneyAI.Repositories
                 case "post date":
                     return CsvColumnType.PostedDate; 
                 case "description":
+                case "title":
                 case "payee":
                     return CsvColumnType.EntityName; 
                 case "amount":
@@ -106,7 +115,8 @@ namespace MoneyAI.Repositories
             for(var columnIndex = 0; columnIndex < columns.Length && columnIndex < this.HeaderColumns.Length; columnIndex++)
             {
                 var columnValue = columns[columnIndex];
-                var columnType = this.HeaderColumns[columnIndex];
+                var columnType = this.HeaderColumns[columnIndex].ColumnType;
+                var columnName = this.HeaderColumns[columnIndex].ColumnName;
                 switch(columnType)
                 {
                     case CsvColumnType.Amount:
@@ -157,30 +167,60 @@ namespace MoneyAI.Repositories
                             importedValues.Amount = this.ParseAmount(columnValue);
                         break;
                     case CsvColumnType.Ignore: break;
+                    case CsvColumnType.ProviderAttribute:
+                        if (importedValues.ProviderAttributes == null)
+                            importedValues.ProviderAttributes = new Dictionary<string, string>();
+                        importedValues.ProviderAttributes[columnName] = columnValue;
+                        break;
                     default:
                         throw new Exception("Header column  type '{0}' is not recognized".FormatEx(this.HeaderColumns[columnIndex]));
                 }
             }
 
+
             //If transaction reason is not set by any column then make a generic call to enable inferences
             importedValues.TransactionReason = this.InferTransactionReason(importedValues, columns);
+
+            this.SetCalculatedAttributes(importedValues, columns);
+
+            importedValues = this.ValidateImportedValues(importedValues);
 
             return importedValues;
         }
 
+        protected virtual Transaction.ImportedValues ValidateImportedValues(Transaction.ImportedValues importedValues)
+        {
+            return importedValues;
+        }
+
+        protected virtual void SetCalculatedAttributes(Transaction.ImportedValues importedValues, string[] columns)
+        {
+        }
+
         protected virtual TransactionReason? InferTransactionReason(Transaction.ImportedValues importedValues, string[] columnValues)
         {
-            if (importedValues.TransactionReason == null
-                || importedValues.TransactionReason == TransactionReason.Purchase
-                || importedValues.TransactionReason == TransactionReason.OtherCredit)
-            {
-                var amount = importedValues.Amount.Value;
-                var entityName = importedValues.EntityName;
-                var isCheck = !string.IsNullOrWhiteSpace(importedValues.CheckReference);
+            var amount = importedValues.Amount.Value;
+            var entityName = importedValues.EntityName;
+            var isCheck = !string.IsNullOrWhiteSpace(importedValues.CheckReference);
 
+            if (importedValues.TransactionReason == null
+                || importedValues.TransactionReason == TransactionReason.Purchase)
+            {
                 if (amount < 0 && entityName != null && entityName.IndexOf("FEE", StringComparison.InvariantCultureIgnoreCase) >= 0)
                     return TransactionReason.Fee;
-                else if (amount > 0 && entityName != null && entityName.IndexOf("Interest", StringComparison.InvariantCultureIgnoreCase) >= 0)
+                else if (amount < 0 && entityName != null && entityName.IndexOf("ATM", StringComparison.InvariantCultureIgnoreCase) >= 0)
+                    return TransactionReason.AtmWithdrawal;
+                else if (amount < 0 && entityName != null && entityName.IndexOf("loan", StringComparison.InvariantCultureIgnoreCase) >= 0)
+                    return TransactionReason.LoanPayment;
+                else if (amount < 0 && isCheck)
+                    return TransactionReason.CheckPayment;
+                else
+                    return TransactionReason.Purchase;
+            }
+            else if (importedValues.TransactionReason == null
+                || importedValues.TransactionReason == TransactionReason.OtherCredit)
+            {
+                if (amount > 0 && entityName != null && entityName.IndexOf("Interest", StringComparison.InvariantCultureIgnoreCase) >= 0)
                     return TransactionReason.Interest;
                 else if (amount > 0 && entityName != null && entityName.IndexOf("POINTS CREDIT", StringComparison.InvariantCultureIgnoreCase) >= 0)
                     return TransactionReason.PointsCredit;
@@ -188,20 +228,13 @@ namespace MoneyAI.Repositories
                     && (entityName.IndexOf("refund", StringComparison.InvariantCultureIgnoreCase) >= 0
                         || entityName.IndexOf("return", StringComparison.InvariantCultureIgnoreCase) >= 0))
                     return TransactionReason.Return;
-                else if (amount < 0 && entityName != null && entityName.IndexOf("ATM", StringComparison.InvariantCultureIgnoreCase) >= 0)
-                    return TransactionReason.AtmWithdrawal;
-                else if (amount < 0 && entityName != null && entityName.IndexOf("loan", StringComparison.InvariantCultureIgnoreCase) >= 0)
-                    return TransactionReason.LoanPayment;
-                else if (amount < 0 && isCheck)
-                    return TransactionReason.CheckPayment;
                 else if (amount > 0 && isCheck)
                     return TransactionReason.CheckRecieved;
-                else if (amount < 0)
-                    return TransactionReason.Purchase;
-                else
+                else 
                     return TransactionReason.OtherCredit;
             }
-            else return importedValues.TransactionReason;
+            else 
+                return importedValues.TransactionReason;
         }
 
         protected virtual string SetImportedValueText(string oldValue, string newValue, CsvColumnType columnType)
@@ -278,7 +311,7 @@ namespace MoneyAI.Repositories
         {
             TransactionDate, PostedDate, EntityName, TransactionReason, Amount, 
             Ignore, InstituteReference, ProviderCategoryName, PhoneNumber, Address, SubAccountName,
-            OtherInfo, AccountNumber, CheckReference, DebitAmount, CreditAmount
+            OtherInfo, AccountNumber, CheckReference, DebitAmount, CreditAmount, ProviderAttribute
         }
 
         [Serializable]

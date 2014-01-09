@@ -5,6 +5,7 @@
         txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml, txAttributesEditorBodyHtml, saveEditsConfirmModalHtml) {
 
     "use strict";
+    /*jshint -W055 */ //A constructor name should start with an uppercase letter.
 
     var compiledTemplates = {},   //cache compiled template
         optionsDefaults = {
@@ -64,6 +65,7 @@
         });
     };
 
+    
     var $this = function (element, options) {
         initialize.call(this, element, options);
     };

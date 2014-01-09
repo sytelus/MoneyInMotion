@@ -22,7 +22,7 @@ namespace MoneyAI.WinForms
                 if (dialog.ShowDialog(dialogOwner) == DialogResult.OK)
                 {
                     var accountInfo = new AccountInfo(dialog.GetAccountType(), dialog.textBoxAccountName.Text,
-                        dialog.textBoxInstituteName.Text, dialog.textBoxAccountName.Text);
+                        dialog.textBoxInstituteName.Text, dialog.textBoxAccountName.Text, false);
                     var accountConfig = new AccountConfig(accountInfo);
 
                     return accountConfig;

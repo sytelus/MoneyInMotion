@@ -1,11 +1,7 @@
 ﻿define("NetAggregator", ["common/utils", "TransactionAggregator"], function (utils, TransactionAggregator) {
     "use strict";
 
-    var sortNetChildAggregators = function (aggs) {
-        aggs.sort(utils.compareFunction(false, function (agg) { return agg.sortOrder; }));
-        return aggs;
-    },
-    entityNameChildAggregator = function (parentAggregator, tx) {
+    var entityNameChildAggregator = function (parentAggregator, tx) {
         var childAggregators = parentAggregator.childAggregators;
         var categoryPath = tx.correctedValues.categoryPath;
 
@@ -86,22 +82,24 @@
         return childAggregators[aggregatorFunction.name];
     };
 
-    var getFlatAggregator = function(options) {
+    var getFlatAggregator = function (options) {
+        var flatAggregatorName = "flatAggregator";
+
         return function (parentAggregator) {
             var childAggregators = parentAggregator.childAggregators;
-            var aggregator = childAggregators["flatAggregator"];
+            var aggregator = childAggregators[flatAggregatorName];
             if (!aggregator) {
-                aggregator = new TransactionAggregator(parentAggregator, "flatAggregator", {
-                    retainRows: true, retainChildrenVisibilityState: options.enableGrouping, 
+                aggregator = new TransactionAggregator(parentAggregator, flatAggregatorName, {
+                    retainRows: true, retainChildrenVisibilityState: options.enableGrouping,
                     groupHeaderVisible: options.enableGrouping, enableEdits: options.enableEdits,
                     enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping,
                     isOptionalGroup: true
                 });
-                childAggregators["flatAggregator"] = aggregator;
+                childAggregators[flatAggregatorName] = aggregator;
             }
 
             return aggregator;
-        }
+        };
     };
 
     var $this = function (txItems, txItemsKey, options) {

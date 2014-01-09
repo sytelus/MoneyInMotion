@@ -18,11 +18,11 @@ namespace MoneyAI
         [DataMember(Name = "name")]
         public string Name { get; private set; }
         
-        [DataMember]
-        private readonly List<Transaction> items;
+        [DataMember(Name = "items", IsRequired=true)]
+        private Dictionary<string, Transaction> itemsById;
 
         private HashSet<string> uniqueContentHashes;
-        private Dictionary<string, Transaction> itemsById;
+
 
         [DataMember]
         private readonly Dictionary<string, AccountInfo> accountInfos;
@@ -37,7 +37,6 @@ namespace MoneyAI
         public Transactions(string name)
         {
             this.Name = name;
-            this.items = new List<Transaction>();
             this.uniqueContentHashes = new HashSet<string>();
             this.itemsById = new Dictionary<string, Transaction>();
 
@@ -117,13 +116,60 @@ namespace MoneyAI
                 .Select(t => t.Clone()).ToList();
 
             this.itemsById.AddRange(newItems.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)));
-            this.items.AddRange(newItems);
             this.uniqueContentHashes.AddRange(newItems.Select(i => i.ContentHash));
             this.accountInfos.AddRange(newItems.Select(i => i.AccountId).Where(aid => !this.accountInfos.ContainsKey(aid)).Select(aid =>
                 new KeyValuePair<string, AccountInfo>(aid, other.GetAccountInfo(aid))));
             this.importInfos.AddRange(newItems.Select(i => i.ImportId).Where(iid => !this.importInfos.ContainsKey(iid)).Select(iid =>
                 new KeyValuePair<string, ImportInfo>(iid, other.GetImportInfo(iid))));
             this.edits.Merge(other.edits, this.uniqueContentHashes);
+
+            this.MatchParentChild();
+        }
+
+        static IDictionary<string, IParentChildMatch> parentChildMatchers = new Dictionary<string, IParentChildMatch>();
+        private IParentChildMatch GetParentChildMatcher(Transaction tx)
+        {
+            //TODO: move this to configurable plugin option
+            IParentChildMatch existing;
+
+            var key = string.Concat(this.accountInfos[tx.AccountId].InstituteName, "|", this.accountInfos[tx.AccountId].Type.ToString());
+            if (!parentChildMatchers.TryGetValue(key, out existing))
+            {
+                switch(key)
+                {
+                    case "Amazon|OrderHistory":
+                        existing = new ParentChildMatchers.AmazonOrderMatcher(this.accountInfos[tx.AccountId]);
+                        break;
+                    default:
+                        throw new NotSupportedException("ParentChildMatcher for the key {0} is not supported".FormatEx(key));
+                }
+
+                parentChildMatchers.Add(key, existing);
+            }
+
+            return existing;
+        }
+
+        public void MatchParentChild()
+        {
+            //Find all transaction that requires parent but does not have parent
+            var parentNeededGroups = this.itemsById.Values.Where(tx => tx.RequiresParent && tx.ParentId == null)
+                .Select(tx => new { Tx = tx, Matcher = this.GetParentChildMatcher(tx) })
+                .GroupBy(txm => txm.Matcher);
+
+            foreach (var parentNeededGroup in parentNeededGroups)
+            {
+                var children = parentNeededGroup.Select(txm => txm.Tx).ToArray();
+                var childParents = parentNeededGroup.Key.GetParents(children, this)
+                    .ToArray(); //Because we'll change .itemsById collection
+
+                foreach (var childParent in childParents)
+                {
+                    childParent.Value.AddChild(childParent.Key);
+                    this.itemsById.Remove(childParent.Key.Id);
+                    //Keep other data as-is
+                }
+            }
         }
 
         /// <param name="allowDuplicate">Should be true when importing transactions from a file but false when merging items from two files</param>
@@ -132,7 +178,6 @@ namespace MoneyAI
             if (allowDuplicate || !uniqueContentHashes.Contains(transaction.ContentHash))
             {
                 this.itemsById.Add(transaction.Id, transaction);
-                this.items.Add(transaction);
                 this.uniqueContentHashes.Add(transaction.ContentHash);
                 this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
                 this.importInfos.AddIfNotExist(importInfo.Id, importInfo);
@@ -141,21 +186,25 @@ namespace MoneyAI
             else return false;
         }
 
+        public IEnumerable<AccountInfo> AccountInfos
+        {
+            get { return this.accountInfos.Values;  }
+        }
+
         #region ICollection 
 
         public IEnumerator<Transaction> GetEnumerator()
         {
-            return items.GetEnumerator();
+            return itemsById.Values.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return items.GetEnumerator();
+            return itemsById.Values.GetEnumerator();
         }
 
         public void Clear()
         {
-            this.items.Clear();
             this.uniqueContentHashes.Clear();
             this.itemsById.Clear();
             this.accountInfos.Clear();
@@ -169,12 +218,12 @@ namespace MoneyAI
 
         public void CopyTo(Transaction[] array, int arrayIndex)
         {
-            items.CopyTo(array, arrayIndex);
+            itemsById.Values.CopyTo(array, arrayIndex);
         }
 
         public int Count
         {
-            get { return items.Count; }
+            get { return itemsById.Count; }
         }
 
         public bool IsReadOnly
@@ -196,7 +245,7 @@ namespace MoneyAI
         #region Apply Edit
         private IEnumerable<Transaction> FilterTransactions(TransactionEdit edit)
         {
-            var filteredTransactions = this.items;
+            var filteredTransactions = this.itemsById.Values.ToList();
             foreach (var scopeFilter in edit.ScopeFilters)
                 filteredTransactions = filteredTransactions.Where(t => FilterTransaction(scopeFilter, t)).ToList();
 
@@ -270,8 +319,7 @@ namespace MoneyAI
 
         public void OnDeserialization(object sender)
         {
-            this.uniqueContentHashes = this.items.Select(i => i.ContentHash).ToHashSet();
-            this.itemsById = this.items.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)).ToDictionary();
+            this.uniqueContentHashes = this.itemsById.Values.Select(i => i.ContentHash).ToHashSet();
         }
 
         public int EditsCount

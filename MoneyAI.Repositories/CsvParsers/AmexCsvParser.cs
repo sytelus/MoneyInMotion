@@ -9,13 +9,15 @@ namespace MoneyAI.Repositories.CsvParsers
 {
     internal class AmexCsvParser : CsvParserBase
     {
-        protected override CsvColumnType[] GetHeaderColumns(string[] columns, out string[] transformedColumns)
+        protected override HeaderColumn[] GetHeaderColumns(string[] columns, out string[] transformedColumns)
         {
             transformedColumns = this.TransformColumns(columns);   //Amex does not have header
 
-            return new CsvColumnType[] { CsvColumnType.TransactionDate, CsvColumnType.InstituteReference, CsvColumnType.Amount, 
+            var columnTypes = new CsvColumnType[] { CsvColumnType.TransactionDate, CsvColumnType.InstituteReference, CsvColumnType.Amount, 
                 CsvColumnType.EntityName, CsvColumnType.Address, CsvColumnType.PhoneNumber, CsvColumnType.ProviderCategoryName, CsvColumnType.OtherInfo
                 , CsvColumnType.TransactionReason};
+
+            return columnTypes.Select(t => new HeaderColumn { ColumnType = t, ColumnName = t.ToString() }).ToArray();
         }
 
         protected override string[] TransformColumns(string[] columns)

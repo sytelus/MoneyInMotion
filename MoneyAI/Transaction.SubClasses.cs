@@ -44,6 +44,7 @@ namespace MoneyAI
             public DateTime? PostedDate { get; set; }
             public DateTime? TransactionDate { get; set; }
             public string EntityName { get; set; }
+            public string EntityNameNormalized { get; set; }
             public TransactionReason? TransactionReason { get; set; }
 
             public string InstituteReference { get; set; }
@@ -54,17 +55,17 @@ namespace MoneyAI
             public string AccountNumber { get; set; }
             public string CheckReference { get; set; }
             public string OtherInfo { get; set; }
-
+            public Dictionary<string, string> ProviderAttributes { get; set; }
 
             public void Validate()
             {
                 var errors = string.Empty;
                 if (this.Amount == null)
-                    errors.Append("Amount must have value.", " ");
+                    errors = errors.Append("Amount must have value.", " ");
                 if (this.TransactionDate == null)
-                    errors.Append("TransactionDate must have value.", " ");
-                if (string.IsNullOrEmpty(this.EntityName))
-                    errors.Append("EntityName must have value.", " ");
+                    errors = errors.Append("TransactionDate must have value.", " ");
+                if (string.IsNullOrWhiteSpace(this.EntityName))
+                    errors = errors.Append("EntityName must have value.", " ");
 
                 if (!string.IsNullOrEmpty(errors))
                     throw new InvalidDataException(errors);
