@@ -9,5 +9,6 @@ namespace MoneyAI
     public interface IParentChildMatch
     {
         IEnumerable<KeyValuePair<Transaction, Transaction>> GetParents(IEnumerable<Transaction> children, Transactions availableTransactions);
+        bool HandleIncompleteParent(Transaction parent, Transactions availableTransactions, decimal missingChildAmount);
     }
 }

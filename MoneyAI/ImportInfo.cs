@@ -26,7 +26,7 @@ namespace MoneyAI
         [DataMember(IsRequired = true)]
         public string Id { get; private set; }
 
-        public ImportInfo(string id, string portableAddress, DateTime updateDate, DateTime createDate, string contentHash)
+        public ImportInfo(string id, string portableAddress, DateTime? updateDate, DateTime? createDate, string contentHash)
         {
             this.Id = id;
             this.PortableAddress = portableAddress;

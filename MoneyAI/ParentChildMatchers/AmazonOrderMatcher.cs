@@ -43,8 +43,11 @@ namespace MoneyAI.ParentChildMatchers
                     var parents = nonLineitemParents.GetValueOrDefault(GetNonLineItemKey(child)) ??
                         nonLineitemParents.Values.SelectMany(txArray => 
                             txArray.Where(tx => Math.Abs(tx.Amount - child.Amount) <= 1 
-                                && tx.TransactionDate.Subtract(child.TransactionDate).TotalDays <= 2))
-                        .OrderBy(tx => ((double)(Math.Abs(tx.Amount - child.Amount) + 1)) * (tx.TransactionDate.Subtract(child.TransactionDate).TotalDays + 1))
+                                && Math.Abs(tx.TransactionDate.Subtract(child.TransactionDate).TotalDays) <= 2
+                                && !tx.Children.Any()))
+                        //Better amount match takes priority
+                        .OrderBy(tx => ((double)(Math.Abs(tx.Amount - child.Amount))) 
+                            * (Math.Abs(tx.TransactionDate.Subtract(child.TransactionDate).TotalDays) + 1))
                         .ToArray();
 
                     if (parents.Length > 0)
@@ -56,6 +59,74 @@ namespace MoneyAI.ParentChildMatchers
         private static string GetNonLineItemKey(Transaction tx)
         {
             return string.Concat(tx.Amount.ToCurrencyString(), "|", tx.TransactionDate.ToShortDateString());
+        }
+
+        private static bool IsMissingAmountTolerable(Transaction parent, decimal missingChildAmount)
+        {
+            return GenericTxParentChildMatcher.IsMissingAmountTolerable(parent, missingChildAmount);
+        }
+
+        const string ImportInfoId = "CreatedBy.AmazonOrderMatcher";
+        public bool HandleIncompleteParent(Transaction parent, Transactions availableTransactions, decimal missingChildAmount)
+        {
+            if (missingChildAmount == 0)
+                return true;
+
+            var promotionsAmount = Utils.ParseDecimal(parent.ProviderAttributes[@"total promotions"]);
+            var shippingAmount = 0M; 
+            var updatedMissingChildAmount = promotionsAmount + missingChildAmount;
+
+            if (!IsMissingAmountTolerable(parent, updatedMissingChildAmount))
+            {
+                shippingAmount = Utils.ParseDecimal(parent.ProviderAttributes[@"shipping charge"]);
+                updatedMissingChildAmount -= shippingAmount;
+            }
+
+            if (IsMissingAmountTolerable(parent, updatedMissingChildAmount))
+            {
+                AddAdjustmentChild(parent, availableTransactions, promotionsAmount, TransactionReason.DiscountRecieved, "Promotion");
+                AddAdjustmentChild(parent, availableTransactions, shippingAmount, TransactionReason.Purchase, "Shipping");
+
+                var finalMissingAmount = -1M * updatedMissingChildAmount;
+                AddAdjustmentChild(parent, availableTransactions, finalMissingAmount,
+                    finalMissingAmount >= 0 ? TransactionReason.IncomeAdjustment : TransactionReason.ExpenseAdjustment, 
+                    "Adjustment");
+
+                return true;
+            }
+            else
+                return false;
+        }
+
+        private static void AddAdjustmentChild(Transaction parent, Transactions availableTransactions, decimal amount
+            , TransactionReason transactionReason, string adjustmentTag)
+        {
+            ImportInfo matcherImportInfo;
+
+            if (availableTransactions.HasImportInfo(ImportInfoId))
+                matcherImportInfo = availableTransactions.GetImportInfo(ImportInfoId);
+            else
+                matcherImportInfo = new ImportInfo(ImportInfoId, ImportInfoId, null, null, ImportInfoId);   //TODO: how can we accomodate manufatured import?
+            AccountInfo accountInfo = availableTransactions.GetAccountInfo(parent.AccountId);
+
+            if (amount != 0)
+            {
+                var tx = new Transaction(matcherImportInfo.Id, accountInfo,
+                    null, new Transaction.ImportedValues()
+                    {
+                        Amount = amount,
+                        EntityName = "{0} - {1}".FormatEx(adjustmentTag, parent.EntityName),
+                        EntityNameNormalized = "{0} - {1}".FormatEx(adjustmentTag, parent.EntityName),
+                        InstituteReference = "{0}.{1}".FormatEx(adjustmentTag, parent.InstituteReference),
+                        RequiresParent = true,
+                        SubAccountName = parent.SubAccountName,
+                        TransactionDate = parent.TransactionDate,
+                        TransactionReason = transactionReason
+                    });
+                availableTransactions.AddNew(tx, accountInfo, matcherImportInfo, false);
+
+                availableTransactions.RelateParentChild(parent.Id, tx.Id);
+            }
         }
     }
 }

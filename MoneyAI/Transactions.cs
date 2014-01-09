@@ -126,8 +126,9 @@ namespace MoneyAI
             this.MatchParentChild();
         }
 
-        static IDictionary<string, IParentChildMatch> parentChildMatchers = new Dictionary<string, IParentChildMatch>();
-        private IParentChildMatch GetParentChildMatcher(Transaction tx)
+        static readonly IDictionary<string, IParentChildMatch> parentChildMatchers = new Dictionary<string, IParentChildMatch>();
+        static readonly IParentChildMatch genericMatcher = new ParentChildMatchers.GenericTxParentChildMatcher();
+        private IParentChildMatch GetParentChildMatcher(Transaction tx, bool allowGenericMatcher = false)
         {
             //TODO: move this to configurable plugin option
             IParentChildMatch existing;
@@ -141,13 +142,27 @@ namespace MoneyAI
                         existing = new ParentChildMatchers.AmazonOrderMatcher(this.accountInfos[tx.AccountId]);
                         break;
                     default:
-                        throw new NotSupportedException("ParentChildMatcher for the key {0} is not supported".FormatEx(key));
+                        if (!allowGenericMatcher)
+                            throw new NotSupportedException("ParentChildMatcher for the key {0} is not supported".FormatEx(key));
+                        else
+                            return genericMatcher;
                 }
 
                 parentChildMatchers.Add(key, existing);
             }
 
             return existing;
+        }
+
+        public void RelateParentChild(string parentId, string childId)
+        {
+            var parent = this.itemsById[parentId];
+            var child = this.itemsById[childId];
+
+            parent.AddChild(child);
+
+            this.itemsById.Remove(child.Id);
+            //Keep other data as-is
         }
 
         public void MatchParentChild()
@@ -157,6 +172,7 @@ namespace MoneyAI
                 .Select(tx => new { Tx = tx, Matcher = this.GetParentChildMatcher(tx) })
                 .GroupBy(txm => txm.Matcher);
 
+            var allParents = new HashSet<Transaction>();
             foreach (var parentNeededGroup in parentNeededGroups)
             {
                 var children = parentNeededGroup.Select(txm => txm.Tx).ToArray();
@@ -165,10 +181,28 @@ namespace MoneyAI
 
                 foreach (var childParent in childParents)
                 {
-                    childParent.Value.AddChild(childParent.Key);
-                    this.itemsById.Remove(childParent.Key.Id);
-                    //Keep other data as-is
+                    var parent = childParent.Value;
+                    var child = childParent.Key;
+
+                    this.RelateParentChild(parent.Id, child.Id);
+                    allParents.Add(parent);
                 }
+            }
+
+            foreach(var parent in allParents)
+            {
+                CompleteParent(parent);
+            }
+        }
+
+        private void CompleteParent(Transaction parent)
+        {
+            decimal missingChildAmount;
+            if (!parent.CompleteParent(out missingChildAmount))
+            {
+                var matcher = this.GetParentChildMatcher(parent, true);  //TODO: do we need to handle multiple types?
+                if (matcher.HandleIncompleteParent(parent, this, missingChildAmount))
+                    parent.CompleteParent(out missingChildAmount);
             }
         }
 
@@ -236,6 +270,7 @@ namespace MoneyAI
             throw new NotSupportedException();
         }
 
+        [Obsolete("Use AddNew")]
         public void Add(Transaction item)
         {
             throw new NotImplementedException();

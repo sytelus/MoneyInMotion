@@ -132,6 +132,14 @@ namespace CommonUtils
         {
             return currency.ToString("C");
         }
+        public static string ToStringInvariant(this decimal currency)
+        {
+            return currency.ToString(CultureInfo.InvariantCulture);
+        }
+        public static decimal ParseDecimal(string value)
+        {
+            return decimal.Parse(value, CultureInfo.InvariantCulture);
+        }
         public static string ToStringCurrentCulture(this int k)
         {
             return k.ToString(CultureInfo.CurrentCulture);
@@ -140,10 +148,10 @@ namespace CommonUtils
         {
             return k.ToString(CultureInfo.InvariantCulture);
         }
-        public static string ToStringInvariant(this int? k)
+        public static string ToStringInvariant(this int? k, string valueIfNull = IntMinValueAsString)
         {
             if (k == null)
-                return IntMinValueAsString;
+                return valueIfNull;
             else
                 return k.Value.ToString(CultureInfo.InvariantCulture);
         }

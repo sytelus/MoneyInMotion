@@ -14,7 +14,7 @@ namespace MoneyAI.Repositories.CsvParsers
             transformedColumns = this.TransformColumns(columns);   //Amex does not have header
 
             var columnTypes = new CsvColumnType[] { CsvColumnType.TransactionDate, CsvColumnType.InstituteReference, CsvColumnType.Amount, 
-                CsvColumnType.EntityName, CsvColumnType.Address, CsvColumnType.PhoneNumber, CsvColumnType.ProviderCategoryName, CsvColumnType.OtherInfo
+                CsvColumnType.EntityName, CsvColumnType.Address, CsvColumnType.PhoneNumber, CsvColumnType.ProviderCategoryName, CsvColumnType.ProviderAttribute
                 , CsvColumnType.TransactionReason};
 
             return columnTypes.Select(t => new HeaderColumn { ColumnType = t, ColumnName = t.ToString() }).ToArray();

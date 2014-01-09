@@ -54,7 +54,7 @@ namespace MoneyAI
             public string SubAccountName { get; set; }
             public string AccountNumber { get; set; }
             public string CheckReference { get; set; }
-            public string OtherInfo { get; set; }
+            public bool? RequiresParent { get; set; }
             public Dictionary<string, string> ProviderAttributes { get; set; }
 
             public void Validate()

@@ -67,6 +67,12 @@ namespace MoneyAI.Repositories
             else
             {
                 importedValues.Amount = this.ParseAmount(importedValues.ProviderAttributes[@"total charged"]) * -1;
+
+                //parse value for future use
+                importedValues.ProviderAttributes[@"total promotions"] =
+                    this.ParseAmount(importedValues.ProviderAttributes[@"total promotions"]).ToStringInvariant();
+                importedValues.ProviderAttributes[@"shipping charge"] = (-1M *  //shipping should be -ve amount
+                    this.ParseAmount(importedValues.ProviderAttributes[@"shipping charge"])).ToStringInvariant();
             }
             
             importedValues.TransactionReason = importedValues.Amount <= 0 ? TransactionReason.Purchase : TransactionReason.OtherCredit;

@@ -16,7 +16,7 @@ namespace MoneyAI
     public enum TransactionReason
     {
         Purchase = 0, 
-        Adjustment = 1, 
+        ExpenseAdjustment = 1, 
         Fee = 2, 
         InterAccountPayment = 4, 
         Return = 8,
@@ -28,9 +28,12 @@ namespace MoneyAI
         AtmWithdrawal = 512,
         Interest = 1024,
         LoanPayment = 2048,
+        DiscountRecieved = 4096,
+        IncomeAdjustment = 4096 * 2,
+        UnknownAdjustment = ExpenseAdjustment | IncomeAdjustment,
 
-        NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment,
-        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest,
+        NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment | ExpenseAdjustment,
+        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest | DiscountRecieved | IncomeAdjustment,
         NetInterAccount = InterAccountPayment | InterAccountTransfer
     }
 
@@ -67,8 +70,8 @@ namespace MoneyAI
         [DataMember(IsRequired = true, Name = "id")] 
         public string Id { get; private set; }
 
-        [DataMember(IsRequired = true, Name = "lineNumber")] 
-        public int LineNumber { get; private set; }
+        [DataMember(IsRequired = false, Name = "lineNumber")] 
+        public int? LineNumber { get; private set; }
 
         [DataMember(EmitDefaultValue = false, Name = "mergedEdit")]
         public TransactionEdit.EditedValues MergedEdit { get; private set; }
@@ -92,8 +95,6 @@ namespace MoneyAI
         public string Address { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "subAccountName")]
         public string SubAccountName { get; set; }
-        [DataMember(EmitDefaultValue = false, Name = "otherInfo")]
-        public string OtherInfo { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "accountNumber")]
         public string AccountNumber { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "checkReference")]
@@ -108,10 +109,10 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false, Name = "parentId")]
         public string ParentId { get; private set; }
         [DataMember(EmitDefaultValue = false, Name = "children")]
-        private List<Transaction> children;
-        public IEnumerable<Transaction> Children { get { return this.children; } }
+        private Dictionary<string, Transaction> children;
+        public IEnumerable<Transaction> Children { get { return children != null ? this.children.Values : Enumerable.Empty<Transaction>() ; } }
         [DataMember(EmitDefaultValue = false, Name = "hasMissingChild")]
-        public bool HasMissingChild { get; set; }
+        public bool HasMissingChild { get; private set; }
 
 
         public Transaction Clone()
@@ -146,16 +147,16 @@ namespace MoneyAI
             this.cachedCorrectedTransactionDate = null;
         }
 
-        public Transaction(string importId, AccountInfo accountInfo, int lineNumber, ImportedValues importedValues)
+        public Transaction(string importId, AccountInfo accountInfo, int? lineNumber, ImportedValues importedValues)
         {
+            importedValues.Validate();
+
             this.AuditInfo = new AuditInfo();
 
             this.ImportId = importId;
             this.AccountId = accountInfo.Id;
-            this.RequiresParent = accountInfo.RequiresParent;
 
-            importedValues.Validate();
-
+            this.RequiresParent = importedValues.RequiresParent ?? accountInfo.RequiresParent;
             this.Amount = importedValues.Amount.Value;
             this.EntityName = importedValues.EntityName;
             this.EntityNameNormalized = importedValues.EntityNameNormalized ?? GetEntityNameNormalized(this.EntityName);
@@ -168,14 +169,14 @@ namespace MoneyAI
             this.PhoneNumber = importedValues.PhoneNumber;
             this.Address = importedValues.Address;
             this.SubAccountName = importedValues.SubAccountName;
-            this.OtherInfo = importedValues.OtherInfo;
             this.AccountNumber = importedValues.AccountNumber;
             this.CheckReference = importedValues.CheckReference;
             this.ProviderAttributes = importedValues.ProviderAttributes;
 
             this.LineNumber = lineNumber;
             this.ContentHash = Utils.GetMD5HashString(string.Join("\t", this.GetContent()), true);
-            this.Id = Utils.GetMD5HashString(string.Join("\t", this.GetContent().Concat(lineNumber.ToStringInvariant(), this.InstituteReference)), true);
+            this.Id = Utils.GetMD5HashString(string.Join("\t", this.GetContent().Concat(lineNumber.ToStringInvariant(string.Empty)
+                , this.InstituteReference)), true);
 
             this.Validate();
         }
@@ -198,9 +199,11 @@ namespace MoneyAI
             if (string.IsNullOrEmpty(this.EntityName))
                 errors = errors.Append("EntityName must have value.", " ");
             if (this.Amount > 0 && (this.TransactionReason & TransactionReason.NetOutgoing) > 0)
-                errors = errors.Append("Transaction amount is positive {0} but it is set for outgoing TransactionReason {1}".FormatEx(this.Amount, this.TransactionReason), " ");
+                errors = errors.Append("Transaction amount is positive {0} but it is set for outgoing TransactionReason {1}. ".FormatEx(this.Amount, this.TransactionReason), " ");
             if (this.Amount < 0 && (this.TransactionReason & TransactionReason.NetIncoming) > 0)
-                errors = errors.Append("Transaction amount is positive {0} but it is set for incoming TransactionReason {1}".FormatEx(this.Amount, this.TransactionReason), " ");
+                errors = errors.Append("Transaction amount is positive {0} but it is set for incoming TransactionReason {1}. ".FormatEx(this.Amount, this.TransactionReason), " ");
+            if (this.TransactionReason == TransactionReason.UnknownAdjustment)
+                errors = errors.Append(" TransactionReason should not be UnknownAdjustment.", " ");
 
             if (!string.IsNullOrEmpty(errors))
                 throw new InvalidDataException(errors);
@@ -217,11 +220,31 @@ namespace MoneyAI
 
         internal void AddChild(Transaction childTx)
         {
+            if (childTx.ParentId != null)
+                throw new Exception("Cannot add child transaction {0} to parent {1} because it already has other parent {3}"
+                    .FormatEx(childTx.Id, this.Id, childTx.ParentId));
+
             childTx.ParentId = this.Id;
             if (this.children == null)
-                this.children = new List<Transaction>();
+                this.children = new Dictionary<string, Transaction>();
 
-            this.children.Add(childTx);
+            this.children.Add(childTx.Id, childTx);
+            this.HasMissingChild = true;    //We won't set it to false until CompleteParent call has been made
+        }
+
+
+        internal bool CompleteParent(out decimal missingChildAmount)
+        {
+            //TODO: Do we need this.children != null check?
+            missingChildAmount = this.Amount - this.children.Values.Sum(tx => tx.Amount);
+            this.HasMissingChild = missingChildAmount != 0;
+
+            return !this.HasMissingChild;
+        }
+
+        public override string ToString()
+        {
+            return string.Concat(this.Amount.ToCurrencyString(), " ,", this.TransactionDate.ToShortDateString(), " ,", this.EntityName);
         }
     }
 }

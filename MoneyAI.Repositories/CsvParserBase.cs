@@ -149,9 +149,6 @@ namespace MoneyAI.Repositories
                     case CsvColumnType.SubAccountName:
                         importedValues.SubAccountName = this.SetImportedValueText(importedValues.SubAccountName, columnValue, columnType);
                         break;
-                    case CsvColumnType.OtherInfo:
-                        importedValues.OtherInfo = this.SetImportedValueText(importedValues.OtherInfo, columnValue, columnType);
-                        break;
                     case CsvColumnType.AccountNumber:
                         importedValues.AccountNumber = this.SetImportedValueText(importedValues.AccountNumber, columnValue, columnType);
                         break;
@@ -202,6 +199,11 @@ namespace MoneyAI.Repositories
             var amount = importedValues.Amount.Value;
             var entityName = importedValues.EntityName;
             var isCheck = !string.IsNullOrWhiteSpace(importedValues.CheckReference);
+
+            if (importedValues.TransactionReason == TransactionReason.UnknownAdjustment)
+            {
+                importedValues.TransactionReason = amount >= 0 ? TransactionReason.IncomeAdjustment : TransactionReason.ExpenseAdjustment;
+            }
 
             if (importedValues.TransactionReason == null
                 || importedValues.TransactionReason == TransactionReason.Purchase)
@@ -287,7 +289,7 @@ namespace MoneyAI.Repositories
                 case "PAYMENT":
                     return TransactionReason.InterAccountPayment;
                 case "ADJUSTMENT":
-                    return TransactionReason.Adjustment;
+                    return TransactionReason.UnknownAdjustment;
                 case "RETURN":
                     return TransactionReason.Return;
                 case "FEE":
@@ -311,7 +313,7 @@ namespace MoneyAI.Repositories
         {
             TransactionDate, PostedDate, EntityName, TransactionReason, Amount, 
             Ignore, InstituteReference, ProviderCategoryName, PhoneNumber, Address, SubAccountName,
-            OtherInfo, AccountNumber, CheckReference, DebitAmount, CreditAmount, ProviderAttribute
+            AccountNumber, CheckReference, DebitAmount, CreditAmount, ProviderAttribute
         }
 
         [Serializable]
