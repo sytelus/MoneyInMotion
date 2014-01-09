@@ -17,8 +17,7 @@ namespace MoneyAI.ParentChildMatchers
 
         public IEnumerable<KeyValuePair<Transaction, Transaction>> GetParents(IEnumerable<Transaction> children, Transactions availableTransactions)
         {
-            //Cache for lineitem parents
-            var lineitemParents = availableTransactions.Where(tx => tx.AccountId == this.accountInfo.Id && !Utils.ParseBool(tx.ProviderAttributes["$IsLineItem"], null))
+            var lineitemParents = availableTransactions.Where(tx => tx.AccountId == this.accountInfo.Id && tx.LineItemType == LineItemType.None)
                 .GroupBy(tx => tx.InstituteReference).ToDictionary(g => g.Key, g => g.ToArray());
 
             var nonLineitemParents = availableTransactions
@@ -29,7 +28,7 @@ namespace MoneyAI.ParentChildMatchers
             foreach(var child in children)
             {
                 //If child is line item
-                if (Utils.ParseBool(child.ProviderAttributes["$IsLineItem"], null))
+                if (child.LineItemType != LineItemType.None)
                 {
                     var parents = lineitemParents.GetValueOrDefault(child.InstituteReference);
 
@@ -73,19 +72,15 @@ namespace MoneyAI.ParentChildMatchers
                 return true;
 
             var promotionsAmount = Utils.ParseDecimal(parent.ProviderAttributes[@"total promotions"]);
-            var shippingAmount = 0M; 
-            var updatedMissingChildAmount = promotionsAmount + missingChildAmount;
-
-            if (!IsMissingAmountTolerable(parent, updatedMissingChildAmount))
-            {
-                shippingAmount = Utils.ParseDecimal(parent.ProviderAttributes[@"shipping charge"]);
-                updatedMissingChildAmount -= shippingAmount;
-            }
+            var shippingAmount = Utils.ParseDecimal(parent.ProviderAttributes[@"shipping charge"]);
+            var taxAmount = Utils.ParseDecimal(parent.ProviderAttributes[@"tax charged"]);
+            var updatedMissingChildAmount = missingChildAmount - (promotionsAmount + shippingAmount + taxAmount);
 
             if (IsMissingAmountTolerable(parent, updatedMissingChildAmount))
             {
                 AddAdjustmentChild(parent, availableTransactions, promotionsAmount, TransactionReason.DiscountRecieved, "Promotion");
                 AddAdjustmentChild(parent, availableTransactions, shippingAmount, TransactionReason.Purchase, "Shipping");
+                AddAdjustmentChild(parent, availableTransactions, taxAmount, TransactionReason.Purchase, "Tax");
 
                 var finalMissingAmount = -1M * updatedMissingChildAmount;
                 AddAdjustmentChild(parent, availableTransactions, finalMissingAmount,

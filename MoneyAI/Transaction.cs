@@ -37,6 +37,11 @@ namespace MoneyAI
         NetInterAccount = InterAccountPayment | InterAccountTransfer
     }
 
+    public enum LineItemType
+    {
+        None = 0, ItemSubtotal = 1, Tax = 2, Shipping = 3, Promotions = 4
+    }
+
     [DataContract]
     public partial class Transaction
     {
@@ -101,7 +106,8 @@ namespace MoneyAI
         public string CheckReference { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "providerAttributes")]
         public Dictionary<string, string> ProviderAttributes { get; set; }
-
+        [DataMember(EmitDefaultValue = false, Name = "lineItemType")]
+        public LineItemType LineItemType { get; private set; }
 
         //Parent child properties
         [DataMember(EmitDefaultValue = false, Name = "requiresParent")]
@@ -172,6 +178,7 @@ namespace MoneyAI
             this.AccountNumber = importedValues.AccountNumber;
             this.CheckReference = importedValues.CheckReference;
             this.ProviderAttributes = importedValues.ProviderAttributes;
+            this.LineItemType = importedValues.LineItemType;
 
             this.LineNumber = lineNumber;
             this.ContentHash = Utils.GetMD5HashString(string.Join("\t", this.GetContent()), true);

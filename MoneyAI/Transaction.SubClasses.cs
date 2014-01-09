@@ -46,6 +46,7 @@ namespace MoneyAI
             public string EntityName { get; set; }
             public string EntityNameNormalized { get; set; }
             public TransactionReason? TransactionReason { get; set; }
+            public LineItemType LineItemType { get; set; }
 
             public string InstituteReference { get; set; }
             public string ProviderCategoryName { get; set; }

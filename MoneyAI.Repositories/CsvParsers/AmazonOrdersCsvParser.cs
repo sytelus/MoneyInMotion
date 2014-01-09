@@ -56,13 +56,12 @@ namespace MoneyAI.Repositories
             if (!string.IsNullOrWhiteSpace(shipmentDateString))
                 importedValues.TransactionDate = this.ParsePostednDate(shipmentDateString);
 
-            var isLineItem = importedValues.ProviderAttributes.ContainsKey(@"item subtotal");
-            importedValues.ProviderAttributes["$IsLineItem"] = isLineItem.ToIntStringInvariant();
+            importedValues.LineItemType = importedValues.ProviderAttributes.ContainsKey(@"item subtotal") ? LineItemType.ItemSubtotal : LineItemType.None;
 
-            if (isLineItem)
+            if (importedValues.LineItemType != LineItemType.None)
             {
-                importedValues.Amount = (this.ParseAmount(importedValues.ProviderAttributes[@"item subtotal"])
-                    + this.ParseAmount(importedValues.ProviderAttributes[@"item subtotal tax"])) * -1;
+                importedValues.Amount = this.ParseAmount(importedValues.ProviderAttributes[@"item subtotal"]) * -1;
+                    //+ this.ParseAmount(importedValues.ProviderAttributes[@"item subtotal tax"])) ;    //Looks like this field does not add up to main order
             }
             else
             {
@@ -73,6 +72,8 @@ namespace MoneyAI.Repositories
                     this.ParseAmount(importedValues.ProviderAttributes[@"total promotions"]).ToStringInvariant();
                 importedValues.ProviderAttributes[@"shipping charge"] = (-1M *  //shipping should be -ve amount
                     this.ParseAmount(importedValues.ProviderAttributes[@"shipping charge"])).ToStringInvariant();
+                importedValues.ProviderAttributes[@"tax charged"] = (-1M *  //shipping should be -ve amount
+                    this.ParseAmount(importedValues.ProviderAttributes[@"tax charged"])).ToStringInvariant();
             }
             
             importedValues.TransactionReason = importedValues.Amount <= 0 ? TransactionReason.Purchase : TransactionReason.OtherCredit;
@@ -84,7 +85,7 @@ namespace MoneyAI.Repositories
 
             if (string.IsNullOrWhiteSpace(importedValues.EntityName))
             {
-                if (isLineItem)
+                if (importedValues.LineItemType != LineItemType.None)
                     importedValues.EntityName = "Amazon ASIN# {0} Sold By {3}, Order# {1}, Shipment# {2}"
                         .FormatEx(importedValues.ProviderAttributes.GetValueOrDefault(@"asin/isbn")
                         , importedValues.ProviderAttributes[@"order id"]

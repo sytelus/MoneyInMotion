@@ -16,8 +16,8 @@ namespace MoneyAI.ParentChildMatchers
 
         public static bool IsMissingAmountTolerable(Transaction parent, decimal missingChildAmount)
         {
-            return Math.Abs(missingChildAmount) < Math.Round(Math.Abs(parent.Amount) * 0.05M, 2)
-                || Math.Abs(missingChildAmount) < 1;
+            return Math.Abs(missingChildAmount) < Math.Round(Math.Abs(parent.Amount) * 0.02M, 2)
+                || Math.Abs(missingChildAmount) < 0.5M;
         }
 
         const string ImportInfoId = "CreatedBy.GenericTxParentChildMatcher";
