@@ -32,58 +32,49 @@
         
         var correctedValueNames = ["transactionReason", "transactionDate", "amount", "entityName", "isFlagged", "note", "categoryPath"];
         
+        var transactionReasonInfo = [
+            { key: "Purchase", value: 0, title: "Purchase", pluralTitle: "Purchases", category: "Expense" },
+            { key: "ExpenseAdjustment", value: 1 << 0, title: "Adjustment (Debit)", pluralTitle: "Adjustments (Debit)", category: "Expense" },
+            { key: "Fee", value: 1 << 1, title: "Fee", pluralTitle: "Fees", category: "Expense" },
+            { key: "InterAccountPayment", value: 1 << 2, title: "Account Payment", pluralTitle: "Account Payments", category: "InterAccount" },
+            { key: "Return", value: 1 << 3, title: "Return", pluralTitle: "Returns", category: "Expense" },
+            { key: "InterAccountTransfer", value: 1 << 4, title: "Transfer", pluralTitle: "Transfers", category: "InterAccount" },
+            { key: "PointsCredit", value: 1 << 5, title: "Points", pluralTitle: "Points", category: "Income" },
+            { key: "OtherCredit", value: 1 << 6, title: "Other (Credit)", pluralTitle: "Others (Credit)", category: "Income" },
+            { key: "CheckPayment", value: 1 << 7, title: "Check", pluralTitle: "Checks", category: "Expense" },
+            { key: "CheckRecieved", value: 1 << 8, title: "Check (Recieved)", pluralTitle: "Checks (Recieved)", category: "Income" },
+            { key: "AtmWithdrawal", value: 1 << 9, title: "ATM", pluralTitle: "ATM", category: "Expense" },
+            { key: "Interest", value: 1 << 10, title: "Interest", pluralTitle: "Interest", category: "Income" },
+            { key: "LoanPayment", value: 1 << 11, title: "Loan", pluralTitle: "Loans", category: "Expense" },
+            { key: "DiscountRecieved", value: 1 << 12, title: "Discount", pluralTitle: "Discounts", category: "Expense" },
+            { key: "IncomeAdjustment", value: 1 << 13, title: "Adjustment (Credit)", pluralTitle: "Adjustments (Credit)", category: "Income" },
+            { key: "MatchAdjustmentCredit", value: 1 << 14, title: "Match Adjustment (Credit)", pluralTitle: "Match Adjustments (Credit)", category: "Expense" },
+            { key: "MatchAdjustmentDebit", value: 1 << 15, title: "Match Adjustment (Debit)", pluralTitle: "Match Adjustments (Debit)", category: "Expense" }
+        ];
+
         //public methods
         //NOTE: We use .call to make calls to other prototype methods because these may get called from 
         //outside on JSON objects
         return {
+            transactionReasonInfo: transactionReasonInfo,
 
-            transactionReasonReverseLookup: {
-                Purchase: 0,
-                Adjustment: 1,
-                Fee: 2,
-                InterAccountPayment: 4,
-                Return: 8,
-                InterAccountTransfer: 16,
-                PointsCredit: 32,
-                OtherCredit: 64,
-                CheckPayment: 128,
-                CheckRecieved: 256,
-                AtmWithdrawal: 512,
-                Interest: 1024,
-                LoanPayment: 2048
-            },
+            transactionReasonTitleLookup: (function () {
+                return utils.toObject(transactionReasonInfo,
+                    function (item) { return item.value.toString(); },
+                    function (item) { return item.title.toString(); });
+            })(),
 
-            transactionReasonTitleLookup: {
-                "0": "Purchase",
-                "1": "Adjustment",
-                "2": "Fee",
-                "4": "Inter Account Payment",
-                "8": "Return",
-                "16": "Inter Account Transfer",
-                "32": "Points",
-                "64": "Other Credit",
-                "128": "Check Paid",
-                "256": "Check Recieved",
-                "512": "ATM Withdrawal",
-                "1024": "Interest Recieved",
-                "2048": "Loan Payment",
-            },
+            transactionReasonPluralTitleLookup: (function () {
+                return utils.toObject(transactionReasonInfo,
+                    function (item) { return item.value.toString(); },
+                    function (item) { return item.pluralTitle.toString(); });
+            })(),
 
-            transactionReasonPluralTitleLookup: {
-                "0": "Purchases",
-                "1": "Adjustments",
-                "2": "Fees",
-                "4": "Inter Account Payments",
-                "8": "Returns",
-                "16": "Inter Account Transfers",
-                "32": "Points Credits",
-                "64": "Other Credits",
-                "128": "Checks Paid",
-                "256": "Checks Recieved",
-                "512": "ATM Withdrawals",
-                "1024": "Interest Recieved",
-                "2048": "Loan Payments"
-            },
+            transactionReasonCategoryLookup: (function () {
+                return utils.toObject(transactionReasonInfo,
+                    function (item) { return item.value.toString(); },
+                    function (item) { return item.category.toString(); });
+            })(),
 
             getMergedEditValue: function (name) {
                 if (this.mergedEdit) {

@@ -7,6 +7,8 @@
         if (jsonData) {
             utils.extend(this, jsonData);
 
+            this.items = utils.map(this.items, function (item) { return item.Value; });
+
             this.itemsById = new utils.Dictionary();
             utils.forEach(this.items, function (tx) {
                 this.itemsById.add(tx.id, tx);

@@ -1,4 +1,4 @@
-﻿define("NetAggregator", ["common/utils", "TransactionAggregator"], function (utils, TransactionAggregator) {
+﻿define("NetAggregator", ["common/utils", "TransactionAggregator", "Transaction"], function (utils, TransactionAggregator, Transaction) {
     "use strict";
 
     var entityNameChildAggregator = function (parentAggregator, tx) {
@@ -51,35 +51,52 @@
     },
     getTransfersChildAggregator = function transfers(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Transfers", { childAggregateFunction: entityNameChildAggregator });
-        agg.sortOrder = 10; //Show it at the end
+        agg.sortOrder = 3; //Show it at the end
+
+        return agg;
+    },
+    getUnmatchedChildAggregator = function unmatched(parentAggregator) {
+        var agg = new TransactionAggregator(parentAggregator, "Unmatched", { childAggregateFunction: entityNameChildAggregator });
+        agg.sortOrder = 4; //Show it at the end
 
         return agg;
     };
 
-    var incomeExpenseChildAggregatorMapping = {
-        "0": getExpenseChildAggregator,   //Purchase
-        "1": getExpenseChildAggregator, //Adjustment
-        "2": getExpenseChildAggregator, //Fee
-        "4": getTransfersChildAggregator, //InterAccountPayment
-        "8": getExpenseChildAggregator, //Return
-        "16": getTransfersChildAggregator, //InterAccountTransfer
-        "32": getIncomeChildAggregator,
-        "64": getIncomeChildAggregator,
-        "128": getExpenseChildAggregator,
-        "256": getIncomeChildAggregator,
-        "512": getExpenseChildAggregator,
-        "1024": getIncomeChildAggregator,
-        "2048": getExpenseChildAggregator
-    };
+    var headerChildAggregatorMapping = (function () {
+        return utils.toObject(Transaction.prototype.transactionReasonInfo,
+            function(tr) { return tr.value.toString(); },
+            function (tr) {
+                switch (tr.category) {
+                    case "Expense": return getExpenseChildAggregator;
+                    case "InterAccount": return getTransfersChildAggregator;
+                    case "Income": return getIncomeChildAggregator;
+                    default:
+                        throw new Error("Child aggregator for category " + tr.category + " is not supported");
+                }
+            }
+        );
+    })();
 
-    var incomeExpenseChildAggregator = function (parentAggregator, tx) {
-        var aggregatorFunction = incomeExpenseChildAggregatorMapping[tx.correctedValues.transactionReason.toString()] || getExpenseChildAggregator;
+    var headerChildAggregator = function (parentAggregator, tx) {
+        var aggregatorFunction;
+        
+        if (tx.requiresParent && !tx.parentId) {
+            aggregatorFunction = getUnmatchedChildAggregator;
+        }
+        else {
+            aggregatorFunction = headerChildAggregatorMapping[tx.correctedValues.transactionReason.toString()];
+        }
+
         var childAggregators = parentAggregator.childAggregators;
         if (!childAggregators[aggregatorFunction.name]) {
             childAggregators[aggregatorFunction.name] = aggregatorFunction(parentAggregator);
         }
 
         return childAggregators[aggregatorFunction.name];
+    },
+    sortHeaderAggregatorsFunction = function (aggs) {
+        aggs.sort(utils.compareFunction(false, function (agg) { return agg.sortOrder; }));
+        return aggs;
     };
 
     var getFlatAggregator = function (options) {
@@ -104,7 +121,8 @@
 
     var $this = function (txItems, txItemsKey, options) {
         this.aggregator = new TransactionAggregator(undefined, "Net." + txItemsKey, {
-            childAggregateFunction: options.enableGrouping ? incomeExpenseChildAggregator : getFlatAggregator(options),
+            childAggregateFunction: options.enableGrouping ? headerChildAggregator : getFlatAggregator(options),
+            sortChildAggregatorsFunction: sortHeaderAggregatorsFunction,
             enableEdits: options.enableEdits, enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping
         });
 

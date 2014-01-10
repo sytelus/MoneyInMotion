@@ -125,6 +125,20 @@
             return sum;
         },
 
+        toObject: function (collection, getKey, getValue, thisArg) {
+            var result = {};
+            utilsInstance.forEach(collection, function (item, indexOrKey) {
+                var key = getKey.call(thisArg, item, indexOrKey);
+                var value = getValue.call(thisArg, item, indexOrKey);
+
+                if (key !== undefined) {
+                    result[key] = value;
+                }
+            }, thisArg);
+
+            return result;
+        },
+
         mostOccuring: function(collection, callback, thisArg) {
             if (callback) {
                 collection = _.map(collection, callback, thisArg);

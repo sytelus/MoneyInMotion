@@ -84,7 +84,7 @@ namespace MoneyAI.ParentChildMatchers
 
                 var finalMissingAmount = -1M * updatedMissingChildAmount;
                 AddAdjustmentChild(parent, availableTransactions, finalMissingAmount,
-                    finalMissingAmount >= 0 ? TransactionReason.IncomeAdjustment : TransactionReason.ExpenseAdjustment, 
+                    finalMissingAmount >= 0 ? TransactionReason.MatchAdjustmentCredit: TransactionReason.MatchAdjustmentDebit, 
                     "Adjustment");
 
                 return true;

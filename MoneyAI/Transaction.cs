@@ -16,24 +16,28 @@ namespace MoneyAI
     public enum TransactionReason
     {
         Purchase = 0, 
-        ExpenseAdjustment = 1, 
-        Fee = 2, 
-        InterAccountPayment = 4, 
-        Return = 8,
-        InterAccountTransfer = 16,
-        PointsCredit = 32,
-        OtherCredit = 64,
-        CheckPayment = 128,
-        CheckRecieved = 256,
-        AtmWithdrawal = 512,
-        Interest = 1024,
-        LoanPayment = 2048,
-        DiscountRecieved = 4096,
-        IncomeAdjustment = 4096 * 2,
+        ExpenseAdjustment = 1 << 0,
+        Fee = 1 << 1,
+        InterAccountPayment = 1 << 2,
+        Return = 1 << 3,
+        InterAccountTransfer = 1 << 4,
+        PointsCredit = 1 << 5,
+        OtherCredit = 1 << 6,
+        CheckPayment = 1 << 7,
+        CheckRecieved = 1 << 8,
+        AtmWithdrawal = 1 << 9,
+        Interest = 1 << 10,
+        LoanPayment = 1 << 11,
+        DiscountRecieved = 1 << 12,
+        IncomeAdjustment = 1 << 13,
+        MatchAdjustmentCredit = 1 << 14,
+        MatchAdjustmentDebit = 1 << 15,
+
+        //Used temporarily for transaction creation but this value should never be assigned to transaction (its validated)
         UnknownAdjustment = ExpenseAdjustment | IncomeAdjustment,
 
-        NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment | ExpenseAdjustment,
-        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest | DiscountRecieved | IncomeAdjustment,
+        NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment | ExpenseAdjustment | MatchAdjustmentDebit,
+        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest | DiscountRecieved | IncomeAdjustment | MatchAdjustmentCredit,
         NetInterAccount = InterAccountPayment | InterAccountTransfer
     }
 

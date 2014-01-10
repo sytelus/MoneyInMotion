@@ -202,7 +202,7 @@ namespace MoneyAI.Repositories
 
             if (importedValues.TransactionReason == TransactionReason.UnknownAdjustment)
             {
-                importedValues.TransactionReason = amount >= 0 ? TransactionReason.IncomeAdjustment : TransactionReason.ExpenseAdjustment;
+                importedValues.TransactionReason = amount >= 0 ? TransactionReason.IncomeAdjustment: TransactionReason.ExpenseAdjustment;
             }
 
             if (importedValues.TransactionReason == null
@@ -216,10 +216,11 @@ namespace MoneyAI.Repositories
                     return TransactionReason.LoanPayment;
                 else if (amount < 0 && isCheck)
                     return TransactionReason.CheckPayment;
-                else
+                else  if (amount < 0)
                     return TransactionReason.Purchase;
             }
-            else if (importedValues.TransactionReason == null
+            
+            if (importedValues.TransactionReason == null
                 || importedValues.TransactionReason == TransactionReason.OtherCredit)
             {
                 if (amount > 0 && entityName != null && entityName.IndexOf("Interest", StringComparison.InvariantCultureIgnoreCase) >= 0)
@@ -232,11 +233,11 @@ namespace MoneyAI.Repositories
                     return TransactionReason.Return;
                 else if (amount > 0 && isCheck)
                     return TransactionReason.CheckRecieved;
-                else 
+                else if (amount >= 0) 
                     return TransactionReason.OtherCredit;
             }
-            else 
-                return importedValues.TransactionReason;
+            
+            return importedValues.TransactionReason;
         }
 
         protected virtual string SetImportedValueText(string oldValue, string newValue, CsvColumnType columnType)
