@@ -38,6 +38,7 @@
     <Content Include="js\templates\categoryEditorBody.html" />
     <Content Include="js\templates\noteEditorBody.html" />
     <Content Include="js\Transactions.js" />
+    <Content Include="js\TransactionSummary.js" />
     <Content Include="js\userProfile.js" />
     <Content Include="js\TemplateConstructorFunctions.js" />
     <Content Include="js\templateHelpers.js" />

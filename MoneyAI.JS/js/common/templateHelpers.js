@@ -99,7 +99,7 @@
 
                 str = str || "";
                 var truncated = str.substring(0, maxLength);
-                if (truncated != str) {
+                if (truncated !== str) {
                     str = utils.htmlEncode(truncated) + "&hellip;";
                 }
                 else {

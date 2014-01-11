@@ -1,4 +1,4 @@
-﻿define("MyFunctions", ["common/utils"], function (utils) {
+﻿define("MyFunction", ["common/utils"], function (utils) {
     "use strict";
 
     //static privates
@@ -17,7 +17,5 @@
     myFunctionPrototype.constructor = MyFunction;
     MyFunction.prototype = myFunctionPrototype;
 
-    return {
-        MyFunction: MyFunction
-    };
+    return MyFunction;
 });

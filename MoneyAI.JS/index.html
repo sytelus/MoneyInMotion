@@ -109,9 +109,71 @@
                     </div>
                 </div>
                 <div class="col-md-2 txSummaryContainer">
-                    <div class="txSummaryControl">
-                        Transaction Summary
-                    </div>
+                    <div class="txSummaryControl invisible">
+                        <!-- currently selected transaction -->
+                        <div data-bind="if: tx">
+                            <div class="panel panel-info autoWidth">
+                                <div class="panel-heading">Transaction</div>
+                                <div class="panel-body small autoWidth">
+                                    <ul class="bulletLess compact txPropertiesList">
+                                        <li><span class="txSummaryName">Name &nbsp </span><span class="txSummaryValue" data-bind="text: tx().entityName"></span></li>
+                                        <li><span class="txSummaryName">Transaction Date &nbsp </span><span class="txSummaryValue" data-bind="text: tx().transactionDate"></span></li>
+                                        <li><span class="txSummaryName">TransactionReason &nbsp </span><span class="txSummaryValue" data-bind="text: tx().transactionReason"></span></li>
+                                        <li><span class="txSummaryName">Amount &nbsp </span><span class="txSummaryValue" data-bind="text: tx().amount"></span></li>
+                                        <li><span class="txSummaryName">Account ID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().accountId"></span></li>
+                                        <li><span class="txSummaryName">Import ID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().importId"></span></li>
+                                        <li><span class="txSummaryName">ID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().id"></span></li>
+                                        <li data-bind="if: tx().lineNumber"><span class="txSummaryName">Line# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().lineNumber"></span></li>
+                                        <li data-bind="if: tx().instituteReference"><span class="txSummaryName">Institute Ref# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().instituteReference"></span></li>
+                                        <li data-bind="if: tx().providerCategoryName"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: tx().providerCategoryName"></span></li>
+                                        <li data-bind="if: tx().phoneNumber"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: tx().phoneNumber"></span></li>
+                                        <li data-bind="if: tx().address"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: tx().address"></span></li>
+                                        <li data-bind="if: tx().subAccountName"><span class="txSummaryName">Sub A/C &nbsp </span><span class="txSummaryValue" data-bind="text: tx().subAccountName"></span></li>
+                                        <li data-bind="if: tx().accountNumber"><span class="txSummaryName">Institute A/C# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().accountNumber"></span></li>
+                                        <li data-bind="if: tx().checkReference"><span class="txSummaryName">Check Ref# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().checkReference"></span></li>
+                                        <li data-bind="if: tx().lineItemType"><span class="txSummaryName">Line Item Type &nbsp </span><span class="txSummaryValue" data-bind="text: tx().lineItemType"></span></li>
+                                        <li data-bind="if: tx().postedDate"><span class="txSummaryName">Posted Date &nbsp </span><span class="txSummaryValue" data-bind="text: tx().postedDate"></span></li>
+                                        <li data-bind="if: tx().appliedEditIdsDescending"><span class="txSummaryName">Number of Edits &nbsp </span><span class="txSummaryValue" data-bind="text: tx().appliedEditIdsDescending.length"></span></li>
+                                        <li><span class="txSummaryName">Cleaned Name &nbsp </span><span class="txSummaryValue" data-bind="text: tx().entityNameNormalized"></span></li>
+                                    </ul>
+
+                                    <a href="#" data-bind="if: tx().providerAttributes && !isTxProviderAttributesVisible(), click: showTxProviderAttributes">Show Other Values</a>
+                                    <div data-bind="if: isTxProviderAttributesVisible()">
+                                        <hr/>
+                                        <p><strong>Others</strong></p>
+                                        <ul class="bulletLess compact txPropertiesList" data-bind="foreach: tx().providerAttributes">
+                                            <li data-bind="if: Value !== ''">
+                                                <span data-bind="text: Key" class="txSummaryName"></span><span class="txSummaryValue" data-bind="text: Value"></span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div> <!-- if: selectedtx -->
+                        </div>
+
+                        <!-- currently selected aggregate -->
+                        <div data-bind="if: aggregator">
+                            <div class="panel panel-info autoWidth">
+                                <div class="panel-heading">Transaction Group</div>
+                                <div class="panel-body small autoWidth">
+                                    <ul class="bulletLess compact txPropertiesList">
+                                        <li><span class="txSummaryName">Net Total &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().sum"></span></li>
+                                        <li><span class="txSummaryName">Total Credits &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().positiveSum"></span></li>
+                                        <li><span class="txSummaryName">Total Debits &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().negativeSum"></span></li>
+                                        <li><span class="txSummaryName"># of Transactions &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().count"></span></li>
+                                        <li data-bind="if: aggregator().flagCounter.trueValue"><span class="txSummaryName"># of Flags &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().flagCounter.trueValue"></span></li>
+                                        <li data-bind="if: aggregator().noteCounter.notMissedCount.notMissedCount"><span class="txSummaryName"># of Notes &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().noteCounter.notMissedCount"></span></li>
+                                        <li data-bind="if: aggregator().transactionReasonCounter.notMissedCount"><span class="txSummaryName"># of Types &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().transactionReasonCounter.keyCount"></span></li>
+                                        <li data-bind="if: aggregator().accountCounter.notMissedCount"><span class="txSummaryName"># of Accounts &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().accountCounter.keyCount"></span></li>
+                                        <li data-bind="if: aggregator().transactionDateCounter.notMissedCount"><span class="txSummaryName"># of Dates &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().transactionDateCounter.keyCount"></span></li>
+                                        <li data-bind="if: aggregator().categoryPathStringCounter.notMissedCount"><span class="txSummaryName"># Categories &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().categoryPathStringCounter.keyCount"></span></li>
+                                    </ul>
+                                </div>
+                            </div> <!-- if: selectedtx -->
+                        </div>
+
+
+                    </div> <!-- txSummaryControl -->
                 </div>
             </div>
         </div>

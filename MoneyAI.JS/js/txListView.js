@@ -30,6 +30,29 @@
             event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
         });
 
+        //Row mouse hovers/clicks
+        self.hostElement.on("click", ".txDataGridBody > tr", function (event) {
+            var row = $(this);
+            //Is this group row?
+            var groupId = row.data("groupid");
+
+            if (groupId) {
+                var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
+                var selectedTx = agg.getAllTx();
+                utils.triggerEvent(self, "transactionAggregateSelected", [agg, selectedTx, row]);
+            }
+            else {
+                var txId = row.data("txid");
+                if (txId) {
+                    var selectedTx = self.cachedValues.txs.itemsById.get(txId);
+                    utils.triggerEvent(self, "transactionRowSelected", [selectedTx, row]);
+                }
+                else {
+                    utils.triggerEvent(self, "transactionRowSelected", [null, row]);
+                }
+            }
+        });
+
         //Clicks for set note menu
         self.hostElement.on("click", "[data-menuitem]", function (event) {
             var menuItemElement = $(this),

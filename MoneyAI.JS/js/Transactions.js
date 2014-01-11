@@ -3,17 +3,26 @@
     "use strict";
 
     //static privates
+    var addTransactionById = function (transactions, txKvpList) {
+        utils.forEach(txKvpList, function (txKvp) {
+            var tx = txKvp.Value;
+            transactions.itemsById.add(tx.id, tx);
+            Transaction.prototype.ensureAllCorrectedValues.call(tx);
+
+            if (tx.children) {
+                addTransactionById(transactions, tx.children);
+            }
+        });
+    };
+
     var Transactions = function (jsonData) {
         if (jsonData) {
             utils.extend(this, jsonData);
 
-            this.items = utils.map(this.items, function (item) { return item.Value; });
-
             this.itemsById = new utils.Dictionary();
-            utils.forEach(this.items, function (tx) {
-                this.itemsById.add(tx.id, tx);
-                Transaction.prototype.ensureAllCorrectedValues.call(tx);
-            }, this);
+            addTransactionById(this, this.items);
+
+            this.items = utils.map(this.items, function (item) { return item.Value; });
         }
 
         this.cachedValues = { editsById: {} };

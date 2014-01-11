@@ -1,5 +1,19 @@
-﻿define("TxExplorerView", ["TxListView", "TxNavigationView", "common/utils", "repository"], function (TxListView, TxNavigationView, utils, repository) {
+﻿define("TxExplorerView", ["TxListView", "TxNavigationView", "common/utils", "repository", "knockout", "TransactionSummary"],
+    function (TxListView, TxNavigationView, utils, repository, ko, TransactionSummary) {
     "use strict";
+
+    var txSummaryViewModel;
+
+    var transactionSelectedHandler = function (event, tx) {
+        txSummaryViewModel.tx(tx);
+        txSummaryViewModel.txs(null);
+        txSummaryViewModel.aggregator(null);
+    },
+     transactionAggregateSelectedHandler = function (event, aggregate, txs) {
+         txSummaryViewModel.tx(null);
+         txSummaryViewModel.txs(txs);
+         txSummaryViewModel.aggregator(aggregate);
+     };
 
     var $this = function TxExplorerView(element) {
         var self = this;
@@ -14,6 +28,14 @@
         
         var listElement = element.find(".txListControl").first();
         self.txListView = new TxListView(listElement);
+
+        var txSummaryElement = element.find(".txSummaryControl").first();
+        txSummaryViewModel = new TransactionSummary();
+        ko.applyBindings(txSummaryViewModel, txSummaryElement[0]);
+        txSummaryElement.removeClass("invisible");
+
+        utils.subscribe(self.txListView, "transactionRowSelected", transactionSelectedHandler);
+        utils.subscribe(self.txListView, "transactionAggregateSelected", transactionAggregateSelectedHandler);
     };
     
     //public interface
