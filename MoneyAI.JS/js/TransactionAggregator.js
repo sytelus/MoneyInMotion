@@ -9,13 +9,13 @@
             aggs.sort(utils.compareFunction(false, function (agg) { return agg.sum; }));
             return aggs;
         },
-        defaultSubAggregateChildTxFunction = function (parentAggregator, childTx) {
+        defaultSubAggregateChildTxFunction = function (parentAggregator, childTx, parentTx) {
             var childAggregatorName = childTx.children ? "ctx_" + childTx.id : "_childTxAggregator",
                 childAggregator = parentAggregator.subAggregators[childAggregatorName];
 
             if (!childAggregator) {
                 childAggregator = new TransactionAggregator(parentAggregator, childAggregatorName, {
-                    title: childTx.correctedValues.entityNameBest, isOptionalGroup: false
+                    title: parentTx.correctedValues.entityNameBest, isLineItems: true   //, isOptionalGroup: false
                 });
                 parentAggregator.subAggregators[childAggregatorName] = childAggregator;
             }
@@ -49,6 +49,7 @@
             enableEdits: true,
             enableIndicators: true,
             enableExpandCollapse: true,
+            isLineItems: false,
             isOptionalGroup: undefined  //auto decide
         };
 
@@ -158,7 +159,9 @@
                 this.isVisible = this.isTopLevel ||
                     (this.effectiveParent.isVisible && this.effectiveParent.isChildrenVisible && !this.isOptional);
                 this.isChildrenVisible = this.isTopLevel || this.isOptional ||
-                    (this.isChildrenVisible === undefined ? this.hasSubAggregators : this.isChildrenVisible);
+                    (this.isChildrenVisible === undefined ?
+                        !this.effectiveParent.isTopLevel && !utils.isEmpty(this.subAggregators) :
+                        this.isChildrenVisible);
 
                 //Short cut method for template
                 this.effectiveParentForTx = this.isOptional ? this.effectiveParent : this;

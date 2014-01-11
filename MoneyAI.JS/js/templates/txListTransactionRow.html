@@ -1,15 +1,10 @@
 ﻿                {{#each toTxArray}}
                     <tr data-parentgroupid="{{../groupId}}" 
-                        class="{{#unless ../effectiveParentForTx.isTopLevel}}txTxRow{{/unless}}{{#unless ../isTxVisible}} txRowInvisible{{/unless}}"
+                        class="{{#unless ../effectiveParentForTx.isTopLevel}}{{oddOrEvenClass "txRow"}}{{/unless}}{{#unless ../isTxVisible}} txRowInvisible{{/unless}}"
                         data-txid="{{id}}">
 
-                        {{#if ../options.enableExpandCollapse}}
                         <td>
-                        </td>
-                        {{/if}}
-
-                        <td>
-                            <span>{{repeatString "&nbsp" ../effectiveParentForTx.txIndentLevel 4}}{{correctedValues.entityNameBest}}</span>
+                            <span>{{repeatString "&nbsp" ../effectiveParentForTx.txIndentLevel 4}}{{truncateText correctedValues.entityNameBest 25}}</span>
 
                             {{#if ../options.enableIndicators}}
 
@@ -42,7 +37,7 @@
                             {{txTransactionDateDisplay correctedValues.transactionDateParsed}}
                         </td>
                         <td>
-                            {{accountId}}
+                            {{truncateText accountId 5}}
                         </td>
                         {{#if ../options.enableEdits}}
                         <td>

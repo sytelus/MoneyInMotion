@@ -91,6 +91,25 @@
             });
         },
 
+        function truncateText(utils) {
+            utils.registerTemplateHelper("truncateText", function (str, maxLength, options) {
+                if (options === undefined) {
+                    throw new TypeError("maxLength parameter for truncateText template helper should not be undefined");
+                }
+
+                str = str || "";
+                var truncated = str.substring(0, maxLength);
+                if (truncated != str) {
+                    str = utils.htmlEncode(truncated) + "&hellip;";
+                }
+                else {
+                    str = truncated;
+                }
+
+                return utils.templateHtmlString(str);
+            });
+        },
+
         function compare(utils) {
             /* Usage:
                 {{#compare Database.Tables.Count ">" 5}}

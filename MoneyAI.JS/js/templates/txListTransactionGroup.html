@@ -2,19 +2,15 @@
 					
                     {{#if options.groupHeaderVisible}}
 					<!-- no header for single item non-top groups -->
-					<tr class="txGroupRow{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless isVisible}} txRowInvisible{{/unless}}" 
+					<tr class="{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless effectiveParent.isTopLevel}} {{oddOrEvenClass "txGroupRow"}}{{#if options.isLineItems}} {{oddOrEvenClass "txLineItemRow"}}{{/if}}{{/unless}}{{#unless isVisible}} txRowInvisible{{else}}{{/unless}}" 
 					data-groupid="{{groupId}}"
 					data-parentgroupid="{{parent.groupId}}"
 					data-ischildrenvisible="{{isChildrenVisible}}">
 						{{#if isTopLevel}}
-                            {{#if options.enableExpandCollapse}}
-							<td><!-- + column--></td>
-                            {{/if}}
-
 							<td colspan="1">
 								{{options.title}}
 							</td>
-							<td colspan="4" class="topLevelGroupSummary">
+							<td colspan="3" class="topLevelGroupSummary">
 								<small>
 									{{formatCurrency sum}} in {{txTransactionReasonCounterDisplay transactionReasonCounter}}
 								</small>
@@ -23,20 +19,19 @@
 							<td><!--edit column--></td>
                             {{/if}}
 						{{else}}
-                            {{#if options.enableExpandCollapse}}
 							<td>
-								<a class="txRowExpanderControl">
-									{{#if isChildrenVisible}}
-										&nbsp;<span class="expanderTitle">&ndash;</span>&nbsp;
-									{{else}}
-										&nbsp;<span class="expanderTitle">+</span>&nbsp;
-									{{/if}}
-								</a>							
-							</td>
-                            {{/if}}
+                                <span>{{repeatString "&nbsp" groupIndentLevel 4}}{{truncateText options.title 25}}
+                                    {{#if options.enableExpandCollapse}}
+                                    <a class="txRowExpanderControl">
+									    {{#if isChildrenVisible}}
+										    &nbsp;<span class="expanderTitle">&ndash;</span>&nbsp;
+									    {{else}}
+										    &nbsp;<span class="expanderTitle">+</span>&nbsp;
+									    {{/if}}
+								    </a>	
+                                    {{/if}}
+                                </span>
 
-							<td>
-                                <span>{{repeatString "&nbsp" groupIndentLevel 4}}{{options.title}}</span>
                                 {{#if options.enableIndicators}}
                                 <span>
 								<!-- Tx icons -->
@@ -71,26 +66,21 @@
                                 </span>
 							</td>
 							<td>
-								<span class="txRowExpanderControl">
-									<span {{#compare sum "<" 0}}class="negativeAmount"{{/compare}}> 
-										{{formatCurrency sum}} 
-									</span>
-									<span class="moreIndicator">&hellip;</span>
+								<span {{#compare sum "<" 0}}class="negativeAmount"{{/compare}}> 
+									{{formatCurrency sum}} 
 								</span>
 							</td>
 							<td>
 								{{txTransactionReasonCounterDisplay transactionReasonCounter}}
 							</td>
 							<td>
-								<span {{#compare transactionDateCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
+								<span>
 									{{txTransactionDateDisplay transactionDateCounter.top.key}}
-									{{#compare transactionDateCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
 								</span>
 							</td>
 							<td>
-								<span {{#compare accountCounter.keyCount ">" 1}} class="txRowExpanderControl" {{/compare}}>
-									{{accountCounter.top.key}}
-									{{#compare accountCounter.keyCount ">" 1}} <span class="moreIndicator">&hellip;</span> {{/compare}}
+								<span>
+									{{truncateText accountCounter.top.key 5}}
 								</span>
 							</td>
                             {{#if options.enableEdits}}
