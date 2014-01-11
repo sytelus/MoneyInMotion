@@ -11,8 +11,8 @@
                 txRows.sort(utils.compareFunction(false, function (tx) { return tx.amount; }));
                 return txRows;
             },
-            childAggregateFunction: undefined,
-            sortChildAggregatorsFunction: function (aggs) {
+            subAggregateFunction: undefined,
+            sortSubAggregatorsFunction: function (aggs) {
                 aggs.sort(utils.compareFunction(false, function (agg) { return agg.sum; }));
                 return aggs;
             },
@@ -57,7 +57,7 @@
         this.name = name;
         this.rows = [];
 
-        this.childAggregators = {};
+        this.subAggregators = {};
 
         this.isFinal = false;
     };
@@ -90,10 +90,10 @@
                 this.transactionDateCounter.add(tx.correctedValues.transactionDateParsed);
                 this.categoryPathStringCounter.add(tx.correctedValues.categoryPathString);
 
-                if (this.options.childAggregateFunction) {
-                    var childAggregator = this.options.childAggregateFunction(this, tx);
-                    if (childAggregator) {
-                        childAggregator.add(tx);
+                if (this.options.subAggregateFunction) {
+                    var subAggregator = this.options.subAggregateFunction(this, tx);
+                    if (subAggregator) {
+                        subAggregator.add(tx);
                     }
                 }
             },
@@ -123,7 +123,7 @@
                     (this.effectiveParent.isVisible && this.effectiveParent.isChildrenVisible && !this.isOptional);
                 this.isChildrenVisible = this.isTopLevel || this.isOptional ||
                     (this.isChildrenVisible === undefined ?
-                        !this.effectiveParent.isTopLevel && !utils.isEmpty(this.childAggregators) :
+                        !this.effectiveParent.isTopLevel && !utils.isEmpty(this.subAggregators) :
                         this.isChildrenVisible);
 
                 //Short cut method for template
@@ -134,7 +134,7 @@
 
                 if (isRecursive) {
                     //Child must be done after visibility for parent is setup
-                    utils.forEach(this.childAggregators, function (agg) { agg.refreshVisibility(isRecursive); });
+                    utils.forEach(this.subAggregators, function (agg) { agg.refreshVisibility(isRecursive); });
                 }
             },
 
@@ -151,15 +151,15 @@
                 this.isFinal = true;
 
                 //Child must be done after visibility for parent is setup
-                utils.forEach(this.childAggregators, function (agg) { agg.finalize(); });
+                utils.forEach(this.subAggregators, function (agg) { agg.finalize(); });
             },
 
-            toChildAggregatorsArray: function () {
-                var childAggregatorsArray = utils.toValueArray(this.childAggregators);
-                if (this.options.sortChildAggregatorsFunction) {
-                    childAggregatorsArray = this.options.sortChildAggregatorsFunction(childAggregatorsArray);
+            toSubAggregatorsArray: function () {
+                var subAggregatorsArray = utils.toValueArray(this.subAggregators);
+                if (this.options.sortSubAggregatorsFunction) {
+                    subAggregatorsArray = this.options.sortSubAggregatorsFunction(subAggregatorsArray);
                 }
-                return childAggregatorsArray;
+                return subAggregatorsArray;
             },
 
             toTxArray: function () {
@@ -175,7 +175,7 @@
 
             getAllTx: function () {
                 var allTx = this.rows;
-                utils.forEach(this.childAggregators, function (agg) { allTx = allTx.concat(agg.getAllTx()); });
+                utils.forEach(this.subAggregators, function (agg) { allTx = allTx.concat(agg.getAllTx()); });
                 return allTx;
             }
         };
