@@ -25,11 +25,13 @@
         var aggregator = subAggregators[aggregatorName];
         if (!aggregator) {
             if (categoryDepth !== undefined) {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, { title: aggregatorTitle, subAggregateFunction: entityNameSubAggregator, isCategoryGroup: true });
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, {
+                    title: aggregatorTitle, subAggregateMainTxFunction: entityNameSubAggregator, isCategoryGroup: true
+                });
                 aggregator.categoryDepth = categoryDepth;
             }
             else {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, { title: aggregatorTitle, retainRows: true });
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, { title: aggregatorTitle });
             }
 
             subAggregators[aggregatorName] = aggregator;
@@ -38,25 +40,25 @@
         return aggregator;
     },
     getExpenseSubAggregator = function expense(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Expenses", { subAggregateFunction: entityNameSubAggregator} );
+        var agg = new TransactionAggregator(parentAggregator, "Expenses", { subAggregateMainTxFunction: entityNameSubAggregator} );
         agg.sortOrder = 1; //Show it after income
 
         return agg;
     },
     getIncomeSubAggregator = function income(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Income", { subAggregateFunction: entityNameSubAggregator });
+        var agg = new TransactionAggregator(parentAggregator, "Income", { subAggregateMainTxFunction: entityNameSubAggregator });
         agg.sortOrder = 0; //Show it first (because it has smaller line items)
 
         return agg;
     },
     getTransfersSubAggregator = function transfers(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Transfers", { subAggregateFunction: entityNameSubAggregator });
+        var agg = new TransactionAggregator(parentAggregator, "Transfers", { subAggregateMainTxFunction: entityNameSubAggregator });
         agg.sortOrder = 3; //Show it at the end
 
         return agg;
     },
     getUnmatchedSubAggregator = function unmatched(parentAggregator) {
-        var agg = new TransactionAggregator(parentAggregator, "Unmatched", { subAggregateFunction: entityNameSubAggregator });
+        var agg = new TransactionAggregator(parentAggregator, "Unmatched", { subAggregateMainTxFunction: entityNameSubAggregator });
         agg.sortOrder = 4; //Show it at the end
 
         return agg;
@@ -107,7 +109,7 @@
             var aggregator = subAggregators[flatAggregatorName];
             if (!aggregator) {
                 aggregator = new TransactionAggregator(parentAggregator, flatAggregatorName, {
-                    retainRows: true, retainChildrenVisibilityState: options.enableGrouping,
+                    retainChildrenVisibilityState: options.enableGrouping,
                     groupHeaderVisible: options.enableGrouping, enableEdits: options.enableEdits,
                     enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping,
                     isOptionalGroup: true
@@ -121,7 +123,7 @@
 
     var $this = function (txItems, txItemsKey, options) {
         this.aggregator = new TransactionAggregator(undefined, "Net." + txItemsKey, {
-            subAggregateFunction: options.enableGrouping ? headerSubAggregator : getFlatAggregator(options),
+            subAggregateMainTxFunction: options.enableGrouping ? headerSubAggregator : getFlatAggregator(options),
             sortSubAggregatorsFunction: sortHeaderAggregatorsFunction,
             enableEdits: options.enableEdits, enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping
         });

@@ -6,17 +6,30 @@
     var compiledTemplate;   //cache compiled template
     var instanceId = 0;
     
-    var hashChangeHandler = function (params) {
+    var getFilterParamsFromUrlFragment = function (urlFragment) {
         var self = this;
 
-        params = utils.isEmpty(params) ? { action: "showmonth" } : params;
-        switch (params.action) {
+        var params = urlFragment !== undefined ? $.deparam(urlFragment) : $.deparam.fragment();
+        if (params.iid === self.instanceId.toString()) {
+            var filterParams = { yearString: params.year, monthString: params.month };
+            filterParams.action = params.action || "showmonth";
+
+            return filterParams;
+        }
+        else {
+            return undefined;
+        }
+    },
+    hashChangeHandler = function (filterParams) {
+        var self = this;
+
+        switch (filterParams.action) {
             case "showmonth":
-                self.refresh({ year: params.year, month: params.month });
+                self.refresh(filterParams);
                 break;
             default:
-                utils.log(["Unsupported hashchange was routed to txExplorerView", params], 5, "error");
-                self.refresh({ year: params.year, month: params.month });
+                utils.log(["Unsupported hashchange was routed to txExplorerView", filterParams], 5, "error");
+                self.refresh(filterParams);
                 break;
         }
     };
@@ -35,9 +48,9 @@
             var target = e.getState("target") || "main";
 
             if (target === "txx" || target === "main") {
-                var params = $.deparam(e.fragment);
-                if (params.iid === self.instanceId.toString()) {
-                    hashChangeHandler.call(self, params);
+                var filterParams = getFilterParamsFromUrlFragment.call(self, e.fragment);
+                if (filterParams) {
+                    hashChangeHandler.call(self, filterParams);
                 }
             }
             //else ignore unknown state
@@ -93,7 +106,9 @@
 
         refresh: function (filterParams) {
             var self = this;
-            var selectYearString = filterParams && filterParams.year, selectMonthString = filterParams && filterParams.month;
+            var selectYearString = filterParams && filterParams.yearString, selectMonthString = filterParams && filterParams.monthString;
+
+            self.lastSelectedYearMonth = self.lastSelectedYearMonth || getFilterParamsFromUrlFragment.call(self);
 
             selectYearString = selectYearString || (self.lastSelectedYearMonth ? self.lastSelectedYearMonth.yearString : undefined);
             selectMonthString = selectMonthString || (self.lastSelectedYearMonth ? self.lastSelectedYearMonth.monthString : undefined);

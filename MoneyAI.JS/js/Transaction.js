@@ -135,10 +135,7 @@
                 }
 
                 if (!this.correctedValues || !this.correctedValues.isPopulated) {
-
-                    var that = this;
-
-                    utils.forEach(correctedValueNames, function (correctedValueName) { getCorrectedValue.call(that, correctedValueName); });
+                    utils.forEach(correctedValueNames, function (correctedValueName) { getCorrectedValue.call(this, correctedValueName); }, this);
 
                     proto.getCorrectedTransactionDateParsed.call(this);
                     proto.getTransactionYearString.call(this);
@@ -150,6 +147,12 @@
                     }
                     
                     this.correctedValues.isPopulated = true;
+                }
+
+                if (this.children) {
+                    utils.forEach(this.children, function (childTxKvp) {
+                        proto.ensureAllCorrectedValues.call(childTxKvp.Value, invalidateExisting);
+                    }, this);
                 }
             },
 

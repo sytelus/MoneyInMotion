@@ -5,7 +5,6 @@
         txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml, txAttributesEditorBodyHtml, saveEditsConfirmModalHtml) {
 
     "use strict";
-    /*jshint -W055 */ //A constructor name should start with an uppercase letter.
 
     var compiledTemplates = {},   //cache compiled template
         optionsDefaults = {
@@ -66,7 +65,7 @@
     };
 
     
-    var $this = function (element, options) {
+    var TxListView = function (element, options) {
         initialize.call(this, element, options);
     };
 
@@ -149,7 +148,7 @@
                     isAffactedTransactionsShown: ko.observable(false),
                     showAffactedTransactions: function () {
                         var affectedTransactionsContainer = modalTarget.find(".affactedTransactionsContainer").first();
-                        var affectedTransactionsListView = new $this(affectedTransactionsContainer, {
+                        var affectedTransactionsListView = new TxListView(affectedTransactionsContainer, {
                             enableGrouping: false, enableEdits: false, enableIndicators: false
                         });
 
@@ -355,8 +354,8 @@
         }
     };
 
-    proto.constructor = $this;
-    $this.prototype = proto;
+    proto.constructor = TxListView;
+    TxListView.prototype = proto;
 
-    return $this;
+    return TxListView;
 });

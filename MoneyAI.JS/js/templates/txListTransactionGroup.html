@@ -196,7 +196,9 @@
 					<!-- if leaf group, print transactions as child else print child groups -->
 					{{#if rows}}		
 						{{> tx }}
-					{{else}}
+					{{/if}}
+
+                    {{#if hasSubAggregators}}		
 						{{> txGroup}}
 					{{/if}}
 

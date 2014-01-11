@@ -5,17 +5,43 @@
 
     //Store previous aggregators so we can lookup previous state of isChildrenVisible property
     var allAggregators = {},
+        defaultSortSubAggregatorsFunction = function (aggs) {
+            aggs.sort(utils.compareFunction(false, function (agg) { return agg.sum; }));
+            return aggs;
+        },
+        defaultSubAggregateChildTxFunction = function (parentAggregator, childTx) {
+            var childAggregatorName = childTx.children ? "ctx_" + childTx.id : "_childTxAggregator",
+                childAggregator = parentAggregator.subAggregators[childAggregatorName];
+
+            if (!childAggregator) {
+                childAggregator = new TransactionAggregator(parentAggregator, childAggregatorName, {
+                    title: childTx.correctedValues.entityNameBest, isOptionalGroup: false
+                });
+                parentAggregator.subAggregators[childAggregatorName] = childAggregator;
+            }
+
+            return childAggregator;
+        },
+        addChildTx = function (childTx, parentTx, currentAggregator) {
+            var subAggregatorChildTx = currentAggregator.options.subAggregateChildTxFunction(currentAggregator, childTx, parentTx);
+            if (subAggregatorChildTx) {
+                subAggregatorChildTx.add(childTx);
+            }
+            else {
+                //This is the leaf aggregator
+                currentAggregator.rows.push(childTx);
+            }
+        },
         optionsDefault = {
-            retainRows: false,
             sortTxFunction: function (txRows) {
                 txRows.sort(utils.compareFunction(false, function (tx) { return tx.amount; }));
                 return txRows;
             },
-            subAggregateFunction: undefined,
-            sortSubAggregatorsFunction: function (aggs) {
-                aggs.sort(utils.compareFunction(false, function (agg) { return agg.sum; }));
-                return aggs;
-            },
+
+            subAggregateMainTxFunction: undefined,
+            subAggregateChildTxFunction: defaultSubAggregateChildTxFunction,
+            sortSubAggregatorsFunction: defaultSortSubAggregatorsFunction,
+
             isCategoryGroup: false,
             retainChildrenVisibilityState: true,
             title: undefined,
@@ -26,7 +52,7 @@
             isOptionalGroup: undefined  //auto decide
         };
 
-    var $this = function TransactionAggregator(parent, name, options) {
+    var TransactionAggregator = function (parent, name, options) {
         this.options = utils.extend({}, optionsDefault, {title: name}, options);
         
         //Disable saving state if name is not provided
@@ -69,10 +95,6 @@
         //publics
         return {
             add: function (tx) {
-                if (this.options.retainRows) {
-                    this.rows.push(tx);
-                }
-
                 if (tx.correctedValues.amount > 0) {
                     this.positiveSum += Math.abs(tx.correctedValues.amount);
                 }
@@ -90,10 +112,23 @@
                 this.transactionDateCounter.add(tx.correctedValues.transactionDateParsed);
                 this.categoryPathStringCounter.add(tx.correctedValues.categoryPathString);
 
-                if (this.options.subAggregateFunction) {
-                    var subAggregator = this.options.subAggregateFunction(this, tx);
-                    if (subAggregator) {
-                        subAggregator.add(tx);
+                var subAggregatorMainTx;  //leave it undefined
+                if (this.options.subAggregateMainTxFunction) {
+                    subAggregatorMainTx = this.options.subAggregateMainTxFunction(this, tx);
+                }
+
+                if (subAggregatorMainTx) {
+                    subAggregatorMainTx.add(tx);
+                }
+                else {  //Only go to child TX if we have ran out of aggregators for the main TX
+                    if (tx.children && this.options.subAggregateChildTxFunction) {
+                        utils.forEach(tx.children, function (childTxKvp) {
+                            addChildTx(childTxKvp.Value, tx, this);
+                        }, this);
+                    }
+                    else {
+                        //This is the leaf aggregator
+                        this.rows.push(tx);
                     }
                 }
             },
@@ -115,6 +150,7 @@
                     On Expand/Collapse: Set IsChildrenVisible, Update IsVisible for all children
                     On refresh: Copy IsChildrenVisible from last state
                 */
+                this.hasSubAggregators = !utils.isEmpty(this.subAggregators);
                 this.isOptional = this.options.isOptionalGroup !== undefined ? !!this.options.isOptionalGroup :
                     (this.count === 1 && !this.options.isCategoryGroup && !this.isTopLevel);
                 this.effectiveParent = this.parent ?
@@ -122,9 +158,7 @@
                 this.isVisible = this.isTopLevel ||
                     (this.effectiveParent.isVisible && this.effectiveParent.isChildrenVisible && !this.isOptional);
                 this.isChildrenVisible = this.isTopLevel || this.isOptional ||
-                    (this.isChildrenVisible === undefined ?
-                        !this.effectiveParent.isTopLevel && !utils.isEmpty(this.subAggregators) :
-                        this.isChildrenVisible);
+                    (this.isChildrenVisible === undefined ? this.hasSubAggregators : this.isChildrenVisible);
 
                 //Short cut method for template
                 this.effectiveParentForTx = this.isOptional ? this.effectiveParent : this;
@@ -182,9 +216,9 @@
     })();
 
 
-    proto.constructor = $this;
+    proto.constructor = TransactionAggregator;
     
-    $this.prototype = proto;
+    TransactionAggregator.prototype = proto;
 
-    return $this;
+    return TransactionAggregator;
 });
