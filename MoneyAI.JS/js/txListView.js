@@ -37,6 +37,16 @@
             self.setTableSelection(row);
          });
 
+        //Left & Right arrow key
+        self.hostElement.on("keyup", function (e) {
+            if (e.which === 37 || e.which === 39) { //left & right arrows
+                var currentTableRow = self.tableSelection.rowElement;
+                if (currentTableRow && currentTableRow.attr("data-ischildrenvisible") !== undefined) {
+                    collapseExpandRows.call(self, currentTableRow, e.which === 39, e.which === 39 && (e.metaKey || e.ctrlKey));
+                }
+            }1
+        });
+        //Up/down arrow key on table
         self.hostElement.on("keydown", function (e) {
             if (e.which === 38 || e.which === 40) { //up and down arrows
                 var currentTableRow = self.tableSelection.rowElement;
@@ -127,7 +137,7 @@
             row.addClass("txRowInvisible");
         }
     },
-    showHideRow = function (rowInfo) {
+    showHideRow = function (rowInfo, forceAllLevels) {
         var self = this;
         updateRowVisibilityAttribute.call(self, rowInfo.row, rowInfo.aggregator.isVisible);
 
@@ -142,14 +152,14 @@
             var row = $(this);
             var childRowInfo = getRowInfo.call(self, row);
             if (childRowInfo === undefined) {
-                updateRowVisibilityAttribute.call(self, row, rowInfo.aggregator.isTxVisible);
+                updateRowVisibilityAttribute.call(self, row, rowInfo.aggregator.isTxVisible || forceAllLevels);
             }
             else {
-                showHideRow.call(self, childRowInfo);
+                showHideRow.call(self, childRowInfo, forceAllLevels);
             }
         });
     },
-    collapseExpandRows = function (parentRow, isChildrenVisible) {
+    collapseExpandRows = function (parentRow, isChildrenVisible, forceAllLevels) {
         var self = this;
 
         var rowInfo = getRowInfo.call(self, parentRow);
@@ -160,7 +170,7 @@
         rowInfo.aggregator.setChildrenVisible(isChildrenVisible);
         parentRow.data("ischildrenvisible", isChildrenVisible.toString());
 
-        showHideRow.call(self, rowInfo);
+        showHideRow.call(self, rowInfo, forceAllLevels);
     },
 
     defaultReviewAffectedTransactionsCallback = function (allAffectedTransactions, allAffectedTransactionsCount) {
