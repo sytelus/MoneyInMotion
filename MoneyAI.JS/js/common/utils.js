@@ -1,6 +1,7 @@
 ﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "common/keyCounter",
-    "cryptojs.md5", "cryptojs.base64", "uuidjs", "jquery.ba-bbq", "json3"],
-    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs, jQueryBbq, json3) {
+    "cryptojs.md5", "cryptojs.base64", "uuidjs", "jquery.ba-bbq", "json3", "mousetrap"],
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs,
+        jQueryBbq, json3, mousetrap) {
 
    "use strict";
 
@@ -41,7 +42,7 @@
         log: function (textOrArray, statusBoxPriority, type) {
             type = type || "log";
 
-            textOrArray = _.isString(textOrArray) ? [textOrArray] : textOrArray;
+            textOrArray = _.isArray(textOrArray) ? textOrArray : [textOrArray];
 
             (debug[type] || debug.log).apply(debug, textOrArray);
 
@@ -50,6 +51,17 @@
             }
         },
         
+        isElementInView: function(elem, partialViewOk) {
+            var docViewTop = $(window).scrollTop(),
+            docViewBottom = docViewTop + $(window).height(),
+            elemTop = $(elem).offset().top,
+            elemBottom = elemTop + $(elem).height(),
+            isTopInView = elemTop >= docViewTop,
+            isBottomInView = elemBottom <= docViewBottom;
+
+            return (partialViewOk && (isBottomInView || isBottomInView)) || (isTopInView && isBottomInView);
+        },
+
         Dictionary: buckets.Dictionary,
         Set: buckets.Set,
         isObject: _.isObject,
@@ -193,6 +205,37 @@
         },
         templateHtmlString: function (str) {
             return new handlebars.SafeString(str);
+        },
+
+        addKeyBoardShortcut: function(keys, handler) {
+            mousetrap.bind(keys, handler);
+        },
+        removeKeyBoardShortcut: function(keys) {
+            mousetrap.unbind(keys);
+        },
+        removeAllKeyBoardShortcuts: function() {
+            mousetrap.reset();
+        },
+
+        nextVisibleSibling: function (element, invisibleRowClassName) {
+            var selector = invisibleRowClassName ? (":not(." + invisibleRowClassName + ")") : ".visible";
+            var invisibleElements = element.nextUntil(selector);
+            if (invisibleElements.length === 0) {
+                return element.next();
+            }
+            else {
+                return invisibleElements.last().next();
+            }
+        },
+        prevVisibleSibling: function (element, invisibleRowClassName) {
+            var selector = invisibleRowClassName ? (":not(." + invisibleRowClassName + ")") : ".visible";
+            var invisibleElements = element.prevUntil(selector);
+            if (invisibleElements.length === 0) {
+                return element.prev();
+            }
+            else {
+                return invisibleElements.last().prev();
+            }
         },
 
         repeatString: function (pattern, count) {

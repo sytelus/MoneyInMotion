@@ -71,10 +71,10 @@
 
 .condencedDataGrid
     :extend(.table all)
-    :extend(.table-hover all) 
     :extend(.table-responsive all)
     :extend(.table-condensed all)
     :extend(.table-condensed2 all) {
+        .form-control-focus();  //glow appears on focus if table has tabindex
 }
 
 .autoWidth {

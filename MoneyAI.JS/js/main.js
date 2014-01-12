@@ -27,7 +27,8 @@
         "uuidjs": "ext/uuid-js/lib/uuid",
         "json3": "ext/json3/lib/json3",
         "knockout": "ext/knockoutjs/build/output/knockout",
-        "datatables": "ext/datatables/media/js/jquery.dataTables"
+        "datatables": "ext/datatables/media/js/jquery.dataTables",
+        "mousetrap": "ext/mousetrap/mousetrap"
     },
     shim: {
         "debug": {

@@ -2,7 +2,7 @@
 					
                     {{#if options.groupHeaderVisible}}
 					<!-- no header for single item non-top groups -->
-					<tr class="{{#if isTopLevel}} txTopLevelGroup{{/if}}{{#unless effectiveParent.isTopLevel}} {{oddOrEvenClass "txGroupRow"}}{{#if options.isLineItems}} {{oddOrEvenClass "txLineItemRow"}}{{/if}}{{/unless}}{{#unless isVisible}} txRowInvisible{{else}}{{/unless}}" 
+					<tr class="{{#if isTopLevel}} txTopLevelGroup topLevelRow{{name}}{{/if}}{{#unless effectiveParent.isTopLevel}} {{oddOrEvenClass "txGroupRow"}}{{#if options.isLineItems}} {{oddOrEvenClass "txLineItemRow"}}{{/if}}{{/unless}}{{#unless isVisible}} txRowInvisible{{else}}{{/unless}}" 
 					data-groupid="{{groupId}}"
 					data-parentgroupid="{{parent.groupId}}"
 					data-ischildrenvisible="{{isChildrenVisible}}">
@@ -16,7 +16,7 @@
 								</small>
 							</td>
                             {{#if options.enableEdits}}
-							<td><!--edit column--></td>
+							<td colspan="1"><!--edit column--></td>
                             {{/if}}
 						{{else}}
 							<td>

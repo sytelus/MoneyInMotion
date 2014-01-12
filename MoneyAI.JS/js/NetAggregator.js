@@ -39,6 +39,8 @@
 
         return aggregator;
     },
+
+    //NOTE: Below names determins CSS classes
     getExpenseSubAggregator = function expense(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Expenses", { subAggregateMainTxFunction: entityNameSubAggregator} );
         agg.sortOrder = 1; //Show it after income

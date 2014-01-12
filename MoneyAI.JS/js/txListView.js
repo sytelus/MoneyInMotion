@@ -1,4 +1,4 @@
-﻿define("TxListView", ["jquery", "Transaction", "common/utils", "EditedValues", "common/popoverForm", "knockout", "NetAggregator",
+﻿define("TxListView", ["jquery", "Transaction", "common/utils", "EditedValues", "common/popoverForm", "knockout", "NetAggregator", 
     "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html",
     "text!templates/txAttributesEditorBody.html", "text!templates/saveEditsConfirmModal.html"],
     function ($, Transaction, utils, editedValues, popoverForm, ko, NetAggregator,
@@ -19,6 +19,7 @@
         self.cachedValues = undefined;
         self.hostElement = element;
         self.options = utils.extend({}, optionsDefaults, options);
+        self.tableSelection = {};
 
         //Clicks for +/- buttons
         self.hostElement.on("click", ".txRowExpanderControl", function (event) {   //NOTE: jquery live events don"t bubble up in iOS except for a and button elements
@@ -30,26 +31,33 @@
             event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
         });
 
-        //Row mouse hovers/clicks
-        self.hostElement.on("click", ".txDataGridBody > tr", function (event) {
+        //Row mouse clicks
+        self.hostElement.on("click", ".txDataGridBody > tr", function () {
             var row = $(this);
-            //Is this group row?
-            var groupId = row.data("groupid");
+            self.setTableSelection(row);
+         });
 
-            if (groupId) {
-                var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
-                var selectedTx = agg.getAllTx();
-                utils.triggerEvent(self, "transactionAggregateSelected", [agg, selectedTx, row]);
-            }
-            else {
-                var txId = row.data("txid");
-                if (txId) {
-                    var selectedTx = self.cachedValues.txs.itemsById.get(txId);
-                    utils.triggerEvent(self, "transactionRowSelected", [selectedTx, row]);
+        self.hostElement.on("keydown", function (e) {
+            if (e.which === 38 || e.which === 40) { //up and down arrows
+                var currentTableRow = self.tableSelection.rowElement;
+                var newSelectedRow; //leave it undefined
+                if (currentTableRow) {
+                    newSelectedRow = e.which === 40 ? utils.nextVisibleSibling(currentTableRow, "txRowInvisible") :
+                        utils.prevVisibleSibling(currentTableRow, "txRowInvisible");
                 }
-                else {
-                    utils.triggerEvent(self, "transactionRowSelected", [null, row]);
+                //If no current row then event will be ignored (user must click on a row first to start selection
+
+                if (newSelectedRow && newSelectedRow.length > 0) {
+                    var previousRow = self.setTableSelection(newSelectedRow);
+
+                    if (previousRow && utils.isElementInView(newSelectedRow)) {
+                        e.preventDefault();
+
+                        var newScrollPosition = $(window).scrollTop() + (previousRow.height() * (e.which === 40 ? 1 : -1));
+                        $(window).scrollTop(newScrollPosition);
+                    }
                 }
+                //else leave current selection alone
             }
         });
 
@@ -85,6 +93,9 @@
 
             event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
         });
+
+        //Hookup keyboard shortcuts
+
     };
 
     
@@ -356,6 +367,17 @@
             undefined,  //Last edit filter
             editedValues.scopeTypeLookup.transactionId, utils.map(selectedTx, "id")
         );
+    },
+        
+    setTableRowSelectionStyle = function (rowElement, isSelected) {
+        if (rowElement) {
+            if (isSelected) {
+                rowElement.addClass("selectedTableRow");
+            }
+            else {
+                rowElement.removeClass("selectedTableRow");
+            }
+        }
     };
 
 
@@ -374,6 +396,40 @@
             compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateHtml);
             var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, self.cachedValues.netAggregator);
             self.hostElement.html(templateHtml);
+
+            self.setTableSelection(undefined);
+        },
+
+        setTableSelection: function (row) {
+            var self = this;
+
+            var previousElement = self.tableSelection.rowElement;
+            setTableRowSelectionStyle.call(self, previousElement, false);
+            setTableRowSelectionStyle.call(self, row, true);
+            self.tableSelection.rowElement = row;
+
+            if (row) {
+                //Is this group row?
+                var groupId = row.data("groupid");
+
+                if (groupId) {
+                    var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
+                    var txs = agg.getAllTx();
+                    utils.triggerEvent(self, "transactionAggregateSelected", [agg, row, txs]);
+                }
+                else {
+                    var txId = row.data("txid");
+                    if (txId) {
+                        var tx = self.cachedValues.txs.itemsById.get(txId);
+                        utils.triggerEvent(self, "transactionRowSelected", [tx, row]);
+                    }
+                    else {
+                        utils.triggerEvent(self, "transactionRowSelected", [null, row]);
+                    }
+                }
+            }
+
+            return previousElement;
         }
     };
 
