@@ -1,6 +1,6 @@
 {
   "name": "less",
-  "version": "1.5.1",
+  "version": "1.6.1",
   "main": "./dist/less-1.5.0.js",
   "ignore": [
     "**/.*",
@@ -16,11 +16,11 @@
     "bower.json"
   ],
   "homepage": "https://github.com/less/less.js",
-  "_release": "1.5.1",
+  "_release": "1.6.1",
   "_resolution": {
     "type": "version",
-    "tag": "v1.5.1",
-    "commit": "a36d15aeb3b9069e7a6e1c8a106f4492bae27fd2"
+    "tag": "v1.6.1",
+    "commit": "d07314c6dd953c0d7d9b2f33cfb812bef272093e"
   },
   "_source": "git://github.com/less/less.js.git",
   "_target": "*",
