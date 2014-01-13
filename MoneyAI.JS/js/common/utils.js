@@ -50,7 +50,14 @@
                 $(document).triggerHandler("statusBoxUpdate", [textOrArray, type, statusBoxPriority]);
             }
         },
-        
+        isInputElementInFocus: function () {
+            return $(document.activeElement).is(":input");
+        },
+        cancelRestOfTheHandlers: function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+        },
         isElementInView: function(elem, partialViewOk) {
             var docViewTop = $(window).scrollTop(),
             docViewBottom = docViewTop + $(window).height(),

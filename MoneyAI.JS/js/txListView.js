@@ -1,4 +1,4 @@
-﻿define("TxListView", ["jquery", "Transaction", "common/utils", "EditedValues", "common/popoverForm", "knockout", "NetAggregator", 
+﻿define("TxListView", ["jquery", "Transaction", "common/utils", "EditedValues", "common/popoverForm", "knockout", "NetAggregator",
     "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html",
     "text!templates/txAttributesEditorBody.html", "text!templates/saveEditsConfirmModal.html"],
     function ($, Transaction, utils, editedValues, popoverForm, ko, NetAggregator,
@@ -10,6 +10,7 @@
         optionsDefaults = {
             enableGrouping: true,
             enableEdits: true,
+            enableKeyboardShortcuts: false, //true for multiple grids can be dangerous
             enableIndicators: true //flag, note indicators next to name
         },
         saveConfirmModalId = 0;
@@ -37,37 +38,69 @@
             self.setTableSelection(row);
          });
 
+        var keyUpOccured = true;    //Flag to detect multiple events in keydown
         //Left & Right arrow key
-        self.hostElement.on("keyup", function (e) {
-            if (e.which === 37 || e.which === 39) { //left & right arrows
-                var currentTableRow = self.tableSelection.rowElement;
-                if (currentTableRow && currentTableRow.attr("data-ischildrenvisible") !== undefined) {
-                    collapseExpandRows.call(self, currentTableRow, e.which === 39, e.which === 39 && (e.metaKey || e.ctrlKey));
-                }
-            }1
-        });
-        //Up/down arrow key on table
-        self.hostElement.on("keydown", function (e) {
-            if (e.which === 38 || e.which === 40) { //up and down arrows
-                var currentTableRow = self.tableSelection.rowElement;
-                var newSelectedRow; //leave it undefined
-                if (currentTableRow) {
-                    newSelectedRow = e.which === 40 ? utils.nextVisibleSibling(currentTableRow, "txRowInvisible") :
-                        utils.prevVisibleSibling(currentTableRow, "txRowInvisible");
-                }
-                //If no current row then event will be ignored (user must click on a row first to start selection
+        $(document).on("keyup", function (e) {
+            var row = self.tableSelection.rowElement;
+            keyUpOccured = true;
+            if (row && !utils.isInputElementInFocus() && self.options.enableKeyboardShortcuts && self.isActive) {
+                var isMeta = (e.metaKey || e.altKey);
 
-                if (newSelectedRow && newSelectedRow.length > 0) {
-                    var previousRow = self.setTableSelection(newSelectedRow);
-
-                    if (previousRow && utils.isElementInView(newSelectedRow)) {
+                if (e.which === 37 || e.which === 39) { //left & right arrows
+                    if (row.attr("data-ischildrenvisible") !== undefined) {  //Only fire for groups
+                        collapseExpandRows.call(self, row, e.which === 39, e.which === 39 && isMeta); //last parameter for expand/collapse all levels
                         e.preventDefault();
-
-                        var newScrollPosition = $(window).scrollTop() + (previousRow.height() * (e.which === 40 ? 1 : -1));
-                        $(window).scrollTop(newScrollPosition);
                     }
                 }
-                //else leave current selection alone
+            }
+        });
+        //Up/down arrow key on table
+        $(document).on("keydown", function (e) {
+            var row = self.tableSelection.rowElement;
+            if (row && !utils.isInputElementInFocus() && self.options.enableKeyboardShortcuts && self.isActive) {
+                var isMeta = (e.metaKey || e.altKey);
+
+                if (e.which === 38 || e.which === 40) { //up and down arrows
+                    var newSelectedRow = e.which === 40 ? utils.nextVisibleSibling(row, "txRowInvisible") :
+                            utils.prevVisibleSibling(row, "txRowInvisible");
+
+                    //If no current row then event will be ignored (user must click on a row first to start selection
+                    if (newSelectedRow && newSelectedRow.length > 0) {
+                        var previousRow = self.setTableSelection(newSelectedRow);
+
+                        if (previousRow && utils.isElementInView(newSelectedRow)) {
+                            e.preventDefault();
+
+                            var newScrollPosition = $(window).scrollTop() + (previousRow.height() * (e.which === 40 ? 1 : -1));
+                            $(window).scrollTop(newScrollPosition);
+                        }
+                    }
+                    //else leave current selection alone
+                }
+                else if (isMeta && e.which === 78 && keyUpOccured) { //Meta+N
+                    if (clickEditCommand.call(self, row, "editNote")) {
+                        utils.cancelRestOfTheHandlers(e);
+                    }
+                }
+                else if (isMeta && e.which === 84 && keyUpOccured) { //Meta+T
+                    if (clickEditCommand.call(self, row, "editCategory")) {
+                        utils.cancelRestOfTheHandlers(e);
+                    }
+                }
+                else if (isMeta && e.which === 69 && keyUpOccured) { //Meta+E
+                    if (clickEditCommand.call(self, row, "fixAttributeErrors")) {
+                        utils.cancelRestOfTheHandlers(e);
+                    }
+                }
+                else if (isMeta && e.which === 70 && keyUpOccured) { //Meta+F, Meta+Shift+F
+                    if (clickEditCommand.call(self, row, "setFlag", { isSet: !!!e.shiftKey })) {
+                        utils.cancelRestOfTheHandlers(e);
+                    }
+                }
+
+                if (e.isDefaultPrevented()) {
+                    keyUpOccured = false;
+                }
             }
         });
 
@@ -76,30 +109,9 @@
             var menuItemElement = $(this),
             menuItem = menuItemElement.data("menuitem"),
             menuParams = menuItemElement.data("menuparams"),
-            cell = menuItemElement.closest("td"),
-            dropdownElement = cell.find(".dropdown-toggle").first(),
-            row = cell.closest("tr");
+            row = menuItemElement.closest("tr");
 
-            //Is this group row?
-            var groupId = row.data("groupid");
-            var selectedTx;
-            if (groupId !== undefined) {
-                var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
-                selectedTx = agg.getAllTx();
-            }
-            else {
-                var txId = row.data("txid");
-                selectedTx = [self.cachedValues.txs.itemsById.get(txId)];
-            }
-
-            switch (menuItem) {
-                case "setFlag": setFlagMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
-                case "editNote": editNoteMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
-                case "editCategory": editCategoryMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
-                case "fixAttributeErrors": fixAttributeErrorsMenuItemClick.call(self, menuParams, selectedTx, dropdownElement); break;
-                default:
-                    throw new Error("menuItem " + menuItem + " is not supported");
-            }
+            clickEditCommand.call(self, row, menuItem, menuParams);
 
             event.preventDefault(); //Prevent default behavior or link click and avoid bubbling
         });
@@ -114,18 +126,85 @@
     };
 
     var getRowInfo = function (row) {
-        var self = this;
+        var self = this, rowInfo = { row: row };
 
-        var groupId = row.attr("data-groupid");
-        if (groupId === undefined) {
+        //Is this group row?
+        rowInfo.groupId = row.data("groupid");
+        if (rowInfo.groupId !== undefined) {
+            rowInfo.aggregator = self.cachedValues.netAggregator.getByGroupId(rowInfo.groupId);
+            rowInfo.txs = rowInfo.aggregator.getAllTx();
+        }
+        else {
+            rowInfo.txId = row.data("txid");
+
+            if (rowInfo.txId !== undefined) {
+                rowInfo.tx = self.cachedValues.txs.itemsById.get(rowInfo.txId);
+                rowInfo.txs = [rowInfo.tx];
+            }
+        }
+
+        return rowInfo;
+    },
+    getRowFromRowInfo = function (rowInfo) {
+        if (!rowInfo) {
             return undefined;
         }
 
-        var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
-        var childRows = row.nextAll("tr[data-parentgroupid=\"" + groupId + "\"]");
-        var expanderTitle = row.find(".expanderTitle");
+        var self = this;
 
-        return { groupId: groupId, aggregator: agg, childRows: childRows, row: row, expanderTitle: expanderTitle };
+        //rowInfo.row may be old and could have been discarded by refresh
+
+        var selector;   //leave it undefined
+        if (rowInfo.groupId !== undefined) {
+            selector = ".txDataGridBody > tr[data-groupid=\"" + rowInfo.groupId + "\"]";
+        }
+        else if (rowInfo.txId !== undefined) {
+            selector = ".txDataGridBody > tr[data-txid=\"" + rowInfo.txId + "\"]";
+        }
+
+        return selector ? self.hostElement.find(selector).first() : undefined;
+    },
+    getGroupRowInfo = function (row) {
+        var self = this;
+
+        var rowInfo = getRowInfo.call(self, row);
+        if (rowInfo.groupId === undefined) {
+            return undefined;
+        }
+        else {
+            rowInfo.childRows = row.nextAll("tr[data-parentgroupid=\"" + rowInfo.groupId + "\"]");
+            rowInfo.expanderTitle = row.find(".expanderTitle");
+
+            return rowInfo;
+        }
+    },
+    clickEditCommand = function (row, commandName, commandParams) {
+        var self = this;
+
+        var rowInfo = getRowInfo.call(self, row),
+            selectedTx = rowInfo.txs;
+
+        if (selectedTx) {
+            var dropdownContainer = row.find(".dropdown").last(),
+                dropdownElement = dropdownContainer.find(".dropdown-toggle").first();
+
+            if (dropdownContainer.hasClass("open")) {   //Bootstrap dropdown does not have hide method so this is a hack
+                dropdownElement.dropdown("toggle");
+            }
+
+            switch (commandName) {
+                case "setFlag": setFlagMenuItemClick.call(self, commandParams, selectedTx, dropdownElement); break;
+                case "editNote": editNoteMenuItemClick.call(self, commandParams, selectedTx, dropdownElement); break;
+                case "editCategory": editCategoryMenuItemClick.call(self, commandParams, selectedTx, dropdownElement); break;
+                case "fixAttributeErrors": fixAttributeErrorsMenuItemClick.call(self, commandParams, selectedTx, dropdownElement); break;
+                default:
+                    throw new Error("Command " + commandName + " is not supported");
+            }
+
+            return true;
+        }
+
+        return false;
     },
     updateRowVisibilityAttribute = function (row, isVisible) {
         if (isVisible) {
@@ -150,7 +229,7 @@
 
         rowInfo.childRows.each(function () {
             var row = $(this);
-            var childRowInfo = getRowInfo.call(self, row);
+            var childRowInfo = getGroupRowInfo.call(self, row);
             if (childRowInfo === undefined) {
                 updateRowVisibilityAttribute.call(self, row, rowInfo.aggregator.isTxVisible || forceAllLevels);
             }
@@ -162,7 +241,7 @@
     collapseExpandRows = function (parentRow, isChildrenVisible, forceAllLevels) {
         var self = this;
 
-        var rowInfo = getRowInfo.call(self, parentRow);
+        var rowInfo = getGroupRowInfo.call(self, parentRow);
         if (rowInfo === undefined) {    //Tx rows
             return;
         }
@@ -264,7 +343,6 @@
             var bodyHtml = utils.runTemplate(compiledTemplates[formBodyHtml], viewModel); //Render partial templates within templates
 
             dropdownElement
-            .dropdown("toggle")
             .popoverForm(bodyHtml, viewModel, {
                 titleIconClass: formIconClass,
                 titleText: getTitle(lastEdit, selectedTx),
@@ -274,8 +352,9 @@
         }
         else {
             //No UI, run Save directly
-            onSaveWrapper();
-            afterCloseHandler(true);
+            onSaveWrapper()
+            .done(function () { afterCloseHandler(true); })
+            .fail(function () { afterCloseHandler(false); });
         }
     },
     
@@ -397,8 +476,12 @@
             var self = this;
 
             if (txs) {
-                self.cachedValues = { txs: txs, txItems:txItems, txItemsKey: txItemsKey };
+                self.cachedValues = { txs: txs, txItems: txItems, txItemsKey: txItemsKey };
+                self.tableSelection = {};
             }
+
+            var oldRowInfo = self.tableSelection && self.tableSelection.rowElement ?
+                getRowInfo.call(self, self.tableSelection.rowElement) : undefined;
 
             //Always update aggregator because tx data might have changed
             self.cachedValues.netAggregator = (new NetAggregator(self.cachedValues.txItems, self.cachedValues.txItemsKey, self.options)).aggregator;
@@ -407,11 +490,14 @@
             var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, self.cachedValues.netAggregator);
             self.hostElement.html(templateHtml);
 
-            self.setTableSelection(undefined);
+            var newSelectedRow = getRowFromRowInfo.call(self, oldRowInfo);
+            self.setTableSelection(newSelectedRow);
         },
 
         setTableSelection: function (row) {
             var self = this;
+
+            row = row && row.length > 0 ? row : undefined;
 
             var previousElement = self.tableSelection.rowElement;
             setTableRowSelectionStyle.call(self, previousElement, false);
@@ -419,19 +505,13 @@
             self.tableSelection.rowElement = row;
 
             if (row) {
-                //Is this group row?
-                var groupId = row.data("groupid");
-
-                if (groupId) {
-                    var agg = self.cachedValues.netAggregator.getByGroupId(groupId);
-                    var txs = agg.getAllTx();
-                    utils.triggerEvent(self, "transactionAggregateSelected", [agg, row, txs]);
+                var rowInfo = getRowInfo.call(self, row);
+                if (rowInfo.groupId) {
+                    utils.triggerEvent(self, "transactionAggregateSelected", [rowInfo.aggregator, row, rowInfo.txs]);
                 }
                 else {
-                    var txId = row.data("txid");
-                    if (txId) {
-                        var tx = self.cachedValues.txs.itemsById.get(txId);
-                        utils.triggerEvent(self, "transactionRowSelected", [tx, row]);
+                    if (rowInfo.txId) {
+                        utils.triggerEvent(self, "transactionRowSelected", [rowInfo.tx, row]);
                     }
                     else {
                         utils.triggerEvent(self, "transactionRowSelected", [null, row]);
@@ -440,7 +520,8 @@
             }
 
             return previousElement;
-        }
+        },
+        isActive: true
     };
 
     proto.constructor = TxListView;

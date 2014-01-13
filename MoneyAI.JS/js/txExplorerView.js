@@ -27,7 +27,7 @@
         });
         
         var listElement = element.find(".txListControl").first();
-        self.txListView = new TxListView(listElement);
+        self.txListView = new TxListView(listElement, { enableKeyboardShortcuts: true });
 
         var txSummaryElement = element.find(".txSummaryControl").first();
         txSummaryViewModel = new TransactionSummary();

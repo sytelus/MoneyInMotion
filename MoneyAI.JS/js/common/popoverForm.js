@@ -81,6 +81,19 @@
             popoverElement.one("hidden.bs.popover", function () {
                 popoverElement.popover("destroy");
             });
+
+            //Install global handler to close popovers on ESC
+            if ($.fn.popoverForm.defaults.closeOnEscKey) {
+                $(document).on("keyup", function (e) {
+                    if (e.which === 27) {   //ESC
+                        //If currently focused element is ours?
+                        if (document.activeElement && $.contains(popoverContainer.get(0), document.activeElement)) {
+                            //Fire cancel event
+                            $(document).find("[data-dismiss=popover]").filter("[data-closeonesckey=true]").click();
+                        }
+                    }
+                });
+            }
         });
     };
 
@@ -117,14 +130,4 @@
             '</div>\n'
         /* jshint +W110 */ //Mixed double and single quotes.
     };
-
-    //Install global handler to close popovers on ESC
-    $(document).on("keyup", function (e) {
-        if (e.which === 27 && $.fn.popoverForm.defaults.closeOnEscKey) {   //ESC
-            //Fire cancel event
-            $(document).find("[data-dismiss=popover]").filter("[data-closeonesckey=true]").click();
-        }
-    });
-
-
 }));
