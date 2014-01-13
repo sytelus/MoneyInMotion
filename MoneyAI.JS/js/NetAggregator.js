@@ -41,25 +41,25 @@
     },
 
     //NOTE: Below names determins CSS classes
-    getExpenseSubAggregator = function expense(parentAggregator) {
+    getExpenseSubAggregator = function(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Expenses", { subAggregateMainTxFunction: entityNameSubAggregator} );
         agg.sortOrder = 1; //Show it after income
 
         return agg;
     },
-    getIncomeSubAggregator = function income(parentAggregator) {
+    getIncomeSubAggregator = function(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Income", { subAggregateMainTxFunction: entityNameSubAggregator });
         agg.sortOrder = 0; //Show it first (because it has smaller line items)
 
         return agg;
     },
-    getTransfersSubAggregator = function transfers(parentAggregator) {
+    getTransfersSubAggregator = function(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Transfers", { subAggregateMainTxFunction: entityNameSubAggregator });
         agg.sortOrder = 3; //Show it at the end
 
         return agg;
     },
-    getUnmatchedSubAggregator = function unmatched(parentAggregator) {
+    getUnmatchedSubAggregator = function(parentAggregator) {
         var agg = new TransactionAggregator(parentAggregator, "Unmatched", { subAggregateMainTxFunction: entityNameSubAggregator });
         agg.sortOrder = 4; //Show it at the end
 
@@ -92,11 +92,12 @@
         }
 
         var subAggregators = parentAggregator.subAggregators;
-        if (!subAggregators[aggregatorFunction.name]) {
-            subAggregators[aggregatorFunction.name] = aggregatorFunction(parentAggregator);
+        var functionKey = aggregatorFunction.toString();
+        if (!subAggregators[functionKey]) {
+            subAggregators[functionKey] = aggregatorFunction(parentAggregator);
         }
 
-        return subAggregators[aggregatorFunction.name];
+        return subAggregators[functionKey];
     },
     sortHeaderAggregatorsFunction = function (aggs) {
         aggs.sort(utils.compareFunction(false, function (agg) { return agg.sortOrder; }));
