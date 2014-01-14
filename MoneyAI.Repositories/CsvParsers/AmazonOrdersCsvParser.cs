@@ -107,8 +107,8 @@ namespace MoneyAI.Repositories
 
         protected override Transaction.ImportedValues ValidateImportedValues(Transaction.ImportedValues importedValues)
         {
-            if (string.Equals(importedValues.ProviderAttributes[@"shipment/order condition"], @"Shipment planned", StringComparison.CurrentCultureIgnoreCase) &&
-                importedValues.Amount == 0)
+            //TODO: handle pre-orders?
+            if (string.Equals(importedValues.ProviderAttributes[@"shipment/order condition"], @"Shipment planned", StringComparison.CurrentCultureIgnoreCase))
             {
                 return null;
             }
