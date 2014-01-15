@@ -53,6 +53,7 @@
     <Compile Include="CommonTerms.cs" />
     <Compile Include="CompactID.cs" />
     <Compile Include="ExtentionMethods.cs" />
+    <Compile Include="FileFormatParsers\QuickbooksIifParser.cs" />
     <Compile Include="FunctionalUtilities.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Hasher.cs" />
