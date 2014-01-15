@@ -51,8 +51,10 @@
     <Compile Include="IStorage.cs" />
     <Compile Include="IRepository.cs" />
     <Compile Include="AppState.cs" />
-    <Compile Include="ParentChildMatchers\GenericTxParentChildMatcher.cs" />
+    <Compile Include="ParentChildMatchers\EtsyOrderMatcher.cs" />
     <Compile Include="ParentChildMatchers\AmazonOrderMatcher.cs" />
+    <Compile Include="ParentChildMatchers\GenericTxParentChildMatcher.cs" />
+    <Compile Include="ParentChildMatchers\GenericOrderMatcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Transaction.cs" />
     <Compile Include="Transaction.Display.cs" />

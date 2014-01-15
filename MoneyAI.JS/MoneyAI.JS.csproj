@@ -17,6 +17,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="ccslintrc" />
+    <Content Include="etsy.html" />
     <Content Include="Gruntfile.js" />
     <Content Include="images\CommentHS.png" />
     <Content Include="images\flag.gif" />

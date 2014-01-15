@@ -194,6 +194,17 @@ namespace CommonUtils
                 return k.Value.ToString(CultureInfo.InvariantCulture);
         }
 
+        public static DateTime FromUnixTime(this long unixTime)
+        {
+            var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return epoch.AddSeconds(unixTime);
+        }
+        public static long ToUnixTime(this DateTime date)
+        {
+            var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return Convert.ToInt64((date.ToUniversalTime() - epoch).TotalSeconds);
+        }
+
         public static string GetMD5HashString(IEnumerable<object> objects, bool sort)
         {
             var strings = objects.Select(o => o.ToStringNullSafe());

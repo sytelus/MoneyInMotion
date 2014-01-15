@@ -7,10 +7,10 @@ using CommonUtils;
 
 namespace MoneyAI.ParentChildMatchers
 {
-    public class AmazonOrderMatcher : GenericOrderMatcher
+    public class EtsyOrderMatcher : GenericOrderMatcher
     {
-        public AmazonOrderMatcher(AccountInfo accountInfo)
-            :base(accountInfo, "amazon", @"shipping charge", @"tax charged", @"total promotions")
+        public EtsyOrderMatcher(AccountInfo accountInfo)
+            : base(accountInfo, "etsy", @"total_shipping_cost", @"total_tax_cost", @"discount_amt")
         {
         }
     }

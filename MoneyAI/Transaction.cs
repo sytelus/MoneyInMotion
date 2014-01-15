@@ -112,6 +112,8 @@ namespace MoneyAI
         public Dictionary<string, string> ProviderAttributes { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "lineItemType")]
         public LineItemType LineItemType { get; private set; }
+        [DataMember(EmitDefaultValue = false, Name = "parentChildMatchFilter")]
+        public string ParentChildMatchFilter { get; private set; }
 
         //Parent child properties
         [DataMember(EmitDefaultValue = false, Name = "requiresParent")]
@@ -123,7 +125,6 @@ namespace MoneyAI
         public IEnumerable<Transaction> Children { get { return children != null ? this.children.Values : Enumerable.Empty<Transaction>() ; } }
         [DataMember(EmitDefaultValue = false, Name = "hasMissingChild")]
         public bool HasMissingChild { get; private set; }
-
 
         public Transaction Clone()
         {
@@ -157,7 +158,7 @@ namespace MoneyAI
             this.cachedCorrectedTransactionDate = null;
         }
 
-        public Transaction(string importId, AccountInfo accountInfo, int? lineNumber, ImportedValues importedValues)
+        public Transaction(string importId, AccountInfo accountInfo, ImportedValues importedValues)
         {
             importedValues.Validate();
 
@@ -183,10 +184,11 @@ namespace MoneyAI
             this.CheckReference = importedValues.CheckReference;
             this.ProviderAttributes = importedValues.ProviderAttributes;
             this.LineItemType = importedValues.LineItemType;
+            this.ParentChildMatchFilter = importedValues.ParentChildMatchFilter;
 
-            this.LineNumber = lineNumber;
+            this.LineNumber = importedValues.LineNumber;
             this.ContentHash = Utils.GetMD5HashString(string.Join("\t", this.GetContent()), true);
-            this.Id = Utils.GetMD5HashString(string.Join("\t", this.GetContent().Concat(lineNumber.ToStringInvariant(string.Empty)
+            this.Id = Utils.GetMD5HashString(string.Join("\t", this.GetContent().Concat(importedValues.LineNumber.ToStringInvariant(string.Empty)
                 , this.InstituteReference)), true);
 
             this.Validate();

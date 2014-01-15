@@ -15,15 +15,14 @@ namespace MoneyAI.Repositories
         private readonly IStorage<Transactions> transactionsStorage;
 
         const string DefaultRelativeDropBoxFolder = "MoneyAI", DefaultRelativeImportFolder = "Statements", DefaultRelativeNamedTransactionsFolder = "Merged"
-            , DefaultLatestMergedFileName = "LatestMerged.json", DefaultTransactionEditsFileName = "LatestMergedEdits.json"
-            , DropBoxHostFileName = "Dropbox\\host.db";
+            , DefaultLatestMergedFileName = "LatestMerged.json", DefaultTransactionEditsFileName = "LatestMergedEdits.json";
         const string AccountConfigFileName = @"AccountConfig.json", NamedLocationsFileName = @"NamedLocations.json";
 
         public FileRepository(string rootFolderPath = null)
         {
             this.transactionsStorage = new TransactionsStorage(transactionEditsStorage);
 
-            this.rootFolderPath = rootFolderPath ?? Path.Combine(GetDropBoxPath(), DefaultRelativeDropBoxFolder);
+            this.rootFolderPath = rootFolderPath ?? CloudStorage.GetDropBoxPath(DefaultRelativeDropBoxFolder);
 
             importFolderPath = Path.Combine(this.rootFolderPath, DefaultRelativeImportFolder);
             var namedTransactionsFolderPath = Path.Combine(this.rootFolderPath, DefaultRelativeNamedTransactionsFolder);
@@ -63,21 +62,6 @@ namespace MoneyAI.Repositories
             get { return transactionsStorage; }
         }
 
-        private static string GetDropBoxPath()
-        {
-            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var dbPath = Path.Combine(appDataPath, DropBoxHostFileName);
-
-            if (!File.Exists(dbPath))
-                return null;
-
-            var lines = File.ReadAllLines(dbPath);
-            var dbBase64Text = Convert.FromBase64String(lines[1]);
-            var folderPath = Encoding.ASCII.GetString(dbBase64Text);
-
-            return folderPath;
-        }
-
         public IEnumerable<ILocation> GetStatementLocations(ILocation startLocation = null, AccountConfig parentAccountConfig = null)
         {
             startLocation = startLocation ?? new FileLocation(rootFolderPath, DefaultRelativeImportFolder);
@@ -96,7 +80,7 @@ namespace MoneyAI.Repositories
                 {
                     var fileNames = Directory.EnumerateFiles(startLocation.Address, fileFilter, SearchOption.TopDirectoryOnly)
                         .Select(Path.GetFileName);
-                    foreach (var fileName in fileNames)
+                    foreach (var fileName in fileNames.Where(f => f != @"AccountConfig.json"))
                         yield return new FileLocation(startLocation.Address, fileName, accountConfig, true);
                 }
             }

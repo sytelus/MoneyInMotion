@@ -141,6 +141,9 @@ namespace MoneyAI
                     case "Amazon|OrderHistory":
                         existing = new ParentChildMatchers.AmazonOrderMatcher(this.accountInfos[tx.AccountId]);
                         break;
+                    case "Etsy|OrderHistory":
+                        existing = new ParentChildMatchers.EtsyOrderMatcher(this.accountInfos[tx.AccountId]);
+                        break;
                     default:
                         if (!allowGenericMatcher)
                             throw new NotSupportedException("ParentChildMatcher for the key {0} is not supported".FormatEx(key));

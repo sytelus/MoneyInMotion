@@ -1,0 +1,30 @@
+﻿<html>
+<head>
+<title>Etsy jQuery Demo</title>
+<script src="//cdnjs.cloudflare.com/ajax/libs/json3/3.2.6/json3.min.js"></script>
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script type="text/javascript">
+(function($){
+
+    $(document).ready(function(){
+        var api_key = "mpe5winn3rxunctfaaq7crke";
+        etsyURL = "https://openapi.etsy.com/v2/listings/active?api_key=" + api_key;
+
+        $.ajax({
+            url: etsyURL,
+            dataType: 'json',
+            success: function(data) {
+                $("#output").val(JSON.stringify(value));
+            }
+        })
+    });
+
+})(jQuery);
+</script>
+</head>
+<body>
+    <form id="etsy-search">
+        <textarea id="output"/>
+    </form>
+</body>
+</html>

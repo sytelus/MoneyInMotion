@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CloudStorage.cs" />
     <Compile Include="CommonTerms.cs" />
     <Compile Include="CompactID.cs" />
     <Compile Include="ExtentionMethods.cs" />

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
-using MoneyAI.Repositories.CsvParsers;
+using MoneyAI.Repositories.CustomParsers;
 
 namespace MoneyAI.Repositories
 {
@@ -20,18 +20,16 @@ namespace MoneyAI.Repositories
 
         public Transactions Load(ILocation location)
         {
-            switch (location.ContentType)
+            if (location.AccountConfig == null)
             {
-                case ContentType.Csv:
-                    var csvTransactions = new Transactions(location.PortableAddress);
-                    AddTransactionsFromCsvFile(csvTransactions, location.Address, location.AccountConfig.AccountInfo, location.ImportInfo); ;
-                    return csvTransactions;
-                case ContentType.Json:
-                    var serializedData = System.IO.File.ReadAllText(location.Address);
-                    return Transactions.DeserializeFromJson(serializedData);
-                case ContentType.None:
-                default:
-                    throw new ArgumentException("location.ContentType value {0} is not supported for loading transaction".FormatEx(location.ContentType));
+                var serializedData = System.IO.File.ReadAllText(location.Address);
+                return Transactions.DeserializeFromJson(serializedData);
+            }
+            else
+            {
+                var transactions = new Transactions(location.PortableAddress);
+                AddTransactionsFromFile(transactions, location.Address, location.AccountConfig.AccountInfo, location.ImportInfo);
+                return transactions;
             }
         }
 
@@ -55,50 +53,48 @@ namespace MoneyAI.Repositories
         }
 
         //TODO: make this configurable plugins
-        private static CsvParserBase GetCsvParser(AccountInfo accountInfo)
+        private static StatementParserBase GetStatementFileParser(AccountInfo accountInfo, string statementFilePath)
         {
-            CsvParserBase parser = null;
+            StatementParserBase parser = null;
+            var fileExtension = Path.GetExtension(statementFilePath).ToLowerInvariant();
 
             switch(accountInfo.InstituteName)
             {
-                case "ChaseBank":
-                    parser = new ChaseCsvParser();
-                    break;
-                case "OpusBank":
-                    parser= new OpusBankCsvParser();
-                    break;
                 case "AmericanExpress":
-                    parser = new AmexCsvParser();
+                    if (fileExtension == ".csv")
+                        parser = new AmexCsvParser(statementFilePath);
                     break;
                 case "BarclayBank":
-                    parser = new ChaseCsvParser();
+                    if (fileExtension == ".csv")
+                        parser = new BarclayCsvParser(statementFilePath);
                     break;
                 case "Amazon":
-                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory)
-                        parser = new AmazonOrdersCsvParser();
+                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory && fileExtension == ".csv")
+                        parser = new AmazonOrdersCsvParser(statementFilePath);
+                    break;
+                case "Etsy":
+                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory && fileExtension == ".json")
+                        parser = new EtsyBuyerJsonParser(statementFilePath);
+                    break;
+                default:
+                    if (fileExtension == ".csv")
+                        parser = new CsvTransactionFileParser(statementFilePath);
                     break;
             }
 
             if (parser == null)
-                throw new Exception("CsvParser for institute {0} and type {1} is not supported".FormatEx(accountInfo.InstituteName, accountInfo.Type.ToString()));
+                throw new Exception("Parser for institute '{0}', type '{1}', file '{2}' is not supported".FormatEx(accountInfo.InstituteName, accountInfo.Type.ToString(), statementFilePath));
             else
                 return parser;
         }
 
-        private static void AddTransactionsFromCsvFile(Transactions transactions, string file, AccountInfo accountInfo, ImportInfo importInfo)
+        private static void AddTransactionsFromFile(Transactions transactions, string statementFilePath, AccountInfo accountInfo, ImportInfo importInfo)
         {
-            var csvParser = GetCsvParser(accountInfo);
-            var lines = System.IO.File.ReadLines(file).RemoveNullOrEmpty();
-            var lineNumber = 0;
-            foreach (var line in lines)
+            var parser = GetStatementFileParser(accountInfo, statementFilePath);
+            foreach (var importedValues in parser.GetTransactionImportedValues())
             {
-                var importedValues = csvParser.GetTransactionImportedValues(line);
-                if (importedValues != null)
-                {
-                    var transaction = new Transaction(importInfo.Id, accountInfo, lineNumber, importedValues);
-                    transactions.AddNew(transaction, accountInfo, importInfo, true);
-                }
-                lineNumber++;
+                var transaction = new Transaction(importInfo.Id, accountInfo, importedValues);
+                transactions.AddNew(transaction, accountInfo, importInfo, true);
             }
 
             transactions.MatchParentChild();

@@ -57,6 +57,8 @@ namespace MoneyAI
             public string CheckReference { get; set; }
             public bool? RequiresParent { get; set; }
             public Dictionary<string, string> ProviderAttributes { get; set; }
+            public int? LineNumber { get; set; }
+            public string ParentChildMatchFilter { get; set; }
 
             public void Validate()
             {

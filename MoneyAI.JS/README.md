@@ -15,7 +15,7 @@ Build (Windows)
 	grunt
 5. Start webserver for MoneyInMotion\MoneyAI.JS folder. For IIS, make sure you have json mime type added as application/json, less as text/css.
 6. Add website called api in IIS under the website for MoneyInMotion\MoneyAI.JS pointing to MoneyInMotion\MoneyAI.WebApi.
-7. You need files in MoneyInMotion\MoneyAI.WebApi\App_Data\<username> folder which is mysteriously not provided. To get this files, run MoneyAI.WinForms project, drop in your account files, scan, save merged files and copy them over to data folder.
+7. You need files in MoneyInMotion\MoneyAI.WebApi\App_Data\<username> folder which is mysteriously not provided. To get this files, run MoneyAI.WinForms project, drop in your account files, scan, save merged files and copy them over to data folder. Similarly appSecrets.json file in DropBox folder is understandably missing.
 8. VS2013 now needs to start as administrator so you can debug WebApi project.
  
  Issues

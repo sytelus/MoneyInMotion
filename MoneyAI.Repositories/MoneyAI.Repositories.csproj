@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -41,12 +44,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CsvParsers\AmazonOrdersCsvParser.cs" />
-    <Compile Include="CsvParsers\AmexCsvParser.cs" />
-    <Compile Include="CsvParsers\BarclayBankCsvParser.cs" />
-    <Compile Include="CsvParsers\OpusBankCsvParser.cs" />
-    <Compile Include="CsvParsers\ChaseCsvParser.cs" />
-    <Compile Include="CsvParserBase.cs" />
+    <Compile Include="CustomParsers\AmazonOrdersCsvParser.cs" />
+    <Compile Include="CustomParsers\AmexCsvParser.cs" />
+    <Compile Include="CustomParsers\BarclayCsvParser.cs" />
+    <Compile Include="CustomParsers\EtsyBuyerJsonParser.cs" />
+    <Compile Include="JsonTransactionFileParser.cs" />
+    <Compile Include="CsvTransactionFileParser.cs" />
+    <Compile Include="StatementParserBase.cs" />
     <Compile Include="TransactionEditsStorage.cs" />
     <Compile Include="TransactionsStorage.cs" />
     <Compile Include="FileLocation.cs" />
@@ -63,7 +67,9 @@
       <Name>MoneyAI</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

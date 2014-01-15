@@ -52,8 +52,7 @@ namespace MoneyAI.ParentChildMatchers
 
             if (amount != 0)
             {
-                var tx = new Transaction(matcherImportInfo.Id, accountInfo,
-                    null, new Transaction.ImportedValues()
+                var tx = new Transaction(matcherImportInfo.Id, accountInfo, new Transaction.ImportedValues()
                     {
                         Amount = amount,
                         EntityName = "{0} - {1}".FormatEx(adjustmentTag, parent.EntityName),
@@ -62,7 +61,8 @@ namespace MoneyAI.ParentChildMatchers
                         RequiresParent = true,
                         SubAccountName = parent.SubAccountName,
                         TransactionDate = parent.TransactionDate,
-                        TransactionReason = transactionReason
+                        TransactionReason = transactionReason,
+                        LineNumber = null
                     });
                 availableTransactions.AddNew(tx, accountInfo, matcherImportInfo, false);
 

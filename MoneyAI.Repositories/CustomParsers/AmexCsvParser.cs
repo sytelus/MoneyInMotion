@@ -5,49 +5,47 @@ using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
 
-namespace MoneyAI.Repositories.CsvParsers
+namespace MoneyAI.Repositories.CustomParsers
 {
-    internal class AmexCsvParser : CsvParserBase
+    internal class AmexCsvParser : CsvTransactionFileParser
     {
-        protected override HeaderColumn[] GetHeaderColumns(string[] columns, out string[] transformedColumns)
+        public AmexCsvParser(string csvFilePath): base(csvFilePath)
         {
-            transformedColumns = this.TransformColumns(columns);   //Amex does not have header
 
-            var columnTypes = new CsvColumnType[] { CsvColumnType.TransactionDate, CsvColumnType.InstituteReference, CsvColumnType.Amount, 
-                CsvColumnType.EntityName, CsvColumnType.Address, CsvColumnType.PhoneNumber, CsvColumnType.ProviderCategoryName, CsvColumnType.ProviderAttribute
-                , CsvColumnType.TransactionReason};
-
-            return columnTypes.Select(t => new HeaderColumn { ColumnType = t, ColumnName = t.ToString() }).ToArray();
         }
 
-        protected override string[] TransformColumns(string[] columns)
+        protected override void TransformHeaderColumnNames(string[] columns, out string[] headerColumnsTransformed, out string[] dataColumns)
         {
-            string phoneNumber, categoryName, otherInfo;
-            ExtractOtherInfo(columns[4], out phoneNumber, out categoryName, out otherInfo);
-
-            var transformedColumns = new string[] 
-            {
-                columns[0], ExtractReferenceNumber(columns[1]), columns[2], columns[3], ExtractAddress(columns[3]), phoneNumber, categoryName, otherInfo,
-                null
-            };
-
-            return transformedColumns;
+            headerColumnsTransformed = new string[] { "transaction date", "amex reference", "amount",  "description", "other info"};
+            dataColumns = columns;
         }
 
-        protected override TransactionReason? InferTransactionReason(Transaction.ImportedValues importedValues, string[] columnValues)
+        protected override void SetCalculatedAttributes(Transaction.ImportedValues importedValues)
+        {
+            base.SetCalculatedAttributes(importedValues);
+
+            string phoneNumber, categoryName;
+            ExtractOtherInfo(importedValues.ProviderAttributes["other info"], out phoneNumber, out categoryName);
+
+            importedValues.PhoneNumber = phoneNumber;
+            importedValues.ProviderCategoryName = categoryName;
+            importedValues.Address = ExtractAddress(importedValues.EntityName);
+            importedValues.InstituteReference = ExtractReferenceNumber(importedValues.ProviderAttributes["amex reference"]);
+        }
+
+        protected override TransactionReason? InferTransactionReason(Transaction.ImportedValues importedValues)
         {
             var entityName = importedValues.EntityName;
             var amount = importedValues.Amount.Value;
             if (amount > 0 && entityName != null && entityName.IndexOf("AUTOPAY PAYMENT", StringComparison.InvariantCultureIgnoreCase) >= 0)
                 return TransactionReason.InterAccountPayment;
             else 
-                return base.InferTransactionReason(importedValues, columnValues);
+                return base.InferTransactionReason(importedValues);
         }
 
         static readonly string[] multiSpaceDelimiter = new string[] { "  " };
-        private void ExtractOtherInfo(string columnValue, out string phoneNumber, out string categoryName, out string otherInfo)
+        private void ExtractOtherInfo(string columnValue, out string phoneNumber, out string categoryName)
         {
-            otherInfo = columnValue;
             phoneNumber = null;
             categoryName = null;
             if (columnValue != null)
