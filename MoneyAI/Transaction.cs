@@ -92,9 +92,6 @@ namespace MoneyAI
         [DataMember(EmitDefaultValue = false, Name = "entityNameNormalized")]
         public string EntityNameNormalized { get; private set; }
 
-        [DataMember(EmitDefaultValue = false, Name = "entityNameTokens")]   //TODO: could be eliminated from serialization if OnDeserialized is handled
-        public string[] EntityNameTokens { get; private set; }
-
         [DataMember(EmitDefaultValue = false, Name = "instituteReference")]
         public string InstituteReference { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "providerCategoryName")]
@@ -127,6 +124,23 @@ namespace MoneyAI
         public IEnumerable<Transaction> Children { get { return children != null ? this.children.Values : Enumerable.Empty<Transaction>() ; } }
         [DataMember(EmitDefaultValue = false, Name = "hasMissingChild")]
         public bool HasMissingChild { get; private set; }
+        [DataMember(EmitDefaultValue = false, Name = "combinedFromId")]
+        public string CombinedFromId { get; private set; }
+        [DataMember(EmitDefaultValue = false, Name = "combinedToId")]
+        public string CombinedToId { get; private set; }
+
+        string[] entityNameTokens;
+        public string[] EntityNameTokens
+        {
+            get
+            {
+                if (entityNameTokens == null)
+                    entityNameTokens = (this.EntityName ?? string.Empty).Split(null);
+
+                return entityNameTokens;
+            }
+        }
+
 
         public Transaction Clone()
         {
@@ -148,9 +162,14 @@ namespace MoneyAI
 
             this.InvalidateCachedValues();
 
-            this.AuditInfo = new AuditInfo(this.AuditInfo, true);
+            this.UpdateAuditInfo();
 
             this.AppliedEditIdsDescending.AddItemFirst(edit.Id);
+        }
+
+        private void UpdateAuditInfo()
+        {
+            this.AuditInfo = new AuditInfo(this.AuditInfo, true);
         }
 
         private void InvalidateCachedValues()
@@ -173,7 +192,6 @@ namespace MoneyAI
             this.Amount = importedValues.Amount.Value;
             this.EntityName = importedValues.EntityName;
             this.EntityNameNormalized = importedValues.EntityNameNormalized ?? GetEntityNameNormalized(this.EntityName);
-            this.EntityNameTokens = (this.EntityName ?? string.Empty).Split(null);
             this.PostedDate = importedValues.PostedDate;
             this.TransactionDate = importedValues.TransactionDate.Value;
             this.TransactionReason = importedValues.TransactionReason.Value;
@@ -189,11 +207,16 @@ namespace MoneyAI
             this.ParentChildMatchFilter = importedValues.ParentChildMatchFilter;
 
             this.LineNumber = importedValues.LineNumber;
-            this.ContentHash = Utils.GetMD5HashString(string.Join("\t", this.GetContent()), true);
+            this.ContentHash = importedValues.ContentHash ?? GetContentHash(this.GetContent());
             this.Id = Utils.GetMD5HashString(string.Join("\t", this.GetContent().Concat(importedValues.LineNumber.ToStringInvariant(string.Empty)
                 , this.InstituteReference)), true);
 
             this.Validate();
+        }
+
+        public static string GetContentHash(IEnumerable<string> content)
+        {
+            return Utils.GetMD5HashString(string.Join("\t", content), true);
         }
 
         private IEnumerable<string> GetContent()
@@ -216,7 +239,7 @@ namespace MoneyAI
             if (this.Amount > 0 && (this.TransactionReason & TransactionReason.NetOutgoing) > 0)
                 errors = errors.Append("Transaction amount is positive {0} but it is set for outgoing TransactionReason {1}. ".FormatEx(this.Amount, this.TransactionReason), " ");
             if (this.Amount < 0 && (this.TransactionReason & TransactionReason.NetIncoming) > 0)
-                errors = errors.Append("Transaction amount is positive {0} but it is set for incoming TransactionReason {1}. ".FormatEx(this.Amount, this.TransactionReason), " ");
+                errors = errors.Append("Transaction amount is negative {0} but it is set for incoming TransactionReason {1}. ".FormatEx(this.Amount, this.TransactionReason), " ");
             if (this.TransactionReason == TransactionReason.UnknownAdjustment)
                 errors = errors.Append(" TransactionReason should not be UnknownAdjustment.", " ");
 
@@ -245,6 +268,8 @@ namespace MoneyAI
 
             this.children.Add(childTx.Id, childTx);
             this.HasMissingChild = true;    //We won't set it to false until CompleteParent call has been made
+
+            this.UpdateAuditInfo();
         }
 
 
@@ -254,12 +279,66 @@ namespace MoneyAI
             missingChildAmount = this.Amount - this.children.Values.Sum(tx => tx.Amount);
             this.HasMissingChild = missingChildAmount != 0;
 
+            this.UpdateAuditInfo();
+
             return !this.HasMissingChild;
         }
 
         public override string ToString()
         {
             return string.Concat(this.Amount.ToCurrencyString(), " ,", this.TransactionDate.ToShortDateString(), " ,", this.EntityName);
+        }
+
+        internal void CombineAttributes(Transaction other)
+        {
+            if (this.CombinedFromId != null && other.CombinedToId != null)
+                throw new Exception("Attempt combine transaction again. Current ID {0}, CombinedFromId {1}, other ID {2}".FormatEx(this.Id, this.CombinedFromId, other.Id));
+
+            if (!IsValue1Better(this.EntityName, other.EntityName))
+            {
+                this.EntityName = other.EntityName;
+                this.EntityNameNormalized = other.EntityNameNormalized;
+                this.entityNameTokens = null;
+            }
+            if (!IsValue1Better(this.TransactionDate, other.TransactionDate))
+                this.TransactionDate = other.TransactionDate;
+            if (!IsValue1Better(this.SubAccountName, other.SubAccountName))
+                this.SubAccountName = other.SubAccountName;
+            if (!IsValue1Better(this.ProviderCategoryName, other.ProviderCategoryName))
+                this.ProviderCategoryName = other.ProviderCategoryName;
+            if (!IsValue1Better(this.PostedDate, other.PostedDate))
+                this.PostedDate = other.PostedDate;
+            if (!IsValue1Better(this.PhoneNumber, other.PhoneNumber))
+                this.PhoneNumber = other.PhoneNumber;
+            if (!IsValue1Better(this.InstituteReference, other.InstituteReference))
+                this.InstituteReference = other.InstituteReference;
+            if (!IsValue1Better(this.CheckReference, other.CheckReference))
+                this.CheckReference = other.CheckReference;
+            if (!IsValue1Better(this.AccountNumber, other.AccountNumber))
+                this.AccountNumber = other.AccountNumber;
+
+            this.CombinedFromId = other.Id;
+            other.CombinedToId = this.Id;
+
+            this.UpdateAuditInfo();
+        }
+
+        private static bool IsValue1Better(DateTime? value1, DateTime? value2)
+        {
+            return !(value2 != null && value1 == null || 
+                (value2 != null && value1 != null && !IsValue1Better(value1.Value, value2.Value)));
+        }
+        private static bool IsValue1Better(DateTime value1, DateTime value2)
+        {
+            return !(value2.TimeOfDay.Ticks > 0 && value1.TimeOfDay.Ticks == 0 || 
+                (value2.Ticks != 0 && value1.Ticks == 0));
+        }
+        private static bool IsValue1Better(string value1, string value2)
+        {
+            var value1Length = (value1 ?? string.Empty).Length;
+            var value2Length = (value2 ?? string.Empty).Length;
+
+            return !(value2Length > value1Length);
         }
     }
 }

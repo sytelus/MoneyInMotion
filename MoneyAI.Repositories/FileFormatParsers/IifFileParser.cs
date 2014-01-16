@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Data;
 
 namespace MoneyAI.Repositories.FileFormatParsers
 {
@@ -21,46 +22,32 @@ namespace MoneyAI.Repositories.FileFormatParsers
             this.settings = settings == null ? new Settings() : settings;
         }
 
-        protected override IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetTransactionProperties()
+        public IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetTransactionProperties()
         {
-            JArray itemsJson = this.ParseJson();
-
-            foreach (var jArrayItem in itemsJson)
+            using (var parser = new CommonUtils.FileFormatParsers.QuickbooksIifParser())
             {
-                if (jArrayItem.Type == JTokenType.Object)
+                using(var iiSet = parser.Parse(this.filePath))
                 {
-                    var kvp = ((JObject)jArrayItem).Properties()
-                        .Select(itemProperty =>  itemProperty)
-                        .Select(itemProperty => this.GetKvpFromProperty(itemProperty));
-
-                    yield return kvp;
+                    var dataColumns = new DataColumn[iiSet.Tables["TRNS"].Columns.Count];
+                    iiSet.Tables["TRNS"].Columns.CopyTo(dataColumns, 0);
+                    var columns = dataColumns.Select(dc => dc.ColumnName.ToLowerInvariant().Trim()).ToArray();
+                    var rows = iiSet.Tables["TRNS"].Rows;
+                    for(var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+                    {
+                        yield return dataColumns.Select((dc, i) => new KeyValuePair<string, string>(columns[i],
+                            CleanValue(rows[rowIndex][dc])));
+                    }
                 }
             }
         }
 
-        private KeyValuePair<string, string> GetKvpFromProperty(JProperty itemProperty)
+        private static string CleanValue(object value)
         {
-            var propertyName = itemProperty.Name;
-            if (this.settings.IgnoreColumns != null && this.settings.IgnoreColumns.Contains(propertyName))
-                propertyName = "_" + propertyName;  //Ignored properties will be added to ProviderAttributes
+            var cleanedValue = value.ToString();
+            if (cleanedValue.Length > 2 && cleanedValue.StartsWith("\"") && cleanedValue.EndsWith("\""))
+                return cleanedValue.Substring(1, cleanedValue.Length - 2);
 
-            string propertyValueString;
-            this.TransformPropertyValue(ref propertyName, itemProperty.Value, out propertyValueString);
-
-            return new KeyValuePair<string, string>(propertyName, propertyValueString);
-        }
-
-        protected virtual void TransformPropertyValue(ref string propertyName, JToken propertyValueToken, out string propertyValueString)
-        {
-            propertyValueString = propertyValueToken.ToString();
-        }
-
-        protected virtual JArray ParseJson()
-        {
-            using (var fileReader = File.OpenText(this.filePath))
-            {
-                return (JArray) JToken.ReadFrom(new JsonTextReader(fileReader));
-            }
+            return cleanedValue;
         }
     }
 }

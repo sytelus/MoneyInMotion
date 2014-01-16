@@ -7,9 +7,9 @@ using CommonUtils;
 
 namespace MoneyAI.Repositories.StatementParsers
 {
-    internal class PayPalCsvParser : GenericStatementParser
+    internal class PayPalParser : GenericStatementParser
     {
-        public PayPalCsvParser(string filePath)
+        public PayPalParser(string filePath)
             : base(filePath, new string[] { ".csv", ".iif" })
         {
         }
@@ -23,19 +23,36 @@ namespace MoneyAI.Repositories.StatementParsers
         {
             base.SetCalculatedAttributes(importedValues);
 
-            var dateTimeString = string.Concat(importedValues.ProviderAttributes[@"date"], " ", importedValues.ProviderAttributes[@"time"], " ", 
-                Utils.GetTimeZoneHoursFromAbbreviation(importedValues.ProviderAttributes[@"time zone"]));
+            var dateString = importedValues.ProviderAttributes.GetValueOrDefault(@"date");
+            var timeZoneAbbreviation = importedValues.ProviderAttributes.GetValueOrDefault(@"time zone");
+            string timeZoneHoursString = null;
+            if (!string.IsNullOrWhiteSpace(timeZoneAbbreviation))
+                timeZoneHoursString = Utils.GetTimeZoneHoursFromAbbreviation(timeZoneAbbreviation);
+            var timeString = importedValues.ProviderAttributes.GetValueOrDefault(@"time");
+
+            var dateTimeString = string.Concat(dateString, " ", timeString, " ", timeZoneHoursString);
             importedValues.TransactionDate = DateTime.Parse(dateTimeString);    //TODO: handle local
-            importedValues.EntityName = importedValues.ProviderAttributes[@"name"];
+
+            var memo = importedValues.ProviderAttributes.GetValueOrDefault(@"memo");
+            var name = importedValues.ProviderAttributes.GetValueOrDefault(@"name");
+            importedValues.EntityName =  (!string.IsNullOrWhiteSpace(memo) ? string.Concat(memo, " - ", name) : name);
+
+            var amountString = importedValues.ProviderAttributes.GetValueOrDefault(@"amount");
             importedValues.Amount = this.ParseAmount(importedValues.ProviderAttributes[@"amount"]);
 
-            SetTransactionreason(importedValues);
+            var payPalType = importedValues.ProviderAttributes.GetValueOrDefault(@"type") ??    //CSV format
+                importedValues.ProviderAttributes.GetValueOrDefault(@"class");  //IIF format
+
+            SetTransactionreason(importedValues, payPalType);
+
+            importedValues.ContentHash = Transaction.GetContentHash(
+                Utils.AsEnumerable(name, dateString, amountString, payPalType).Select(s => s.ToUpperInvariant()));
         }
 
-        private static void SetTransactionreason(Transaction.ImportedValues importedValues)
+        private static void SetTransactionreason(Transaction.ImportedValues importedValues, string payPalType)
         {
             var ignorableActivity = false;
-            switch (importedValues.ProviderAttributes[@"status"])
+            switch (importedValues.ProviderAttributes.GetValueOrDefault(@"status"))
             {
                 case "Denied":
                 case "Removed":
@@ -47,8 +64,6 @@ namespace MoneyAI.Repositories.StatementParsers
                     ignorableActivity = true;
                     break;
             }
-
-            var payPalType = importedValues.ProviderAttributes[@"type"];
 
             if (!ignorableActivity)
             {
@@ -65,7 +80,6 @@ namespace MoneyAI.Repositories.StatementParsers
                     {
                         case "Authorization":
                         case "Temporary Hold":
-                        case "Refund":
                             ignorableActivity = true;
                             break;
                     }
@@ -76,16 +90,21 @@ namespace MoneyAI.Repositories.StatementParsers
             {
                 if (payPalType.IndexOf("Payment Sent", StringComparison.InvariantCultureIgnoreCase) >= 0)
                     importedValues.TransactionReason = TransactionReason.Purchase;
-                if (payPalType.IndexOf("Donation Sent", StringComparison.InvariantCultureIgnoreCase) >= 0)
+                else if (payPalType.IndexOf("Donation Sent", StringComparison.InvariantCultureIgnoreCase) >= 0)
                     importedValues.TransactionReason = TransactionReason.Purchase;
-                if (payPalType.IndexOf("Charge From ", StringComparison.InvariantCultureIgnoreCase) >= 0 &&
+                else if (payPalType.IndexOf("Refund", StringComparison.InvariantCultureIgnoreCase) >= 0)
+                    importedValues.TransactionReason = TransactionReason.Return;
+                else if (payPalType.IndexOf("Charge From ", StringComparison.InvariantCultureIgnoreCase) >= 0 &&
                     payPalType.IndexOf("Card", StringComparison.InvariantCultureIgnoreCase) >= 0)
                     importedValues.TransactionReason = TransactionReason.InterAccountPayment;
-                if (payPalType.IndexOf("Add Funds from a Bank Account", StringComparison.InvariantCultureIgnoreCase) >= 0)
+                else if (payPalType.IndexOf("Credit To ", StringComparison.InvariantCultureIgnoreCase) >= 0 &&
+                    payPalType.IndexOf("Card", StringComparison.InvariantCultureIgnoreCase) >= 0)
+                    importedValues.TransactionReason = TransactionReason.InterAccountTransfer;
+                else if (payPalType.IndexOf("Add Funds from a Bank Account", StringComparison.InvariantCultureIgnoreCase) >= 0)
                     importedValues.TransactionReason = TransactionReason.InterAccountTransfer;
                 else
                 {
-                    switch (importedValues.ProviderAttributes[@"type"])
+                    switch (payPalType)
                     {
                         case "BillPay":
                             importedValues.TransactionReason = TransactionReason.Purchase;

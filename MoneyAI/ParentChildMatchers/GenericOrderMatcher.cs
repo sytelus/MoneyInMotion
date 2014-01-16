@@ -110,7 +110,7 @@ namespace MoneyAI.ParentChildMatchers
             if (availableTransactions.HasImportInfo(ImportInfoId))
                 matcherImportInfo = availableTransactions.GetImportInfo(ImportInfoId);
             else
-                matcherImportInfo = new ImportInfo(ImportInfoId, ImportInfoId, null, null, ImportInfoId);   //TODO: how can we accomodate manufatured import?
+                matcherImportInfo = new ImportInfo(ImportInfoId, ImportInfoId, null, null, ImportInfoId, null);   //TODO: how can we accomodate manufatured import?
             AccountInfo accountInfo = availableTransactions.GetAccountInfo(parent.AccountId);
 
             if (amount != 0)

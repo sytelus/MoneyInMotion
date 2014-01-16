@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
-using MoneyAI.Repositories.CustomParsers;
+using MoneyAI.Repositories.StatementParsers;
 
 namespace MoneyAI.Repositories
 {
@@ -56,29 +56,29 @@ namespace MoneyAI.Repositories
         private static StatementParserBase GetStatementFileParser(AccountInfo accountInfo, string statementFilePath)
         {
             StatementParserBase parser = null;
-            var fileExtension = Path.GetExtension(statementFilePath).ToLowerInvariant();
 
             switch(accountInfo.InstituteName)
             {
                 case "AmericanExpress":
-                    if (fileExtension == ".csv")
-                        parser = new AmexCsvParser(statementFilePath);
+                    parser = new AmexParser(statementFilePath);
                     break;
                 case "BarclayBank":
-                    if (fileExtension == ".csv")
-                        parser = new BarclayCsvParser(statementFilePath);
+                    parser = new BarclayParser(statementFilePath);
                     break;
                 case "Amazon":
-                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory && fileExtension == ".csv")
-                        parser = new AmazonOrdersCsvParser(statementFilePath);
+                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory)
+                        parser = new AmazonOrdersParser(statementFilePath);
                     break;
                 case "Etsy":
-                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory && fileExtension == ".json")
-                        parser = new EtsyBuyerJsonParser(statementFilePath);
+                    if (accountInfo.Type == AccountInfo.AccountType.OrderHistory)
+                        parser = new EtsyBuyerParser(statementFilePath);
+                    break;
+                case "Paypal":
+                    if (accountInfo.Type == AccountInfo.AccountType.EPayment)
+                        parser = new PayPalParser(statementFilePath);
                     break;
                 default:
-                    if (fileExtension == ".csv")
-                        parser = new CsvTransactionFileParser(statementFilePath);
+                    parser = new GenericStatementParser(statementFilePath, new [] { ".csv" });
                     break;
             }
 
@@ -88,7 +88,8 @@ namespace MoneyAI.Repositories
                 return parser;
         }
 
-        private static void AddTransactionsFromFile(Transactions transactions, string statementFilePath, AccountInfo accountInfo, ImportInfo importInfo)
+        private static void AddTransactionsFromFile(Transactions transactions, string statementFilePath, 
+            AccountInfo accountInfo, ImportInfo importInfo)
         {
             var parser = GetStatementFileParser(accountInfo, statementFilePath);
             foreach (var importedValues in parser.GetTransactionImportedValues())

@@ -92,7 +92,7 @@ namespace MoneyAI
             return transactionEdits;
         }
 
-        internal void Merge(TransactionEdits other, ICollection<string> knownTransactionIds)
+        internal void Merge(TransactionEdits other)
         {
             foreach (var otherEdit in other)
                 AddEditClone(otherEdit);

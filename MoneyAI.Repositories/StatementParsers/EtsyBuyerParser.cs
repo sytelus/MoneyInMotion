@@ -8,9 +8,9 @@ using System.IO;
 
 namespace MoneyAI.Repositories.StatementParsers
 {
-    internal class EtsyBuyerJsonParser : GenericStatementParser
+    internal class EtsyBuyerParser : GenericStatementParser
     {
-        public EtsyBuyerJsonParser(string filePath)
+        public EtsyBuyerParser(string filePath)
             : base(filePath, new[] { ".json" }, new FileFormatParsers.Settings() { IgnoreColumns = new HashSet<string>() { "description" } })
         {
         }

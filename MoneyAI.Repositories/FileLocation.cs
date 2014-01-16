@@ -16,16 +16,16 @@ namespace MoneyAI.Repositories
         {
             this.Address = Path.Combine(rootPath, relativeFilePath);
             this.PortableAddress = relativeFilePath;
+            var extention = Path.GetExtension(Address).ToUpperInvariant();
 
             if (isImportInfo)
             {
                 var updateDate = File.GetLastWriteTimeUtc(this.Address);
                 var importId = Utils.GetMD5HashString(string.Join("\t", relativeFilePath), true);
-                this.ImportInfo = new ImportInfo(importId, relativeFilePath, updateDate, File.GetCreationTimeUtc(this.Address), importId);
+                this.ImportInfo = new ImportInfo(importId, relativeFilePath, updateDate, File.GetCreationTimeUtc(this.Address), importId, extention);
             }
             this.AccountConfig = accountConfig;
 
-            var extention = Path.GetExtension(Address).ToUpperInvariant();
             switch (extention)
             {
                 case ".CSV":
@@ -33,6 +33,9 @@ namespace MoneyAI.Repositories
                     break;
                 case ".JSON":
                     ContentType = ContentType.Json;
+                    break;
+                case ".IIF":
+                    ContentType = ContentType.QuickBooksIif;
                     break;
                 case null:
                 case ".":

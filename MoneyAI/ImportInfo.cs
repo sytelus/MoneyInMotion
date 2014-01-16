@@ -26,13 +26,17 @@ namespace MoneyAI
         [DataMember(IsRequired = true)]
         public string Id { get; private set; }
 
-        public ImportInfo(string id, string portableAddress, DateTime? updateDate, DateTime? createDate, string contentHash)
+        [DataMember(IsRequired = true)]
+        public string Format { get; private set; }
+
+        public ImportInfo(string id, string portableAddress, DateTime? updateDate, DateTime? createDate, string contentHash, string format)
         {
             this.Id = id;
             this.PortableAddress = portableAddress;
             this.UpdateDate = updateDate;
             this.CreateDate = createDate;
             this.ContentHash = contentHash;
+            this.Format = format;
         }
 
         public static ImportInfo DeserializeFromJson(string serializedData)

@@ -4,6 +4,7 @@
     {
         Csv,
         Json,
+        QuickBooksIif,
         None
     }
 

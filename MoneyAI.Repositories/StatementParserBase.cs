@@ -25,8 +25,9 @@ namespace MoneyAI.Repositories
             foreach(var txPropertyKvps in this.GetTransactionProperties())
             {
                 var importedValues = new Transaction.ImportedValues() { LineNumber = ++lineNumber };
-                foreach(var kvp in txPropertyKvps)
+                foreach(var originalKvp in txPropertyKvps)
                 {
+                    var kvp = this.MapKeyValuePair(originalKvp);
                     var columnType = this.GetColumnType(kvp.Key);
                     this.SetImportedValueProperty(importedValues, columnType, kvp.Key, kvp.Value);
                 }
@@ -42,6 +43,10 @@ namespace MoneyAI.Repositories
         }
 
         #region Derived class interface
+        protected virtual KeyValuePair<string,string> MapKeyValuePair(KeyValuePair<string,string> kvp)
+        {
+            return kvp;
+        }
         protected virtual bool ValidateImportedValues(Transaction.ImportedValues importedValues)
         {
             return true;

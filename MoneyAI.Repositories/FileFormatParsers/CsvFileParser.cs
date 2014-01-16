@@ -53,7 +53,7 @@ namespace MoneyAI.Repositories.FileFormatParsers
 
         protected virtual void TransformHeaderColumnNames(string[] columns, out string[] headerColumnsTransformed, out string[] dataColumns)
         {
-            headerColumnsTransformed = columns.Select(c => c.ToLowerInvariant())
+            headerColumnsTransformed = columns.Select(c => c.ToLowerInvariant().Trim())
                 .Select(c => this.settings.IgnoreColumns != null && this.settings.IgnoreColumns.Contains(c) ? string.Concat("_", c) : c )   //For ignored columns attach "_" so they get in as ProviderAttribute
                 .ToArray();
             

@@ -21,7 +21,7 @@ namespace MoneyAI
         [DataMember(Name = "items", IsRequired=true)]
         private Dictionary<string, Transaction> itemsById;
 
-        private HashSet<string> uniqueContentHashes;
+        private Dictionary<string, string[]> uniqueContentHashes;
 
 
         [DataMember]
@@ -37,7 +37,7 @@ namespace MoneyAI
         public Transactions(string name)
         {
             this.Name = name;
-            this.uniqueContentHashes = new HashSet<string>();
+            this.uniqueContentHashes = new Dictionary<string, string[]>();
             this.itemsById = new Dictionary<string, Transaction>();
 
             this.accountInfos = new Dictionary<string, AccountInfo>();
@@ -66,7 +66,7 @@ namespace MoneyAI
         }
         public bool HasContentHash(string contentHash)
         {
-            return this.uniqueContentHashes.Contains(contentHash);
+            return this.uniqueContentHashes.ContainsKey(contentHash);
         }
 
         public Transaction this[string id]
@@ -111,17 +111,41 @@ namespace MoneyAI
 
         public void Merge(Transactions other)
         {
+            //Enrich old transaction
+            var currentItemPairs = other
+                //if there are content hash dups then ignore.
+                .Where(t => t.CombinedToId == null &&
+                    this.uniqueContentHashes.GetValueOrDefault(t.ContentHash, Utils.EmptyStringArray).Length == 1 &&
+                    other.uniqueContentHashes.GetValueOrDefault(t.ContentHash, Utils.EmptyStringArray).Length == 1)
+                .Select(t => Tuple.Create(this.uniqueContentHashes[t.ContentHash][0], t));
+        
+            foreach(var currentItemPair in currentItemPairs)
+            {
+                var tx = this.itemsById.GetValueOrDefault(currentItemPair.Item1);
+                //TODO: may be childs should be kept track in seperate dictionary?
+                if (tx == null)
+                    continue;   //Item was moved to be child
+
+                var thisFormat = this.GetImportInfo(tx.ImportId).Format;
+                var otherFormat = other.GetImportInfo(currentItemPair.Item2.ImportId).Format;
+                if (tx.CombinedFromId != null || thisFormat == otherFormat || thisFormat == null || otherFormat == null)
+                    continue;
+
+                tx.CombineAttributes(currentItemPair.Item2);
+            }
+
             var newItems = other
-                .Where(t => !this.uniqueContentHashes.Contains(t.ContentHash))
+                .Where(t => !this.uniqueContentHashes.ContainsKey(t.ContentHash))
                 .Select(t => t.Clone()).ToList();
 
             this.itemsById.AddRange(newItems.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)));
-            this.uniqueContentHashes.AddRange(newItems.Select(i => i.ContentHash));
+            this.uniqueContentHashes.AddRange(newItems.GroupBy(i => i.ContentHash).Select(g =>
+                new KeyValuePair<string,string[]>(g.Key, other.uniqueContentHashes[g.Key])));
             this.accountInfos.AddRange(newItems.Select(i => i.AccountId).Where(aid => !this.accountInfos.ContainsKey(aid)).Select(aid =>
                 new KeyValuePair<string, AccountInfo>(aid, other.GetAccountInfo(aid))));
             this.importInfos.AddRange(newItems.Select(i => i.ImportId).Where(iid => !this.importInfos.ContainsKey(iid)).Select(iid =>
                 new KeyValuePair<string, ImportInfo>(iid, other.GetImportInfo(iid))));
-            this.edits.Merge(other.edits, this.uniqueContentHashes);
+            this.edits.Merge(other.edits);
 
             this.MatchParentChild();
         }
@@ -164,8 +188,9 @@ namespace MoneyAI
 
             parent.AddChild(child);
 
+            //TODO: may be itemsById should for finding either parent or child and we should have seperate Items list that has active items
             this.itemsById.Remove(child.Id);
-            //Keep other data as-is
+            //Keep other data as-is, especially uniq content hash so we don't get it again from somewhere else else in merges
         }
 
         public void MatchParentChild()
@@ -212,10 +237,12 @@ namespace MoneyAI
         /// <param name="allowDuplicate">Should be true when importing transactions from a file but false when merging items from two files</param>
         public bool AddNew(Transaction transaction, AccountInfo accountInfo, ImportInfo importInfo, bool allowDuplicate)
         {
-            if (allowDuplicate || !uniqueContentHashes.Contains(transaction.ContentHash))
+            if (allowDuplicate || !uniqueContentHashes.ContainsKey(transaction.ContentHash))
             {
                 this.itemsById.Add(transaction.Id, transaction);
-                this.uniqueContentHashes.Add(transaction.ContentHash);
+                var existingIds = new List<string>(this.uniqueContentHashes.GetValueOrDefault(transaction.ContentHash, Utils.EmptyStringArray));
+                existingIds.Add(transaction.Id);
+                this.uniqueContentHashes[transaction.ContentHash] = existingIds.ToArray();
                 this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
                 this.importInfos.AddIfNotExist(importInfo.Id, importInfo);
                 return true;
@@ -357,7 +384,8 @@ namespace MoneyAI
 
         public void OnDeserialization(object sender)
         {
-            this.uniqueContentHashes = this.itemsById.Values.Select(i => i.ContentHash).ToHashSet();
+            this.uniqueContentHashes = this.itemsById.Values.GroupBy(i => i.ContentHash)
+                .ToDictionary(g => g.Key, g => g.Select(t => t.Id).ToArray());
         }
 
         public int EditsCount

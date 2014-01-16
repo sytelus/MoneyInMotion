@@ -48,7 +48,7 @@
     <Compile Include="FileFormatParsers\Settings.cs" />
     <Compile Include="StatementParsers\AmazonOrdersParser.cs" />
     <Compile Include="StatementParsers\GenericStatementParser.cs" />
-    <Compile Include="StatementParsers\PayPalCsvParser.cs" />
+    <Compile Include="StatementParsers\PayPalParser.cs" />
     <Compile Include="StatementParsers\AmexParser.cs" />
     <Compile Include="StatementParsers\BarclayParser.cs" />
     <Compile Include="StatementParsers\EtsyBuyerParser.cs" />

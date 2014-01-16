@@ -778,6 +778,16 @@ namespace CommonUtils
         public static readonly char[] PipeDelimiter = new char[] { '|' };
         public static readonly string CommaDelimiterString = ",";
 
+        public static int IncrementCountInDictionary<TKey>(this IDictionary<TKey, int> dictionary, TKey key)
+        {
+            int existingCount = 0;
+            if (dictionary.TryGetValue(key, out existingCount))
+                dictionary[key] = existingCount + 1;
+            else
+                dictionary.Add(key, 1);
+
+            return existingCount;
+        }
         public static uint IncrementCountInDictionary<TKey>(this IDictionary<TKey, uint> dictionary, TKey key) 
         {
             uint existingCount = 0;
@@ -788,7 +798,6 @@ namespace CommonUtils
 
             return existingCount;
         }
-
         public static void IncrementCountInDictionary<TKey>(this IDictionary<TKey, float> dictionary, TKey key)
         {
             float existingCount;

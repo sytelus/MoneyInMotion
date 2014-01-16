@@ -9,9 +9,10 @@ using MoneyAI.Repositories.FileFormatParsers;
 
 namespace MoneyAI.Repositories.StatementParsers
 {
-    public class GenericStatementParser : StatementParserBase
+    internal class GenericStatementParser : StatementParserBase
     {
         IFileFormatParser fileFormatParser;
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public GenericStatementParser(string filePath, string[] allowedFileExtentions, Settings fileFormatParserSettings = null)
         {
             var fileExtension = ValidateFilePath(filePath, allowedFileExtentions);

@@ -59,6 +59,7 @@ namespace MoneyAI
             public Dictionary<string, string> ProviderAttributes { get; set; }
             public int? LineNumber { get; set; }
             public string ParentChildMatchFilter { get; set; }
+            public string ContentHash { get; set; }
 
             public void Validate()
             {
