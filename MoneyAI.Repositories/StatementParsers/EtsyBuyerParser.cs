@@ -4,15 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
+using System.IO;
 
-namespace MoneyAI.Repositories.CustomParsers
+namespace MoneyAI.Repositories.StatementParsers
 {
-    internal class EtsyBuyerJsonParser : JsonTransactionFileParser
+    internal class EtsyBuyerJsonParser : GenericStatementParser
     {
         public EtsyBuyerJsonParser(string filePath)
-            : base(filePath, new Settings() { IgnoreColumns = new HashSet<string>() { "description" } })
+            : base(filePath, new[] { ".json" }, new FileFormatParsers.Settings() { IgnoreColumns = new HashSet<string>() { "description" } })
         {
-
         }
 
         protected override void SetCalculatedAttributes(Transaction.ImportedValues importedValues)

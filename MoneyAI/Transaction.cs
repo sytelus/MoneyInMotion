@@ -32,12 +32,13 @@ namespace MoneyAI
         IncomeAdjustment = 1 << 13,
         MatchAdjustmentCredit = 1 << 14,
         MatchAdjustmentDebit = 1 << 15,
+        PayMentRecieved = 1 << 16,
 
         //Used temporarily for transaction creation but this value should never be assigned to transaction (its validated)
         UnknownAdjustment = ExpenseAdjustment | IncomeAdjustment,
 
         NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment | ExpenseAdjustment | MatchAdjustmentDebit,
-        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest | DiscountRecieved | IncomeAdjustment | MatchAdjustmentCredit,
+        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest | DiscountRecieved | IncomeAdjustment | MatchAdjustmentCredit | PayMentRecieved,
         NetInterAccount = InterAccountPayment | InterAccountTransfer
     }
 
@@ -110,6 +111,7 @@ namespace MoneyAI
         public string CheckReference { get; set; }
         [DataMember(EmitDefaultValue = false, Name = "providerAttributes")]
         public Dictionary<string, string> ProviderAttributes { get; set; }
+
         [DataMember(EmitDefaultValue = false, Name = "lineItemType")]
         public LineItemType LineItemType { get; private set; }
         [DataMember(EmitDefaultValue = false, Name = "parentChildMatchFilter")]

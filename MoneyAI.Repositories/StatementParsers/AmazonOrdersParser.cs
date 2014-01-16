@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using CommonUtils;
+using System.IO;
 
-namespace MoneyAI.Repositories.CustomParsers
+namespace MoneyAI.Repositories.StatementParsers
 {
-    internal class AmazonOrdersCsvParser : CsvTransactionFileParser
+    internal class AmazonOrdersParser : GenericStatementParser
     {
-        public AmazonOrdersCsvParser(string csvFilePath) : base(csvFilePath)
+        public AmazonOrdersParser(string filePath)
+            : base(filePath, new[] { ".csv" })
         {
-
         }
 
         protected override void SetCalculatedAttributes(Transaction.ImportedValues importedValues)

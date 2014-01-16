@@ -9,24 +9,19 @@ using System.IO;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 
-namespace MoneyAI.Repositories
+namespace MoneyAI.Repositories.FileFormatParsers
 {
-    internal class JsonTransactionFileParser : StatementParserBase
+    internal class JsonFileParser : IFileFormatParser
     {
-        public class Settings
-        {
-            public HashSet<string> IgnoreColumns { get; set; }
-        }
-
         private string filePath;
         private Settings settings;
-        public JsonTransactionFileParser(string filePath, Settings settings = null)
+        public void Initialize(string filePath, Settings settings = null)
         {
             this.filePath = filePath;
             this.settings = settings == null ? new Settings() : settings;
         }
 
-        protected override IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetTransactionProperties()
+        public IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetTransactionProperties()
         {
             JArray itemsJson = this.ParseJson();
 

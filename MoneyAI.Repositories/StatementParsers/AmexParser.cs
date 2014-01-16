@@ -4,20 +4,22 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
+using System.IO;
 
-namespace MoneyAI.Repositories.CustomParsers
+namespace MoneyAI.Repositories.StatementParsers
 {
-    internal class AmexCsvParser : CsvTransactionFileParser
+    internal class AmexParser : GenericStatementParser
     {
-        public AmexCsvParser(string csvFilePath): base(csvFilePath)
+        public AmexParser(string filePath)
+            : base(filePath, new[] { ".csv" })
         {
-
         }
 
-        protected override void TransformHeaderColumnNames(string[] columns, out string[] headerColumnsTransformed, out string[] dataColumns)
+        protected override FileFormatParsers.IFileFormatParser CreateFileFormatParser<T>(string filePath, FileFormatParsers.Settings fileFormatParserSettings)
         {
-            headerColumnsTransformed = new string[] { "transaction date", "amex reference", "amount",  "description", "other info"};
-            dataColumns = columns;
+            var parser = new CsvParser();
+            parser.Initialize(filePath, fileFormatParserSettings);
+            return parser;
         }
 
         protected override void SetCalculatedAttributes(Transaction.ImportedValues importedValues)
@@ -78,6 +80,16 @@ namespace MoneyAI.Repositories.CustomParsers
                     return null;
             }
             else return null;
+        }
+
+
+        private class CsvParser : FileFormatParsers.CsvFileParser
+        {
+            protected override void TransformHeaderColumnNames(string[] columns, out string[] headerColumnsTransformed, out string[] dataColumns)
+            {
+                headerColumnsTransformed = new string[] { "transaction date", "amex reference", "amount", "description", "other info" };
+                dataColumns = columns;
+            }
         }
     }
 }

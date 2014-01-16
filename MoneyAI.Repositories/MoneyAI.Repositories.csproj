@@ -44,12 +44,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CustomParsers\AmazonOrdersCsvParser.cs" />
-    <Compile Include="CustomParsers\AmexCsvParser.cs" />
-    <Compile Include="CustomParsers\BarclayCsvParser.cs" />
-    <Compile Include="CustomParsers\EtsyBuyerJsonParser.cs" />
-    <Compile Include="JsonTransactionFileParser.cs" />
-    <Compile Include="CsvTransactionFileParser.cs" />
+    <Compile Include="FileFormatParsers\IFileFormatParser.cs" />
+    <Compile Include="FileFormatParsers\Settings.cs" />
+    <Compile Include="StatementParsers\AmazonOrdersParser.cs" />
+    <Compile Include="StatementParsers\GenericStatementParser.cs" />
+    <Compile Include="StatementParsers\PayPalCsvParser.cs" />
+    <Compile Include="StatementParsers\AmexParser.cs" />
+    <Compile Include="StatementParsers\BarclayParser.cs" />
+    <Compile Include="StatementParsers\EtsyBuyerParser.cs" />
+    <Compile Include="FileFormatParsers\IifFileParser.cs" />
+    <Compile Include="FileFormatParsers\JsonFileParser.cs" />
+    <Compile Include="FileFormatParsers\CsvFileParser.cs" />
     <Compile Include="StatementParserBase.cs" />
     <Compile Include="TransactionEditsStorage.cs" />
     <Compile Include="TransactionsStorage.cs" />

@@ -97,7 +97,7 @@ namespace MoneyAI.Repositories
         }
         #endregion
 
-        private StatementColumnType GetColumnType(string columnName)
+        protected virtual StatementColumnType GetColumnType(string columnName)
         {
             switch (columnName)
             {

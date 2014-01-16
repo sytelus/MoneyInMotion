@@ -7,26 +7,20 @@ using CommonUtils;
 using System.Globalization;
 using System.IO;
 
-namespace MoneyAI.Repositories
+namespace MoneyAI.Repositories.FileFormatParsers
 {
-    internal class CsvTransactionFileParser : StatementParserBase
+    internal class CsvFileParser : IFileFormatParser
     {
-        public class Settings
-        {
-            public bool HasBannerLines { get; set; }
-            public HashSet<string> IgnoreColumns { get; set; }
-        }
-
         private string csvFilePath;
         private Settings settings;
         private string[] headerColumns;
-        public CsvTransactionFileParser(string csvFilePath, Settings settings = null)
+        public void Initialize(string filePath, Settings settings = null)
         {
-            this.csvFilePath = csvFilePath;
+            this.csvFilePath = filePath;
             this.settings = settings == null ? new Settings() : settings;
         }
 
-        protected override IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetTransactionProperties()
+        public IEnumerable<IEnumerable<KeyValuePair<string, string>>> GetTransactionProperties()
         {
             foreach(var line in File.ReadLines(csvFilePath))
             {
@@ -65,17 +59,5 @@ namespace MoneyAI.Repositories
             
             dataColumns = null;
         }
-
-        [Serializable]
-        public class ValidationException : Exception
-        {
-            public int Severity { get; private set; }
-            public ValidationException(int severity, string message)
-                : base(message)
-            {
-                this.Severity = severity;
-            }
-        }
-
     }
 }

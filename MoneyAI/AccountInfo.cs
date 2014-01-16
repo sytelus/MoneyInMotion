@@ -11,7 +11,7 @@ namespace MoneyAI
         public enum AccountType
         {
             CreditCard = 1, BankChecking = 2, BankSavings = 4, Bank = BankChecking | BankSavings,
-            OrderHistory = 5
+            OrderHistory = 5, EPayment = 6 /* ex. paypal */
         }
 
         [DataMember(IsRequired = true)] 

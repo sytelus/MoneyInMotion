@@ -1619,6 +1619,11 @@ namespace CommonUtils
             }
         }
 
+        public static string GetTimeZoneHoursFromAbbreviation(string timeZoneAbbreviation)
+        {
+            return TimeZones.AbbreviationsMap[timeZoneAbbreviation.ToUpperInvariant()];
+        }
+
         public static T DeserializeFromJson<T>(DataContractJsonSerializer serializer, string jsonToDeserialize)  
         {
             if (String.IsNullOrEmpty(jsonToDeserialize))
