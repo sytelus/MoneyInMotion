@@ -10,7 +10,7 @@ namespace MoneyAI.ParentChildMatchers
     public class EtsyOrderMatcher : GenericOrderMatcher
     {
         public EtsyOrderMatcher(AccountInfo accountInfo)
-            : base(accountInfo, "etsy", @"total_shipping_cost", @"total_tax_cost", @"discount_amt")
+            : base(accountInfo, @"total_shipping_cost", @"total_tax_cost", @"discount_amt")
         {
         }
     }

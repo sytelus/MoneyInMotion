@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using CommonUtils;
+using System.Collections.Generic;
 
 namespace MoneyAI
 {
@@ -29,6 +30,8 @@ namespace MoneyAI
         [DataMember(IsRequired = false)]
         public bool RequiresParent { get; private set; }
 
+        [DataMember(IsRequired = false)]
+        public string[] InterAccountNameTags { get; private set; }
 
         public AccountInfo(AccountType type, string id, string title, string instituteName, bool requiresParent)
         {

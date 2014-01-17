@@ -4,17 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CommonUtils;
+using System.Diagnostics;
 
 namespace MoneyAI.ParentChildMatchers
 {
     public class GenericOrderMatcher : IParentChildMatch
     {
         AccountInfo accountInfo;
-        string nameFilter, shippingAttribute, taxAttribute, discountAttribute;
-        public GenericOrderMatcher(AccountInfo accountInfo, string nameFilter, string shippingAttribute, string taxAttribute, string discountAttribute)
+        string shippingAttribute, taxAttribute, discountAttribute;
+        public GenericOrderMatcher(AccountInfo accountInfo, string shippingAttribute, string taxAttribute, string discountAttribute)
         {
             this.accountInfo = accountInfo;
-            this.nameFilter = nameFilter;
             this.shippingAttribute = shippingAttribute;
             this.taxAttribute = taxAttribute;
             this.discountAttribute = discountAttribute;
@@ -29,7 +29,8 @@ namespace MoneyAI.ParentChildMatchers
             //Find regular tx who we will attach order parents, create index on date+amount
             var nonLineitemParents = availableTransactions
                 .Where(tx => tx.AccountId != this.accountInfo.Id
-                    && tx.EntityName.IndexOf(this.nameFilter, StringComparison.CurrentCultureIgnoreCase) >= 0)
+                    && this.accountInfo.InterAccountNameTags.Any(nameTag => 
+                        tx.EntityName.IndexOf(nameTag, StringComparison.CurrentCultureIgnoreCase) >= 0))
                 .GroupBy(tx => GetNonLineItemKey(tx)).ToDictionary(g => g.Key, g => g.ToArray());
 
             //For each child find its parent

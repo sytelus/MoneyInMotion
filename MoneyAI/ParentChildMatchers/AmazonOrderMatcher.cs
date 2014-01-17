@@ -10,7 +10,7 @@ namespace MoneyAI.ParentChildMatchers
     public class AmazonOrderMatcher : GenericOrderMatcher
     {
         public AmazonOrderMatcher(AccountInfo accountInfo)
-            :base(accountInfo, "amazon", @"shipping charge", @"tax charged", @"total promotions")
+            :base(accountInfo, @"shipping charge", @"tax charged", @"total promotions")
         {
         }
     }

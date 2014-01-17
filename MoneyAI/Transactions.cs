@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 using CommonUtils;
+using System.Diagnostics;
 
 namespace MoneyAI
 {
@@ -148,6 +149,40 @@ namespace MoneyAI
             this.edits.Merge(other.edits);
 
             this.MatchParentChild();
+
+            this.MatchInterAccountTransfer();
+        }
+
+        private void MatchInterAccountTransfer()
+        {
+            //TODO: this can be optimized to do be done only for new transactions we just added
+            
+            var txs = this.itemsById.Values;
+
+            //Match all transactions that are potentially interaccount with their counter parts.
+            var unmatchedTransfers = txs
+                .Where(tx => tx.TransactionReason.Intersects(TransactionReason.NetInterAccount | TransactionReason.OtherCredit) && 
+                    tx.RelatedTransferId == null && !this.GetAccountInfo(tx.AccountId).RequiresParent);
+
+            //For each unmatched transfers, get matching items
+            foreach(var unmatchedTx in unmatchedTransfers)
+            {
+                var searchAmount = unmatchedTx.Amount * -1;
+                var searchDateMin = unmatchedTx.TransactionDate.AddDays(-3);
+                var searchDateMax = unmatchedTx.TransactionDate.AddDays(3);
+                var nameTags = this.GetAccountInfo(unmatchedTx.AccountId).InterAccountNameTags ?? Utils.EmptyStringArray;   //TODO: We can optimize on seeing if this is present before doing query
+
+                var candidates = txs
+                    .Where(ctx => ctx.Amount == searchAmount && ctx.AccountId != unmatchedTx.AccountId &&
+                        ctx.TransactionDate >= searchDateMin && ctx.TransactionDate <= searchDateMax && ctx.RelatedTransferId == null && 
+                        !this.GetAccountInfo(ctx.AccountId).RequiresParent &&
+                        nameTags.Any(nt => ctx.EntityName.IndexOf(nt, StringComparison.CurrentCultureIgnoreCase) >= 0))
+                    .OrderBy(ctx => Math.Abs(ctx.TransactionDate.Subtract(unmatchedTx.TransactionDate).TotalMilliseconds));
+                var matchedTx = candidates.FirstOrDefault();
+
+                if (matchedTx != null)
+                    unmatchedTx.MatchInterAccount(matchedTx);
+            }
         }
 
         static readonly IDictionary<string, IParentChildMatch> parentChildMatchers = new Dictionary<string, IParentChildMatch>();

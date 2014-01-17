@@ -1628,6 +1628,14 @@ namespace CommonUtils
             }
         }
 
+        public static bool Intersects(this Enum flag, Enum value)
+        {
+            if (Enum.GetUnderlyingType(value.GetType()) == typeof(ulong))
+                return (Convert.ToUInt64(value) & Convert.ToUInt64(flag)) > 0;
+            else
+                return (Convert.ToInt64(value) & Convert.ToInt64(flag)) > 0;
+        }
+
         public static string GetTimeZoneHoursFromAbbreviation(string timeZoneAbbreviation)
         {
             return TimeZones.AbbreviationsMap[timeZoneAbbreviation.ToUpperInvariant()];

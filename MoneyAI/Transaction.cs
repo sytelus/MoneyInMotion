@@ -124,10 +124,13 @@ namespace MoneyAI
         public IEnumerable<Transaction> Children { get { return children != null ? this.children.Values : Enumerable.Empty<Transaction>() ; } }
         [DataMember(EmitDefaultValue = false, Name = "hasMissingChild")]
         public bool HasMissingChild { get; private set; }
+
         [DataMember(EmitDefaultValue = false, Name = "combinedFromId")]
         public string CombinedFromId { get; private set; }
         [DataMember(EmitDefaultValue = false, Name = "combinedToId")]
         public string CombinedToId { get; private set; }
+        [DataMember(EmitDefaultValue = false, Name = "relatedTransferId")]
+        public string RelatedTransferId { get; private set; }
 
         string[] entityNameTokens;
         public string[] EntityNameTokens
@@ -160,16 +163,15 @@ namespace MoneyAI
             else
                 this.MergedEdit.Merge(edit.Values);
 
-            this.InvalidateCachedValues();
-
-            this.UpdateAuditInfo();
-
             this.AppliedEditIdsDescending.AddItemFirst(edit.Id);
+
+            this.CompleteUpdate();
         }
 
-        private void UpdateAuditInfo()
+        private void CompleteUpdate()
         {
             this.AuditInfo = new AuditInfo(this.AuditInfo, true);
+            this.InvalidateCachedValues();
         }
 
         private void InvalidateCachedValues()
@@ -269,7 +271,7 @@ namespace MoneyAI
             this.children.Add(childTx.Id, childTx);
             this.HasMissingChild = true;    //We won't set it to false until CompleteParent call has been made
 
-            this.UpdateAuditInfo();
+            this.CompleteUpdate();
         }
 
 
@@ -279,11 +281,33 @@ namespace MoneyAI
             missingChildAmount = this.Amount - this.children.Values.Sum(tx => tx.Amount);
             this.HasMissingChild = missingChildAmount != 0;
 
-            this.UpdateAuditInfo();
+            this.CompleteUpdate();
 
             return !this.HasMissingChild;
         }
 
+        public void MatchInterAccount(Transaction other)
+        {
+            if (this.Amount != other.Amount * -1)
+                throw new ArgumentException("Cannot match ID '{0}' with '{1} because amounts are not equal or opposite, i.2., {2} and {3}"
+                    .FormatEx(this.Id, other.Id, this.Amount, other.Amount));
+
+            if (this.RelatedTransferId != null || other.RelatedTransferId != null)
+                throw new ArgumentException("Cannot match ID '{0}' with '{1} because one of them is alreayd matched to '{2}' or '{3}'"
+                    .FormatEx(this.Id, other.Id, this.RelatedTransferId, other.RelatedTransferId));
+
+            this.RelatedTransferId = other.Id;
+            other.RelatedTransferId = this.Id;
+
+            if (!this.TransactionReason.Intersects(TransactionReason.NetInterAccount))
+                this.TransactionReason = MoneyAI.TransactionReason.InterAccountTransfer;
+            if (!other.TransactionReason.Intersects(TransactionReason.NetInterAccount))
+                other.TransactionReason = MoneyAI.TransactionReason.InterAccountTransfer;
+
+            this.CompleteUpdate();
+            other.CompleteUpdate();
+        }
+        
         public override string ToString()
         {
             return string.Concat(this.Amount.ToCurrencyString(), " ,", this.TransactionDate.ToShortDateString(), " ,", this.EntityName);
@@ -320,7 +344,7 @@ namespace MoneyAI
             this.CombinedFromId = other.Id;
             other.CombinedToId = this.Id;
 
-            this.UpdateAuditInfo();
+            this.CompleteUpdate();
         }
 
         private static bool IsValue1Better(DateTime? value1, DateTime? value2)

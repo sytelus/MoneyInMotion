@@ -114,8 +114,9 @@
                         <div data-bind="if: tx">
                             <div class="panel panel-info autoWidth">
                                 <div class="panel-heading">Transaction</div>
-                                <div class="panel-body small autoWidth">
-                                    <ul class="bulletLess compact txPropertiesList">
+                                <div class="panel-body small autoWidth txPropertiesList">
+                                    <ul class="bulletLess compact">
+                                        <!-- TODO: organize below in sections and move to modal dialog -->
                                         <li><span class="txSummaryName">Name &nbsp </span><span class="txSummaryValue" data-bind="text: tx().entityName"></span></li>
                                         <li><span class="txSummaryName">Transaction Date &nbsp </span><span class="txSummaryValue" data-bind="text: tx().transactionDate"></span></li>
                                         <li><span class="txSummaryName">TransactionReason &nbsp </span><span class="txSummaryValue" data-bind="text: tx().transactionReason"></span></li>
@@ -134,6 +135,14 @@
                                         <li data-bind="if: tx().lineItemType"><span class="txSummaryName">Line Item Type &nbsp </span><span class="txSummaryValue" data-bind="text: tx().lineItemType"></span></li>
                                         <li data-bind="if: tx().postedDate"><span class="txSummaryName">Posted Date &nbsp </span><span class="txSummaryValue" data-bind="text: tx().postedDate"></span></li>
                                         <li data-bind="if: tx().appliedEditIdsDescending"><span class="txSummaryName">Number of Edits &nbsp </span><span class="txSummaryValue" data-bind="text: tx().appliedEditIdsDescending.length"></span></li>
+                                        <li data-bind="if: tx().parentId"><span class="txSummaryName">ParentID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().parentId"></span></li>
+                                        <li data-bind="if: tx().combinedFromId"><span class="txSummaryName">CombinedFromId &nbsp </span><span class="txSummaryValue" data-bind="text: tx().combinedFromId"></span></li>
+                                        <li data-bind="if: tx().combinedToId"><span class="txSummaryName">CombinedToId &nbsp </span><span class="txSummaryValue" data-bind="text: tx().combinedToId"></span></li>
+                                        <li data-bind="if: tx().relatedTransferId"><span class="txSummaryName">RelatedTransferId &nbsp </span><span class="txSummaryValue" data-bind="text: tx().relatedTransferId"></span></li>
+                                        <li data-bind="if: tx().hasMissingChild"><span class="txSummaryName">HasMissingChild &nbsp </span><span class="txSummaryValue" data-bind="text: tx().hasMissingChild"></span></li>
+                                        <li data-bind="if: tx().lineItemType"><span class="txSummaryName">LineItemType &nbsp </span><span class="txSummaryValue" data-bind="text: tx().lineItemType"></span></li>
+                                        <li data-bind="if: tx().parentChildMatchFilter"><span class="txSummaryName">ParentChildMatchFilter &nbsp </span><span class="txSummaryValue" data-bind="text: tx().parentChildMatchFilter"></span></li>
+
                                         <li><span class="txSummaryName">Cleaned Name &nbsp </span><span class="txSummaryValue" data-bind="text: tx().entityNameNormalized"></span></li>
                                     </ul>
 
@@ -141,7 +150,7 @@
                                     <div data-bind="if: isTxProviderAttributesVisible()">
                                         <hr/>
                                         <p><strong>Others</strong></p>
-                                        <ul class="bulletLess compact txPropertiesList" data-bind="foreach: tx().providerAttributes">
+                                        <ul class="bulletLess compact" data-bind="foreach: tx().providerAttributes">
                                             <li data-bind="if: Value !== ''">
                                                 <span data-bind="text: Key" class="txSummaryName"></span><span class="txSummaryValue" data-bind="text: Value"></span>
                                             </li>
