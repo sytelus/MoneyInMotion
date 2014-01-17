@@ -26,50 +26,9 @@ namespace MoneyAI
             get { return this.MergedEdit.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault())); }
         }
 
-        /* Normalization rules
-         * Remove any stand-alone word made up only of non-alpha symbols of size > 3 
-         * Collapse multiple whitespaces to 1
-         * Title case.
-         */
-        private readonly static Regex nonAlphaLongWords = new Regex(@"\b([\p{P}\d\#]){3,}\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly static Regex punctuationAtStart = new Regex(@"\b[\p{P}\#-[\.\'\-\:\,\\\/\%\@\(\)]]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly static Regex punctuationAtEnd = new Regex(@"[\p{P}\#-[\.\'\-\:\,\\\/\%\@\(\)]]+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly static Regex multipleWhiteSpaceRegex = new Regex(@"[\s]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static string GetEntityNameNormalized(string entityName)
         {
-            //Ensure non-null name
-            var cleanedName = entityName ?? string.Empty;
-
-            if (cleanedName.IndexOf("walgreens", StringComparison.CurrentCultureIgnoreCase) >= 0)
-                Debugger.Break();
-
-            //Replace non-alpha chars with space
-            cleanedName = nonAlphaLongWords.Replace(cleanedName, " ");
-            cleanedName = punctuationAtStart.Replace(cleanedName, " ");
-            cleanedName = punctuationAtEnd.Replace(cleanedName, " ");
-
-            //Combine multiple spaces to one
-            cleanedName = multipleWhiteSpaceRegex.Replace(cleanedName, " ");
-
-            //Trim extra spaces
-            cleanedName = cleanedName.Trim();
-
-            //Determine if we should convert to title case or lower case
-            var hasAnyUpperCase = cleanedName.Any(Char.IsUpper);
-            var hasAnyLowerCase = cleanedName.Any(Char.IsLower);
-            //If mixed case then skip case conversion
-            if (!(hasAnyLowerCase && hasAnyUpperCase))
-            {
-                var isAllUpperCase = !hasAnyLowerCase && cleanedName.All(c => Char.IsUpper(c) || !char.IsLetter(c));
-                var hasDot = cleanedName.IndexOf('.') > 1; //Posible .com names
-                if (isAllUpperCase)
-                    cleanedName = !hasDot ? cleanedName.ToTitleCase() : cleanedName.ToLower();
-            }
-
-            if (cleanedName.Length == 0)
-                cleanedName = entityName.Trim();
-
-            return cleanedName;
+            return EntityNameNormalizer.Normalize(entityName);
         }
 
 
