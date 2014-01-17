@@ -8,10 +8,6 @@
             var tx = txKvp.Value;
             transactions.itemsById.add(tx.id, tx);
             Transaction.prototype.ensureAllCorrectedValues.call(tx);
-
-            if (tx.children) {
-                addTransactionById(transactions, tx.children);
-            }
         });
     };
 
@@ -22,7 +18,8 @@
             this.itemsById = new utils.Dictionary();
             addTransactionById(this, this.items);
 
-            this.items = utils.map(this.items, function (item) { return item.Value; });
+            this.items = utils.map(utils.filter(this.items, function (item) { return !!!item.Value.parentId; }),
+                function (item) { return item.Value; });
         }
 
         this.cachedValues = { editsById: {} };

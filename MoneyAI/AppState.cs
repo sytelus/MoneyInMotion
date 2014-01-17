@@ -67,11 +67,11 @@ namespace MoneyAI
                 {
                     var statementTransactions = this.Repository.TransactionsStorage.Load(statementLocation);
 
-                    var oldCount = this.LatestMerged.Count;
+                    var oldCount = this.LatestMerged.AllParentChildTransactions.Count();
                     this.LatestMerged.Merge(statementTransactions);
 
-                    MessagePipe.SendMessage("{0} transactions found ({1} new) in {2}".FormatEx(statementTransactions.Count,
-                        this.LatestMerged.Count - oldCount, statementLocation.Address));
+                    MessagePipe.SendMessage("{0} transactions found ({1} new) in {2}".FormatEx(statementTransactions.AllParentChildTransactions.Count(),
+                        this.LatestMerged.AllParentChildTransactions.Count() - oldCount, statementLocation.Address));
                 }
             }
         }

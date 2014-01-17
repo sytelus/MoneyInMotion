@@ -23,13 +23,14 @@ namespace MoneyAI.ParentChildMatchers
         public IEnumerable<KeyValuePair<Transaction, Transaction>> GetParents(IEnumerable<Transaction> children, Transactions availableTransactions)
         {
             //Find the order parent and create index on match filter
-            var lineitemParents = availableTransactions.Where(tx => tx.AccountId == this.accountInfo.Id && tx.LineItemType == LineItemType.None)
+            var lineitemParents = availableTransactions.AllParentChildTransactions.Where(tx => tx.AccountId == this.accountInfo.Id && 
+                    tx.LineItemType == LineItemType.None && tx.ParentChildMatchFilter != null)
                 .GroupBy(tx => tx.ParentChildMatchFilter).ToDictionary(g => g.Key, g => g.ToArray());
 
             //Find regular tx who we will attach order parents, create index on date+amount
-            var nonLineitemParents = availableTransactions
-                .Where(tx => tx.AccountId != this.accountInfo.Id
-                    && this.accountInfo.InterAccountNameTags.Any(nameTag => 
+            var nonLineitemParents = availableTransactions.AllParentChildTransactions
+                .Where(tx => tx.AccountId != this.accountInfo.Id && !availableTransactions.GetAccountInfo(tx.AccountId).RequiresParent &&
+                    this.accountInfo.InterAccountNameTags.Any(nameTag => 
                         tx.EntityName.IndexOf(nameTag, StringComparison.CurrentCultureIgnoreCase) >= 0))
                 .GroupBy(tx => GetNonLineItemKey(tx)).ToDictionary(g => g.Key, g => g.ToArray());
 

@@ -13,7 +13,7 @@ using System.Diagnostics;
 namespace MoneyAI
 {
     [DataContract]
-    public class Transactions : ICollection<Transaction>, IDeserializationCallback 
+    public class Transactions : IDeserializationCallback 
     {
 
         [DataMember(Name = "name")]
@@ -113,7 +113,7 @@ namespace MoneyAI
         public void Merge(Transactions other)
         {
             //Enrich old transaction
-            var currentItemPairs = other
+            var currentItemPairs = other.AllParentChildTransactions
                 //if there are content hash dups then ignore.
                 .Where(t => t.CombinedToId == null &&
                     this.uniqueContentHashes.GetValueOrDefault(t.ContentHash, Utils.EmptyStringArray).Length == 1 &&
@@ -123,19 +123,18 @@ namespace MoneyAI
             foreach(var currentItemPair in currentItemPairs)
             {
                 var tx = this.itemsById.GetValueOrDefault(currentItemPair.Item1);
-                //TODO: may be childs should be kept track in seperate dictionary?
-                if (tx == null)
-                    continue;   //Item was moved to be child
-
                 var thisFormat = this.GetImportInfo(tx.ImportId).Format;
                 var otherFormat = other.GetImportInfo(currentItemPair.Item2.ImportId).Format;
-                if (tx.CombinedFromId != null || thisFormat == otherFormat || thisFormat == null || otherFormat == null)
+                if (tx.CombinedFromId != null || thisFormat == otherFormat || 
+                    thisFormat == null || otherFormat == null || tx.AccountId != currentItemPair.Item2.AccountId)   //enrich only for different formats in same account
+                {
                     continue;
+                }
 
                 tx.CombineAttributes(currentItemPair.Item2);
             }
 
-            var newItems = other
+            var newItems = other.AllParentChildTransactions
                 .Where(t => !this.uniqueContentHashes.ContainsKey(t.ContentHash))
                 .Select(t => t.Clone()).ToList();
 
@@ -157,7 +156,7 @@ namespace MoneyAI
         {
             //TODO: this can be optimized to do be done only for new transactions we just added
             
-            var txs = this.itemsById.Values;
+            var txs = this.TopLevelTransactions;
 
             //Match all transactions that are potentially interaccount with their counter parts.
             var unmatchedTransfers = txs
@@ -222,16 +221,12 @@ namespace MoneyAI
             var child = this.itemsById[childId];
 
             parent.AddChild(child);
-
-            //TODO: may be itemsById should for finding either parent or child and we should have seperate Items list that has active items
-            this.itemsById.Remove(child.Id);
-            //Keep other data as-is, especially uniq content hash so we don't get it again from somewhere else else in merges
         }
 
         public void MatchParentChild()
         {
             //Find all transaction that requires parent but does not have parent
-            var parentNeededGroups = this.itemsById.Values.Where(tx => tx.RequiresParent && tx.ParentId == null)
+            var parentNeededGroups = this.TopLevelTransactions.Where(tx => tx.RequiresParent)
                 .Select(tx => new { Tx = tx, Matcher = this.GetParentChildMatcher(tx) })
                 .GroupBy(txm => txm.Matcher);
 
@@ -240,7 +235,7 @@ namespace MoneyAI
             {
                 var children = parentNeededGroup.Select(txm => txm.Tx).ToArray();
                 var childParents = parentNeededGroup.Key.GetParents(children, this)
-                    .ToArray(); //Because we'll change .itemsById collection
+                    .ToArray(); //TODO: Not needed unless itemsById is going to change
 
                 foreach (var childParent in childParents)
                 {
@@ -269,6 +264,15 @@ namespace MoneyAI
             }
         }
 
+        public IEnumerable<Transaction> AllParentChildTransactions
+        {
+            get { return this.itemsById.Values;  }
+        }
+        public IEnumerable<Transaction> TopLevelTransactions
+        {
+            get { return this.itemsById.Values.Where(v => v.ParentId == null) ; }
+        }
+
         /// <param name="allowDuplicate">Should be true when importing transactions from a file but false when merging items from two files</param>
         public bool AddNew(Transaction transaction, AccountInfo accountInfo, ImportInfo importInfo, bool allowDuplicate)
         {
@@ -290,62 +294,18 @@ namespace MoneyAI
             get { return this.accountInfos.Values;  }
         }
 
-        #region ICollection 
-
-        public IEnumerator<Transaction> GetEnumerator()
-        {
-            return itemsById.Values.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return itemsById.Values.GetEnumerator();
-        }
-
-        public void Clear()
+        private void Clear()
         {
             this.uniqueContentHashes.Clear();
             this.itemsById.Clear();
             this.accountInfos.Clear();
             this.importInfos.Clear();
         }
-
-        public bool Contains(Transaction item)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void CopyTo(Transaction[] array, int arrayIndex)
-        {
-            itemsById.Values.CopyTo(array, arrayIndex);
-        }
-
-        public int Count
-        {
-            get { return itemsById.Count; }
-        }
-
-        public bool IsReadOnly
-        {
-            get { return false; }
-        }
-
-        public bool Remove(Transaction item)
-        {
-            throw new NotSupportedException();
-        }
-
-        [Obsolete("Use AddNew")]
-        public void Add(Transaction item)
-        {
-            throw new NotImplementedException();
-        }
-        #endregion
-
+        
         #region Apply Edit
         private IEnumerable<Transaction> FilterTransactions(TransactionEdit edit)
         {
-            var filteredTransactions = this.itemsById.Values.ToList();
+            var filteredTransactions = this.AllParentChildTransactions.ToList();
             foreach (var scopeFilter in edit.ScopeFilters)
                 filteredTransactions = filteredTransactions.Where(t => FilterTransaction(scopeFilter, t)).ToList();
 
@@ -419,7 +379,7 @@ namespace MoneyAI
 
         public void OnDeserialization(object sender)
         {
-            this.uniqueContentHashes = this.itemsById.Values.GroupBy(i => i.ContentHash)
+            this.uniqueContentHashes = this.AllParentChildTransactions.GroupBy(i => i.ContentHash)
                 .ToDictionary(g => g.Key, g => g.Select(t => t.Id).ToArray());
         }
 

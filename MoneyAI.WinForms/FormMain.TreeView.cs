@@ -22,7 +22,7 @@ namespace MoneyAI.WinForms
             var treeNodeData = (TreeNodeData)treeNode.Tag;
             if (treeNodeData.YearFilter == null)
             {
-                var yearGroups = allTransactions.GroupBy(t => t.CorrectedTransactionDate.Year).OrderByDescending(g => g.Key);
+                var yearGroups = allTransactions.TopLevelTransactions.GroupBy(t => t.CorrectedTransactionDate.Year).OrderByDescending(g => g.Key);
                 foreach (var yearGroup in yearGroups)
                 {
                     var yearTreeNode = CategoryNode.CreateTreeNode(treeNode,
@@ -35,7 +35,7 @@ namespace MoneyAI.WinForms
             else if (treeNodeData.MonthFilter == null)
             {
                 var year = treeNodeData.YearFilter.Value;
-                parentTransactions = parentTransactions ?? allTransactions.Where(t => t.CorrectedTransactionDate.Year == year);
+                parentTransactions = parentTransactions ?? allTransactions.TopLevelTransactions.Where(t => t.CorrectedTransactionDate.Year == year);
                 var monthGroups = parentTransactions.GroupBy(t => t.CorrectedTransactionDate.Month).OrderByDescending(g => g.Key);
                 foreach (var monthGroup in monthGroups)
                 {
@@ -53,7 +53,7 @@ namespace MoneyAI.WinForms
                 var year = treeNodeData.YearFilter.Value;
                 var month = treeNodeData.MonthFilter.Value;
 
-                parentTransactions = parentTransactions ?? allTransactions.Where(t => t.CorrectedTransactionDate.Year == year)
+                parentTransactions = parentTransactions ?? allTransactions.TopLevelTransactions.Where(t => t.CorrectedTransactionDate.Year == year)
                     .Where(t => t.CorrectedTransactionDate.Month == month);
 
                 var categoryPathsAndSum = parentTransactions
@@ -96,7 +96,7 @@ namespace MoneyAI.WinForms
             if (txnTreeView.SelectedNode != null)
             {
                 var filter = (TreeNodeData)txnTreeView.SelectedNode.Tag;
-                var filteredTransactions = appState.LatestMerged.Where(t =>
+                var filteredTransactions = appState.LatestMerged.TopLevelTransactions.Where(t =>
                     (filter.YearFilter == null || t.CorrectedTransactionDate.Year == filter.YearFilter.Value)
                     && (filter.MonthFilter == null || t.CorrectedTransactionDate.Month == filter.MonthFilter.Value)
                     && (filter.CategoryPathFilter == null || IsCategoryPathMatch(filter.CategoryPathFilter, t.DisplayCategoryPathOrName)));
