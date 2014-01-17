@@ -34,7 +34,7 @@ namespace MoneyAI.WinForms
 
             txnListView.BeforeCreatingGroups += txnListView_BeforeCreatingGroups;
 
-            //buttonScanStatements_Click(sender, e);
+            buttonScanStatements_Click(sender, e);
         }
 
         private void FormMain_FormClosed(object sender, FormClosedEventArgs e)

@@ -26,19 +26,31 @@ namespace MoneyAI
             get { return this.MergedEdit.IfNotNull(u => u.EntityName.IfNotNull(e => e.GetValueOrDefault())); }
         }
 
-        private readonly static Regex nonAlphaRegex = new Regex(@"[^\w\s\.]|[\d]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        /* Normalization rules
+         * Remove any stand-alone word made up only of non-alpha symbols of size > 3 
+         * Collapse multiple whitespaces to 1
+         * Title case.
+         */
+        private readonly static Regex nonAlphaLongWords = new Regex(@"\b([\p{P}\d\#]){3,}\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly static Regex punctuationAtStart = new Regex(@"\b[\p{P}\#-[\.\'\-\:\,\\\/\%\@\(\)]]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly static Regex punctuationAtEnd = new Regex(@"[\p{P}\#-[\.\'\-\:\,\\\/\%\@\(\)]]+\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly static Regex multipleWhiteSpaceRegex = new Regex(@"[\s]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly static Regex whiteSpaceRegex = new Regex(@"[\s]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static string GetEntityNameNormalized(string entityName)
         {
             //Ensure non-null name
-            entityName = entityName ?? string.Empty;
+            var cleanedName = entityName ?? string.Empty;
+
+            if (cleanedName.IndexOf("walgreens", StringComparison.CurrentCultureIgnoreCase) >= 0)
+                Debugger.Break();
+
             //Replace non-alpha chars with space
-            var cleanedName = nonAlphaRegex.Replace(entityName, " ");
-            //Replace white spaces such as tab/new lines with space
-            cleanedName = multipleWhiteSpaceRegex.Replace(cleanedName, " ");
+            cleanedName = nonAlphaLongWords.Replace(cleanedName, " ");
+            cleanedName = punctuationAtStart.Replace(cleanedName, " ");
+            cleanedName = punctuationAtEnd.Replace(cleanedName, " ");
+
             //Combine multiple spaces to one
-            cleanedName = whiteSpaceRegex.Replace(cleanedName, " ");
+            cleanedName = multipleWhiteSpaceRegex.Replace(cleanedName, " ");
+
             //Trim extra spaces
             cleanedName = cleanedName.Trim();
 
@@ -49,13 +61,13 @@ namespace MoneyAI
             if (!(hasAnyLowerCase && hasAnyUpperCase))
             {
                 var isAllUpperCase = !hasAnyLowerCase && cleanedName.All(c => Char.IsUpper(c) || !char.IsLetter(c));
-                var hasDot = cleanedName.Contains('.'); //Posible .com names
+                var hasDot = cleanedName.IndexOf('.') > 1; //Posible .com names
                 if (isAllUpperCase)
                     cleanedName = !hasDot ? cleanedName.ToTitleCase() : cleanedName.ToLower();
             }
 
             if (cleanedName.Length == 0)
-                cleanedName = entityName.Trim().ToTitleCase();
+                cleanedName = entityName.Trim();
 
             return cleanedName;
         }
