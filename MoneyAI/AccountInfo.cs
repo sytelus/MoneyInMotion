@@ -11,7 +11,7 @@ namespace MoneyAI
         [Flags]
         public enum AccountType
         {
-            CreditCard = 1, BankChecking = 2, BankSavings = 4, Bank = BankChecking | BankSavings,
+            CreditCard = 1, BankChecking = 2, BankSavings = 4, 
             OrderHistory = 5, EPayment = 6 /* ex. paypal */
         }
 
@@ -45,7 +45,6 @@ namespace MoneyAI
 
             this.RequiresParent = requiresParent;
         }
-
 
         public static AccountInfo DeserializeFromJson(string serializedAccountInfo)
         {

@@ -59,6 +59,7 @@ namespace MoneyAI
         public void MergeNewStatements()
         {
             var statementLocations = this.Repository.GetStatementLocations();
+            bool isAnyMerged = false;
             foreach (var statementLocation in statementLocations)
             {
                 if (this.LatestMerged.HasImportInfo(statementLocation.ImportInfo.Id))
@@ -68,12 +69,17 @@ namespace MoneyAI
                     var statementTransactions = this.Repository.TransactionsStorage.Load(statementLocation);
 
                     var oldCount = this.LatestMerged.AllParentChildTransactions.Count();
-                    this.LatestMerged.Merge(statementTransactions);
+                    this.LatestMerged.Merge(statementTransactions, false);
+
+                    isAnyMerged = true;
 
                     MessagePipe.SendMessage("{0} transactions found ({1} new) in {2}".FormatEx(statementTransactions.AllParentChildTransactions.Count(),
                         this.LatestMerged.AllParentChildTransactions.Count() - oldCount, statementLocation.Address));
                 }
             }
+
+            if (isAnyMerged)
+                this.LatestMerged.MatchTransactions();
         }
 
     }

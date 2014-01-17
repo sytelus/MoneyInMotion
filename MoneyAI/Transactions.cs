@@ -110,7 +110,7 @@ namespace MoneyAI
             return JsonSerializer<Transactions>.Deserialize(serializedData);
         }
 
-        public void Merge(Transactions other)
+        public void Merge(Transactions other, bool enableMatching)
         {
             //Enrich old transaction
             var currentItemPairs = other.AllParentChildTransactions
@@ -147,12 +147,33 @@ namespace MoneyAI
                 new KeyValuePair<string, ImportInfo>(iid, other.GetImportInfo(iid))));
             this.edits.Merge(other.edits);
 
-            this.MatchParentChild();
-
-            this.MatchInterAccountTransfer();
+            if (enableMatching)
+                this.MatchTransactions();
         }
 
-        private void MatchInterAccountTransfer()
+        public void MatchTransactions()
+        {
+            this.MatchParentChild();
+            this.MatchInterAccountTransfer(CrossInstituteTransferUnmatchedFilter);
+            this.MatchInterAccountTransfer(InterInstituteTransferUnmatchedFilter, InterInstituteTransferMatchedFilter, 0.5, false);
+        }
+
+        private bool CrossInstituteTransferUnmatchedFilter(Transaction tx)
+        {
+            return tx.TransactionReason.Intersects(TransactionReason.NetInterAccount | TransactionReason.OtherCredit);
+        }
+        private bool InterInstituteTransferUnmatchedFilter(Transaction tx)
+        {
+            return tx.EntityName.IndexOf("transfer", StringComparison.InvariantCultureIgnoreCase) >= 0;
+        }
+        private bool InterInstituteTransferMatchedFilter(Transaction unmatchedTx, Transaction candidateTx)
+        {
+            return string.Equals(this.GetAccountInfo(unmatchedTx.AccountId).InstituteName, this.GetAccountInfo(candidateTx.AccountId).InstituteName, StringComparison.CurrentCultureIgnoreCase) &&
+                this.GetAccountInfo(unmatchedTx.AccountId).InstituteName != null &&
+                candidateTx.EntityName.IndexOf("transfer", StringComparison.InvariantCultureIgnoreCase) >= 0;
+        }
+
+        private void MatchInterAccountTransfer(Func<Transaction, bool> unmatchedFilter, Func<Transaction, Transaction, bool> matchedFilter = null, double transferDayTolerance = 3, bool enableNameTagFilter = true)
         {
             //TODO: this can be optimized to do be done only for new transactions we just added
             
@@ -160,23 +181,23 @@ namespace MoneyAI
 
             //Match all transactions that are potentially interaccount with their counter parts.
             var unmatchedTransfers = txs
-                .Where(tx => tx.TransactionReason.Intersects(TransactionReason.NetInterAccount | TransactionReason.OtherCredit) && 
+                .Where(tx => unmatchedFilter(tx) && 
                     tx.RelatedTransferId == null && !this.GetAccountInfo(tx.AccountId).RequiresParent);
 
             //For each unmatched transfers, get matching items
             foreach(var unmatchedTx in unmatchedTransfers)
             {
                 var searchAmount = unmatchedTx.Amount * -1;
-                var searchDateMin = unmatchedTx.TransactionDate.AddDays(-3);
-                var searchDateMax = unmatchedTx.TransactionDate.AddDays(3);
+                var searchDateMin = unmatchedTx.TransactionDate.AddDays(-transferDayTolerance);
+                var searchDateMax = unmatchedTx.TransactionDate.AddDays(transferDayTolerance);
                 var nameTags = this.GetAccountInfo(unmatchedTx.AccountId).InterAccountNameTags ?? Utils.EmptyStringArray;   //TODO: We can optimize on seeing if this is present before doing query
 
                 var candidates = txs
-                    .Where(ctx => ctx.Amount == searchAmount && ctx.AccountId != unmatchedTx.AccountId &&
+                    .Where(ctx => ctx.Amount == searchAmount && ctx.AccountId != unmatchedTx.AccountId && (matchedFilter == null || matchedFilter(unmatchedTx, ctx)) &&
                         ctx.TransactionDate >= searchDateMin && ctx.TransactionDate <= searchDateMax && ctx.RelatedTransferId == null && 
                         !this.GetAccountInfo(ctx.AccountId).RequiresParent &&
-                        nameTags.Any(nt => ctx.EntityName.IndexOf(nt, StringComparison.CurrentCultureIgnoreCase) >= 0))
-                    .OrderBy(ctx => Math.Abs(ctx.TransactionDate.Subtract(unmatchedTx.TransactionDate).TotalMilliseconds));
+                        (!enableNameTagFilter || nameTags.Any(nt => ctx.EntityName.IndexOf(nt, StringComparison.CurrentCultureIgnoreCase) >= 0)))
+                    .OrderBy(ctx => Math.Abs(ctx.TransactionDate.Subtract(unmatchedTx.TransactionDate).TotalDays));
                 var matchedTx = candidates.FirstOrDefault();
 
                 if (matchedTx != null)
@@ -223,7 +244,7 @@ namespace MoneyAI
             parent.AddChild(child);
         }
 
-        public void MatchParentChild()
+        private void MatchParentChild()
         {
             //Find all transaction that requires parent but does not have parent
             var parentNeededGroups = this.TopLevelTransactions.Where(tx => tx.RequiresParent)

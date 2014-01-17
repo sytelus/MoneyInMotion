@@ -97,8 +97,6 @@ namespace MoneyAI.Repositories
                 var transaction = new Transaction(importInfo.Id, accountInfo, importedValues);
                 transactions.AddNew(transaction, accountInfo, importInfo, true);
             }
-
-            transactions.MatchParentChild();
         }
     }
 }

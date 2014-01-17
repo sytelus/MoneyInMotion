@@ -35,16 +35,6 @@ namespace MoneyAI.Repositories.StatementParsers
             importedValues.InstituteReference = ExtractReferenceNumber(importedValues.ProviderAttributes["amex reference"]);
         }
 
-        protected override TransactionReason? InferTransactionReason(Transaction.ImportedValues importedValues)
-        {
-            var entityName = importedValues.EntityName;
-            var amount = importedValues.Amount.Value;
-            if (amount > 0 && entityName != null && entityName.IndexOf("AUTOPAY PAYMENT", StringComparison.InvariantCultureIgnoreCase) >= 0)
-                return TransactionReason.InterAccountPayment;
-            else 
-                return base.InferTransactionReason(importedValues);
-        }
-
         static readonly string[] multiSpaceDelimiter = new string[] { "  " };
         private void ExtractOtherInfo(string columnValue, out string phoneNumber, out string categoryName)
         {
