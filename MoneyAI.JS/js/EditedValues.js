@@ -15,33 +15,40 @@
         "7": "accountId", "8": "transactionReason", "9": "amountRange"
     },
 
-    minMaxParameterLength = {
+    parametersConstraints = {
         none: { min: 0, max: 0 }, all: { min: 0, max: 0 }, transactionId: { min: 1, max: utils.int32Max },
-        entityNameNormalized: { min: 1, max: utils.int32Max }, entityNameAnyTokens: { min: 1, max: utils.int32Max }, entityNameAllTokens: { min: 1, max: utils.int32Max },
+        entityNameNormalized: { min: 1, max: utils.int32Max, referenceParams: true },
+        entityNameAnyTokens: { min: 1, max: utils.int32Max, referenceParams: true },
+        entityNameAllTokens: { min: 1, max: utils.int32Max, referenceParams: true },
         accountId: { min: 1, max: utils.int32Max }, transactionReason: { min: 1, max: utils.int32Max }, amountRange: { min: 2, max: utils.int32Max }
     },
 
-    validateEditScope = function (scopeType, scopeParameters) {
+    validateEditScope = function (scopeType, scopeParameters, scopeReferenceParameters) {
         var errors = "";
 
-        var paramLengths = minMaxParameterLength[scopeTypeReverseLookup[scopeType.toString()]];
+        var constraints = parametersConstraints[scopeTypeReverseLookup[scopeType.toString()]];
 
-        if (scopeParameters.length < paramLengths.min || scopeParameters.length > paramLengths.max) {
-            errors += "ScopeType " + scopeType + " must have atleast " + paramLengths.min + " parameters and no more than " + paramLengths.max + " but it has " + scopeParameters.length;
+        if (scopeParameters.length < constraints.min || scopeParameters.length > constraints.max) {
+            errors += "ScopeType " + scopeType + " must have atleast " + constraints.min + " parameters and no more than " + constraints.max + " but it has " + scopeParameters.length;
+        }
+
+        if (constraints.referenceParams && (!scopeReferenceParameters || scopeReferenceParameters.length != scopeParameters.length)) {
+            errors += "ScopeType " + scopeType + " must have referenceParameters of same length as scope parameters";
         }
 
         return errors;
     };
 
     /************      EditScope  ***********/
-    var EditScope = function (scopeType, scopeParameters) {
-        var errors = validateEditScope(scopeType, scopeParameters);
+    var EditScope = function (scopeType, scopeParameters, scopeReferenceParameters) {
+        var errors = validateEditScope(scopeType, scopeParameters, scopeReferenceParameters);
         if (errors !== "") {
             throw new Error(errors);
         }
 
         this.type = scopeType;
         this.parameters = scopeParameters;
+        this.referenceParameters = scopeReferenceParameters;
     };
 
     /************  ScopeFilters view model  ***********/
@@ -86,22 +93,22 @@
         var scopeFilters = [];
 
         if (this.isTransactionIdFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.transactionId, this.transactionId));
+            scopeFilters.push(new EditScope(scopeTypeLookup.transactionId, [this.transactionId]));
         }
         if (this.isEntityNameNormalizedFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.entityNameNormalized, this.entityNameNormalized));
+            scopeFilters.push(new EditScope(scopeTypeLookup.entityNameNormalized, [this.entityNameNormalized], [this.entityName]));
         }
         if (this.isEntityNameAllTokensFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.entityNameAllTokens, utils.splitWhiteSpace(this.entityNameAllTokens)));
+            scopeFilters.push(new EditScope(scopeTypeLookup.entityNameAllTokens, [utils.splitWhiteSpace(this.entityNameAllTokens)], [this.entityName]));
         }
         if (this.isAmountRangeFilter()) {
             scopeFilters.push(new EditScope(scopeTypeLookup.amountRange, [this.minAmount.toString(), this.maxAmount.toString()]));
         }
         if (this.isAccountIdFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.accountId, this.accountId));
+            scopeFilters.push(new EditScope(scopeTypeLookup.accountId, [this.accountId]));
         }
         if (this.isTransactionReasonFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.transactionReason, this.transactionReason));
+            scopeFilters.push(new EditScope(scopeTypeLookup.transactionReason, [this.transactionReason]));
         }
 
         return scopeFilters;

@@ -43,7 +43,9 @@ namespace MoneyAI.WinForms
                 dialog.entityNameNormalized = firstSelectedTransaction.EntityNameNormalized;
 
                 var currentScopeFilters = lastCategoryEdit.IfNotNull(e => e.ScopeFilters) 
-                        ?? new [] { new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.EntityNameNormalized, new string[] {firstSelectedTransaction.EntityNameNormalized}) };
+                        ?? new [] { new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.EntityNameNormalized
+                            , new string[] {firstSelectedTransaction.EntityNameNormalized}
+                            , new string[] {firstSelectedTransaction.EntityName}) };
                 var currentCategoryPath = lastCategoryEdit.IfNotNull(e => e.Values.IfNotNull(v => v.CategoryPath.IfNotNull(c => c.GetValueOrDefault())))
                         ?? Utils.EmptyStringArray;
 
@@ -87,31 +89,35 @@ namespace MoneyAI.WinForms
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     TransactionEdit.ScopeType scopeType;
-                    string[] scopeParameters;
+                    string[] scopeParameters, referenceParameters;
 
                     if (dialog.radioButtonName.Checked)
                     {
                         scopeType = TransactionEdit.ScopeType.EntityName;
                         scopeParameters = new string[] { firstSelectedTransaction .EntityName};
+                        referenceParameters = null;
                     }
                     else if (dialog.radioButtonNameWords.Checked)
                     {
                         scopeType = TransactionEdit.ScopeType.EntityNameAnyTokens;
                         scopeParameters = Utils.ParseCsvLine(dialog.textBoxNameWords.Text, ' ').RemoveNullOrEmpty().ToArray();
+                        referenceParameters = new string[] { firstSelectedTransaction .EntityName };
                     }
                     else if (dialog.radioButtonNormalizedName.Checked)
                     {
                         scopeType = TransactionEdit.ScopeType.EntityNameNormalized;
                         scopeParameters = new string[] { firstSelectedTransaction.EntityNameNormalized };
+                        referenceParameters = new string[] { firstSelectedTransaction.EntityName };
                     }
                     else if (dialog.radioButtonOnlySelected.Checked)
                     {
                         scopeType = TransactionEdit.ScopeType.TransactionId;
                         scopeParameters = selectedTransactionIds.ToArray();
+                        referenceParameters = null;
                     }
                     else throw new Exception("None of the expected checkboxes are selected!");
 
-                    var scope = new TransactionEdit.ScopeFilter(scopeType, scopeParameters);
+                    var scope = new TransactionEdit.ScopeFilter(scopeType, scopeParameters, referenceParameters);
                     var categoryPath = Utils.ParseCsvLine(dialog.textBoxCategory.Text, '>')
                             .Select(s => s.Trim()).RemoveNullOrEmpty().ToArray().NullIfEmpty();
 

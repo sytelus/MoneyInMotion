@@ -26,7 +26,10 @@ namespace MoneyAI
             [DataMember(EmitDefaultValue = false, Name = "parameters")]
             public string[] Parameters { get; private set; }
 
-            public ScopeFilter(ScopeType scopeType, string[] scopeParameters)
+            [DataMember(EmitDefaultValue = false, Name = "referenceParameters")]
+            public string[] ReferenceParameters { get; private set; }
+
+            public ScopeFilter(ScopeType scopeType, string[] scopeParameters, string[] referenceParameters)
             {
                 var errors = Validate(scopeType, scopeParameters);
                 if (!string.IsNullOrEmpty(errors))

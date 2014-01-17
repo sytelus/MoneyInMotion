@@ -49,7 +49,7 @@ namespace MoneyAI
 
         public TransactionEdit CreateEditIsUserFlagged(IEnumerable<string> trasactionIds, bool? isUserFlagged)
         {
-            var scopeFilter = new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.TransactionId, trasactionIds.ToArray());
+            var scopeFilter = new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.TransactionId, trasactionIds.ToArray(), null);
             var edit = AddEditForScope(scopeFilter.AsEnumerable());
 
             edit.Values.IsFlagged = isUserFlagged.HasValue ? new Transaction.EditValue<bool>(isUserFlagged.Value) : Transaction.EditValue<bool>.VoidedEditValue;
@@ -68,7 +68,7 @@ namespace MoneyAI
 
         public TransactionEdit CreateEditNote(IEnumerable<string> trasactionIds, string note)
         {
-            var scopeFilter = new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.TransactionId, trasactionIds.ToArray());
+            var scopeFilter = new TransactionEdit.ScopeFilter(TransactionEdit.ScopeType.TransactionId, trasactionIds.ToArray(), null);
             var edit = AddEditForScope(scopeFilter.AsEnumerable());
 
             edit.Values.Note = note != null ? new Transaction.EditValue<string>(note) : Transaction.EditValue<string>.VoidedEditValue;
