@@ -1,7 +1,8 @@
-﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers", "common/keyCounter",
+﻿define("common/utils", ["lodash", "moment", "buckets", "jquery", "debug", "accounting", "handlebars", "common/templateHelpers",
+    "common/keyCounter", "common/koExtentions",
     "cryptojs.md5", "cryptojs.base64", "uuidjs", "jquery.ba-bbq", "json3", "mousetrap"],
-    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, CryptoJS, CryptoJSBase64, UUIDjs,
-        jQueryBbq, json3, mousetrap) {
+    function (_, moment, buckets, $, debug, accounting, handlebars, templateHelpers, keyCounter, koExtentions,
+        CryptoJS, CryptoJSBase64, UUIDjs, jQueryBbq, json3, mousetrap) {
 
    "use strict";
 
@@ -406,6 +407,8 @@
     utilsInstance.KeyCounter = keyCounter(utilsInstance);
 
     templateHelpers.registerAll(utilsInstance);
+
+    koExtentions.initialize(utilsInstance);
 
     return utilsInstance;
 

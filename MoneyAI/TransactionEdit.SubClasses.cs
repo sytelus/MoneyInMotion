@@ -23,11 +23,14 @@ namespace MoneyAI
             [DataMember(IsRequired = true, Name = "type")]
             public ScopeType Type { get; private set; }
 
-            [DataMember(EmitDefaultValue = false, Name = "parameters")]
+            [DataMember(IsRequired = true, Name = "parameters")]
             public string[] Parameters { get; private set; }
 
             [DataMember(EmitDefaultValue = false, Name = "referenceParameters")]
             public string[] ReferenceParameters { get; private set; }
+
+            [DataMember(IsRequired = true, Name = "contentHash")]
+            public string ContentHash { get; private set; }
 
             public ScopeFilter(ScopeType scopeType, string[] scopeParameters, string[] referenceParameters)
             {
@@ -37,6 +40,8 @@ namespace MoneyAI
 
                 this.Type = scopeType;
                 this.Parameters = scopeParameters;
+                this.ContentHash = Utils.GetMD5HashString(this.Parameters.Concat(((int)scopeType).ToStringInvariant()).ToDelimitedString("\t"), 
+                    true);
             }
 
             public static string GetScopeHash(ScopeType scopeType, IEnumerable<string> scopeParameters)

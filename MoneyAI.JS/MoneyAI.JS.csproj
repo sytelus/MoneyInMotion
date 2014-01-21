@@ -27,6 +27,7 @@
     <Content Include="index.html" />
     <Content Include="js\app.js" />
     <Content Include="js\common\jQueryPluginTemplate.js" />
+    <Content Include="js\common\koExtentions.js" />
     <Content Include="js\common\popoverForm.js" />
     <Content Include="js\common\statusBox.js" />
     <Content Include="js\common\templateHelpers.js" />

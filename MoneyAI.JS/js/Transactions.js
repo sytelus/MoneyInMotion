@@ -9,6 +9,13 @@
             transactions.itemsById.add(tx.id, tx);
             Transaction.prototype.ensureAllCorrectedValues.call(tx);
         });
+    },
+    updateCategoryPathCachedValued = function (edit) {
+        if (edit.values.categoryPath && edit.values.categoryPath.value && !edit.values.categoryPath.isVoided) {
+            var key = utils.map(edit.scopeFilters, "contentHash").join("\t");
+            this.cachedValues.categoryPathStrings[key] =
+                Transaction.prototype.toCategoryPathString(edit.values.categoryPath.value);
+        }
     };
 
     var Transactions = function (jsonData) {
@@ -24,6 +31,9 @@
 
         this.cachedValues = { editsById: {} };
         utils.forEach(this.edits.edits, function (edit) { this.cachedValues.editsById[edit.id.toString()] = edit; }, this);
+
+        this.cachedValues.categoryPathStrings = {};
+        utils.forEach(this.edits.edits, updateCategoryPathCachedValued, this);
     };
 
     var transactionsPrototype = (function () {
@@ -70,13 +80,14 @@
                 case editedValues.scopeTypeLookup.amountRange:
                     var isNegativeAmount = scopeFilter.parameters[2] === "true";
                     if (isNegativeAmount) {
-                        return transaction.amount <= utils.parseFloat(scopeFilter.parameters[0])*-1 &&
-                            transaction.amount >= utils.parseFloat(scopeFilter.parameters[1])*-1;
+                        return transaction.amount <= utils.parseFloat(scopeFilter.parameters[0]) * -1 &&
+                            transaction.amount >= utils.parseFloat(scopeFilter.parameters[1]) * -1;
                     }
                     else {
                         return transaction.amount >= utils.parseFloat(scopeFilter.parameters[0]) &&
                             transaction.amount <= utils.parseFloat(scopeFilter.parameters[1]);
                     }
+                    break;
                 default:
                     throw new Error("TransactionEdit.scopeFilter.type " + scopeFilter.type + " is not supported by filterTransactionByScope");
             }
@@ -114,6 +125,8 @@
         
         applyEditsToAffectedTransactions = function (edits, allAffectedTransactions, allAffectedTransactionsCount) {
             utils.forEach(allAffectedTransactions, function (editTxs) {
+                updateCategoryPathCachedValued.call(this, editTxs.edit);
+
                 utils.forEach(editTxs.affectedTransactions, function (tx) {
                     Transaction.prototype.applyEdit.call(tx, editTxs.edit);
                 }, this);
@@ -217,6 +230,10 @@
 
             getEditById: function(editId) {
                 return this.cachedValues.editsById[editId.toString()];
+            },
+
+            getAllCategoryPathStrings: function() {
+                return utils.toValueArray(this.cachedValues.categoryPathStrings);
             },
 
             getScopeFilter: getScopeFilter,

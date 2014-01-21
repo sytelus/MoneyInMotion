@@ -310,7 +310,8 @@
 
     getRuleBasedMenuItemClickHandler = function (menuParams, selectedTx, dropdownElement,
         toUserEditableFields, fromUserEditableFields, getTitle, formIconClass, formBodyHtml,
-        lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters, onSave) {
+        lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters,
+        afterOpen, afterClose, onSave) {
 
         var self = this;
 
@@ -327,7 +328,7 @@
             scopeFiltersViewModel: new editedValues.ScopeFiltersViewModel(lastEdit.scopeFilters, selectedTx),
             userEditableFields: toUserEditableFields(lastEdit, selectedTx),
         },
-        afterCloseHandler = function (isOkOrCancel) {
+        afterDestroyHandler = function (isOkOrCancel) {
             if (isOkOrCancel) {
                 self.refresh();
             }
@@ -336,6 +337,14 @@
         var onSaveWrapper = function () {
             return (onSave || defaultOnSaveHandler).call(self,
                 lastEdit, viewModel.scopeFiltersViewModel.toScopeFilters(), fromUserEditableFields(viewModel.userEditableFields, lastEdit, selectedTx));
+        },
+        getTitleWrapper = function () {
+            var title = utils.htmlEncode(getTitle(lastEdit, selectedTx));
+            if (title.length < 20) {
+                title += utils.repeatString("&nbsp;", 20 - title.length);
+            }
+
+            return title;
         };
 
         if (formBodyHtml !== undefined) {
@@ -345,16 +354,18 @@
             dropdownElement
             .popoverForm(bodyHtml, viewModel, {
                 titleIconClass: formIconClass,
-                titleText: getTitle(lastEdit, selectedTx),
+                titleHtml: getTitleWrapper(),
                 onOk: onSaveWrapper,
-                afterClose: afterCloseHandler
+                afterOpen: afterOpen,
+                afterClose: afterClose,
+                afterDestroy: afterDestroyHandler
             });
         }
         else {
             //No UI, run Save directly
             onSaveWrapper()
-            .done(function () { afterCloseHandler(true); })
-            .fail(function () { afterCloseHandler(false); });
+            .done(function () { afterDestroyHandler(true); })
+            .fail(function () { afterDestroyHandler(false); });
         }
     },
     
@@ -401,18 +412,21 @@
     },
 
     editCategoryMenuItemClick = function (menuParams, selectedTx, dropdownElement) {
-        getRuleBasedMenuItemClickHandler.call(this, menuParams, selectedTx, dropdownElement,
+        var self = this;
+        getRuleBasedMenuItemClickHandler.call(self, menuParams, selectedTx, dropdownElement,
             function (lastEdit, selectedTx) {
                 var lastEditCategoryPath = editedValues.EditValue.prototype.getValueOrDefault.call(lastEdit.values.categoryPath);
                 return {
-                    categoryPathString:
+                    categoryPathString: ko.observable(
                         lastEditCategoryPath !== undefined ? Transaction.prototype.toCategoryPathString(lastEditCategoryPath) :
-                            utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.categoryPathString; })
+                            utils.mostOccuring(selectedTx, function (tx) { return tx.correctedValues.categoryPathString; })),
+                    allCategoryPathStrings:
+                        self.cachedValues.txs.getAllCategoryPathStrings()
                 };
             },
             function (userEditableFields) {
                 return {
-                    categoryPath: Transaction.prototype.fromCategoryPathString(utils.trim(userEditableFields.categoryPathString))
+                    categoryPath: Transaction.prototype.fromCategoryPathString(utils.trim(userEditableFields.categoryPathString()))
                 };
             },
             function (lastEdit) { return lastEdit.values.categoryPath ? "Edit Category" : "Add Category"; },

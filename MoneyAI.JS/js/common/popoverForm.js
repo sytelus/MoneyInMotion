@@ -39,7 +39,7 @@
                 animation: opts.animation,
                 html: true,
                 trigger: "manual",
-                title: opts.titleHtml,
+                title: opts.headerHtml,
                 content: opts.formHtmlPrefix + formHtml + opts.formHtmlSuffix + opts.footerHtml,
                 placement: opts.placement
             })
@@ -50,23 +50,25 @@
                     var okResponse = opts.onOk.call(viewModel, viewModel, opts, event, popoverElement, popoverContainer);
                     var promise = boolToDeferredPromise(okResponse);
                     promise.done(function () {
+                        opts.afterClose.call(viewModel, true, viewModel, opts, event, popoverElement, popoverContainer);
                         destroyPopover(popoverElement);
-                        opts.afterClose.call(viewModel, true, viewModel, opts, event, popoverElement);
+                        opts.afterDestroy.call(viewModel, true, viewModel, opts, event, popoverElement);
                     });
                 },
                 onCancelWrapper = function (data, event) {
                     var cancelResponse = opts.onCancel.call(viewModel, viewModel, opts, event, popoverElement, popoverContainer);
                     var promise = boolToDeferredPromise(cancelResponse);
-                    promise.done(function() {
+                    promise.done(function () {
+                        opts.afterClose.call(viewModel, false, viewModel, opts, event, popoverElement, popoverContainer);
                         destroyPopover(popoverElement);
-                        opts.afterClose.call(viewModel, false, viewModel, opts, event, popoverElement);
+                        opts.afterDestroy.call(viewModel, false, viewModel, opts, event, popoverElement);
                     });
                 };
 
             opts.enableTitle = opts.enableTitle === undefined ?
                 ko.computed(function () {
                     return ($.isFunction(opts.titleIconClass) ? opts.titleIconClass() : opts.titleIconClass) ||
-                        ($.isFunction(opts.titleText) ? opts.titleText() : opts.titleText);
+                        ($.isFunction(opts.titleHtml) ? opts.titleHtml() : opts.titleHtml);
                 }) :
                 opts.enableTitle;
 
@@ -76,6 +78,8 @@
                 onOkWrapper: onOkWrapper,
                 onCancelWrapper: onCancelWrapper
             }, popoverContainer[0]);
+
+            opts.afterOpen.call(viewModel, viewModel, opts, event, popoverElement, popoverContainer);
 
             //Make sure popovers gets killed when hidden
             popoverElement.one("hidden.bs.popover", function () {
@@ -99,7 +103,9 @@
 
     /*jshint unused: vars */
     var defaultOkCancelHandler = function (viewModel, options, event, popoverElement, popoverContainer) { return true; },
-        defaultAfterCloseHandler = function (isOkOrCancel, viewModel, options, event, popoverElement) { return true; };
+        defaultAfterDestroyHandler = function (isOkOrCancel, viewModel, options, event, popoverElement) { return true; },
+        defaultAfterCloseHandler = function (isOkOrCancel, viewModel, options, event, popoverElement, popoverContainer) { return true; },
+        defaultAfterOpenHandler = function (viewModel, options, event, popoverElement, popoverContainer) { return true; };
     /*jshint unused: true */
 
 
@@ -107,21 +113,23 @@
         onOk: defaultOkCancelHandler,
         onCancel: defaultOkCancelHandler,
         afterClose: defaultAfterCloseHandler,
+        afterOpen: defaultAfterOpenHandler,
+        afterDestroy: defaultAfterDestroyHandler,
         cancelButtonText: ko.observable("Cancel"),
         okButtonText: ko.observable("OK"),
         okButtonEnabled: ko.observable(true),
         titleIconClass: ko.observable(""),
-        titleText: ko.observable(""),
+        titleHtml: ko.observable(""),
         placement: "bottom",
         closeOnEscKey: true,
         animation: false,
         /* jshint -W110 */ //Mixed double and single quotes.
         formHtmlPrefix: '\n<div data-bind="with: viewModel" class="popoverContainer form" role="form">\n',
         formHtmlSuffix: '\n</div>\n',
-        titleHtml:
+        headerHtml:
             '\n<div class="popover-form-header">\n' +
             '   <button type="button" class="close" data-dismiss="popover" data-bind="click: onCancelWrapper" aria-hidden="true">&times;</button>\n' +
-            '   <h4 data-bind="if: options.enableTitle()" class="popover-form-title"><i data-bind="css: options.titleIconClass"></i>&nbsp;<span data-bind="text: options.titleText"></span></h4>\n' +
+            '   <h4 data-bind="if: options.enableTitle()" class="popover-form-title"><i data-bind="css: options.titleIconClass"></i>&nbsp;<span class="popoverFormTitleText" data-bind="html: options.titleHtml"></span></h4>\n' +
             '</div>\n',
         footerHtml:
             '\n<div class="popover-form-footer">\n' +

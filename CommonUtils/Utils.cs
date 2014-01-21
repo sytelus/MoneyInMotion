@@ -205,7 +205,7 @@ namespace CommonUtils
             return Convert.ToInt64((date.ToUniversalTime() - epoch).TotalSeconds);
         }
 
-        public static string GetMD5HashString(IEnumerable<object> objects, bool sort)
+        public static string GetMD5HashString(IEnumerable<object> objects, bool sort, bool hexStringOutput = false)
         {
             var strings = objects.Select(o => o.ToStringNullSafe());
             if (sort)
@@ -213,7 +213,7 @@ namespace CommonUtils
 
             var bytes = strings.SelectMany(s => Encoding.UTF8.GetBytes(s ?? string.Empty)).ToArray();
 
-            return GetMD5HashString(bytes);
+            return GetMD5HashString(bytes, hexStringOutput);
         }
 
         private enum TermType

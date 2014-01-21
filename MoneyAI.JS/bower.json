@@ -23,6 +23,8 @@
     "uuid-js": "~0.7.5",
     "json3": "~3.2.6",
     "knockoutjs": "git://github.com/sytelus/knockout#78bf1c1d8fbd9be1e92abf97949885dc6ff9a7ab",
-    "mousetrap": "~1.4.6"
+    "mousetrap": "~1.4.6",
+    "typeahead.js": "~0.9.3",
+	"typeahead-less": "git://github.com/hyspace/typeahead.js-bootstrap3.less"
   }
 }

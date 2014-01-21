@@ -1,0 +1,14 @@
+{
+  "name": "typeahead-less",
+  "homepage": "https://github.com/hyspace/typeahead.js-bootstrap3.less",
+  "version": "0.1.4",
+  "_release": "0.1.4",
+  "_resolution": {
+    "type": "version",
+    "tag": "v0.1.4",
+    "commit": "01405964e0a2a3932996f63cb044be45fb4aa511"
+  },
+  "_source": "git://github.com/hyspace/typeahead.js-bootstrap3.less.git",
+  "_target": "*",
+  "_originalSource": "git://github.com/hyspace/typeahead.js-bootstrap3.less"
+}

@@ -49,6 +49,7 @@
         this.type = scopeType;
         this.parameters = scopeParameters;
         this.referenceParameters = scopeReferenceParameters;
+        this.contentHash = utils.getMD5Hash(scopeParameters.concat(scopeType.toString()).join("\t"));
     };
 
     /************  ScopeFilters view model  ***********/
@@ -91,7 +92,7 @@
                 this.filters.id.isFilter(value === "idFilter");
                 this.filters.entityNameAllTokens.isFilter(value === "entityNameAllTokensFilter");
             },
-            owner: this 
+            owner: this
         });
 
 
@@ -158,7 +159,9 @@
             valueNames = [valueNames];
         }
 
-        return utils.any(valueNames, function (valueName) { return this[valueName] && !this[valueName].isVoided; }, this);
+        return utils.any(valueNames, function (valueName) {
+            return this[valueName] && !this[valueName].isVoided;
+        }, this);
     };
     EditedValues.prototype.merge = function (otherEditedValues) {
         // There are 3 possibilities for user intent:

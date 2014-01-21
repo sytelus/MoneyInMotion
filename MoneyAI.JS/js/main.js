@@ -27,7 +27,8 @@
         "uuidjs": "ext/uuid-js/lib/uuid",
         "json3": "ext/json3/lib/json3",
         "knockout": "ext/knockoutjs/build/output/knockout",
-        "mousetrap": "ext/mousetrap/mousetrap"
+        "mousetrap": "ext/mousetrap/mousetrap",
+        "typeahead": "ext/typeahead.js/dist/typeahead"
     },
     shim: {
         "debug": {
@@ -39,6 +40,10 @@
         //},
         "bootstrap": {
             deps: ["jquery"],
+            exports: "jQuery"
+        },
+        "typeahead": {
+            deps: ["jquery", "knockout"],
             exports: "jQuery"
         },
         "jquery.hotkeys": {
