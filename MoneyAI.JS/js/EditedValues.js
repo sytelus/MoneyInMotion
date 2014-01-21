@@ -1,4 +1,4 @@
-﻿define("EditedValues", ["common/utils", "knockout"], function (utils, ko) {
+﻿define("EditedValues", ["common/utils", "knockout", "transactionReasonUtils"], function (utils, ko, transactionReasonUtils) {
     "use strict";
 
     //static privates
@@ -19,7 +19,7 @@
         none: { min: 0, max: 0 }, all: { min: 0, max: 0 }, transactionId: { min: 1, max: utils.int32Max },
         entityNameNormalized: { min: 1, max: utils.int32Max, referenceParams: true },
         entityNameAnyTokens: { min: 1, max: utils.int32Max, referenceParams: true },
-        entityNameAllTokens: { min: 1, max: utils.int32Max, referenceParams: true },
+        entityNameAllTokens: { min: 1, max: utils.int32Max, referenceParams: false },
         accountId: { min: 1, max: utils.int32Max }, transactionReason: { min: 1, max: utils.int32Max }, amountRange: { min: 2, max: utils.int32Max }
     },
 
@@ -32,7 +32,7 @@
             errors += "ScopeType " + scopeType + " must have atleast " + constraints.min + " parameters and no more than " + constraints.max + " but it has " + scopeParameters.length;
         }
 
-        if (constraints.referenceParams && (!scopeReferenceParameters || scopeReferenceParameters.length != scopeParameters.length)) {
+        if (constraints.referenceParams && (!scopeReferenceParameters || scopeReferenceParameters.length !== scopeParameters.length)) {
             errors += "ScopeType " + scopeType + " must have referenceParameters of same length as scope parameters";
         }
 
@@ -52,64 +52,77 @@
     };
 
     /************  ScopeFilters view model  ***********/
-    var getScopeFilterParameters = function (scopeFilters, scopeType) {
+    var setScopeFilterProperties = function (scopeFilters, scopeType, selectedTx, parameterAttributeNameOrFunction, referenceAttributeName, propertyName) {
         var scopeFilter = utils.findFirst(scopeFilters, function (scopeFilter) { return scopeFilter.type === scopeType; });
-        if (scopeFilter) {
-            return scopeFilter.parameters;
-        }
+        var isFilter = !!(scopeFilter && scopeFilter.parameters);
+        var parameters = isFilter ? scopeFilter.parameters : (
+            utils.isFunction(parameterAttributeNameOrFunction) ? parameterAttributeNameOrFunction.call(this, selectedTx)
+                : utils.distinct(utils.map(selectedTx, parameterAttributeNameOrFunction)));
+        var referenceParameters = isFilter ? scopeFilter.referenceParameters : (
+            referenceAttributeName ? utils.distinct(utils.map(selectedTx, referenceAttributeName)) : undefined);
+
+        this.filters = this.filters || {};
+        this.filters[propertyName] = {
+            isFilter: ko.observable(isFilter), parameters: parameters, referenceParameters: referenceParameters, scopeType: scopeType
+        };
     },
     ScopeFiltersViewModel = function (scopeFilters, selectedTx) {
-        var transactionIdParameters = getScopeFilterParameters(scopeFilters, scopeTypeLookup.transactionId);
-        this.isTransactionIdFilter = ko.observable(transactionIdParameters !== undefined);
-        this.transactionId = this.isTransactionIdFilter() ? transactionIdParameters : utils.distinct(utils.map(selectedTx, function (tx) { return tx.id; }));
+        setScopeFilterProperties.call(this, scopeFilters, scopeTypeLookup.accountId, selectedTx, "accountId", undefined, "accountId");
 
-        var accountIdParameters = getScopeFilterParameters(scopeFilters, scopeTypeLookup.accountId);
-        this.isAccountIdFilter = ko.observable(accountIdParameters !== undefined);
-        this.accountId = this.isAccountIdFilter() ? accountIdParameters : utils.distinct(utils.map(selectedTx, function (tx) { return tx.accountId; }));
+        setScopeFilterProperties.call(this, scopeFilters, scopeTypeLookup.entityNameNormalized, selectedTx, "entityNameNormalized", "entityName", "entityNameNormalized");
+        setScopeFilterProperties.call(this, scopeFilters, scopeTypeLookup.transactionId, selectedTx, "id", undefined, "id");
 
-        var transactionReasonParameters = getScopeFilterParameters(scopeFilters, scopeTypeLookup.transactionReason);
-        this.isTransactionReasonFilter = ko.observable(transactionReasonParameters !== undefined);
-        this.transactionReason = this.isTransactionReasonFilter() ? transactionReasonParameters : utils.distinct(utils.map(selectedTx, function (tx) { return tx.transactionReason; }));
+        setScopeFilterProperties.call(this, scopeFilters, scopeTypeLookup.entityNameAllTokens, selectedTx,
+            function (selectedTx) { return utils.splitWhiteSpace(selectedTx[0].entityNameNormalized); },
+            "entityName", "entityNameAllTokens");
+        this.filters.entityNameAllTokens.concatenatedTokens = ko.computed({
+            read: function () {
+                return this.filters.entityNameAllTokens.parameters.join(" ");
+            },
+            write: function (value) {
+                this.filters.entityNameAllTokens.parameters = utils.splitWhiteSpace(value);
+            },
+            owner: this
+        });
 
-        var entityNameNormalizedParameters = getScopeFilterParameters(scopeFilters, scopeTypeLookup.entityNameNormalized);
-        this.isEntityNameNormalizedFilter = ko.observable(entityNameNormalizedParameters !== undefined);
-        this.entityNameNormalized = this.isEntityNameNormalizedFilter() ? entityNameNormalizedParameters : utils.distinct(utils.map(selectedTx, function (tx) { return tx.entityNameNormalized; }));
-        
-        var entityNameAllTokensParameters = getScopeFilterParameters(scopeFilters, scopeTypeLookup.entityNameAllTokens);
-        this.isEntityNameAllTokensFilter = ko.observable(entityNameAllTokensParameters !== undefined);
-        this.entityNameAllTokens = this.isEntityNameAllTokensFilter() ? entityNameAllTokensParameters.join(" ") : selectedTx[0].entityNameNormalized;
-        
-        var amountRangeParameters = getScopeFilterParameters(scopeFilters, scopeTypeLookup.amountRange);
-        this.isAmountRangeFilter = ko.observable(amountRangeParameters !== undefined);
-        this.minAmount = this.isAmountRangeFilter() ? amountRangeParameters[0] :
-            Math.abs((utils.min(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 0.9).toFixed(0);
-        this.maxAmount = this.isAmountRangeFilter() ? amountRangeParameters[1] :
-            Math.abs((utils.max(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 1.1).toFixed(0);
-        this.amountTypeString = utils.min(selectedTx, function (tx) { return tx.correctedValues.amount; }) < 0 ? "expense" : "amount";
+        this.filters.id.isFilterValue = this.filters.entityNameAllTokens.isFilterValue = ko.computed({
+            read: function () { return this.filters.id.isFilter() ? "idFilter" : (this.filters.entityNameAllTokens.isFilter() ? "entityNameAllTokensFilter" : undefined); },
+            write: function (value) {
+                this.filters.id.isFilter(value === "idFilter");
+                this.filters.entityNameAllTokens.isFilter(value === "entityNameAllTokensFilter");
+            },
+            owner: this 
+        });
+
+
+        setScopeFilterProperties.call(this, scopeFilters, scopeTypeLookup.transactionReason, selectedTx, "transactionReason", undefined, "transactionReason");
+        this.filters.transactionReason.titles = utils.map(this.filters.transactionReason.parameters,
+            function (trCode) {
+                return transactionReasonUtils.transactionReasonTitleLookup[trCode.toString()];
+            });
+
+
+        var isNegativeAmount = utils.min(selectedTx, function (tx) { return tx.correctedValues.amount; }).correctedValues.amount < 0;
+        setScopeFilterProperties.call(this, scopeFilters, scopeTypeLookup.amountRange, selectedTx,
+            function (selectedTx) {
+                return [
+                    Math.abs((utils.min(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 0.9).toFixed(0),
+                    Math.abs((utils.max(selectedTx, function (tx) { return Math.abs(tx.amount); }).amount) * 1.1).toFixed(0),
+                    isNegativeAmount.toString()];
+            },
+            undefined, "amountRange");
+        this.filters.amountRange.amountTypeString = isNegativeAmount ? "expense" : "amount";
 
         this.selectedTx = selectedTx;
     };
     ScopeFiltersViewModel.prototype.toScopeFilters = function () {
         var scopeFilters = [];
-
-        if (this.isTransactionIdFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.transactionId, [this.transactionId]));
-        }
-        if (this.isEntityNameNormalizedFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.entityNameNormalized, [this.entityNameNormalized], [this.entityName]));
-        }
-        if (this.isEntityNameAllTokensFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.entityNameAllTokens, [utils.splitWhiteSpace(this.entityNameAllTokens)], [this.entityName]));
-        }
-        if (this.isAmountRangeFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.amountRange, [this.minAmount.toString(), this.maxAmount.toString()]));
-        }
-        if (this.isAccountIdFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.accountId, [this.accountId]));
-        }
-        if (this.isTransactionReasonFilter()) {
-            scopeFilters.push(new EditScope(scopeTypeLookup.transactionReason, [this.transactionReason]));
-        }
+        
+        utils.forEach(this.filters, function (filterPropertyValue) {
+            if (filterPropertyValue.isFilter()) {
+                scopeFilters.push(new EditScope(filterPropertyValue.scopeType, filterPropertyValue.parameters, filterPropertyValue.referenceParameters));
+            }
+        });
 
         return scopeFilters;
     };

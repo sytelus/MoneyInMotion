@@ -32,6 +32,7 @@
     <Content Include="js\common\templateHelpers.js" />
     <Content Include="js\common\globalEvents.js" />
     <Content Include="js\EditedValues.js" />
+    <Content Include="js\transactionReasonUtils.js" />
     <Content Include="js\NetAggregator.js" />
     <Content Include="js\templates\saveEditsConfirmModal.html" />
     <Content Include="js\templates\txEditRule.html" />

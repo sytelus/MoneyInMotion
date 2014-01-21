@@ -1,4 +1,4 @@
-﻿define("NetAggregator", ["common/utils", "TransactionAggregator", "Transaction"], function (utils, TransactionAggregator, Transaction) {
+﻿define("NetAggregator", ["common/utils", "TransactionAggregator", "Transaction", "transactionReasonUtils"], function (utils, TransactionAggregator, Transaction, transactionReasonUtils) {
     "use strict";
 
     var entityNameSubAggregator = function (parentAggregator, tx) {
@@ -67,7 +67,7 @@
     };
 
     var headerSubAggregatorMapping = (function () {
-        return utils.toObject(Transaction.prototype.transactionReasonInfo,
+        return utils.toObject(transactionReasonUtils.transactionReasonInfo,
             function(tr) { return tr.value.toString(); },
             function (tr) {
                 switch (tr.category) {

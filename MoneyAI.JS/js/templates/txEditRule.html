@@ -1,23 +1,23 @@
 ﻿	<!-- Scope selection -->
-	<div data-bind="with: scopeFiltersViewModel" class="moreOrLessPanel">
+	<div data-bind="with: scopeFiltersViewModel.filters" class="moreOrLessPanel">
     <div class="moreTriggerContainer text-right"><a class="moreTrigger" href="#">Options</a></div>
     <div class="well well-sm moreContentContainer">
         <div class="checkbox">
             <label>
-                <input type="checkbox" data-bind="checked: isEntityNameNormalizedFilter">
-                Apply to all <strong data-bind="text: entityNameNormalized" /> items
+                <input type="checkbox" data-bind="checked: entityNameNormalized.isFilter">
+                Apply to all <strong data-bind="text: entityNameNormalized.parameters" /> items
             </label>
-            <div data-bind="visible: !isEntityNameNormalizedFilter()">
+            <div data-bind="visible: !entityNameNormalized.isFilter()">
                 <div class="radio">
                     <label>
-                        <input type="radio" name="filterType" data-bind="checked: isTransactionIdFilter">
-                        Apply to only <span data-bind="text: transactionId.length === 1 ? 'this item' : 'these ' + selectedTx.length + ' items'" />
+                        <input type="radio" name="filterType" data-bind="checked: id.isFilterValue" value="idFilter">
+                        Apply to only <span data-bind="text: id.parameters.length === 1 ? 'this item' : 'these ' + id.parameters.length + ' items'" />
                     </label>
                 </div>
                 <div class="radio">
                     <label>
-                        <input type="radio" name="filterType" data-bind="checked: isEntityNameAllTokensFilter"> Apply only if item has these words:
-                        <input type="text" autocomplete="on" class="form-control input-sm" data-bind="value: entityNameAllTokens">
+                        <input type="radio" name="filterType" data-bind="checked: entityNameAllTokens.isFilterValue" value="entityNameAllTokensFilter"> Apply only if item has these words:
+                        <input type="text" autocomplete="on" class="form-control input-sm" data-bind="value: entityNameAllTokens.concatenatedTokens">
                         <span class="help-block"><small>Seperate words by space.</small></span>
                     </label>
                 </div>
@@ -26,29 +26,27 @@
 
         <div class="checkbox">
             <label>
-                <input type="checkbox" data-bind="checked: isAccountIdFilter"> Apply only for account <span data-bind="text: accountId"></span>
+                <input type="checkbox" data-bind="checked: accountId.isFilter"> Apply only for account <span data-bind="text: accountId.parameters"></span>
             </label>
         </div>
 
         <div class="checkbox">
             <label>
-                <input type="checkbox" data-bind="checked: isTransactionReasonFilter"> Apply only when it's <span data-bind="text: transactionReason"></span>
+                <input type="checkbox" data-bind="checked: transactionReason.isFilter"> Apply only when it's <span data-bind="text: transactionReason.titles"></span>
             </label>
         </div>
 
         <div class="checkbox">
             <label>
-                <input type="checkbox" data-bind="checked: isAmountRangeFilter">
-                Apply only if <span data-bind="text: amountTypeString"></span> is between...
+                <input type="checkbox" data-bind="checked: amountRange.isFilter">
+                Apply only if <span data-bind="text: amountRange.amountTypeString"></span> is between...
             </label>
-            <div data-bind="visible: isAmountRangeFilter">
+            <div data-bind="visible: amountRange.isFilter">
                 <input type="number" class="form-control input-sm inline currencyInput"
-                       data-bind="value: minAmount"> to
+                       data-bind="value: amountRange.parameters[0]"> to
                 <input type="number" class="form-control input-sm inline currencyInput"
-                       data-bind="value: maxAmount">
+                       data-bind="value: amountRange.parameters[1]">
             </div>
         </div>
-
-
     </div>
 </div>

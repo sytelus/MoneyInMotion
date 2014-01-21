@@ -357,7 +357,11 @@ namespace MoneyAI
                 case TransactionEdit.ScopeType.TransactionReason:
                     return scopeFilter.Parameters.Any(p => (TransactionReason)Enum.Parse(typeof(TransactionReason), p) == transaction.TransactionReason);
                 case TransactionEdit.ScopeType.AmountRange:
-                    return transaction.Amount >= Decimal.Parse(scopeFilter.Parameters[0]) && transaction.Amount <= Decimal.Parse(scopeFilter.Parameters[1]);
+                    var isNegativeAmount = Utils.ParseBool(scopeFilter.Parameters[2], null);
+                    if (isNegativeAmount)
+                        return transaction.Amount <= Decimal.Parse(scopeFilter.Parameters[0])*-1 && transaction.Amount >= Decimal.Parse(scopeFilter.Parameters[1])*-1;
+                    else
+                        return transaction.Amount >= Decimal.Parse(scopeFilter.Parameters[0]) && transaction.Amount <= Decimal.Parse(scopeFilter.Parameters[1]);
                 default:
                     throw new NotSupportedException("TransactionEdit.Scope value of {0} is not supported in FilterTransaction".FormatEx(scopeFilter.Type.ToString()));
             }

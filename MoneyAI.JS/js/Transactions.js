@@ -55,7 +55,7 @@
                     });
                 case editedValues.scopeTypeLookup.entityNameAllTokens:
                     return utils.all(scopeFilter.parameters, function (param) {
-                        utils.any(transaction.entityNameTokens, function (entityNameToken) {
+                        return utils.any(transaction.entityNameTokens, function (entityNameToken) {
                             return utils.compareStrings(entityNameToken, param, true, true);
                         });
                     });
@@ -68,8 +68,15 @@
                         return transaction.transactionReason === utils.parseInt(param);
                     });
                 case editedValues.scopeTypeLookup.amountRange:
-                    return transaction.amount >= utils.parseFloat(scopeFilter.parameters[0]) &&
-                        transaction.amount <= utils.parseFloat(scopeFilter.parameters[1]);
+                    var isNegativeAmount = scopeFilter.parameters[2] === "true";
+                    if (isNegativeAmount) {
+                        return transaction.amount <= utils.parseFloat(scopeFilter.parameters[0])*-1 &&
+                            transaction.amount >= utils.parseFloat(scopeFilter.parameters[1])*-1;
+                    }
+                    else {
+                        return transaction.amount >= utils.parseFloat(scopeFilter.parameters[0]) &&
+                            transaction.amount <= utils.parseFloat(scopeFilter.parameters[1]);
+                    }
                 default:
                     throw new Error("TransactionEdit.scopeFilter.type " + scopeFilter.type + " is not supported by filterTransactionByScope");
             }
@@ -135,12 +142,12 @@
             return promise;
         },
 
-        getScopeFilter = function (scopeType, scopeParameters) {
-            return new editedValues.EditScope(scopeType, scopeParameters);
+        getScopeFilter = function (scopeType, scopeParameters, scopeReferenceParameters) {
+            return new editedValues.EditScope(scopeType, scopeParameters, scopeReferenceParameters);
         },
 
-        addEditForScopeType = function (scopeType, scopeParameters) {
-            var scopeFilters = [getScopeFilter(scopeType, scopeParameters)];
+        addEditForScopeType = function (scopeType, scopeParameters, scopeReferenceParameters) {
+            var scopeFilters = [getScopeFilter(scopeType, scopeParameters, scopeReferenceParameters)];
             return addEdit.call(this, scopeFilters);
         },
         
@@ -203,8 +210,8 @@
 
             //TODO: re-check all code for undefined values, raise errors
 
-            getDefaultEdit: function (defaultEditScopeType, defaultEditScopeParameters) {
-                var edit = addEditForScopeType.call(this, defaultEditScopeType, defaultEditScopeParameters);
+            getDefaultEdit: function (defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters) {
+                var edit = addEditForScopeType.call(this, defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters);
                 return edit;
             },
 
@@ -214,7 +221,7 @@
 
             getScopeFilter: getScopeFilter,
 
-            getLastEdit: function (selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters) {
+            getLastEdit: function (selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters) {
                 var lastEdits = [];
 
                 if (lastEditFilter) {
@@ -237,7 +244,7 @@
                     lastEdits = utils.distinct(lastEdits);
                 }
 
-                return lastEdits.length > 0 ? lastEdits : (defaultEditScopeType !== undefined ? [this.getDefaultEdit(defaultEditScopeType, defaultEditScopeParameters)] : undefined);
+                return lastEdits.length > 0 ? lastEdits : (defaultEditScopeType !== undefined ? [this.getDefaultEdit(defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters)] : undefined);
             },
 
         };

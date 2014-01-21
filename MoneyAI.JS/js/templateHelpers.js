@@ -1,5 +1,6 @@
-﻿define("templateHelpers", ["text!templates/txListTransactionRow.html", "text!templates/txListTransactionGroup.html", "text!templates/txEditRule.html", "Transaction"],
-    function (txListTransactionRowHtml, txListTransactionGroupHtml, txEditRuleHtml, Transaction) {
+﻿define("templateHelpers", ["transactionReasonUtils", "Transaction",
+        "text!templates/txListTransactionRow.html", "text!templates/txListTransactionGroup.html", "text!templates/txEditRule.html"],
+    function (transactionReasonUtils, Transaction, txListTransactionRowHtml, txListTransactionGroupHtml, txEditRuleHtml) {
     "use strict";
 
     var oddOrEvenClassCounts = {};
@@ -97,7 +98,7 @@
 
         function (utils) {
             utils.registerTemplateHelper("txTransactionReasonSelectOptionsHtml", function (tx) {
-                return utils.map(Transaction.prototype.transactionReasonTitleLookup, function (reasonTitle, reasonValue) {
+                return utils.map(transactionReasonUtils.transactionReasonTitleLookup, function (reasonTitle, reasonValue) {
                     return "<option value=\"" + reasonValue + "\" " +
                         (tx.correctedValues.transactionReason.toString() === reasonValue ? " selected " : "") + " >" + reasonTitle +
                         (tx.transactionReason.toString() === reasonValue ? " (keep original)" : "") +

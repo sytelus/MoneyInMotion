@@ -1,7 +1,7 @@
-﻿define("TxListView", ["jquery", "Transaction", "common/utils", "EditedValues", "common/popoverForm", "knockout", "NetAggregator",
+﻿define("TxListView", ["jquery", "Transaction", "common/utils", "EditedValues", "common/popoverForm", "knockout", "NetAggregator", "transactionReasonUtils",
     "text!templates/txList.html", "text!templates/noteEditorBody.html", "text!templates/categoryEditorBody.html",
     "text!templates/txAttributesEditorBody.html", "text!templates/saveEditsConfirmModal.html"],
-    function ($, Transaction, utils, editedValues, popoverForm, ko, NetAggregator,
+    function ($, Transaction, utils, editedValues, popoverForm, ko, NetAggregator, transactionReasonUtils,
         txListTemplateHtml, noteEditorBodyHtml, categoryEditorBodyHtml, txAttributesEditorBodyHtml, saveEditsConfirmModalHtml) {
 
     "use strict";
@@ -310,11 +310,11 @@
 
     getRuleBasedMenuItemClickHandler = function (menuParams, selectedTx, dropdownElement,
         toUserEditableFields, fromUserEditableFields, getTitle, formIconClass, formBodyHtml,
-        lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, onSave) {
+        lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters, onSave) {
 
         var self = this;
 
-        var lastEdits = self.cachedValues.txs.getLastEdit(selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters);
+        var lastEdits = self.cachedValues.txs.getLastEdit(selectedTx, lastEditFilter, defaultEditScopeType, defaultEditScopeParameters, defaultEditScopeReferenceParameters);
         var lastEdit = lastEdits[0];    //choose one if there are conflicting edits
 
         var viewModel = {
@@ -363,7 +363,7 @@
         getRuleBasedMenuItemClickHandler.call(this, menuParams, selectedTx, dropdownElement,
             function (lastEdit, selectedTx) {
                 var transactionReasonLookup = selectedTx.length > 1 ?
-                        Transaction.prototype.transactionReasonPluralTitleLookup : Transaction.prototype.transactionReasonTitleLookup,
+                        transactionReasonUtils.transactionReasonPluralTitleLookup : transactionReasonUtils.transactionReasonTitleLookup,
                     allTransactionReasons = utils.toKeyValueArray(transactionReasonLookup);
 
                 return {
@@ -394,7 +394,9 @@
             function () { return "Fix Errors"; },
             "fixAttributeErrorsIcon", txAttributesEditorBodyHtml,
             function (edit) { return editedValues.EditedValues.prototype.isUnvoided.call(edit.values, ["entityName", "transactionReason", "amount"]); },
-            editedValues.scopeTypeLookup.entityNameNormalized, utils.map(utils.distinct(selectedTx, "entityNameNormalized"), "entityNameNormalized")
+            editedValues.scopeTypeLookup.entityNameNormalized,
+            utils.map(utils.distinct(selectedTx, "entityNameNormalized"), "entityNameNormalized"),
+            utils.map(utils.distinct(selectedTx, "entityName"), "entityName")
         );
     },
 
@@ -416,7 +418,9 @@
             function (lastEdit) { return lastEdit.values.categoryPath ? "Edit Category" : "Add Category"; },
             "categoryIcon", categoryEditorBodyHtml,
             function (edit) { return editedValues.EditedValues.prototype.isUnvoided.call(edit.values, "categoryPath"); },
-            editedValues.scopeTypeLookup.entityNameNormalized, utils.map(utils.distinct(selectedTx, "entityNameNormalized"), "entityNameNormalized")
+            editedValues.scopeTypeLookup.entityNameNormalized,
+            utils.map(utils.distinct(selectedTx, "entityNameNormalized"), "entityNameNormalized"),
+            utils.map(utils.distinct(selectedTx, "entityName"), "entityName")
         );
     },
 

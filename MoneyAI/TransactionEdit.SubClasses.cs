@@ -55,6 +55,7 @@ namespace MoneyAI
                 {ScopeType.EntityNameAllTokens.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.AccountId.ToString(), Tuple.Create(1, int.MaxValue)},
                 {ScopeType.TransactionReason.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.AmountRange.ToString(), Tuple.Create(2, 2)}
             };
+            //TODO: include reference parameter validation
             public static string Validate(ScopeType scopeType, string[] scopeParameters)
             {
                 string errors = "";

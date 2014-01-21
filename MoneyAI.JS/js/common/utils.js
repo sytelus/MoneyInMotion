@@ -342,7 +342,9 @@
         dom: function(obj) {
             return $(obj || document);
         },
-        splitWhiteSpace: function(s) { return (s || "").split("\\s+"); },
+        splitWhiteSpace: function (s) {
+            return (s || "").split(/\s+/g);
+        },
         dom2obj: function (selector, obj, converter, thisArg) {
             var dom = $(selector),
                 elements = dom.find("[data-set-prop]");

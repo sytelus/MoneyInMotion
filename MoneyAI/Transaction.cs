@@ -138,7 +138,7 @@ namespace MoneyAI
             get
             {
                 if (entityNameTokens == null)
-                    entityNameTokens = (this.EntityName ?? string.Empty).Split(null);
+                    entityNameTokens = (this.DisplayEntityNameNormalized ?? string.Empty).Split(null);
 
                 return entityNameTokens;
             }
