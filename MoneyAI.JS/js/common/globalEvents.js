@@ -46,18 +46,18 @@
         //Activate bootstrap tooltips
         $(document.body).tooltip({ selector: "[title]" });
 
-        //Global errors
-        var previousGlobalErrorHandler = window.onerror;
-        window.onerror = function globalErrorHandler(errorMsg, url, lineNumber) {
-            utils.log([errorMsg, url, lineNumber], 10, "error");
+        ////Global errors
+        //var previousGlobalErrorHandler = window.onerror;
+        //window.onerror = function globalErrorHandler(errorMsg, url, lineNumber) {
+        //    utils.log([errorMsg, url, lineNumber], 10, "error");
 
-            if (previousGlobalErrorHandler) {
-                return previousGlobalErrorHandler(errorMsg, url, lineNumber);
-            }
+        //    if (previousGlobalErrorHandler) {
+        //        return previousGlobalErrorHandler(errorMsg, url, lineNumber);
+        //    }
 
-            //let default handler run
-            return false;
-        };
+        //    //let default handler run
+        //    return false;
+        //};
 
        //Global hash change event logging
         $(window).bind("hashchange", function (e) {

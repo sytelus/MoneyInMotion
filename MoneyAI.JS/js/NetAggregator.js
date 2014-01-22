@@ -33,6 +33,7 @@
             var parentsDepth, currentTx = tx, options = {};
             if (parents.length) {
                 parentsDepth = parentAggregator.tag.parentsDepth === undefined ? 0 : parentAggregator.tag.parentsDepth + 1;
+
                 if (parentsDepth < parents.length) {
                     currentTx = parents[parentsDepth];
                     options.subAggregateMainTxFunction = entityNameSubAggregator;
@@ -45,6 +46,7 @@
                 options.title = currentTx.correctedValues.entityNameBest;
                 aggregator = new TransactionAggregator(parentAggregator, aggregatorName, options);
                 aggregator.tag.parentsDepth = parentsDepth;
+                aggregator.tag.categoryDepth = parentAggregator.tag.categoryDepth;  //carry over so we don't switch back to category
                 parentAggregator.subAggregators[aggregatorName] = aggregator;
             }
         }
