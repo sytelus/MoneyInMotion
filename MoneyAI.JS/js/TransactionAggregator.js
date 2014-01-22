@@ -72,6 +72,8 @@
         this.negativeSum = 0;
         this.sum = 0;
 
+        this.tag = {};
+
         this.flagCounter = new utils.KeyCounter(true, utils.KeyCounter.booleanKeyMap);
         this.noteCounter = new utils.KeyCounter(true);
         this.transactionReasonCounter = new utils.KeyCounter(true);
@@ -95,7 +97,7 @@
 
         //publics
         return {
-            add: function (tx) {
+            add: function (tx, parents) {
                 if (tx.correctedValues.amount > 0) {
                     this.positiveSum += Math.abs(tx.correctedValues.amount);
                 }
@@ -115,11 +117,11 @@
 
                 var subAggregatorMainTx;  //leave it undefined
                 if (this.options.subAggregateMainTxFunction) {
-                    subAggregatorMainTx = this.options.subAggregateMainTxFunction(this, tx);
+                    subAggregatorMainTx = this.options.subAggregateMainTxFunction(this, tx, parents);
                 }
 
                 if (subAggregatorMainTx) {
-                    subAggregatorMainTx.add(tx);
+                    subAggregatorMainTx.add(tx, parents);
                 }
                 else {  //Only go to child TX if we have ran out of aggregators for the main TX
                     if (tx.children && this.options.subAggregateChildTxFunction) {
@@ -153,7 +155,8 @@
                 */
                 this.hasSubAggregators = !utils.isEmpty(this.subAggregators);
                 this.isOptional = this.options.isOptionalGroup !== undefined ? !!this.options.isOptionalGroup :
-                    (this.count === 1 && !this.options.isCategoryGroup && !this.isTopLevel);
+                    (this.rows.length === 1 && this.options.title === this.rows[0].correctedValues.entityNameBest &&
+                        !this.options.isCategoryGroup && !this.isTopLevel);
                 this.effectiveParent = this.parent ?
                     (this.parent.isOptional ? this.parent.effectiveParent : this.parent) : this;
                 this.isVisible = this.isTopLevel ||

@@ -1,40 +1,52 @@
 ﻿define("NetAggregator", ["common/utils", "TransactionAggregator", "Transaction", "transactionReasonUtils"], function (utils, TransactionAggregator, Transaction, transactionReasonUtils) {
     "use strict";
 
-    var entityNameSubAggregator = function (parentAggregator, tx) {
-        var subAggregators = parentAggregator.subAggregators;
+    var setCategorySubAggregator = function (parentAggregator, tx) {
         var categoryPath = tx.correctedValues.categoryPath;
 
-        var aggregatorName, aggregatorTitle, categoryDepth;
         if (categoryPath && categoryPath.length) {
-            categoryDepth = parentAggregator.categoryDepth === undefined ? 0 : parentAggregator.categoryDepth + 1;
+            var categoryDepth = parentAggregator.tag.categoryDepth === undefined ? 0 : parentAggregator.tag.categoryDepth + 1;
             if (categoryDepth < categoryPath.length) {
-                aggregatorName = "CAT_" + categoryPath[categoryDepth]; //avoid name collisons
-                aggregatorTitle = categoryPath[categoryDepth];
-            }
-            else {
-                categoryDepth = undefined;
+                var aggregatorName = "CAT_" + categoryPath[categoryDepth]; //avoid name collisons
+                var aggregator = parentAggregator.subAggregators[aggregatorName];
+                if (!aggregator) {
+                    var aggregatorTitle = categoryPath[categoryDepth];
+                    aggregator = new TransactionAggregator(parentAggregator, aggregatorName, {
+                        title: aggregatorTitle, subAggregateMainTxFunction: entityNameSubAggregator, isCategoryGroup: true
+                    });
+                    aggregator.tag.categoryDepth = categoryDepth;
+
+                    parentAggregator.subAggregators[aggregatorName] = aggregator;
+                }
+
+                return aggregator;
             }
         }
 
-        if (categoryDepth === undefined) {
-            aggregatorName = "NAM_" + tx.correctedValues.entityNameBest;
-            aggregatorTitle = tx.correctedValues.entityNameBest;
-        }
+        return undefined;
+    },
+    entityNameSubAggregator = function (parentAggregator, tx, parents) {
+        var aggregator = setCategorySubAggregator(parentAggregator, tx, parents);
 
-        var aggregator = subAggregators[aggregatorName];
         if (!aggregator) {
-            if (categoryDepth !== undefined) {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, {
-                    title: aggregatorTitle, subAggregateMainTxFunction: entityNameSubAggregator, isCategoryGroup: true
-                });
-                aggregator.categoryDepth = categoryDepth;
-            }
-            else {
-                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, { title: aggregatorTitle });
+            //Add subaggregator for name
+            var parentsDepth, currentTx = tx, options = {};
+            if (parents.length) {
+                parentsDepth = parentAggregator.tag.parentsDepth === undefined ? 0 : parentAggregator.tag.parentsDepth + 1;
+                if (parentsDepth < parents.length) {
+                    currentTx = parents[parentsDepth];
+                    options.subAggregateMainTxFunction = entityNameSubAggregator;
+                }
             }
 
-            subAggregators[aggregatorName] = aggregator;
+            var aggregatorName = "NAM_" + currentTx.correctedValues.entityNameBest;
+            aggregator = parentAggregator.subAggregators[aggregatorName];
+            if (!aggregator) {
+                options.title = currentTx.correctedValues.entityNameBest;
+                aggregator = new TransactionAggregator(parentAggregator, aggregatorName, options);
+                aggregator.tag.parentsDepth = parentsDepth;
+                parentAggregator.subAggregators[aggregatorName] = aggregator;
+            }
         }
 
         return aggregator;
@@ -124,16 +136,33 @@
         };
     };
 
-    var $this = function (txItems, txItemsKey, options) {
-        this.aggregator = new TransactionAggregator(undefined, "Net." + txItemsKey, {
+    var traverseChilds = function (tx, parents, onLeafCallback) {
+        if (utils.isEmpty(tx.children) || tx.hasMissingChild) {
+            onLeafCallback(tx, parents);
+        }
+        else {
+            parents.push(tx);
+            utils.forEach(tx.children, function (childKvp) { traverseChilds(childKvp.Value, parents, onLeafCallback); });
+            parents.pop();
+        }
+    };
+
+    var $this = function (txs, txItems, txItemsKey, options) {
+        var self = this;
+        setCategorySubAggregator.txs = txs;
+        self.aggregator = new TransactionAggregator(undefined, "Net." + txItemsKey, {
             subAggregateMainTxFunction: options.enableGrouping ? headerSubAggregator : getFlatAggregator(options),
             sortSubAggregatorsFunction: sortHeaderAggregatorsFunction,
             enableEdits: options.enableEdits, enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping
         });
 
+        var onLeadCallback = function (tx, parents) {
+            self.aggregator.add(tx, parents);
+        };
+
         utils.forEach(txItems, function (tx) {
-            this.aggregator.add(tx);
-        }, this);
+            traverseChilds(tx, [], onLeadCallback);
+        });
 
         this.aggregator.finalize();
     };

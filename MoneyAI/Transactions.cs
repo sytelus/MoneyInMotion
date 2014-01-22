@@ -18,10 +18,11 @@ namespace MoneyAI
 
         [DataMember(Name = "name")]
         public string Name { get; private set; }
-        
-        [DataMember(Name = "items", IsRequired=true)]
-        private Dictionary<string, Transaction> itemsById;
 
+        [DataMember(Name = "topItems", IsRequired = true)]
+        private Dictionary<string, Transaction> topItemsById;
+
+        private Dictionary<string, Transaction> allItemsById;
         private Dictionary<string, string[]> uniqueContentHashes;
 
 
@@ -39,7 +40,8 @@ namespace MoneyAI
         {
             this.Name = name;
             this.uniqueContentHashes = new Dictionary<string, string[]>();
-            this.itemsById = new Dictionary<string, Transaction>();
+            this.topItemsById = new Dictionary<string, Transaction>();
+            this.allItemsById = new Dictionary<string, Transaction>();
 
             this.accountInfos = new Dictionary<string, AccountInfo>();
             this.importInfos = new Dictionary<string, ImportInfo>();
@@ -72,7 +74,7 @@ namespace MoneyAI
 
         public Transaction this[string id]
         {
-            get { return this.itemsById[id]; }
+            get { return this.allItemsById[id]; }
         }
 
         public IEnumerable<TransactionEdit> GetEditsDescending(Transaction transaction)
@@ -122,7 +124,7 @@ namespace MoneyAI
         
             foreach(var currentItemPair in currentItemPairs)
             {
-                var tx = this.itemsById.GetValueOrDefault(currentItemPair.Item1);
+                var tx = this.allItemsById.GetValueOrDefault(currentItemPair.Item1);
                 var thisFormat = this.GetImportInfo(tx.ImportId).Format;
                 var otherFormat = other.GetImportInfo(currentItemPair.Item2.ImportId).Format;
                 if (tx.CombinedFromId != null || thisFormat == otherFormat || 
@@ -134,17 +136,14 @@ namespace MoneyAI
                 tx.CombineAttributes(currentItemPair.Item2);
             }
 
-            var newItems = other.AllParentChildTransactions
+            var newItems = other.TopLevelTransactions
                 .Where(t => !this.uniqueContentHashes.ContainsKey(t.ContentHash))
                 .Select(t => t.Clone()).ToList();
 
-            this.itemsById.AddRange(newItems.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)));
-            this.uniqueContentHashes.AddRange(newItems.GroupBy(i => i.ContentHash).Select(g =>
-                new KeyValuePair<string,string[]>(g.Key, other.uniqueContentHashes[g.Key])));
-            this.accountInfos.AddRange(newItems.Select(i => i.AccountId).Where(aid => !this.accountInfos.ContainsKey(aid)).Select(aid =>
-                new KeyValuePair<string, AccountInfo>(aid, other.GetAccountInfo(aid))));
-            this.importInfos.AddRange(newItems.Select(i => i.ImportId).Where(iid => !this.importInfos.ContainsKey(iid)).Select(iid =>
-                new KeyValuePair<string, ImportInfo>(iid, other.GetImportInfo(iid))));
+            this.topItemsById.AddRange(newItems.Select(i => new KeyValuePair<string, Transaction>(i.Id, i)));
+            var allParentChildNewItems = FlattenTransactions(newItems).ToList();
+            this.allItemsById.AddRange(allParentChildNewItems.Select(tx => new KeyValuePair<string, Transaction>(tx.Id, tx)));
+            this.UpdateStateForFlattenedTransactions(allParentChildNewItems, other);
             this.edits.Merge(other.edits);
 
             if (enableMatching)
@@ -238,10 +237,12 @@ namespace MoneyAI
 
         public void RelateParentChild(string parentId, string childId)
         {
-            var parent = this.itemsById[parentId];
-            var child = this.itemsById[childId];
+            var parent = this.allItemsById[parentId];
+            var child = this.allItemsById[childId];
 
             parent.AddChild(child);
+            if (this.topItemsById.ContainsKey(child.Id))
+                this.topItemsById.Remove(child.Id);
         }
 
         private void MatchParentChild()
@@ -287,11 +288,28 @@ namespace MoneyAI
 
         public IEnumerable<Transaction> AllParentChildTransactions
         {
-            get { return this.itemsById.Values;  }
+            get { return this.allItemsById.Values;  }
         }
         public IEnumerable<Transaction> TopLevelTransactions
         {
-            get { return this.itemsById.Values.Where(v => v.ParentId == null) ; }
+            get { return this.topItemsById.Values; }
+        }
+
+        private void UpdateStateForFlattenedTransactions(IList<Transaction> transactions, Transactions source)
+        {
+            foreach(var transaction in transactions)
+            {
+                var existingIds = new List<string>(this.uniqueContentHashes.GetValueOrDefault(transaction.ContentHash, Utils.EmptyStringArray));
+                existingIds.Add(transaction.Id);
+                this.uniqueContentHashes[transaction.ContentHash] = existingIds.ToArray();
+            }
+
+            this.accountInfos.AddRange(transactions.Select(i => i.AccountId).Distinct()
+                .Where(aid => !this.accountInfos.ContainsKey(aid))
+                .Select(aid => new KeyValuePair<string, AccountInfo>(aid, source.GetAccountInfo(aid))));
+            this.importInfos.AddRange(transactions.Select(i => i.ImportId).Distinct()
+                .Where(iid => !this.importInfos.ContainsKey(iid))
+                .Select(iid => new KeyValuePair<string, ImportInfo>(iid, source.GetImportInfo(iid))));
         }
 
         /// <param name="allowDuplicate">Should be true when importing transactions from a file but false when merging items from two files</param>
@@ -299,12 +317,12 @@ namespace MoneyAI
         {
             if (allowDuplicate || !uniqueContentHashes.ContainsKey(transaction.ContentHash))
             {
-                this.itemsById.Add(transaction.Id, transaction);
-                var existingIds = new List<string>(this.uniqueContentHashes.GetValueOrDefault(transaction.ContentHash, Utils.EmptyStringArray));
-                existingIds.Add(transaction.Id);
-                this.uniqueContentHashes[transaction.ContentHash] = existingIds.ToArray();
+                this.topItemsById.Add(transaction.Id, transaction);
+                var flattened = FlattenTransactions(Utils.AsEnumerable(transaction)).ToList();
+                this.allItemsById.AddRange(flattened.Select(tx => new KeyValuePair<string, Transaction>(tx.Id, tx)));
                 this.accountInfos.AddIfNotExist(accountInfo.Id, accountInfo);
                 this.importInfos.AddIfNotExist(importInfo.Id, importInfo);
+                this.UpdateStateForFlattenedTransactions(flattened, this);
                 return true;
             }
             else return false;
@@ -318,7 +336,8 @@ namespace MoneyAI
         private void Clear()
         {
             this.uniqueContentHashes.Clear();
-            this.itemsById.Clear();
+            this.allItemsById.Clear();
+            this.topItemsById.Clear();
             this.accountInfos.Clear();
             this.importInfos.Clear();
         }
@@ -402,8 +421,24 @@ namespace MoneyAI
         }
         #endregion
 
+        private static IEnumerable<Transaction> FlattenTransactions(IEnumerable<Transaction> transactions)
+        {
+            if (transactions == null)
+                yield break;
+
+            foreach(var transaction in transactions)
+            {
+                yield return transaction;
+                foreach (var tx in FlattenTransactions(transaction.Children))
+                    yield return tx;
+            }
+        }
         public void OnDeserialization(object sender)
         {
+            var k = this.topItemsById.Values.Where(t => t.ParentId != null).ToList();
+            if (k.Count > 0)
+                Debugger.Break();
+            this.allItemsById = FlattenTransactions(this.topItemsById.Values).ToDictionary(tx => tx.Id, tx => tx);
             this.uniqueContentHashes = this.AllParentChildTransactions.GroupBy(i => i.ContentHash)
                 .ToDictionary(g => g.Key, g => g.Select(t => t.Id).ToArray());
         }

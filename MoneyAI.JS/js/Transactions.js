@@ -3,11 +3,11 @@
     "use strict";
 
     //static privates
-    var addTransactionById = function (transactions, txKvpList) {
-        utils.forEach(txKvpList, function (txKvp) {
-            var tx = txKvp.Value;
-            transactions.itemsById.add(tx.id, tx);
+    var addTransactionById = function (transactions, txList) {
+        utils.forEach(txList, function (tx) {
+            transactions.itemsById[tx.id] = tx;
             Transaction.prototype.ensureAllCorrectedValues.call(tx);
+            addTransactionById(transactions, utils.map(tx.children, "Value"));
         });
     },
     updateCategoryPathCachedValued = function (edit) {
@@ -22,11 +22,11 @@
         if (jsonData) {
             utils.extend(this, jsonData);
 
-            this.itemsById = new utils.Dictionary();
-            addTransactionById(this, this.items);
+            this.items = utils.map(this.topItems, "Value");
+            delete this.topItems;
 
-            this.items = utils.map(utils.filter(this.items, function (item) { return !!!item.Value.parentId; }),
-                function (item) { return item.Value; });
+            this.itemsById = {};
+            addTransactionById(this, this.items);
         }
 
         this.cachedValues = { editsById: {} };
@@ -94,7 +94,7 @@
         },
 
         filterTransactions = function (edit) {
-            var filteredTransactions = this.items;
+            var filteredTransactions = this.getAllParentChildTransactions();
 
             utils.forEach(edit.scopeFilters, function (scopeFilter) {
                 filteredTransactions = utils.filter(filteredTransactions, function (tx) {
@@ -230,6 +230,14 @@
 
             getEditById: function(editId) {
                 return this.cachedValues.editsById[editId.toString()];
+            },
+
+            getAllParentChildTransactions: function () {
+                return utils.toValueArray(this.itemsById);
+            },
+
+            getTransactionById: function (id) {
+                return this.itemsById[id];
             },
 
             getAllCategoryPathStrings: function() {

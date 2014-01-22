@@ -138,7 +138,7 @@
             rowInfo.txId = row.data("txid");
 
             if (rowInfo.txId !== undefined) {
-                rowInfo.tx = self.cachedValues.txs.itemsById.get(rowInfo.txId);
+                rowInfo.tx = self.cachedValues.txs.getTransactionById(rowInfo.txId);
                 rowInfo.txs = [rowInfo.tx];
             }
         }
@@ -502,7 +502,7 @@
                 getRowInfo.call(self, self.tableSelection.rowElement) : undefined;
 
             //Always update aggregator because tx data might have changed
-            self.cachedValues.netAggregator = (new NetAggregator(self.cachedValues.txItems, self.cachedValues.txItemsKey, self.options)).aggregator;
+            self.cachedValues.netAggregator = (new NetAggregator(self.cachedValues.txs, self.cachedValues.txItems, self.cachedValues.txItemsKey, self.options)).aggregator;
 
             compiledTemplates.txListTemplate = compiledTemplates.txListTemplate || utils.compileTemplate(txListTemplateHtml);
             var templateHtml = utils.runTemplate(compiledTemplates.txListTemplate, self.cachedValues.netAggregator);
