@@ -17,21 +17,33 @@ namespace MoneyAI
             this.Repository = repository;
         }
 
-        public void SaveLatestMerged(bool saveEdits)
+        public void SaveLatestMerged(bool saveMerged, bool saveEdits)
         {
             var latestMergedLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedLocationName);
             var transactionEditsLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedEditsLocationName);
 
-            this.Repository.TransactionsStorage.Save(latestMergedLocation, this.LatestMerged, saveEdits ? transactionEditsLocation : null);
+            this.Repository.TransactionsStorage.Save(saveMerged ? latestMergedLocation : null, 
+                this.LatestMerged, 
+                saveEdits ? transactionEditsLocation : null);
+        }
+
+        public void CreateNewLatestMerged()
+        {
+            var latestMergedLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedLocationName);
+            this.LatestMerged = new Transactions(this.Repository.LastestMergedLocationName);
+            this.MergeNewStatements();
+        }
+
+        public bool LatestMergeExists()
+        {
+            var latestMergedLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedLocationName);
+            return this.Repository.TransactionsStorage.Exists(latestMergedLocation);
         }
 
         public void LoadLatestMerged()
         {
             var latestMergedLocation = this.Repository.GetNamedLocation(this.Repository.LastestMergedLocationName);
-            if (this.Repository.TransactionsStorage.Exists(latestMergedLocation))
-                this.LatestMerged = this.Repository.TransactionsStorage.Load(latestMergedLocation);
-            else
-                this.LatestMerged = new Transactions(this.Repository.LastestMergedLocationName);
+            this.LatestMerged = this.Repository.TransactionsStorage.Load(latestMergedLocation);
         }
 
         public bool EditsExists()
@@ -82,5 +94,10 @@ namespace MoneyAI
                 this.LatestMerged.MatchTransactions();
         }
 
+
+        public void Clear()
+        {
+            this.LatestMerged = null;
+        }
     }
 }

@@ -34,7 +34,11 @@ namespace MoneyAI.WinForms
 
             txnListView.BeforeCreatingGroups += txnListView_BeforeCreatingGroups;
 
-            buttonScanStatements_Click(sender, e);
+            if (appState == null)
+            {
+                var repository = new FileRepository(defaultRootPath);
+                appState = new AppState(repository);
+            }
         }
 
         private void FormMain_FormClosed(object sender, FormClosedEventArgs e)
@@ -64,14 +68,20 @@ namespace MoneyAI.WinForms
 
         private void buttonScanStatements_Click(object sender, EventArgs e)
         {
-            if (appState == null)
+            appState.Clear();
+
+            var keepEdits = checkBoxKeepEdits.Checked && appState.LatestMergeExists();
+            if (keepEdits)
             {
-                var repository = new FileRepository(defaultRootPath);
-                appState = new AppState(repository);
                 appState.LoadLatestMerged();
+                appState.SaveLatestMerged(false, true);
+                appState.Clear();
             }
 
-            appState.MergeNewStatements();
+            appState.CreateNewLatestMerged();
+
+            if (keepEdits)
+                appState.ApplyEditsToLatestMerged();
 
             RefreshExplorer(this.appState.LatestMerged);
         }
@@ -82,7 +92,7 @@ namespace MoneyAI.WinForms
             if (appState.LatestMerged.EditsCount == 0 && appState.EditsExists())
                 saveEdits = MessageBox.Show(this, "Save Edits", "There are no edits made to these transactions but there exists previous edits. Do you want to overwrite previous edits file?", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == System.Windows.Forms.DialogResult.Yes;
 
-            appState.SaveLatestMerged(saveEdits);
+            appState.SaveLatestMerged(true, saveEdits);
         }
 
         private void FormMain_KeyDown(object sender, KeyEventArgs e)
@@ -189,5 +199,14 @@ namespace MoneyAI.WinForms
             return savePath;
         }
 #endregion
+
+        private void buttonLoadExisting_Click(object sender, EventArgs e)
+        {
+            appState.Clear();
+
+            appState.LoadLatestMerged();
+
+            RefreshExplorer(this.appState.LatestMerged);
+        }
     }
 }

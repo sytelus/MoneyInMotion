@@ -5,26 +5,54 @@ using System.Web;
 using System.IO;
 using System.Web.Caching;
 using System.Diagnostics;
+using System.Threading;
 
 namespace MoneyAI.WebApi.Models
 {
     internal class TransactionCache
     {
+        private Lazy<Transactions> transactions;
+        private Lazy<string> serializedJson;
+        private string dataPath;
+        private Transactions Transactions { get { return transactions.Value; } }
+
+        private static readonly object lockObject = new object();
+
+        private FileSystemWatcher fileWatcher = new FileSystemWatcher();
+        private volatile bool isSaveInProgress = false;
+        private long lastSaveTimeVolatile = DateTime.MinValue.ToBinary();
+        private long LastSaveTime
+        {
+            get { return Volatile.Read(ref this.lastSaveTimeVolatile); }
+            set { Volatile.Write(ref this.lastSaveTimeVolatile, value); }
+        }
+
+        public string SerializedJson { get { return serializedJson.Value; } }
+        public string UserId { get; private set; }
+
         internal TransactionCache(string userId)
         {
             this.UserId = userId;
             this.dataPath = GetDataPath(userId);
 
-            this.serializedJson = new Lazy<string>(() => File.ReadAllText(dataPath), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
-            this.transactions = new Lazy<Transactions>(() => Transactions.DeserializeFromJson(this.SerializedJson), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+            fileWatcher.Path = Path.GetDirectoryName(dataPath);
+            fileWatcher.Filter = Path.GetFileName(dataPath);
+            fileWatcher.IncludeSubdirectories = false;
+            fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+            fileWatcher.Changed += OnFileWatcherChange;
+            fileWatcher.EnableRaisingEvents = true;
+
+            ResetState();
         }
 
-        private Lazy<Transactions> transactions;
-        private Lazy<string> serializedJson;
-        private string dataPath;
-        private Transactions Transactions { get { return transactions.Value; } }
-        public string SerializedJson { get { return serializedJson.Value; } }
-        public string UserId { get; private set; }
+        private void ResetState()
+        {
+            lock(lockObject)
+            {
+                this.serializedJson = new Lazy<string>(() => File.ReadAllText(dataPath), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+                this.transactions = new Lazy<Transactions>(() => Transactions.DeserializeFromJson(this.SerializedJson), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+            }
+        }
 
         private static string GetDataPath(string userId)
         {
@@ -33,7 +61,7 @@ namespace MoneyAI.WebApi.Models
 
         public int ApplyEdits(TransactionEdit[] edits)
         {
-            lock (this.Transactions)
+            lock (lockObject)
             {
                 var affectedTransactionCount = 0;
                 foreach(var edit in edits)
@@ -43,6 +71,7 @@ namespace MoneyAI.WebApi.Models
 
                 if (this.serializedJson != null && this.serializedJson.IsValueCreated)
                     this.serializedJson = new Lazy<string>(() => SerializeTransactions(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+
                 this.Save();
 
                 return affectedTransactionCount;
@@ -51,40 +80,77 @@ namespace MoneyAI.WebApi.Models
 
         private string SerializeTransactions()
         {
-            lock (this.Transactions)
+            lock (lockObject)
                 return this.Transactions.SerializeToJson();
         }
 
-        public void Save()
+        private void Save()
         {
-            File.WriteAllText(this.dataPath, this.SerializedJson);
-        }
-
-        private static void OnCacheItemRemoved(string key, object o, CacheItemRemovedReason r)
-        {
-            Debug.WriteLine("%s %s %s", key, o.ToString(), r.ToString());
-        }
-
-        private static readonly object cacheGetOrAddLock = new object();
-        public static TransactionCache GetItem(string userId)
-        {
-            var dataPath = GetDataPath(userId);
-            var cachedValue = HttpRuntime.Cache[dataPath] as TransactionCache;
-            if (cachedValue == null)
+            this.LastSaveTime = DateTime.UtcNow.ToBinary();
+            this.isSaveInProgress = true;
+            try
             {
-                lock (cacheGetOrAddLock)
+                lock(lockObject)
+                    File.WriteAllText(this.dataPath, this.SerializedJson);
+            }
+            finally
+            {
+                this.LastSaveTime = DateTime.UtcNow.ToBinary();
+                this.isSaveInProgress = false;
+            }
+        }
+
+        private void OnFileWatcherChange(object source, FileSystemEventArgs e)
+        {
+            Debug.WriteLine("File change: %s %s %s", e.ChangeType.ToString(), e.FullPath, e.Name);
+
+            if (!this.isSaveInProgress && 
+                DateTime.UtcNow.Subtract(DateTime.FromBinary(this.LastSaveTime)).TotalSeconds > 5)    //TODO: make this better
+            {
+                this.ResetState();
+                Debug.WriteLine("Reseted state for UserID: " + this.UserId);
+            }
+        }
+
+        private static TCache GetOrAddCacheItem<TCache>(string cacheKey, Func<TCache> createCacheValue, 
+            string filePathDepenency = null, int? expireAfterMinutes = 20, CacheItemRemovedCallback onRemoveCallback = null) where TCache:class
+        {
+            var cacheValue = HttpRuntime.Cache[cacheKey] as TCache;
+            if (cacheValue == null)
+            {
+                lock (lockObject)
                 {
-                    cachedValue = HttpRuntime.Cache[dataPath] as TransactionCache;
-                    if (cachedValue == null)
+                    cacheValue = HttpRuntime.Cache[cacheKey] as TCache;
+                    if (cacheValue == null)
                     {
-                        cachedValue = new TransactionCache(userId);
-                        HttpRuntime.Cache.Add(dataPath, cachedValue, null
-                            , Cache.NoAbsoluteExpiration, Cache.NoSlidingExpiration, CacheItemPriority.Normal, OnCacheItemRemoved);
+                        cacheValue = createCacheValue();
+                        HttpRuntime.Cache.Add(cacheKey, cacheValue,
+                            filePathDepenency == null ? null : new CacheDependency(filePathDepenency),
+                            Cache.NoAbsoluteExpiration, 
+                            expireAfterMinutes != null ? new TimeSpan(0, expireAfterMinutes.Value, 0) : Cache.NoSlidingExpiration, 
+                            CacheItemPriority.Normal, onRemoveCallback);
                     }
                 }
             }
 
-            return cachedValue;
+            return cacheValue;
+        }
+
+        public static TransactionCache GetItem(string userId)
+        {
+            var dataPath = GetDataPath(userId);
+            var txCacheValue = GetOrAddCacheItem("TransactionCache_" + dataPath, () => new TransactionCache(userId), onRemoveCallback: OnCacheItemRemoved);
+            return txCacheValue;
+        }
+
+        private static void OnCacheItemRemoved(string key, object value, CacheItemRemovedReason reason)
+        {
+            var txCacheValue = value as TransactionCache;
+            if (txCacheValue.fileWatcher != null)
+            {
+                txCacheValue.fileWatcher.Dispose();
+                txCacheValue.fileWatcher = null;
+            }
         }
     }
 }

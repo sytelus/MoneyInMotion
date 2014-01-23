@@ -33,6 +33,9 @@
             this.label1 = new System.Windows.Forms.Label();
             this.textBoxRootFolder = new System.Windows.Forms.TextBox();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.buttonLoadExisting = new System.Windows.Forms.Button();
+            this.checkBoxKeepEdits = new System.Windows.Forms.CheckBox();
+            this.button1 = new System.Windows.Forms.Button();
             this.buttonSaveLatestMerged = new System.Windows.Forms.Button();
             this.buttonScanStatements = new System.Windows.Forms.Button();
             this.buttonAddAccount = new System.Windows.Forms.Button();
@@ -54,7 +57,6 @@
             this.imageList = new System.Windows.Forms.ImageList(this.components);
             this.statusStrip2 = new System.Windows.Forms.StatusStrip();
             this.richTextBoxLog = new System.Windows.Forms.RichTextBox();
-            this.button1 = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -86,6 +88,8 @@
             // panel1
             // 
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.buttonLoadExisting);
+            this.panel1.Controls.Add(this.checkBoxKeepEdits);
             this.panel1.Controls.Add(this.button1);
             this.panel1.Controls.Add(this.buttonSaveLatestMerged);
             this.panel1.Controls.Add(this.buttonScanStatements);
@@ -98,23 +102,56 @@
             this.panel1.Size = new System.Drawing.Size(1045, 39);
             this.panel1.TabIndex = 2;
             // 
+            // buttonLoadExisting
+            // 
+            this.buttonLoadExisting.Location = new System.Drawing.Point(628, 6);
+            this.buttonLoadExisting.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonLoadExisting.Name = "buttonLoadExisting";
+            this.buttonLoadExisting.Size = new System.Drawing.Size(94, 23);
+            this.buttonLoadExisting.TabIndex = 10;
+            this.buttonLoadExisting.Text = "Load Existing";
+            this.buttonLoadExisting.UseVisualStyleBackColor = true;
+            this.buttonLoadExisting.Click += new System.EventHandler(this.buttonLoadExisting_Click);
+            // 
+            // checkBoxKeepEdits
+            // 
+            this.checkBoxKeepEdits.AutoSize = true;
+            this.checkBoxKeepEdits.Checked = true;
+            this.checkBoxKeepEdits.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxKeepEdits.Location = new System.Drawing.Point(486, 12);
+            this.checkBoxKeepEdits.Name = "checkBoxKeepEdits";
+            this.checkBoxKeepEdits.Size = new System.Drawing.Size(76, 17);
+            this.checkBoxKeepEdits.TabIndex = 9;
+            this.checkBoxKeepEdits.Text = "Keep edits";
+            this.checkBoxKeepEdits.UseVisualStyleBackColor = true;
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(789, 6);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.TabIndex = 8;
+            this.button1.Text = "Etsy";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // buttonSaveLatestMerged
             // 
-            this.buttonSaveLatestMerged.Location = new System.Drawing.Point(551, 9);
-            this.buttonSaveLatestMerged.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonSaveLatestMerged.Location = new System.Drawing.Point(726, 6);
+            this.buttonSaveLatestMerged.Margin = new System.Windows.Forms.Padding(2);
             this.buttonSaveLatestMerged.Name = "buttonSaveLatestMerged";
-            this.buttonSaveLatestMerged.Size = new System.Drawing.Size(126, 19);
+            this.buttonSaveLatestMerged.Size = new System.Drawing.Size(58, 22);
             this.buttonSaveLatestMerged.TabIndex = 7;
-            this.buttonSaveLatestMerged.Text = "Save Latest Merged";
+            this.buttonSaveLatestMerged.Text = "Save";
             this.buttonSaveLatestMerged.UseVisualStyleBackColor = true;
             this.buttonSaveLatestMerged.Click += new System.EventHandler(this.buttonSaveLatestMerged_Click);
             // 
             // buttonScanStatements
             // 
             this.buttonScanStatements.Location = new System.Drawing.Point(416, 9);
-            this.buttonScanStatements.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonScanStatements.Margin = new System.Windows.Forms.Padding(2);
             this.buttonScanStatements.Name = "buttonScanStatements";
-            this.buttonScanStatements.Size = new System.Drawing.Size(124, 19);
+            this.buttonScanStatements.Size = new System.Drawing.Size(65, 19);
             this.buttonScanStatements.TabIndex = 6;
             this.buttonScanStatements.Text = "Scan Statements";
             this.buttonScanStatements.UseVisualStyleBackColor = true;
@@ -123,7 +160,7 @@
             // buttonAddAccount
             // 
             this.buttonAddAccount.Location = new System.Drawing.Point(869, 8);
-            this.buttonAddAccount.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.buttonAddAccount.Margin = new System.Windows.Forms.Padding(2);
             this.buttonAddAccount.Name = "buttonAddAccount";
             this.buttonAddAccount.Size = new System.Drawing.Size(127, 19);
             this.buttonAddAccount.TabIndex = 5;
@@ -162,7 +199,7 @@
             // 
             this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer2.Location = new System.Drawing.Point(0, 0);
-            this.splitContainer2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.splitContainer2.Margin = new System.Windows.Forms.Padding(2);
             this.splitContainer2.Name = "splitContainer2";
             // 
             // splitContainer2.Panel1
@@ -184,7 +221,7 @@
             this.txnTreeView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.txnTreeView.HideSelection = false;
             this.txnTreeView.Location = new System.Drawing.Point(0, 0);
-            this.txnTreeView.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.txnTreeView.Margin = new System.Windows.Forms.Padding(2);
             this.txnTreeView.Name = "txnTreeView";
             this.txnTreeView.Size = new System.Drawing.Size(344, 450);
             this.txnTreeView.TabIndex = 1;
@@ -342,16 +379,6 @@
             this.richTextBoxLog.TabIndex = 0;
             this.richTextBoxLog.Text = "";
             // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(789, 6);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 8;
-            this.button1.Text = "Etsy";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
-            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -411,6 +438,8 @@
         private BrightIdeasSoftware.OLVColumn olvColumnIsUserFlagged;
         private System.Windows.Forms.ImageList imageList;
         private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.CheckBox checkBoxKeepEdits;
+        private System.Windows.Forms.Button buttonLoadExisting;
     }
 }
 

@@ -35,10 +35,15 @@ namespace MoneyAI.Repositories
 
         public void Save(ILocation location, Transactions transactions, ILocation auxilaryComponentLocation = null)
         {
-            var serializedData = transactions.SerializeToJson();
-            File.WriteAllText(location.Address, serializedData);
+            if (location != null)
+            {
+                var serializedData = transactions.SerializeToJson();
+                File.WriteAllText(location.Address, serializedData);
 
-            MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
+                MessagePipe.SendMessage("Saved {0}".FormatEx(location.Address));
+            }
+            else
+                MessagePipe.SendMessage("Did not saved transaction because location was null");
 
             if (auxilaryComponentLocation != null)
             {
