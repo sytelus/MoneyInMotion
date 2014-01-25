@@ -82,7 +82,7 @@
 
     var headerSubAggregatorMapping = (function () {
         return utils.toObject(transactionReasonUtils.transactionReasonInfo,
-            function(tr) { return tr.value.toString(); },
+            function (tr) { return tr.category; },
             function (tr) {
                 switch (tr.category) {
                     case "Expense": return getExpenseSubAggregator;
@@ -96,17 +96,18 @@
     })();
 
     var headerSubAggregator = function (parentAggregator, tx) {
-        var aggregatorFunction;
-        
+        var aggregatorFunction,functionKey;
+
         if (tx.requiresParent && !tx.parentId) {
+            functionKey = "Unmatched";
             aggregatorFunction = getUnmatchedSubAggregator;
         }
         else {
-            aggregatorFunction = headerSubAggregatorMapping[tx.correctedValues.transactionReason.toString()];
+            functionKey = transactionReasonUtils.transactionReasonCategoryLookup[tx.correctedValues.transactionReason.toString()];
+            aggregatorFunction = headerSubAggregatorMapping[functionKey];
         }
 
         var subAggregators = parentAggregator.subAggregators;
-        var functionKey = aggregatorFunction.toString();
         if (!subAggregators[functionKey]) {
             subAggregators[functionKey] = aggregatorFunction(parentAggregator);
         }
@@ -167,6 +168,8 @@
         });
 
         this.aggregator.finalize();
+
+        this.aggregator.netIncomeAmount = this.aggregator.subAggregators["Income"].sum + this.aggregator.subAggregators["Expense"].sum;
     };
 
     var proto = {

@@ -394,12 +394,9 @@ namespace MoneyAI
             return this.ApplyInternal(edit, ignoreMissingIds);
         }
 
-        public void Apply(TransactionEdits editsToApply, bool ignoreMissingIds = true)
+        public IEnumerable<Transaction> Apply(TransactionEdits editsToApply, bool ignoreMissingIds = true)
         {
-            foreach (var edit in editsToApply)
-            {
-                this.Apply(edit, ignoreMissingIds);
-            }
+            return editsToApply.SelectMany(edit => this.Apply(edit, ignoreMissingIds));
         }
 
         /// <summary>

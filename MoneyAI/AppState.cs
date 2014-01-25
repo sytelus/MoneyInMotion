@@ -52,13 +52,13 @@ namespace MoneyAI
             return this.Repository.TransactionsStorage.Exists(transactionEditsLocation);
         }
 
-        public void ApplyEditsToLatestMerged(ILocation location = null)
+        public IEnumerable<Transaction> ApplyEditsToLatestMerged(ILocation location = null)
         {
             var transactionEditsLocation = location ?? this.Repository.GetNamedLocation(this.Repository.LastestMergedEditsLocationName);
             if (this.Repository.TransactionsStorage.Exists(transactionEditsLocation))
             {
                 var edits = this.Repository.TransactionEditsStorage.Load(transactionEditsLocation);
-                this.LatestMerged.Apply(edits);
+                return this.LatestMerged.Apply(edits);
             }
             else throw new Exception("Edits were not found at location {0}".FormatEx(location.Address));
         }

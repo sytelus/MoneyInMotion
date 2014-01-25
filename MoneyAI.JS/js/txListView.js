@@ -525,14 +525,14 @@
             if (row) {
                 var rowInfo = getRowInfo.call(self, row);
                 if (rowInfo.groupId) {
-                    utils.triggerEvent(self, "transactionAggregateSelected", [rowInfo.aggregator, row, rowInfo.txs]);
+                    utils.triggerEvent(self, "transactionAggregateSelected", [rowInfo.aggregator, row, rowInfo.txs, self.cachedValues.netAggregator]);
                 }
                 else {
                     if (rowInfo.txId) {
-                        utils.triggerEvent(self, "transactionRowSelected", [rowInfo.tx, row]);
+                        utils.triggerEvent(self, "transactionRowSelected", [rowInfo.tx, row, self.cachedValues.netAggregator]);
                     }
                     else {
-                        utils.triggerEvent(self, "transactionRowSelected", [null, row]);
+                        utils.triggerEvent(self, "transactionRowSelected", [null, row, self.cachedValues.netAggregator]);
                     }
                 }
             }

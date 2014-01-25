@@ -7,6 +7,12 @@
         self.tx = ko.observable();
         self.txs = ko.observable();
         self.aggregator = ko.observable();
+        self.netAggregator = ko.observable();
+        self.netIncomAmountTypeString = ko.computed(function () {
+            if (self.netAggregator()) {
+                return self.netAggregator().netIncomAmount > 0 ? "savings" : "deficit";
+            }
+        });
 
         self.isTxProviderAttributesVisible = ko.observable(false);
         
