@@ -32,8 +32,8 @@
             errors += "ScopeType " + scopeType + " must have atleast " + constraints.min + " parameters and no more than " + constraints.max + " but it has " + scopeParameters.length;
         }
 
-        if (constraints.referenceParams && (!scopeReferenceParameters || scopeReferenceParameters.length !== scopeParameters.length)) {
-            errors += "ScopeType " + scopeType + " must have referenceParameters of same length as scope parameters";
+        if (constraints.referenceParams && (!scopeReferenceParameters || scopeReferenceParameters.length === 0)) {
+            errors += "ScopeType " + scopeType + " must have referenceParameters non empty";
         }
 
         return errors;

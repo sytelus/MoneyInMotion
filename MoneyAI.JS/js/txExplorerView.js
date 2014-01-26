@@ -4,18 +4,13 @@
 
     var txSummaryViewModel;
 
-    var transactionSelectedHandler = function (event, tx, row, netAggregator) {
-        txSummaryViewModel.tx(tx);
-        txSummaryViewModel.txs(null);
-        txSummaryViewModel.aggregator(null);
-        txSummaryViewModel.netAggregator(netAggregator);
-    },
-     transactionAggregateSelectedHandler = function (event, aggregate, row, txs, netAggregator) {
-         txSummaryViewModel.tx(null);
-         txSummaryViewModel.txs(txs);
-         txSummaryViewModel.aggregator(aggregate);
-         txSummaryViewModel.netAggregator(netAggregator);
-     };
+    var onTxListViewSelectionChanged = function (event, selectionParameters) {
+        txSummaryViewModel.selectedTx(selectionParameters.selectedTx);
+        txSummaryViewModel.selectedTxs(selectionParameters.selectedTxs);
+        txSummaryViewModel.selectedAggregator(selectionParameters.selectedAggregator);
+        txSummaryViewModel.netAggregator(selectionParameters.netAggregator);
+        txSummaryViewModel.txs(selectionParameters.txs);
+    };
 
     var $this = function TxExplorerView(element) {
         var self = this;
@@ -36,8 +31,7 @@
             self.txListView.refresh(txs, txItems, txItemsKey);
         });
 
-        utils.subscribe(self.txListView, "transactionRowSelected", transactionSelectedHandler);
-        utils.subscribe(self.txListView, "transactionAggregateSelected", transactionAggregateSelectedHandler);
+        utils.subscribe(self.txListView, "selectionChanged", onTxListViewSelectionChanged);
     };
     
     //public interface

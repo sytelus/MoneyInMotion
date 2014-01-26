@@ -241,7 +241,7 @@
             },
 
             getAllCategoryPathStrings: function() {
-                return utils.toValueArray(this.cachedValues.categoryPathStrings);
+                return utils.distinct(utils.toValueArray(this.cachedValues.categoryPathStrings));
             },
 
             getScopeFilter: getScopeFilter,

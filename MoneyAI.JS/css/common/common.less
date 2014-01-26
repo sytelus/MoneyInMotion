@@ -71,10 +71,7 @@
 }
 
 .condencedDataGrid
-    :extend(.table all)
-    :extend(.table-responsive all)
-    :extend(.table-condensed all)
-    :extend(.table-condensed2 all) {
+    :extend(.table all, .table-responsive all, .table-condensed all, .table-condensed2 all) {
         .form-control-focus(lighten(@input-border-focus, 90%));  //glow appears on focus if table has tabindex
 }
 
@@ -88,4 +85,8 @@
 
 .scrollbars-y {
     overflow-y: auto;
+}
+
+.position-fixed {
+    position: fixed;
 }

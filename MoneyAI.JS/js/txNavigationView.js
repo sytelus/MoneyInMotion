@@ -122,6 +122,11 @@
                 selectMonthIndex = selectMonthIndex >= 0 ? selectMonthIndex : (self.templateData.yearMonths[selectYearIndex].months.length ? 0 : undefined);
             }
 
+            utils.forEach(self.templateData.yearMonths, function (ym) {
+                ym.isSelected = false;
+                utils.forEach(ym.months, function (m) { m.isSelected = false; });
+            });
+
             self.lastSelectedYearMonth = { yearString: undefined, monthString: undefined };
             if (selectYearIndex >= 0) {
                 self.lastSelectedYearMonth.yearString = self.templateData.yearMonths[selectYearIndex].yearString;

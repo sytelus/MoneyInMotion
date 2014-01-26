@@ -116,87 +116,19 @@
                 <div class="col-md-2 txSummaryContainer">
                     <div class="txSummaryControl invisible">
                         <!-- overall summary -->
-                        <div data-bind="if: netAggregator" class="panel panel-info autoWidth">
+                        <div data-bind="if: $data.netAggregator" class="panel panel-info autoWidth">
                             <div class="panel-heading">Net/Net</div>
-                            <div class="panel-body small autoWidth">
-                                This month you have <span data-bind="text: netIncomAmountTypeString()"></span> of
-                                <strong><span data-bind="text: netAggregator().netIncomeAmount.toFixed(2)"></span></strong>.
+                            <div class="panel-body autoWidth">
+                                This month you have <span data-bind="text: netIncomeAmountTypeString"></span> of
+                                <span data-bind="text: netIncomeAmount, css: netIncomeAmountClassString"></span>.
                             </div>
                         </div>
 
                         <!-- currently selected transaction -->
-                        <div data-bind="if: tx">
-                            <div class="panel panel-info autoWidth">
-                                <div class="panel-heading">Transaction</div>
-                                <div class="panel-body small autoWidth txPropertiesList">
-                                    <ul class="bulletLess compact">
-                                        <!-- TODO: organize below in sections and move to modal dialog -->
-                                        <li><span class="txSummaryName">Name &nbsp </span><span class="txSummaryValue" data-bind="text: tx().entityName"></span></li>
-                                        <li><span class="txSummaryName">Transaction Date &nbsp </span><span class="txSummaryValue" data-bind="text: tx().transactionDate"></span></li>
-                                        <li><span class="txSummaryName">TransactionReason &nbsp </span><span class="txSummaryValue" data-bind="text: tx().transactionReason"></span></li>
-                                        <li><span class="txSummaryName">Amount &nbsp </span><span class="txSummaryValue" data-bind="text: tx().amount"></span></li>
-                                        <li><span class="txSummaryName">Account ID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().accountId"></span></li>
-                                        <li><span class="txSummaryName">Import ID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().importId"></span></li>
-                                        <li><span class="txSummaryName">ID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().id"></span></li>
-                                        <li data-bind="if: tx().lineNumber"><span class="txSummaryName">Line# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().lineNumber"></span></li>
-                                        <li data-bind="if: tx().instituteReference"><span class="txSummaryName">Institute Ref# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().instituteReference"></span></li>
-                                        <li data-bind="if: tx().providerCategoryName"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: tx().providerCategoryName"></span></li>
-                                        <li data-bind="if: tx().phoneNumber"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: tx().phoneNumber"></span></li>
-                                        <li data-bind="if: tx().address"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: tx().address"></span></li>
-                                        <li data-bind="if: tx().subAccountName"><span class="txSummaryName">Sub A/C &nbsp </span><span class="txSummaryValue" data-bind="text: tx().subAccountName"></span></li>
-                                        <li data-bind="if: tx().accountNumber"><span class="txSummaryName">Institute A/C# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().accountNumber"></span></li>
-                                        <li data-bind="if: tx().checkReference"><span class="txSummaryName">Check Ref# &nbsp </span><span class="txSummaryValue" data-bind="text: tx().checkReference"></span></li>
-                                        <li data-bind="if: tx().lineItemType"><span class="txSummaryName">Line Item Type &nbsp </span><span class="txSummaryValue" data-bind="text: tx().lineItemType"></span></li>
-                                        <li data-bind="if: tx().postedDate"><span class="txSummaryName">Posted Date &nbsp </span><span class="txSummaryValue" data-bind="text: tx().postedDate"></span></li>
-                                        <li data-bind="if: tx().appliedEditIdsDescending"><span class="txSummaryName">Number of Edits &nbsp </span><span class="txSummaryValue" data-bind="text: tx().appliedEditIdsDescending.length"></span></li>
-                                        <li data-bind="if: tx().parentId"><span class="txSummaryName">ParentID &nbsp </span><span class="txSummaryValue" data-bind="text: tx().parentId"></span></li>
-                                        <li data-bind="if: tx().combinedFromId"><span class="txSummaryName">CombinedFromId &nbsp </span><span class="txSummaryValue" data-bind="text: tx().combinedFromId"></span></li>
-                                        <li data-bind="if: tx().combinedToId"><span class="txSummaryName">CombinedToId &nbsp </span><span class="txSummaryValue" data-bind="text: tx().combinedToId"></span></li>
-                                        <li data-bind="if: tx().relatedTransferId"><span class="txSummaryName">RelatedTransferId &nbsp </span><span class="txSummaryValue" data-bind="text: tx().relatedTransferId"></span></li>
-                                        <li data-bind="if: tx().hasMissingChild"><span class="txSummaryName">HasMissingChild &nbsp </span><span class="txSummaryValue" data-bind="text: tx().hasMissingChild"></span></li>
-                                        <li data-bind="if: tx().lineItemType"><span class="txSummaryName">LineItemType &nbsp </span><span class="txSummaryValue" data-bind="text: tx().lineItemType"></span></li>
-                                        <li data-bind="if: tx().parentChildMatchFilter"><span class="txSummaryName">ParentChildMatchFilter &nbsp </span><span class="txSummaryValue" data-bind="text: tx().parentChildMatchFilter"></span></li>
-
-                                        <li><span class="txSummaryName">Cleaned Name &nbsp </span><span class="txSummaryValue" data-bind="text: tx().entityNameNormalized"></span></li>
-                                    </ul>
-
-                                    <a href="#" data-bind="if: tx().providerAttributes && !isTxProviderAttributesVisible(), click: showTxProviderAttributes">Show Other Values</a>
-                                    <div data-bind="if: isTxProviderAttributesVisible()">
-                                        <hr/>
-                                        <p><strong>Others</strong></p>
-                                        <ul class="bulletLess compact" data-bind="foreach: tx().providerAttributes">
-                                            <li data-bind="if: Value !== ''">
-                                                <span data-bind="text: Key" class="txSummaryName"></span><span class="txSummaryValue" data-bind="text: Value"></span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div> <!-- if: tx -->
-                        </div>
-
+                        <div class="position-fixed" data-bind="template: { name: 'selectedTxSummary', data: selectedTx(), if: selectedTx() }"></div>
+                       
                         <!-- currently selected aggregate -->
-                        <div data-bind="if: aggregator">
-                            <div class="panel panel-info autoWidth">
-                                <div class="panel-heading">Transaction Group</div>
-                                <div class="panel-body small autoWidth">
-                                    <ul class="bulletLess compact txPropertiesList">
-                                        <li><span class="txSummaryName">Title &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().options.title"></span></li>
-                                        <li><span class="txSummaryName">Net Total &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().sum"></span></li>
-                                        <li><span class="txSummaryName">Total Credits &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().positiveSum"></span></li>
-                                        <li><span class="txSummaryName">Total Debits &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().negativeSum"></span></li>
-                                        <li><span class="txSummaryName"># of Transactions &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().count"></span></li>
-                                        <li data-bind="if: aggregator().flagCounter.trueValue"><span class="txSummaryName"># of Flags &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().flagCounter.trueValue"></span></li>
-                                        <li data-bind="if: aggregator().noteCounter.notMissedCount.notMissedCount"><span class="txSummaryName"># of Notes &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().noteCounter.notMissedCount"></span></li>
-                                        <li data-bind="if: aggregator().transactionReasonCounter.notMissedCount"><span class="txSummaryName"># of Types &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().transactionReasonCounter.keyCount"></span></li>
-                                        <li data-bind="if: aggregator().accountCounter.notMissedCount"><span class="txSummaryName"># of Accounts &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().accountCounter.keyCount"></span></li>
-                                        <li data-bind="if: aggregator().transactionDateCounter.notMissedCount"><span class="txSummaryName"># of Dates &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().transactionDateCounter.keyCount"></span></li>
-                                        <li data-bind="if: aggregator().categoryPathStringCounter.notMissedCount"><span class="txSummaryName"># Categories &nbsp </span><span class="txSummaryValue" data-bind="text: aggregator().categoryPathStringCounter.keyCount"></span></li>
-                                    </ul>
-                                </div>
-                            </div> <!-- if: selectedtx -->
-                        </div>
-
-
+                        <div class="position-fixed" data-bind="template: { name: 'selectedAggregatorSummary', data: selectedAggregator(), if: selectedAggregator() }"></div>
                     </div> <!-- txSummaryControl -->
                 </div>
             </div>
@@ -209,6 +141,85 @@
         </div>
         <div class="text-right">Copyrights <a href="http://moneyai.com"><strong>MoneyAI.com</strong></a></div>
     </footer>
+
+    <!-- ko templates -->
+    <script type="text/html" id="selectedAggregatorSummary">
+        <div class="panel panel-info autoWidth">
+            <div class="panel-heading">Transaction Group</div>
+            <div class="panel-body small autoWidth">
+                <ul class="bulletLess compact txPropertiesList">
+                    <li><span class="txSummaryName">Title &nbsp </span><span class="txSummaryValue" data-bind="text: $data.options.title"></span></li>
+                    <li><span class="txSummaryName">Net Total &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency($data.sum)"></span></li>
+                    <li><span class="txSummaryName">Total Credits &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency($data.positiveSum)"></span></li>
+                    <li><span class="txSummaryName">Total Debits &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency($data.negativeSum)"></span></li>
+                    <li><span class="txSummaryName"># of Transactions &nbsp </span><span class="txSummaryValue" data-bind="text: $data.count"></span></li>
+                    <li data-bind="if: $data.flagCounter.trueValue"><span class="txSummaryName"># of Flags &nbsp </span><span class="txSummaryValue" data-bind="text: $data.flagCounter.trueValue"></span></li>
+                    <li data-bind="if: $data.noteCounter.notMissedCount.notMissedCount"><span class="txSummaryName"># of Notes &nbsp </span><span class="txSummaryValue" data-bind="text: $data.noteCounter.notMissedCount"></span></li>
+                    <li data-bind="if: $data.transactionReasonCounter.notMissedCount"><span class="txSummaryName"># of Types &nbsp </span><span class="txSummaryValue" data-bind="text: $data.transactionReasonCounter.keyCount"></span></li>
+                    <li data-bind="if: $data.accountCounter.notMissedCount"><span class="txSummaryName"># of Accounts &nbsp </span><span class="txSummaryValue" data-bind="text: $data.accountCounter.keyCount"></span></li>
+                    <li data-bind="if: $data.transactionDateCounter.notMissedCount"><span class="txSummaryName"># of Dates &nbsp </span><span class="txSummaryValue" data-bind="text: $data.transactionDateCounter.keyCount"></span></li>
+                    <li data-bind="if: $data.categoryPathStringCounter.notMissedCount"><span class="txSummaryName"># Categories &nbsp </span><span class="txSummaryValue" data-bind="text: $data.categoryPathStringCounter.keyCount"></span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div data-bind="if: $data.parent">
+            <div data-bind="template: { name: 'selectedAggregatorSummary', data: $data.parent }"></div>
+        </div>
+
+    </script>
+    <script type="text/html" id="selectedTxSummary">
+        <div class="panel panel-info autoWidth">
+            <div class="panel-heading">Transaction</div>
+            <div class="panel-body small autoWidth txPropertiesList">
+                <ul class="bulletLess compact">
+                    <!-- TODO: organize below in sections and move to modal dialog -->
+                    <li><span class="txSummaryName">Name &nbsp </span><span class="txSummaryValue" data-bind="text: entityName"></span></li>
+                    <li><span class="txSummaryName">Transaction Date &nbsp </span><span class="txSummaryValue" data-bind="text: transactionDate"></span></li>
+                    <li><span class="txSummaryName">TransactionReason &nbsp </span><span class="txSummaryValue" data-bind="text: transactionReason"></span></li>
+                    <li><span class="txSummaryName">Amount &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency(amount)"></span></li>
+                    <li><span class="txSummaryName">Account ID &nbsp </span><span class="txSummaryValue" data-bind="text: accountId"></span></li>
+                    <li><span class="txSummaryName">Import ID &nbsp </span><span class="txSummaryValue" data-bind="text: importId"></span></li>
+                    <li><span class="txSummaryName">ID &nbsp </span><span class="txSummaryValue" data-bind="text: id"></span></li>
+                    <li data-bind="if: $data.lineNumber"><span class="txSummaryName">Line# &nbsp </span><span class="txSummaryValue" data-bind="text: lineNumber"></span></li>
+                    <li data-bind="if: $data.instituteReference"><span class="txSummaryName">Institute Ref# &nbsp </span><span class="txSummaryValue" data-bind="text: instituteReference"></span></li>
+                    <li data-bind="if: $data.providerCategoryName"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: providerCategoryName"></span></li>
+                    <li data-bind="if: $data.phoneNumber"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: phoneNumber"></span></li>
+                    <li data-bind="if: $data.address"><span class="txSummaryName">Institute Category &nbsp </span><span class="txSummaryValue" data-bind="text: address"></span></li>
+                    <li data-bind="if: $data.subAccountName"><span class="txSummaryName">Sub A/C &nbsp </span><span class="txSummaryValue" data-bind="text: subAccountName"></span></li>
+                    <li data-bind="if: $data.accountNumber"><span class="txSummaryName">Institute A/C# &nbsp </span><span class="txSummaryValue" data-bind="text: accountNumber"></span></li>
+                    <li data-bind="if: $data.checkReference"><span class="txSummaryName">Check Ref# &nbsp </span><span class="txSummaryValue" data-bind="text: checkReference"></span></li>
+                    <li data-bind="if: $data.lineItemType"><span class="txSummaryName">Line Item Type &nbsp </span><span class="txSummaryValue" data-bind="text: lineItemType"></span></li>
+                    <li data-bind="if: $data.postedDate"><span class="txSummaryName">Posted Date &nbsp </span><span class="txSummaryValue" data-bind="text: postedDate"></span></li>
+                    <li data-bind="if: $data.appliedEditIdsDescending"><span class="txSummaryName">Number of Edits &nbsp </span><span class="txSummaryValue" data-bind="text: appliedEditIdsDescending.length"></span></li>
+                    <li data-bind="if: $data.parentId"><span class="txSummaryName">ParentID &nbsp </span><span class="txSummaryValue" data-bind="text: parentId"></span></li>
+                    <li data-bind="if: $data.combinedFromId"><span class="txSummaryName">CombinedFromId &nbsp </span><span class="txSummaryValue" data-bind="text: combinedFromId"></span></li>
+                    <li data-bind="if: $data.combinedToId"><span class="txSummaryName">CombinedToId &nbsp </span><span class="txSummaryValue" data-bind="text: combinedToId"></span></li>
+                    <li data-bind="if: $data.relatedTransferId"><span class="txSummaryName">RelatedTransferId &nbsp </span><span class="txSummaryValue" data-bind="text: relatedTransferId"></span></li>
+                    <li data-bind="if: $data.hasMissingChild"><span class="txSummaryName">HasMissingChild &nbsp </span><span class="txSummaryValue" data-bind="text: hasMissingChild"></span></li>
+                    <li data-bind="if: $data.lineItemType"><span class="txSummaryName">LineItemType &nbsp </span><span class="txSummaryValue" data-bind="text: lineItemType"></span></li>
+                    <li data-bind="if: $data.parentChildMatchFilter"><span class="txSummaryName">ParentChildMatchFilter &nbsp </span><span class="txSummaryValue" data-bind="text: parentChildMatchFilter"></span></li>
+
+                    <li><span class="txSummaryName">Cleaned Name &nbsp </span><span class="txSummaryValue" data-bind="text: entityNameNormalized"></span></li>
+                </ul>
+
+                <a href="#" data-bind="if: $data.providerAttributes && !$root.isTxProviderAttributesVisible(), click: $root.showTxProviderAttributes()">Show Other Values</a>
+                <div data-bind="if: $root.isTxProviderAttributesVisible()">
+                    <hr />
+                    <p><strong>Others</strong></p>
+                    <ul class="bulletLess compact" data-bind="foreach: $data.providerAttributes">
+                        <li data-bind="if: $data.Value !== ''">
+                            <span data-bind="text: Key" class="txSummaryName"></span><span class="txSummaryValue" data-bind="text: Value"></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div> 
+
+        <div data-bind="if: $data.parentId">
+            <div data-bind="template: { name: 'selectedTxSummary', data: $root.txs().getTransactionById(parentId) }"></div>
+        </div>
+    </script>
 
     <script data-main="js/main" src="js/ext/requirejs/require.js"></script>
 </body>

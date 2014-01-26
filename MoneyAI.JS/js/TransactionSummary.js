@@ -4,19 +4,30 @@
     //static privates
     var TransactionSummary = function () {
         var self = this;
-        self.tx = ko.observable();
-        self.txs = ko.observable();
-        self.aggregator = ko.observable();
+        self.selectedTx = ko.observable();
+        self.selectedTxs = ko.observable();
+        self.selectedAggregator = ko.observable();
         self.netAggregator = ko.observable();
-        self.netIncomAmountTypeString = ko.computed(function () {
+        self.txs = ko.observable();
+        self.netIncomeAmountTypeString = ko.computed(function () {
             if (self.netAggregator()) {
-                return self.netAggregator().netIncomAmount > 0 ? "savings" : "deficit";
+                return self.netAggregator().netIncomeAmount > 0 ? "savings" : "deficit";
+            }
+        });
+        self.netIncomeAmountClassString = ko.computed(function () {
+            if (self.netAggregator()) {
+                return self.netAggregator().netIncomeAmount > 0 ? "positiveNetAmount" : "negativeNetAmount";
+            }
+        });
+        self.netIncomeAmount = ko.computed(function () {
+            if (self.netAggregator()) {
+                return utils.formateCurrency(Math.abs(self.netAggregator().netIncomeAmount));
             }
         });
 
         self.isTxProviderAttributesVisible = ko.observable(false);
         
-        self.tx.subscribe(function () { self.isTxProviderAttributesVisible(false); });
+        self.selectedTx.subscribe(function () { self.isTxProviderAttributesVisible(false); });
     };
 
     var TransactionSummaryPrototype = (function () {
@@ -25,7 +36,8 @@
 
         //publics
         return {
-            showTxProviderAttributes: function () { this.isTxProviderAttributesVisible(true); }
+            showTxProviderAttributes: function () { this.isTxProviderAttributesVisible(true); },
+            formateCurrency: utils.formateCurrency
         };
     })();
     TransactionSummaryPrototype.constructor = TransactionSummary;

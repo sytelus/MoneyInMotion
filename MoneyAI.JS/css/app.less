@@ -90,8 +90,11 @@
 }
 
 .txSummaryControl {
-    position: fixed;
-    width: inherit;
+    .position-fixed {
+        width: inherit;
+        max-height: 30em;
+        .scrollbars-y;  //TODO: make this more elegent UI for showing parent transactions
+    }
 }
 
 .txPropertiesList  {
@@ -105,4 +108,17 @@
 .selectedTableRow {
     background-color: #f2f7e7;
     font-weight: bold;
+}
+
+.categoryTitle {
+    font-weight: bold;
+}
+
+.positiveNetAmount {
+    color: @alert-success-text;
+    font-weight:bold;
+}
+.negativeNetAmount {
+    color: @alert-danger-text;
+    font-weight:bold;
 }

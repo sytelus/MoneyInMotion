@@ -522,21 +522,29 @@
             setTableRowSelectionStyle.call(self, row, true);
             self.tableSelection.rowElement = row;
 
+            var eventParameters = {
+                netAggregator: self.cachedValues.netAggregator,
+                txs: self.cachedValues.txs
+            };
+
             if (row) {
                 var rowInfo = getRowInfo.call(self, row);
+                eventParameters.selectedTableRow = row;
+
                 if (rowInfo.groupId) {
-                    utils.triggerEvent(self, "transactionAggregateSelected", [rowInfo.aggregator, row, rowInfo.txs, self.cachedValues.netAggregator]);
+                    eventParameters.selectedAggregator = rowInfo.aggregator;
+                    eventParameters.selectedTxs = rowInfo.txs;
                 }
                 else {
                     if (rowInfo.txId) {
-                        utils.triggerEvent(self, "transactionRowSelected", [rowInfo.tx, row, self.cachedValues.netAggregator]);
+                        eventParameters.selectedTx = rowInfo.tx;
                     }
-                    else {
-                        utils.triggerEvent(self, "transactionRowSelected", [null, row, self.cachedValues.netAggregator]);
-                    }
+                    //else no selection
                 }
             }
 
+            utils.triggerEvent(self, "selectionChanged", [eventParameters]);
+            
             return previousElement;
         },
         isActive: true

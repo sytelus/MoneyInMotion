@@ -20,7 +20,7 @@
                             {{/if}}
 						{{else}}
 							<td>
-                                <span>{{repeatString "&nbsp" groupIndentLevel 4}}{{truncateText options.title 25}}
+                                <span>{{repeatString "&nbsp" groupIndentLevel 4}}<span {{#if options.isCategoryGroup}}class="categoryTitle"{{/if}}>{{truncateText options.title 25}}</span>
                                     {{#if options.enableExpandCollapse}}
                                     <a class="txRowExpanderControl">
 									    {{#if isChildrenVisible}}

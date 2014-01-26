@@ -34,7 +34,7 @@ namespace MoneyAI
 
             public ScopeFilter(ScopeType scopeType, string[] scopeParameters, string[] referenceParameters)
             {
-                var errors = Validate(scopeType, scopeParameters);
+                var errors = Validate(scopeType, scopeParameters, referenceParameters);
                 if (!string.IsNullOrEmpty(errors))
                     throw new Exception("EditScope parameters are invalid: {0}".FormatEx(errors));
 
@@ -52,22 +52,23 @@ namespace MoneyAI
             }
 
 
-            private readonly static Dictionary<string, Tuple<int, int>> minMaxParametersLength = new Dictionary<string, Tuple<int, int>>() 
+            private readonly static Dictionary<string, Tuple<int, int, bool>> minMaxParametersLength = new Dictionary<string, Tuple<int, int, bool>>() 
             { 
-                {ScopeType.None.ToString(), Tuple.Create(0, 0)} , {ScopeType.All.ToString(), Tuple.Create(0, 0)},
-                {ScopeType.TransactionId.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.EntityName.ToString(), Tuple.Create(1, int.MaxValue)},
-                {ScopeType.EntityNameNormalized.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.EntityNameAnyTokens.ToString(), Tuple.Create(1, int.MaxValue)},
-                {ScopeType.EntityNameAllTokens.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.AccountId.ToString(), Tuple.Create(1, int.MaxValue)},
-                {ScopeType.TransactionReason.ToString(), Tuple.Create(1, int.MaxValue)} , {ScopeType.AmountRange.ToString(), Tuple.Create(2, 2)}
+                {ScopeType.None.ToString(), Tuple.Create(0, 0, false)} , {ScopeType.All.ToString(), Tuple.Create(0, 0, false)},
+                {ScopeType.TransactionId.ToString(), Tuple.Create(1, int.MaxValue, false)} , {ScopeType.EntityName.ToString(), Tuple.Create(1, int.MaxValue, false)},
+                {ScopeType.EntityNameNormalized.ToString(), Tuple.Create(1, int.MaxValue, false)} , {ScopeType.EntityNameAnyTokens.ToString(), Tuple.Create(1, int.MaxValue, false)},
+                {ScopeType.EntityNameAllTokens.ToString(), Tuple.Create(1, int.MaxValue, false)} , {ScopeType.AccountId.ToString(), Tuple.Create(1, int.MaxValue, false)},
+                {ScopeType.TransactionReason.ToString(), Tuple.Create(1, int.MaxValue, false)} , {ScopeType.AmountRange.ToString(), Tuple.Create(2, 2, false)}
             };
             //TODO: include reference parameter validation
-            public static string Validate(ScopeType scopeType, string[] scopeParameters)
+            public static string Validate(ScopeType scopeType, string[] scopeParameters, string[] referenceParameters)
             {
                 string errors = "";
                 var parametersLength = minMaxParametersLength[scopeType.ToString()];
                 if (scopeParameters.Length < parametersLength.Item1 || scopeParameters.Length > parametersLength.Item2)
                     errors += "ScopeType {0} must have atleast {1} parameters and no more than {2} but it has {3}".FormatEx(scopeType.ToString(), parametersLength.Item1, parametersLength.Item2, scopeParameters.Length);
-
+                if (parametersLength.Item3 && (referenceParameters == null || referenceParameters.Length == 0))
+                    errors += "ScopeType {0} must havenon empty reference parameters".FormatEx(scopeType.ToString());
                 return errors;
             }
         }
