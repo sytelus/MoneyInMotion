@@ -124,6 +124,16 @@
                             </div>
                         </div>
 
+                        <!-- Actions -->
+                        <div data-bind="if: $data.netAggregator" class="panel panel-info autoWidth">
+                            <div class="panel-heading">Actions</div>
+                            <div class="panel-body autoWidth">
+                                <ul class="bulletLess compact small">
+                                    <li><a href="#" data-bind="click: showMarkTransactionsDialog">Mark Transactions...</a></li>
+                                </ul>
+                            </div>
+                        </div>                        
+
                         <!-- currently selected transaction -->
                         <div class="position-fixed" data-bind="template: { name: 'selectedTxSummary', data: selectedTx(), if: selectedTx() }"></div>
                        

@@ -128,6 +128,13 @@
         getMonthString: function(date) {
             return moment(date).format("MM");
         },
+        now: function() {
+            return new moment();
+        },
+
+        getEventCurrentTarget: function(event) {
+            return (event.currentTarget) ? event.currentTarget : event.srcElement;  //IE8 compatibility
+        },
 
         FormatStringDateLocalized: "L",
         formateDate: function(date, formatString) {

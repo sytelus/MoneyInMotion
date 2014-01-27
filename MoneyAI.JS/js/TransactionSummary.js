@@ -1,4 +1,6 @@
-﻿define("TransactionSummary", ["common/utils", "knockout"], function (utils, ko) {
+﻿define("TransactionSummary", ["common/utils", "knockout", "common/popoverForm", "jquery",
+    "text!templates/markTransactions.html"],
+    function (utils, ko, popoverForm, $, markTransactionsHtml) {
     "use strict";
 
     //static privates
@@ -37,7 +39,22 @@
         //publics
         return {
             showTxProviderAttributes: function () { this.isTxProviderAttributesVisible(true); },
-            formateCurrency: utils.formateCurrency
+            formateCurrency: utils.formateCurrency,
+            showMarkTransactionsDialog: function (data, event) {
+                var self = this,
+                    element = $(utils.getEventCurrentTarget(event));
+
+                self.markTxViewModel = self.markTxViewModel || {
+                    startDate: utils.now().subtract("days", 7).format("YYYY-MM-DD"),
+                    endDate: utils.now().format("YYYY-MM-DD")
+                };
+                
+                element.popoverForm(markTransactionsHtml, self.markTxViewModel, {
+                    titleIconClass: "",
+                    titleHtml:"Mark Transactions"//,
+                    //onOk: onSaveWrapper
+                });
+            }
         };
     })();
     TransactionSummaryPrototype.constructor = TransactionSummary;
