@@ -45,6 +45,7 @@
             if (!aggregator) {
                 options.title = currentTx.correctedValues.entityNameBest;
                 aggregator = new TransactionAggregator(parentAggregator, aggregatorName, options);
+                aggregator.tag.forParentTxId = currentTx.id;
                 aggregator.tag.parentsDepth = parentsDepth;
                 aggregator.tag.categoryDepth = parentAggregator.tag.categoryDepth;  //carry over so we don't switch back to category
                 parentAggregator.subAggregators[aggregatorName] = aggregator;

@@ -5,7 +5,6 @@
 
                         <td>
                             <span>{{repeatString "&nbsp" ../effectiveParentForTx.txIndentLevel 4}}{{truncateText correctedValues.entityNameBest 25}}</span>
-
                             {{#if ../options.enableIndicators}}
 
                             <!-- tx Icons -->
@@ -41,6 +40,7 @@
                         </td>
                         {{#if ../options.enableEdits}}
                         <td>
+                            {{#unless ../options.isLineItems}}
                             <div class="dropdown">
                                 <!-- edit icon and dropdown trigger -->
                                 <a class="dropdown-toggle hoverLinkButton" role="button" data-toggle="dropdown" data-target="#">
@@ -95,6 +95,7 @@
                                   </li>
                                 </ul>
                             </div><!--dropdown-->
+                            {{/unless}}
                         </td>
                         {{/if}}<!--options.enableEdits-->
                     </tr>
