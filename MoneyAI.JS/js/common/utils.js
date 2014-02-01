@@ -275,6 +275,15 @@
         parseFloat: function(value) {
             return parseFloat(value);
         },
+        parseDate: function(value, format) {
+            return moment(value, format);
+        },
+        fromNativeDate: function(value) {
+            return moment(value);
+        },
+        toNativeDate: function(value) {
+            return value.toDate();
+        },
         getMD5Hash: function(valueString) {
             var hash = CryptoJS.MD5(valueString);
             return hash.toString(CryptoJS.enc.Base64);

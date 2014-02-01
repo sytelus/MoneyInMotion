@@ -14,7 +14,7 @@
             enableIndicators: true //flag, note indicators next to name
         },
         saveConfirmModalId = 0;
-
+        
     var initialize = function (element, options) {
         var self = this;
         self.cachedValues = undefined;

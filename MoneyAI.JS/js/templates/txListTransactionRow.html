@@ -1,6 +1,6 @@
 ﻿                {{#each toTxArray}}
                     <tr data-parentgroupid="{{../groupId}}" 
-                        class="{{#unless ../effectiveParentForTx.isTopLevel}}{{oddOrEvenClass "txRow"}}{{/unless}}{{#unless ../isTxVisible}} txRowInvisible{{/unless}}"
+                        class="{{#if tag.isMarked}} markedRow{{/if}}{{#unless ../isTxVisible}} txRowInvisible{{/unless}}"
                         data-txid="{{id}}">
 
                         <td>

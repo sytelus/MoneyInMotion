@@ -160,6 +160,7 @@
                 <ul class="bulletLess compact txPropertiesList">
                     <li><span class="txSummaryName">Title &nbsp </span><span class="txSummaryValue" data-bind="text: $data.options.title"></span></li>
                     <li><span class="txSummaryName">Net Total &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency($data.sum)"></span></li>
+                    <li data-bind="if: $data.markedSum"><span class="txSummaryName markedRow">Marked Total &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency($data.markedSum)"></span></li>
                     <li><span class="txSummaryName">Total Credits &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency($data.positiveSum)"></span></li>
                     <li><span class="txSummaryName">Total Debits &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency($data.negativeSum)"></span></li>
                     <li><span class="txSummaryName"># of Transactions &nbsp </span><span class="txSummaryValue" data-bind="text: $data.count"></span></li>

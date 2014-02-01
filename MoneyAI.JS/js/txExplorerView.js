@@ -2,16 +2,6 @@
     function (TxListView, TxNavigationView, utils, repository, ko, TransactionSummary) {
     "use strict";
 
-    var txSummaryViewModel;
-
-    var onTxListViewSelectionChanged = function (event, selectionParameters) {
-        txSummaryViewModel.selectedTx(selectionParameters.selectedTx);
-        txSummaryViewModel.selectedTxs(selectionParameters.selectedTxs);
-        txSummaryViewModel.selectedAggregator(selectionParameters.selectedAggregator);
-        txSummaryViewModel.netAggregator(selectionParameters.netAggregator);
-        txSummaryViewModel.txs(selectionParameters.txs);
-    };
-
     var $this = function TxExplorerView(element) {
         var self = this;
         self.hostElement = element;
@@ -23,15 +13,30 @@
         self.txListView = new TxListView(listElement, { enableKeyboardShortcuts: true });
 
         var txSummaryElement = element.find(".txSummaryControl").first();
-        txSummaryViewModel = new TransactionSummary();
-        ko.applyBindings(txSummaryViewModel, txSummaryElement[0]);
+        self.txSummaryViewModel = new TransactionSummary();
+        ko.applyBindings(self.txSummaryViewModel, txSummaryElement[0]);
         txSummaryElement.removeClass("invisible");
 
         utils.subscribe(self.txNavigationView, "afterRefresh", function (event, txs, txItems, txItemsKey) {
             self.txListView.refresh(txs, txItems, txItemsKey);
         });
 
-        utils.subscribe(self.txListView, "selectionChanged", onTxListViewSelectionChanged);
+        utils.subscribe(self.txListView, "selectionChanged", function (event, selectionParameters) {
+            self.txSummaryViewModel.selectedTx(selectionParameters.selectedTx);
+            self.txSummaryViewModel.selectedTxs(selectionParameters.selectedTxs);
+            self.txSummaryViewModel.selectedAggregator(selectionParameters.selectedAggregator);
+            self.txSummaryViewModel.netAggregator(selectionParameters.netAggregator);
+            self.txSummaryViewModel.txs(selectionParameters.txs);
+        });
+
+        utils.subscribe(self.txSummaryViewModel, "markTx", function (event, startDate, endDate) {
+            utils.forEach(self.txs.getAllParentChildTransactions(), function(tx) {
+                var transactionDate = utils.fromNativeDate(tx.correctedValues.transactionDate);
+                tx.tag.isMarked = startDate <= transactionDate && endDate > transactionDate;
+            });
+
+            self.refresh(true);
+        });
     };
     
     //public interface
@@ -39,6 +44,7 @@
         refresh: function (uxOnlyRefresh) {
             var self = this;
             repository.getTransactions(!!!uxOnlyRefresh).done(function (txs) {
+                self.txs = txs;
                 self.txNavigationView.load(txs);
                 self.txNavigationView.refresh();
             });

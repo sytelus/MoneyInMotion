@@ -2,7 +2,7 @@
 					
                     {{#if options.groupHeaderVisible}}
 					<!-- no header for single item non-top groups -->
-					<tr class="{{#if isTopLevel}} txTopLevelGroup topLevelRow{{name}}{{/if}}{{#unless effectiveParent.isTopLevel}} {{oddOrEvenClass "txGroupRow"}}{{#if options.isLineItems}} {{oddOrEvenClass "txLineItemRow"}}{{/if}}{{/unless}}{{#unless isVisible}} txRowInvisible{{else}}{{/unless}}" 
+					<tr class="{{#if isTopLevel}} txTopLevelGroup topLevelRow{{name}}{{/if}}{{#if markedTxCount}} markedRow{{/if}}{{#unless isVisible}} txRowInvisible{{else}}{{/unless}}" 
 					data-groupid="{{groupId}}"
 					data-parentgroupid="{{parent.groupId}}"
 					data-ischildrenvisible="{{isChildrenVisible}}">
@@ -13,6 +13,9 @@
 							<td colspan="4" class="topLevelGroupSummary">
 								<small>
 									{{formatCurrency sum}} in {{txTransactionReasonCounterDisplay transactionReasonCounter}}
+                                    {{#if markedSum}}
+                                    , {{formatCurrency markedSum}} in <span class="markedRow">marked transactions</span>,
+                                    {{/if}}
 								</small>
 							</td>
                             {{#if options.enableEdits}}

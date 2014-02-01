@@ -106,7 +106,8 @@
                     if (this.correctedValues.categoryPath) {
                         this.correctedValues.categoryPathString = proto.toCategoryPathString.call(this, this.correctedValues.categoryPath);
                     }
-                    
+            
+                    this.tag = {};
                     this.correctedValues.isPopulated = true;
                 }
 

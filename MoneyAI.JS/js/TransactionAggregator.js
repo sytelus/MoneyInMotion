@@ -71,6 +71,7 @@
         this.positiveSum = 0;
         this.negativeSum = 0;
         this.sum = 0;
+        this.markedSum = 0;
 
         this.tag = {};
 
@@ -80,6 +81,7 @@
         this.accountCounter = new utils.KeyCounter(true);
         this.transactionDateCounter = new utils.KeyCounter(true);
         this.categoryPathStringCounter = new utils.KeyCounter(true);
+        this.markedTxCount = 0;
 
         this.depth = parent ? parent.depth + 1 : 0;
 
@@ -107,6 +109,10 @@
 
                 this.sum += tx.correctedValues.amount;
                 this.count += 1;
+                if (tx.tag.isMarked) {
+                    this.markedTxCount += 1;
+                    this.markedSum += tx.correctedValues.amount;
+                }
 
                 this.flagCounter.add(tx.correctedValues.isFlagged);
                 this.noteCounter.add(tx.correctedValues.note);

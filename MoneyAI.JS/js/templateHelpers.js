@@ -3,8 +3,6 @@
     function (transactionReasonUtils, Transaction, txListTransactionRowHtml, txListTransactionGroupHtml, txEditRuleHtml) {
     "use strict";
 
-    var oddOrEvenClassCounts = {};
-
     var helpers = [
         function (utils) {
             utils.registerTemplateHelper("txCategoryPathDisplay", function (tx) {
@@ -21,13 +19,6 @@
         function (utils) {
             utils.registerTemplateHelper("txTransactionReasonDisplay", function (transactionReason) {
                 return Transaction.prototype.getTransactionReasonTitle(transactionReason);
-            });
-        },
-
-        function (utils) {
-            utils.registerTemplateHelper("oddOrEvenClass", function (baseClassName) {
-                oddOrEvenClassCounts[baseClassName] = (oddOrEvenClassCounts[baseClassName] || 0) + 1;
-                return oddOrEvenClassCounts[baseClassName] % 2 ? baseClassName + "Odd" : baseClassName + "Even";
             });
         },
 
