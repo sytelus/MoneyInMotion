@@ -60,6 +60,9 @@
                         }
                     }
                 });
+            },
+            getImportPath: function (importId) {
+                return this.txs().importInfosById[importId].PortableAddress;
             }
         };
     })();

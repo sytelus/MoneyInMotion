@@ -44,6 +44,7 @@ namespace MoneyAI
             public DateTime? PostedDate { get; set; }
             public DateTime? TransactionDate { get; set; }
             public string EntityName { get; set; }
+            public string EntityId { get; set; }
             public string EntityNameNormalized { get; set; }
             public TransactionReason? TransactionReason { get; set; }
             public LineItemType LineItemType { get; set; }

@@ -155,8 +155,8 @@
         toObject: function (collection, getKey, getValue, thisArg) {
             var result = {};
             utilsInstance.forEach(collection, function (item, indexOrKey) {
-                var key = getKey.call(thisArg, item, indexOrKey);
-                var value = getValue.call(thisArg, item, indexOrKey);
+                var key = !utilsInstance.isString(getKey) ? getKey.call(thisArg, item, indexOrKey) : item[getKey];
+                var value = !utilsInstance.isString(getValue) ? getValue.call(thisArg, item, indexOrKey) : item[getValue];
 
                 if (key !== undefined) {
                     result[key] = value;

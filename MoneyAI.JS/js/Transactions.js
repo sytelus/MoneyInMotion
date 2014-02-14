@@ -20,13 +20,18 @@
 
     var Transactions = function (jsonData) {
         if (jsonData) {
-            utils.extend(this, jsonData);
+            utils.extend(this, jsonData);   //Set prototype
 
             this.items = utils.map(this.topItems, "Value");
             delete this.topItems;
 
             this.itemsById = {};
             addTransactionById(this, this.items);
+
+            this.accountInfosById = utils.toObject(this.accountInfos, "Key", "Value");
+            delete this.accountInfos;
+            this.importInfosById = utils.toObject(this.importInfos, "Key", "Value");
+            delete this.importInfos;
         }
 
         this.cachedValues = { editsById: {} };

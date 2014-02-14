@@ -191,7 +191,7 @@
                     <li><span class="txSummaryName">TransactionReason &nbsp </span><span class="txSummaryValue" data-bind="text: transactionReason"></span></li>
                     <li><span class="txSummaryName">Amount &nbsp </span><span class="txSummaryValue" data-bind="text: $root.formateCurrency(amount)"></span></li>
                     <li><span class="txSummaryName">Account ID &nbsp </span><span class="txSummaryValue" data-bind="text: accountId"></span></li>
-                    <li><span class="txSummaryName">Import ID &nbsp </span><span class="txSummaryValue" data-bind="text: importId"></span></li>
+                    <li><span class="txSummaryName">Import Path &nbsp </span><span class="txSummaryValue" data-bind="text: $root.getImportPath(importId)"></span></li>
                     <li><span class="txSummaryName">ID &nbsp </span><span class="txSummaryValue" data-bind="text: id"></span></li>
                     <li data-bind="if: $data.lineNumber"><span class="txSummaryName">Line# &nbsp </span><span class="txSummaryValue" data-bind="text: lineNumber"></span></li>
                     <li data-bind="if: $data.instituteReference"><span class="txSummaryName">Institute Ref# &nbsp </span><span class="txSummaryValue" data-bind="text: instituteReference"></span></li>

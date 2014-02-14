@@ -25,10 +25,16 @@ namespace MoneyAI.Repositories.StatementParsers
 
             importedValues.LineItemType = importedValues.ProviderAttributes.ContainsKey(@"item subtotal") ? LineItemType.ItemSubtotal : LineItemType.None;
 
-            if (importedValues.LineItemType != LineItemType.None)
+            importedValues.ParentChildMatchFilter = string.Concat(importedValues.ProviderAttributes[@"order id"], "|", importedValues.ProviderAttributes[@"carrier name & tracking number"]);
+            importedValues.InstituteReference = this.SetImportedValueText(importedValues.InstituteReference, importedValues.ParentChildMatchFilter, StatementColumnType.InstituteReference);
+            importedValues.SubAccountName = this.SetImportedValueText(importedValues.SubAccountName, importedValues.ProviderAttributes[@"buyer name"], StatementColumnType.SubAccountName);
+
+            if (importedValues.LineItemType != LineItemType.None)   //if this is individual item
             {
                 importedValues.Amount = this.ParseAmount(importedValues.ProviderAttributes[@"item subtotal"]) * -1;
                     //+ this.ParseAmount(importedValues.ProviderAttributes[@"item subtotal tax"])) ;    //Looks like this field does not add up to main order
+
+                importedValues.EntityId = importedValues.ProviderAttributes[@"asin/isbn"];
             }
             else
             {
@@ -42,11 +48,8 @@ namespace MoneyAI.Repositories.StatementParsers
                 importedValues.ProviderAttributes[@"tax charged"] = (-1M *  //shipping should be -ve amount
                     this.ParseAmount(importedValues.ProviderAttributes[@"tax charged"])).ToStringInvariant();
             }
-            
+
             importedValues.TransactionReason = importedValues.Amount <= 0 ? TransactionReason.Purchase : TransactionReason.Return;
-            importedValues.ParentChildMatchFilter = string.Concat(importedValues.ProviderAttributes[@"order id"], "|", importedValues.ProviderAttributes[@"carrier name & tracking number"]);
-            importedValues.InstituteReference = this.SetImportedValueText(importedValues.InstituteReference, importedValues.ParentChildMatchFilter, StatementColumnType.InstituteReference);
-            importedValues.SubAccountName = this.SetImportedValueText(importedValues.SubAccountName, importedValues.ProviderAttributes[@"buyer name"], StatementColumnType.SubAccountName);
 
             if (string.IsNullOrWhiteSpace(importedValues.EntityName))
             {

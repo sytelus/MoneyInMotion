@@ -62,6 +62,9 @@ namespace MoneyAI
         [DataMember(IsRequired = true, Name = "entityName")]
         public string EntityName { get; private set; }
 
+        [DataMember(IsRequired = false, Name = "entityId")]
+        public string EntityId { get; private set; }
+
         [DataMember(IsRequired = true, Name = "amount")]
         public decimal Amount { get; private set; }
 
@@ -193,6 +196,7 @@ namespace MoneyAI
             this.RequiresParent = importedValues.RequiresParent ?? accountInfo.RequiresParent;
             this.Amount = importedValues.Amount.Value;
             this.EntityName = importedValues.EntityName;
+            this.EntityId = importedValues.EntityId;
             this.EntityNameNormalized = importedValues.EntityNameNormalized ?? GetEntityNameNormalized(this.EntityName);
             this.PostedDate = importedValues.PostedDate;
             this.TransactionDate = importedValues.TransactionDate.Value;
@@ -221,11 +225,19 @@ namespace MoneyAI
             return Utils.GetMD5HashString(string.Join("\t", content), true);
         }
 
+        private string GetEntityIdOrName()
+        {
+            if (string.IsNullOrWhiteSpace(this.EntityId))
+                return this.EntityName;
+            else
+                return this.EntityId;
+        }
+
         private IEnumerable<string> GetContent()
         {
             return Utils.AsEnumerable(
                 this.AccountId, this.TransactionReason.ToString(),
-                this.Amount.ToString(), this.EntityName.EmptyIfNull().ToUpperInvariant()
+                this.Amount.ToString(), this.GetEntityIdOrName().EmptyIfNull().ToUpperInvariant()
                 , this.PostedDate.IfNotNullValue(p => p.ToString("u")), this.TransactionDate.ToString("u"), this.InstituteReference);
         }
 

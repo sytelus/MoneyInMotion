@@ -160,12 +160,12 @@
             enableEdits: options.enableEdits, enableIndicators: options.enableIndicators, enableExpandCollapse: options.enableGrouping
         });
 
-        var onLeadCallback = function (tx, parents) {
+        var onLeafCallback = function (tx, parents) {
             self.aggregator.add(tx, parents);
         };
 
         utils.forEach(txItems, function (tx) {
-            traverseChilds(tx, [], onLeadCallback);
+            traverseChilds(tx, [], onLeafCallback);
         });
 
         this.aggregator.finalize();
