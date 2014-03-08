@@ -170,7 +170,9 @@
 
         this.aggregator.finalize();
 
-        this.aggregator.netIncomeAmount = this.aggregator.subAggregators["Income"].sum + this.aggregator.subAggregators["Expense"].sum;
+        this.aggregator.netIncomeAmount = options.enableGrouping ? 
+            this.aggregator.subAggregators["Income"].sum + this.aggregator.subAggregators["Expense"].sum :
+            this.aggregator.subAggregators["flatAggregator"].sum;
     };
 
     var proto = {
