@@ -67,7 +67,7 @@
     <Compile Include="Transactions.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CommonUtils\CommonUtils.csproj">
+    <ProjectReference Include="..\External\DotNetCommonUtils\CommonUtils\CommonUtils.csproj">
       <Project>{D60B2856-0341-4481-AFDD-DE70532B6884}</Project>
       <Name>CommonUtils</Name>
     </ProjectReference>

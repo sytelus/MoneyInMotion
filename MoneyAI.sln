@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.21126.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonUtils", "CommonUtils\CommonUtils.csproj", "{D60B2856-0341-4481-AFDD-DE70532B6884}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonUtils", "External\DotNetCommonUtils\CommonUtils\CommonUtils.csproj", "{D60B2856-0341-4481-AFDD-DE70532B6884}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonUtilsTests", "CommonUtilsTests\CommonUtilsTests.csproj", "{27EE3EA4-2EF7-405A-8C5C-CD4624433DE6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonUtilsTests", "External\DotNetCommonUtils\CommonUtilsTests\CommonUtilsTests.csproj", "{27EE3EA4-2EF7-405A-8C5C-CD4624433DE6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoneyAI", "MoneyAI\MoneyAI.csproj", "{49E1703C-6F0E-4791-8037-39769AC6A0E4}"
 EndProject

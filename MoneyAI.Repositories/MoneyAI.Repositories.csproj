@@ -63,7 +63,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CommonUtils\CommonUtils.csproj">
+    <ProjectReference Include="..\External\DotNetCommonUtils\CommonUtils\CommonUtils.csproj">
       <Project>{d60b2856-0341-4481-afdd-de70532b6884}</Project>
       <Name>CommonUtils</Name>
     </ProjectReference>
