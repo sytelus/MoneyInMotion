@@ -1,47 +1,45 @@
-#Project specific files
-**/Web.Release.Config
-**/External Stuff/
-
-#OS junk files
-**/[Tt]humbs.db
-**/*.DS_Store
-
 #Visual Studio files
-**/*.pch
-**/*.vspscc
-**/*.vssscc
-**/*_i.c
-**/*_p.c
-**/*.ncb
-**/*.suo
-**/*.sln.DotSettings.user
-**/[Oo]bj/
-**/[Bb]in
-**/[Dd]ebug*/
-**/[Rr]elease*/
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.sln.DotSettings.user
+[Oo]bj/
+*.scc
+Web.Release.Config
+*.publishsettings
+
+# Build results
+[Oo]bj/
+[Tt]est[Rr]esult*/
 
 #Tooling
-**/_ReSharper*/
-**/*.resharper
-**/[Tt]est[Rr]esult*
-
-#Project files
-**/[Bb]uild/
-**/TestResults/
+_ReSharper*/
+*.[Rr]e[Ss]harper
 
 #Subversion files
-**/.svn
+*.svn
 
 # Office Temp Files
-**/~$*
+~$*
 
 #PII/large files
-**/data/
-**/App_Data/
+data/
+App_Data/
 
 #JS build
 **/.tmp
 **/.sass-cache
 
 #node
-**/npm-debug.log
+npm-debug.log
+
+#OS junk files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
