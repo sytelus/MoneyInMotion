@@ -170,6 +170,7 @@
 
         this.aggregator.finalize();
 
+        //TODO: High Pri: If there is no income or expense, thigs will bomb
         this.aggregator.netIncomeAmount = options.enableGrouping ? 
             this.aggregator.subAggregators["Income"].sum + this.aggregator.subAggregators["Expense"].sum :
             this.aggregator.subAggregators["flatAggregator"].sum;

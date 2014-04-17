@@ -7,13 +7,13 @@
 *.ncb
 *.suo
 *.sln.DotSettings.user
-[Oo]bj/
 *.scc
 Web.Release.Config
 *.publishsettings
 
 # Build results
 [Oo]bj/
+[Dd]ebug/
 [Tt]est[Rr]esult*/
 
 #Tooling

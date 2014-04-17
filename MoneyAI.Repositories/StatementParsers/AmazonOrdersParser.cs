@@ -76,10 +76,9 @@ namespace MoneyAI.Repositories.StatementParsers
         protected override bool ValidateImportedValues(Transaction.ImportedValues importedValues)
         {
             //TODO: handle pre-orders?
-            if (string.Equals(importedValues.ProviderAttributes[@"shipment/order condition"], @"Shipment planned", StringComparison.CurrentCultureIgnoreCase))
-            {
+            var shippingStatus = importedValues.ProviderAttributes[@"shipment/order condition"].ToLowerInvariant();
+            if (shippingStatus == @"shipment planned" || shippingStatus == "shipping soon")
                 return false;
-            }
 
             return base.ValidateImportedValues(importedValues);
         }
