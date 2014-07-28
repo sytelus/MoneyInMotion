@@ -32,13 +32,14 @@ namespace MoneyAI
         IncomeAdjustment = 1 << 13,
         MatchAdjustmentCredit = 1 << 14,
         MatchAdjustmentDebit = 1 << 15,
-        PayMentRecieved = 1 << 16,
+        PaymentRecieved = 1 << 16,
+        CashAdvance = 1 << 17,
 
         //Used temporarily for transaction creation but this value should never be assigned to transaction (its validated)
         UnknownAdjustment = ExpenseAdjustment | IncomeAdjustment,
 
-        NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment | ExpenseAdjustment | MatchAdjustmentDebit,
-        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest | DiscountRecieved | IncomeAdjustment | MatchAdjustmentCredit | PayMentRecieved,
+        NetOutgoing = Purchase | Fee | CheckPayment | AtmWithdrawal | LoanPayment | ExpenseAdjustment | MatchAdjustmentDebit | CashAdvance,
+        NetIncoming = Return | PointsCredit | OtherCredit | CheckRecieved | Interest | DiscountRecieved | IncomeAdjustment | MatchAdjustmentCredit | PaymentRecieved,
         NetInterAccount = InterAccountPayment | InterAccountTransfer
     }
 

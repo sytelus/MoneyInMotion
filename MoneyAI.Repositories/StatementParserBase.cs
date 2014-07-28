@@ -248,6 +248,8 @@ namespace MoneyAI.Repositories
                     return TransactionReason.Return;
                 case "FEE":
                     return TransactionReason.Fee;
+                case "CASH ADVANCE":
+                    return TransactionReason.CashAdvance;
                 default:
                     throw new ArgumentException("raw TransactionType {0} is not known".FormatEx(columnValue), "columnValue");
             }

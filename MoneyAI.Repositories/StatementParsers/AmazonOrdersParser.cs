@@ -76,7 +76,10 @@ namespace MoneyAI.Repositories.StatementParsers
         protected override bool ValidateImportedValues(Transaction.ImportedValues importedValues)
         {
             //TODO: handle pre-orders?
-            var shippingStatus = importedValues.ProviderAttributes[@"shipment/order condition"].ToLowerInvariant();
+            //Amazon renamed column @"shipment/order condition" to @"order status" sometime between Mar & Jul 2014
+            var shippingStatus = (importedValues.ProviderAttributes.GetValueOrDefault(@"shipment/order condition")
+                        ?? importedValues.ProviderAttributes[@"order status"]
+                    ).ToLowerInvariant();
             if (shippingStatus == @"shipment planned" || shippingStatus == "shipping soon")
                 return false;
 

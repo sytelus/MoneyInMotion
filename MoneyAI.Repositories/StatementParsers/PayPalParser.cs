@@ -110,7 +110,7 @@ namespace MoneyAI.Repositories.StatementParsers
                             importedValues.TransactionReason = TransactionReason.Purchase;
                             break;
                         case "Payment Received":
-                            importedValues.TransactionReason = TransactionReason.PayMentRecieved;
+                            importedValues.TransactionReason = TransactionReason.PaymentRecieved;
                             break;
                         default:
                             throw new Exception("Cannot determine TransactionReason for PayPal Type '{0}'".FormatEx(payPalType));

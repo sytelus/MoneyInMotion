@@ -19,7 +19,9 @@
         { key: "DiscountRecieved", value: 1 << 12, title: "Discount", pluralTitle: "Discounts", category: "Expense" },
         { key: "IncomeAdjustment", value: 1 << 13, title: "Adjustment (Credit)", pluralTitle: "Adjustments (Credit)", category: "Income" },
         { key: "MatchAdjustmentCredit", value: 1 << 14, title: "Match Adjustment (Credit)", pluralTitle: "Match Adjustments (Credit)", category: "Expense" },
-        { key: "MatchAdjustmentDebit", value: 1 << 15, title: "Match Adjustment (Debit)", pluralTitle: "Match Adjustments (Debit)", category: "Expense" }
+        { key: "MatchAdjustmentDebit", value: 1 << 15, title: "Match Adjustment (Debit)", pluralTitle: "Match Adjustments (Debit)", category: "Expense" },
+        { key: "PaymentRecieved", value: 1 << 16, title: "Payment Recieved", pluralTitle: "Payments Recieved", category: "Income" },
+        { key: "CashAdvance", value: 1 << 17, title: "Cash Advance", pluralTitle: "Cash Advances", category: "Expense" }
     ];
 
     //public
