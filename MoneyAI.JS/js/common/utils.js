@@ -129,7 +129,7 @@
             return moment(date).format("MM");
         },
         now: function() {
-            return new moment();
+            return moment();
         },
 
         getEventCurrentTarget: function(event) {

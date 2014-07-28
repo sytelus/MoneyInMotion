@@ -53,7 +53,7 @@
                     titleHtml:"Mark Transactions",
                     afterDestroy: function (isOkOrCancel, viewModel) {
                         if (isOkOrCancel) {
-                            endDate: utils.now().format("YYYY-MM-DD")
+                            utils.now().format("YYYY-MM-DD");
                             utils.triggerEvent(self, "markTx", [
                                 utils.parseDate(viewModel.startDate, "YYYY-MM-DD"),
                                 utils.parseDate(viewModel.endDate, "YYYY-MM-DD")]);
