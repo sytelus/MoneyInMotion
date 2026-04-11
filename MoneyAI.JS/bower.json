@@ -7,14 +7,14 @@
     "requirejs-domready": "~2.0.1",
     "javascript-debug": "latest",
     "lodash": "~2.2.1",
-    "jquery.hotkeys": "git://github.com/jeresig/jquery.hotkeys",
+    "jquery.hotkeys": "https://github.com/jeresig/jquery.hotkeys",
     "jquery.cookie": "latest",
     "modernizr": "latest",
     "momentjs": "latest",
-    "buckets": "git://github.com/sytelus/buckets",
+    "buckets": "https://github.com/sytelus/buckets",
     "requirejs-text": "latest",
     "handlebars": "latest",
-    "jquery.ba-bbq": "git://github.com/DerDu/jquery-bbq#patch-1",
+    "jquery.ba-bbq": "https://github.com/DerDu/jquery-bbq#patch-1",
     "accounting": "latest",
     "bootstrap": "latest",
     "less.js": "latest",
@@ -22,9 +22,9 @@
     "cryptojslib": "~3.1.2",
     "uuid-js": "~0.7.5",
     "json3": "~3.2.6",
-    "knockoutjs": "git://github.com/sytelus/knockout#78bf1c1d8fbd9be1e92abf97949885dc6ff9a7ab",
+    "knockoutjs": "https://github.com/sytelus/knockout#78bf1c1d8fbd9be1e92abf97949885dc6ff9a7ab",
     "mousetrap": "~1.4.6",
     "typeahead.js": "~0.9.3",
-	"typeahead-less": "git://github.com/hyspace/typeahead.js-bootstrap3.less"
+	"typeahead-less": "https://github.com/hyspace/typeahead.js-bootstrap3.less"
   }
 }

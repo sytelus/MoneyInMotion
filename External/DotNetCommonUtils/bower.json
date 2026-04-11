@@ -5,6 +5,6 @@
   "homepage": "https://github.com/sytelus/dotnetcommonutils",
   "repository": {
     "type": "git",
-    "url": "git://github.com/sytelus/dotnetcommonutils.git"
+    "url": "https://github.com/sytelus/dotnetcommonutils.git"
   }
 }

@@ -1,4 +1,4 @@
-#Visual Studio files
+# Visual Studio files
 *.pch
 *.vspscc
 *.vssscc
@@ -8,39 +8,62 @@
 *.suo
 *.sln.DotSettings.user
 *.scc
-Web.Release.Config
 *.publishsettings
+*.user
+*.userosscache
+*.dbmdl
+*.jmconfig
+.vs/
+Web.Release.Config
 
 # Build results
+[Bb]in/
 [Oo]bj/
 [Dd]ebug/
 [Rr]elease/
 [Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
 
-#Tooling
+# NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+!**/packages/*.config
+
+# Tooling
 _ReSharper*/
 *.[Rr]e[Ss]harper
+*.DotSettings.user
 
-#Subversion files
+# Subversion files
 *.svn
 
 # Office Temp Files
 ~$*
 
-#PII/large files
+# PII/large files
 data/
 App_Data/
 
-#JS build
+# JS build
 **/.tmp
 **/.sass-cache
+**/dist/
 
-#node
+# Node
+node_modules/
 npm-debug.log
+yarn-error.log
+package-lock.json
 
-#OS junk files
+# Bower
+bower_components/
+
+# OS junk files
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+*.swp
+*~
