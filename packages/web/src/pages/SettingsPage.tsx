@@ -138,9 +138,16 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               {pathSaved && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <Check className="h-4 w-4" />
-                  Path updated successfully
+                <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-3 text-sm space-y-1">
+                  <p className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium">
+                    <Check className="h-4 w-4" />
+                    Path saved to config file.
+                  </p>
+                  <p className="text-xs text-green-700/80 dark:text-green-400/80">
+                    The running server is still using the old path. Restart
+                    the server (stop with Ctrl+C and re-run <code>./run.sh</code>)
+                    for this change to take effect.
+                  </p>
                 </div>
               )}
 

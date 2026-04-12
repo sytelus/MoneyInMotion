@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { Button } from '../ui/button.js';
 import { Input } from '../ui/input.js';
 import { ScopeFilterEditor } from './ScopeFilterEditor.js';
+import { EditConfirmDialog } from './EditConfirmDialog.js';
 import { useApplyEdits } from '../../api/hooks.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { generateEditId } from '../../lib/utils.js';
@@ -89,13 +90,42 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
       .slice(0, 20);
   }, [categoryInput, allCategoryPaths]);
 
+  // Transaction(s) affected by the current edit, displayed in the
+  // bulk-edit confirmation dialog before the edit is applied.
+  const [pendingEdit, setPendingEdit] = useState<TransactionEditData | null>(null);
+  const [affectedTxns, setAffectedTxns] = useState<Transaction[]>([]);
+
   const handleScopeChange = useCallback((filters: ScopeFilter[]) => {
     setScopeFilters(filters);
   }, []);
 
+  /** Apply the edit to the server and close the dialog on success. */
+  const applyEdit = useCallback(
+    (edit: TransactionEditData) => {
+      applyEdits.mutate([edit], {
+        onSuccess: () => {
+          setPendingEdit(null);
+          onOpenChange(false);
+        },
+        onError: (err) => {
+          setError(err instanceof Error ? err.message : 'Failed to save category');
+        },
+      });
+    },
+    [applyEdits, onOpenChange],
+  );
+
   const handleSubmit = () => {
+    // Inline validation
     const path = parseCategoryPath(categoryInput);
-    if (path.length === 0) return;
+    if (path.length === 0) {
+      setError('Category path cannot be empty. Use "Shopping > Electronics" format.');
+      return;
+    }
+    if (scopeFilters.length === 0) {
+      setError('At least one scope filter is required.');
+      return;
+    }
 
     const edit: TransactionEditData = {
       id: generateEditId(),
@@ -111,17 +141,28 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
     };
 
     setError(null);
-    applyEdits.mutate([edit], {
-      onSuccess: () => {
-        onOpenChange(false);
-      },
-      onError: (err) => {
-        setError(err instanceof Error ? err.message : 'Failed to save category');
-      },
-    });
+
+    // For bulk edits (anything beyond a single-transaction scope), show
+    // the confirmation dialog with affected-row preview first.
+    const isSingleTx =
+      scopeFilters.length === 1 &&
+      scopeFilters[0]!.type === ScopeType.TransactionId &&
+      scopeFilters[0]!.parameters.length === 1;
+
+    if (!isSingleTx && transactions) {
+      const affected = transactions.filterTransactions(edit);
+      if (affected.length > 1) {
+        setPendingEdit(edit);
+        setAffectedTxns(affected);
+        return;
+      }
+    }
+
+    applyEdit(edit);
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Edit Category" description={`Set category for "${transaction.displayEntityNameNormalized}"`}>
         <div className="space-y-4">
@@ -183,13 +224,24 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={parseCategoryPath(categoryInput).length === 0 || applyEdits.isPending}
+            disabled={applyEdits.isPending}
           >
             {applyEdits.isPending ? 'Saving...' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Bulk-edit preview shown before applying a scope that matches >1 row */}
+    <EditConfirmDialog
+      open={pendingEdit !== null}
+      onOpenChange={(o) => { if (!o) setPendingEdit(null); }}
+      affectedCount={affectedTxns.length}
+      affectedNames={affectedTxns.map((t) => t.displayEntityNameNormalized)}
+      onConfirm={() => pendingEdit && applyEdit(pendingEdit)}
+      isPending={applyEdits.isPending}
+    />
+    </>
   );
 };
 
