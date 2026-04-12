@@ -52,38 +52,52 @@ This installs dependencies for `@moneyinmotion/core`, `@moneyinmotion/server`, a
 
 ---
 
-## Development Mode
+## Running the Application
 
-Start both the API server and the web dev server concurrently:
+MoneyInMotion can run in two modes: **development** and **production**. Both modes share the same data, features, and UX — the only differences are performance, startup, and whether source changes are picked up live.
+
+### Dev Mode
+
+```bash
+./run.sh
+```
+
+Equivalent to:
 
 ```bash
 npm run dev
 ```
 
-This runs:
-- **Server**: `tsx watch src/index.ts` on port 3001 (auto-restarts on file changes)
-- **Web**: `vite` dev server on port 5173 (with hot module replacement, proxying `/api` to the server)
+This starts:
+- **Vite dev server** on port 5173 (serves the React frontend with hot module replacement)
+- **Express API server** on port 3001 (via `tsx watch`, auto-restarts on file changes)
 
-You can also start them individually:
+Open `http://localhost:5173` in your browser. Vite proxies `/api/*` requests to port 3001.
+
+You can also start the two processes individually:
 
 ```bash
-npm run dev:server   # Start only the API server
-npm run dev:web      # Start only the Vite dev server
+npm run dev:server   # Only the API server
+npm run dev:web      # Only the Vite dev server
 ```
 
-Open `http://localhost:5173` in your browser to use the application.
+**Use dev mode when:** actively modifying source code. You get live reload, source maps, and unminified code in DevTools.
 
----
+### Production Mode
 
-## Production Build
+First, build:
 
-Build all packages in dependency order (core -> server -> web):
+```bash
+./build.sh
+```
+
+Equivalent to:
 
 ```bash
 npm run build
 ```
 
-Or build individual packages:
+You can also build individual packages:
 
 ```bash
 npm run build:core     # TypeScript compilation only
@@ -91,16 +105,44 @@ npm run build:server   # TypeScript compilation only
 npm run build:web      # TypeScript check + Vite production build
 ```
 
-### Running in Production
+Then run:
 
-After building, start the server:
+```bash
+./run.sh prod
+```
+
+Equivalent to:
 
 ```bash
 cd packages/server
-node dist/index.js
+NODE_ENV=production node dist/index.js
 ```
 
-When `NODE_ENV=production`, the Express server serves the built web assets from `packages/web/dist/` as static files with SPA fallback routing. Access the application at `http://localhost:3001`.
+When `NODE_ENV=production`, the Express server also serves the built web assets from `packages/web/dist/` as static files, with SPA fallback routing. Open `http://localhost:3001` in your browser — the frontend and API live on the same port.
+
+**Use production mode when:** deploying, benchmarking, or running for real everyday use. It starts faster, uses less memory, runs as a single process, and serves minified assets.
+
+### Dev vs Production — What's Different?
+
+| Aspect | Dev | Production |
+|--------|-----|-----------|
+| **Data** | Same | Same |
+| **Features** | Same | Same |
+| **UX / UI** | Same | Same |
+| **Keyboard shortcuts** | Same | Same |
+| **API behaviour** | Same | Same |
+| **URL** | `http://localhost:5173` | `http://localhost:3001` |
+| **Processes** | 2 (Vite + tsx) | 1 (node) |
+| **TypeScript** | Compiled live | Pre-compiled |
+| **Bundle** | Unminified | Minified + tree-shaken |
+| **Hot reload** | Yes | No |
+| **Startup** | Slower | Faster |
+| **Memory footprint** | Higher | Lower |
+| **Requires build?** | No | Yes (`./build.sh` first) |
+
+**Important:** Both modes read and write the same `~/.moneyinmotion/config.json` and the same data directory. You can stop one mode and start the other; you will see the same transactions, edits, flags, notes, and categories. There is no feature flag or code path that behaves differently in the two modes — `NODE_ENV=production` only controls whether the Express server also serves the React build as static files.
+
+**Recommendation for personal use:** use production mode. It's faster, uses less memory, has one URL to remember, and offers no feature downgrade.
 
 ---
 

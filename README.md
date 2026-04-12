@@ -35,10 +35,19 @@ cd MoneyInMotion
 ### Start the application
 
 ```bash
-npm run dev
+./run.sh            # dev mode -- http://localhost:5173
 ```
 
-Open `http://localhost:5173` in your browser. The **Getting Started** guide walks you through setup — no need to read docs first.
+Or, for a faster, leaner production-mode run:
+
+```bash
+./build.sh          # compile and bundle
+./run.sh prod       # prod mode -- http://localhost:3001
+```
+
+Both modes share the exact same data, features, and UX — see [Install and Build](docs/04-install-and-build.md#dev-vs-production--whats-different) for the full comparison. For personal use, production mode is recommended.
+
+Open the URL shown in the terminal. The **Getting Started** guide walks you through setup — no need to read docs first.
 
 ### Updating
 
@@ -156,7 +165,12 @@ MoneyInMotion is an npm workspaces monorepo with three packages:
 
 | Command | Description |
 |---------|-------------|
-| `npm install` | Install all dependencies |
+| `./install.sh` | Install or update dependencies (checks tools, pulls latest) |
+| `./run.sh` | Start in dev mode (hot reload, port 5173) |
+| `./run.sh prod` | Start in production mode (port 3001, requires `./build.sh` first) |
+| `./build.sh` | Production build of all packages |
+| `./build.sh test` | Build and run tests |
+| `npm install` | Install all dependencies (manual alternative to `./install.sh`) |
 | `npm run dev` | Start server + web dev servers concurrently |
 | `npm run dev:server` | Start only the API server (port 3001) |
 | `npm run dev:web` | Start only the Vite dev server (port 5173) |
