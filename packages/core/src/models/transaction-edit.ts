@@ -275,8 +275,7 @@ export function mergeEditedValues(
         target[key] = null;
       } else {
         // Case 1: apply the new value
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key access requires this cast
-        (target as Record<string, unknown>)[key] = srcField;
+        target[key] = srcField;
       }
     }
     // Case 2 (srcField is null/undefined): leave target[key] as-is

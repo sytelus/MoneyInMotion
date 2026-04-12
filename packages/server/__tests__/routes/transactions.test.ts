@@ -13,6 +13,7 @@ import request from 'supertest';
 import express from 'express';
 import { createConfigRouter } from '../../src/routes/config.js';
 import { createAccountsRouter } from '../../src/routes/accounts.js';
+import { createHealthRouter } from '../../src/routes/health.js';
 import { createTransactionsRouter } from '../../src/routes/transactions.js';
 import { createTransactionEditsRouter } from '../../src/routes/transaction-edits.js';
 import type { TransactionCache } from '../../src/cache/transaction-cache.js';
@@ -58,11 +59,25 @@ function createTestApp(
 ): express.Express {
     const app = express();
     app.use(express.json());
+    app.use('/api/health', createHealthRouter());
     app.use('/api/config', createConfigRouter(() => config));
     app.use('/api/accounts', createAccountsRouter(() => config, cache));
     app.use('/api/transactions', createTransactionsRouter(cache));
     app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
     return app;
+}
+
+interface AccountSummaryResponse {
+    config: {
+        accountInfo: {
+            id: string;
+        };
+    };
+    stats: {
+        transactionCount: number;
+        lastImportedAt: string | null;
+    };
+    hasStatementFiles: boolean;
 }
 
 function writeAccountConfig(
@@ -180,6 +195,22 @@ describe('config routes', () => {
     });
 });
 
+describe('health routes', () => {
+    it('GET /api/health returns a liveness payload', async () => {
+        const config = createTestConfig();
+        const cache = createMockCache();
+        const app = createTestApp(config, cache);
+
+        const res = await request(app).get('/api/health');
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('ok');
+        expect(typeof res.body.environment).toBe('string');
+        expect(typeof res.body.timestamp).toBe('string');
+        expect(typeof res.body.uptimeSeconds).toBe('number');
+    });
+});
+
 describe('accounts routes', () => {
     let tempDir: string;
 
@@ -227,12 +258,17 @@ describe('accounts routes', () => {
         expect(res.status).toBe(200);
         expect(res.body).toHaveLength(2);
 
-        const checking = res.body.find((item: any) => item.config.accountInfo.id === 'acct-checking');
+        const body = res.body as AccountSummaryResponse[];
+        const checking = body.find(
+            (item) => item.config.accountInfo.id === 'acct-checking',
+        );
         expect(checking.stats.transactionCount).toBe(2);
         expect(checking.stats.lastImportedAt).toBe('2024-02-01T08:00:00Z');
         expect(checking.hasStatementFiles).toBe(false);
 
-        const credit = res.body.find((item: any) => item.config.accountInfo.id === 'acct-credit');
+        const credit = body.find(
+            (item) => item.config.accountInfo.id === 'acct-credit',
+        );
         expect(credit.stats.transactionCount).toBe(1);
         expect(credit.hasStatementFiles).toBe(true);
     });

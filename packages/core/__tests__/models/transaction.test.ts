@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
     Transaction,
     type ImportedValues,
-    type TransactionData,
 } from '../../src/models/transaction.js';
 import { TransactionReason, UnknownAdjustment } from '../../src/models/transaction-reason.js';
 import { editValue, type TransactionEditData } from '../../src/models/transaction-edit.js';

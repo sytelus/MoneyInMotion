@@ -19,6 +19,7 @@ import { FileRepository } from './storage/file-repository.js';
 import { TransactionCache } from './cache/transaction-cache.js';
 import { createConfigRouter } from './routes/config.js';
 import { createAccountsRouter } from './routes/accounts.js';
+import { createHealthRouter } from './routes/health.js';
 import { createTransactionsRouter } from './routes/transactions.js';
 import { createTransactionEditsRouter } from './routes/transaction-edits.js';
 import { createImportRouter } from './routes/import.js';
@@ -58,6 +59,7 @@ export function createApp(config: ServerConfig): Express & { cache: TransactionC
 
     // --- Routes ---
 
+    app.use('/api/health', createHealthRouter());
     app.use('/api/config', createConfigRouter(getConfig));
     app.use('/api/accounts', createAccountsRouter(getConfig, cache));
     app.use('/api/transactions', createTransactionsRouter(cache));

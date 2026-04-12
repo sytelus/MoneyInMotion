@@ -13,7 +13,7 @@
  * @module
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 
 export interface KeyboardShortcutActions {
   /** Open the category editor dialog. */
@@ -57,82 +57,80 @@ function isInputFocused(event: KeyboardEvent): boolean {
 /**
  * Register global keyboard shortcuts for the application.
  *
- * Uses a ref to store the actions so the event listener is registered once
- * and always sees the latest callbacks without re-attaching on every render.
- *
  * @param actions - Callback map for each shortcut action.
  */
 export function useKeyboardShortcuts(actions: KeyboardShortcutActions): void {
-  const actionsRef = useRef(actions);
-  actionsRef.current = actions;
+  const handleShortcut = useEffectEvent((event: KeyboardEvent): void => {
+    const a = actions;
+
+    // Escape always works, even in inputs (to close dialogs)
+    if (event.key === 'Escape') {
+      a.onEscape?.();
+      return;
+    }
+
+    // All other shortcuts require no input focus
+    if (isInputFocused(event)) return;
+
+    // Arrow key shortcuts for group expand/collapse
+    // Note: Up/Down arrow navigation is handled in TransactionList component
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      a.onCollapseGroup?.();
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      if (event.altKey) {
+        a.onExpandAll?.();
+      } else {
+        a.onExpandGroup?.();
+      }
+      return;
+    }
+
+    // `?` key — show help dialog
+    if (event.key === '?') {
+      event.preventDefault();
+      a.onShowHelp?.();
+      return;
+    }
+
+    // Alt+key shortcuts
+    if (event.altKey) {
+      switch (event.key.toLowerCase()) {
+        case 't':
+          event.preventDefault();
+          a.onEditCategory?.();
+          return;
+        case 'n':
+          event.preventDefault();
+          a.onEditNote?.();
+          return;
+        case 'e':
+          event.preventDefault();
+          a.onEditAttributes?.();
+          return;
+        case 'f':
+          event.preventDefault();
+          if (event.shiftKey) {
+            a.onRemoveFlag?.();
+          } else {
+            a.onToggleFlag?.();
+          }
+          return;
+      }
+    }
+  });
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
-      const a = actionsRef.current;
-
-      // Escape always works, even in inputs (to close dialogs)
-      if (event.key === 'Escape') {
-        a.onEscape?.();
-        return;
-      }
-
-      // All other shortcuts require no input focus
-      if (isInputFocused(event)) return;
-
-      // Arrow key shortcuts for group expand/collapse
-      // Note: Up/Down arrow navigation is handled in TransactionList component
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault();
-        a.onCollapseGroup?.();
-        return;
-      }
-      if (event.key === 'ArrowRight') {
-        event.preventDefault();
-        if (event.altKey) {
-          a.onExpandAll?.();
-        } else {
-          a.onExpandGroup?.();
-        }
-        return;
-      }
-
-      // `?` key — show help dialog
-      if (event.key === '?') {
-        event.preventDefault();
-        a.onShowHelp?.();
-        return;
-      }
-
-      // Alt+key shortcuts
-      if (event.altKey) {
-        switch (event.key.toLowerCase()) {
-          case 't':
-            event.preventDefault();
-            a.onEditCategory?.();
-            return;
-          case 'n':
-            event.preventDefault();
-            a.onEditNote?.();
-            return;
-          case 'e':
-            event.preventDefault();
-            a.onEditAttributes?.();
-            return;
-          case 'f':
-            event.preventDefault();
-            if (event.shiftKey) {
-              a.onRemoveFlag?.();
-            } else {
-              a.onToggleFlag?.();
-            }
-            return;
-        }
-      }
+      handleShortcut(event);
     }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []); // Register once, actionsRef always has latest callbacks
+  }, []);
 }

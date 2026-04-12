@@ -12,7 +12,7 @@
 import Papa from 'papaparse';
 import type { ImportedValues } from '@moneyinmotion/core';
 import type { ParsedRow } from '../file-format/types.js';
-import { StatementParserBase, StatementColumnType } from './statement-parser-base.js';
+import { StatementParserBase } from './statement-parser-base.js';
 
 /** Fixed Amex column layout (no header row in the CSV). */
 const AMEX_COLUMNS = ['transaction date', 'amex reference', 'amount', 'description', 'other info'];

@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { AccountType } from '@moneyinmotion/core';
 import { AccountsPage } from '../../src/pages/AccountsPage.js';
 import type { AccountSummary } from '../../src/api/client.js';
 
@@ -29,7 +30,7 @@ function makeAccount(overrides?: Partial<AccountSummary>): AccountSummary {
         id: 'acct-checking',
         instituteName: 'TestBank',
         title: 'Checking',
-        type: 2 as any,
+        type: AccountType.BankChecking,
         requiresParent: false,
         interAccountNameTags: ['TRANSFER'],
       },
@@ -95,7 +96,7 @@ describe('AccountsPage', () => {
             id: 'acct-checking',
             instituteName: 'TestBank',
             title: 'Updated Checking',
-            type: 2 as any,
+            type: AccountType.BankChecking,
             requiresParent: false,
             interAccountNameTags: ['AMEX', 'TRANSFER'],
           },

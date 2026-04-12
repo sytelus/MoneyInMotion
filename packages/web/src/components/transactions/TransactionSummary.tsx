@@ -8,7 +8,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Flag } from 'lucide-react';
 import { NetAggregator, type Transaction } from '@moneyinmotion/core';
-import { formatCurrency, formatDate, formatCategoryPath } from '../../lib/utils.js';
+import { formatDate, formatCategoryPath } from '../../lib/utils.js';
 import { AmountDisplay } from './AmountDisplay.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 

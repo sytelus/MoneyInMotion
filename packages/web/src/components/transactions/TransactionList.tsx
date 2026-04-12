@@ -220,7 +220,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
         toggleGroupExpand(sub.groupId);
       }
     }
-  }, [filteredTxns.length, expandedGroupIds.size, toggleGroupExpand]);
+  }, [filteredTxns, expandedGroupIds.size, toggleGroupExpand]);
 
   if (filteredTxns.length === 0) {
     return (

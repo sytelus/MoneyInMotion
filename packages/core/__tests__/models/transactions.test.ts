@@ -7,7 +7,6 @@ import {
 import {
     Transaction,
     type ImportedValues,
-    type TransactionData,
 } from '../../src/models/transaction.js';
 import { TransactionReason } from '../../src/models/transaction-reason.js';
 import {
@@ -576,7 +575,7 @@ describe('deserializeDictionary', () => {
 
 describe('Transactions.fromData', () => {
     it('should deserialize from TransactionsData', () => {
-        const { txns, tx1, tx2 } = makePopulatedTransactions();
+        const { txns, tx1 } = makePopulatedTransactions();
 
         const data = txns.serialize();
         const restored = Transactions.fromData(data);

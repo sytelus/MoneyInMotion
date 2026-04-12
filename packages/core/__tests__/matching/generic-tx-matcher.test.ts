@@ -9,7 +9,6 @@ import { TransactionReason } from '../../src/models/transaction-reason.js';
 import type { AccountInfo } from '../../src/models/account-info.js';
 import { AccountType } from '../../src/models/account-info.js';
 import type { ImportInfo } from '../../src/models/import-info.js';
-import { createAuditInfo } from '../../src/models/audit-info.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

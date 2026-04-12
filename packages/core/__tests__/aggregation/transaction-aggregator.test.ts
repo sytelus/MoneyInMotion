@@ -186,7 +186,7 @@ describe('TransactionAggregator', () => {
         it('should set visibility flags on all nodes', () => {
             const root = new TransactionAggregator({
                 name: 'root',
-                subAggregateFn: (parent, tx) => {
+                subAggregateFn: (parent, _tx) => {
                     const key = 'group';
                     return parent.getOrCreateSub(key, (p) =>
                         new TransactionAggregator({ name: key, parent: p }),
@@ -209,7 +209,7 @@ describe('TransactionAggregator', () => {
         it('should propagate finalize to all sub-aggregators', () => {
             const root = new TransactionAggregator({
                 name: 'root',
-                subAggregateFn: (parent, tx) => {
+                subAggregateFn: (parent, _tx) => {
                     return parent.getOrCreateSub('child', (p) => {
                         return new TransactionAggregator({
                             name: 'child',

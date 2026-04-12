@@ -196,12 +196,17 @@ Config file location: `~/.moneyinmotion/config.json`
 ### Production
 
 ```bash
-npm run build
-cd packages/server
-NODE_ENV=production node dist/index.js
+./build.sh
+./run.sh prod
 ```
 
-The Express server serves the built React app as static files in production mode.
+The Express server serves the built React app as static files in production
+mode. If you prefer to start the server manually, see
+[Production Deployment](docs/08-production-deployment.md).
+
+For containerized deployment, see
+[Production Deployment](docs/08-production-deployment.md). The repo now
+includes a production `Dockerfile` and a health endpoint at `GET /api/health`.
 
 ---
 
@@ -216,6 +221,7 @@ The Express server serves the built React app as static files in production mode
 | [User Guide](docs/05-user-guide.md) | End-user guide for the web interface |
 | [TODO Items](docs/06-todo.md) | Prioritized list of bugs, features, and technical debt |
 | [Business Rules](docs/07-rules.md) | Comprehensive catalog of all business rules in the system |
+| [Production Deployment](docs/08-production-deployment.md) | Docker, environment variables, health checks, and deployment notes |
 
 ---
 

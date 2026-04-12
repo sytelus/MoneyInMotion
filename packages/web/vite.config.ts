@@ -25,5 +25,30 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+
+          // Split the heaviest library groups so the production build does not
+          // collapse into a single large application bundle.
+          if (id.includes('@tanstack/')) {
+            return 'tanstack-vendor';
+          }
+
+          if (id.includes('@radix-ui/')) {
+            return 'radix-vendor';
+          }
+
+          if (id.includes('lucide-react')) {
+            return 'icons-vendor';
+          }
+
+          return 'vendor';
+        },
+      },
+    },
   },
 });

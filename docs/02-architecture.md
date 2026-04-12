@@ -145,6 +145,7 @@ The React single-page application. Key modules:
 |--------|------|-------------|
 | `GET` | `/api/config` | Returns current server configuration (`port`, `dataPath`, `statementsDir`, `mergedDir`) |
 | `PUT` | `/api/config` | Updates configuration (`dataPath` and/or `port`). Validates with Zod. |
+| `GET` | `/api/health` | Returns lightweight liveness information for production health checks |
 | `GET` | `/api/accounts` | Scans `statementsDir` for `AccountConfig.json` files and returns each account plus import stats |
 | `POST` | `/api/accounts` | Creates a new account folder and AccountConfig.json |
 | `PUT` | `/api/accounts/:id` | Updates an existing account configuration |

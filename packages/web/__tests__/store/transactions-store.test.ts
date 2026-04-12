@@ -4,7 +4,13 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useTransactionsStore } from '../../src/store/transactions-store.js';
-import type { TransactionsData, TransactionData } from '@moneyinmotion/core';
+import {
+  AccountType,
+  type AccountInfo,
+  type ImportInfo,
+  type TransactionsData,
+  type TransactionData,
+} from '@moneyinmotion/core';
 
 /**
  * Helper to create a minimal valid TransactionData object.
@@ -38,16 +44,18 @@ function makeTransactionsData(txs: TransactionData[]): TransactionsData {
       'acct-1': {
         id: 'acct-1',
         instituteName: 'TestBank',
-        type: 0, // Checking
+        type: AccountType.BankChecking,
         interAccountNameTags: [],
         requiresParent: false,
-      } as any,
+      } satisfies AccountInfo,
     },
     importInfos: {
       'import-1': {
         id: 'import-1',
+        portableAddress: 'Statements/acct-1/sample.csv',
+        contentHash: 'import-hash-1',
         format: 'csv',
-      } as any,
+      } satisfies ImportInfo,
     },
     edits: [],
   };
@@ -92,7 +100,9 @@ describe('transactions-store', () => {
 
     it('sets error when data is invalid', () => {
       // Pass null to cause fromData to throw
-      useTransactionsStore.getState().setTransactions(null as any);
+      useTransactionsStore.getState().setTransactions(
+        null as unknown as TransactionsData,
+      );
 
       const state = useTransactionsStore.getState();
       expect(state.error).toBeTruthy();

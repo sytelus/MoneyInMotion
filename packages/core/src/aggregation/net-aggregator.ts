@@ -16,7 +16,6 @@
 import { Transaction, type TransactionData } from '../models/transaction.js';
 import {
     isIncoming,
-    isOutgoing,
     isInterAccount,
 } from '../models/transaction-reason.js';
 import { TransactionAggregator } from './transaction-aggregator.js';

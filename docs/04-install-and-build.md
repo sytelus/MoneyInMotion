@@ -122,6 +122,18 @@ When `NODE_ENV=production`, the Express server also serves the built web assets 
 
 **Use production mode when:** deploying, benchmarking, or running for real everyday use. It starts faster, uses less memory, runs as a single process, and serves minified assets.
 
+### Docker
+
+The repository includes a production `Dockerfile`. Build and run it like this:
+
+```bash
+docker build -t moneyinmotion:latest .
+docker run --rm -p 3001:3001 -v /absolute/path/to/data:/data moneyinmotion:latest
+```
+
+See [Production Deployment](08-production-deployment.md) for the full
+container, environment-variable, and health-check guidance.
+
 ### Dev vs Production — What's Different?
 
 | Aspect | Dev | Production |
@@ -192,6 +204,17 @@ The server port can be configured similarly:
 
 The config file is stored at `~/.moneyinmotion/config.json`. The server creates this directory if it does not exist. The config file can also be updated via the Settings page in the web UI or the `PUT /api/config` endpoint.
 
+### Health Endpoint
+
+For production monitoring and orchestration, the server exposes:
+
+```text
+GET /api/health
+```
+
+This returns a small JSON payload containing status, environment, timestamp,
+and uptime.
+
 ---
 
 ## Data Setup
@@ -225,8 +248,11 @@ The server creates these directories automatically if they do not exist.
 |---------|---------|---------|
 | typescript | ^5.7.3 | TypeScript compiler |
 | eslint | ^9.17.0 | Linting |
+| @eslint/js | ^9.39.4 | ESLint flat-config base rules |
 | @typescript-eslint/eslint-plugin | ^8.19.1 | TypeScript ESLint rules |
 | @typescript-eslint/parser | ^8.19.1 | TypeScript ESLint parser |
+| eslint-plugin-react-hooks | ^7.0.1 | React Hooks lint rules |
+| globals | ^17.5.0 | Shared Node/browser global definitions for ESLint |
 | prettier | ^3.4.2 | Code formatting |
 | vitest | ^3.0.4 | Test framework |
 | concurrently | ^9.1.2 | Run server and web dev servers simultaneously |

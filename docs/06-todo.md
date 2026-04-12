@@ -105,10 +105,12 @@ algorithms.
 ### P2 - Code Quality
 
 21. **Expand Web Component Test Coverage**
-    - Core domain logic has strong coverage. Web has only a smoke
-      test for `App` plus the Zustand store tests — add component
-      tests with `@testing-library/react` for the main flows
-      (editing, navigation, empty states).
+    - Core domain logic has strong coverage, and the web layer now
+      covers the app shell, Zustand store, `AccountsPage`, and
+      `SettingsPage`.
+    - Remaining high-value gaps are the transaction editing dialogs,
+      `WelcomePage` import flow, keyboard navigation, and responsive
+      navigation states.
 
 22. **Remove Hardcoded Values**
     - Transfer day tolerance is hardcoded to 3 days.
@@ -129,15 +131,6 @@ algorithms.
     - Standardize error response format across all endpoints.
     - Include request ID for debugging.
     - Add structured error codes beyond HTTP status.
-
-26. **Production Deployment**
-    - Add Dockerfile for containerized deployment.
-    - Document environment variables for production.
-    - Add health check endpoint (`GET /api/health`).
-
-27. **Configure ESLint**
-    - `npm run lint` is currently broken (no `eslint.config.js`).
-    - Either configure ESLint properly or remove the script.
 
 ---
 
@@ -161,6 +154,12 @@ Kept here briefly so reviewers can see what has recently changed.
   previously only editable by hand in `AccountConfig.json` even though the
   transfer matcher and Amazon/Etsy parent-child matcher depend on those
   fields.
+- **Production deployment surface added.** The repo now includes a
+  production `Dockerfile`, `.dockerignore`, a dedicated deployment guide,
+  and `GET /api/health` for container or external health checks.
+- **ESLint is configured and runnable.** The repo now includes
+  `eslint.config.js`, the supporting ESLint dependencies, and a working
+  `npm run lint` command so source issues can be caught automatically.
 - **Bulk edit confirmation wired up.** `CategoryEditor` and
   `AttributeEditor` now compute the affected transactions for any
   non-single-ID scope and show `EditConfirmDialog` with an
@@ -180,3 +179,7 @@ Kept here briefly so reviewers can see what has recently changed.
   `SettingsPage` now makes it clear that the running server still
   uses the old path until restart (the in-memory `FileRepository`
   and `TransactionCache` don't follow PUT /api/config changes).
+- **Route and page test coverage expanded.** Server tests now cover
+  `GET /api/health`, and web tests cover the main account-management
+  and settings flows instead of relying only on the `App` smoke test
+  plus store assertions.
