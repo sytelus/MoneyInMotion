@@ -175,3 +175,13 @@ Kept here briefly so reviewers can see what has recently changed.
   the entity name is blank while "Change Entity Name" is checked,
   the amount is not numeric, or the scope is empty. Invalid edits
   are no longer persisted to the edit log.
+- **Timezone-correct month filtering.** `YearMonthNav` and
+  `transactions-store.getFilteredTransactions` previously used
+  local-timezone date accessors on UTC ISO strings, which
+  mis-categorised transactions near month boundaries for users
+  outside UTC. Both now use `getUTCFullYear` / `getUTCMonth`,
+  with a regression test in `transactions-store.test.ts`.
+- **Settings restart notice.** The "path updated" confirmation in
+  `SettingsPage` now makes it clear that the running server still
+  uses the old path until restart (the in-memory `FileRepository`
+  and `TransactionCache` don't follow PUT /api/config changes).

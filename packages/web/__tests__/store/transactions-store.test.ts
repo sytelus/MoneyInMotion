@@ -212,6 +212,27 @@ describe('transactions-store', () => {
       expect(result[0]!.id).toBe('tx-march');
     });
 
+    it('partitions by UTC date, not local date, so month edges are stable across timezones', () => {
+      // A transaction stamped 2024-03-01T02:00:00Z is clearly in March (UTC),
+      // but for a viewer in UTC-5 it would be February 29 22:00 local time.
+      // Partitioning by local date would make this row vanish from the
+      // "March 2024" view for anyone east of UTC-2. The implementation now
+      // uses UTC accessors, so the row must be grouped under March for
+      // everyone.
+      const data = makeTransactionsData([
+        makeTxData({
+          id: 'tx-mar-edge',
+          entityName: 'Edge',
+          transactionDate: '2024-03-01T02:00:00Z',
+        }),
+      ]);
+      useTransactionsStore.getState().setTransactions(data);
+      useTransactionsStore.getState().selectYearMonth('2024', '03');
+
+      const result = useTransactionsStore.getState().getFilteredTransactions();
+      expect(result.map((r) => r.id)).toEqual(['tx-mar-edge']);
+    });
+
     it('returns empty array when no transactions match the filter', () => {
       useTransactionsStore.getState().selectYearMonth('2025', '06');
       const result = useTransactionsStore.getState().getFilteredTransactions();

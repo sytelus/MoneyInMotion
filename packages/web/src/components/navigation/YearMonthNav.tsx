@@ -35,9 +35,13 @@ function buildYearMonthTree(
   const yearMap = new Map<string, Set<string>>();
 
   for (const tx of transactions) {
+    // correctedTransactionDate is an ISO-8601 UTC string. Use UTC accessors
+    // so the navigation tree and `transactions-store.getFilteredTransactions`
+    // agree on which month a transaction belongs to regardless of the
+    // viewer's local timezone.
     const date = new Date(tx.correctedTransactionDate);
-    const year = date.getFullYear().toString();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear().toString();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
 
     let months = yearMap.get(year);
     if (!months) {

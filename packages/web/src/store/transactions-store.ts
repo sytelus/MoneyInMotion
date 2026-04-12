@@ -125,9 +125,14 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     }
 
     return all.filter((tx) => {
+      // Transaction dates are stored as UTC ISO-8601 strings, and the
+      // YearMonthNav also partitions by UTC. Using UTC methods here keeps
+      // the two consistent regardless of the user's local timezone — a
+      // transaction stored as 2024-03-01T02:00:00Z must show up under
+      // March for every viewer, not February for users east of UTC.
       const date = new Date(tx.correctedTransactionDate);
-      const txYear = date.getFullYear().toString();
-      const txMonth = String(date.getMonth() + 1).padStart(2, '0');
+      const txYear = date.getUTCFullYear().toString();
+      const txMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
       return txYear === selectedYear && txMonth === selectedMonth;
     });
   },
