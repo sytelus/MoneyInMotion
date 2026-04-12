@@ -99,6 +99,7 @@ The top navigation bar provides:
 - **Import** button: Scan and import new statement files
 - **Save** button: Persist current data to disk
 - **Accounts** link: Navigate to account management page
+- **Rules** link: Review saved edit rules and revert them safely
 - **Settings** link: Navigate to application settings page
 
 ### Navigating Transactions
@@ -164,6 +165,18 @@ The top navigation bar provides:
    - **Amount** (fix incorrect amounts)
 4. Configure scope options for bulk application
 5. Confirm changes
+
+### Managing Rules and History
+
+Navigate to the Rules page via the **Rules** button in the top navigation bar.
+
+The Rules page allows you to:
+- Review every persisted edit rule in one place
+- See the scope filters that determine which transactions a rule matches
+- Preview the transactions currently affected by that rule
+- Revert a rule safely without deleting audit history
+
+Reverting from this page does **not** delete the original edit. Instead, MoneyInMotion appends a new voiding edit that restores the affected fields to their imported values while preserving the original rule in the history log.
 
 ---
 

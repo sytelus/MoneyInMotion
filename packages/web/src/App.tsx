@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell.js';
 import { AccountsPage } from './pages/AccountsPage.js';
+import { RulesPage } from './pages/RulesPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
 import { WelcomePage } from './pages/WelcomePage.js';
 
@@ -68,6 +69,7 @@ export const App: React.FC = () => {
             <Route path="/" element={<AppShell />} />
             <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/rules" element={<RulesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </ErrorBoundary>

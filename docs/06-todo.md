@@ -2,11 +2,10 @@
 
 ## P0 - Must Do
 
-No remaining P0 items are blocking a usable local-first version of the app
-relative to `GOAL.md`. Users can now upload statement files from the Accounts
-page instead of manually copying files into the data directory, and the parser
-factory now accepts both canonical and human-readable institution names used by
-the web UI and docs.
+No remaining P0 items. The current app meets the usable-version bar from
+`GOAL.md`: users can configure accounts, upload statements, import and save
+data, edit transactions with scoped rules, and inspect/revert those rules from
+the web UI without losing audit history.
 
 ---
 
@@ -17,10 +16,11 @@ the web UI and docs.
    - Search by amount, date range, or account.
    - Highlight matching transactions in the list.
 
-7. **Rules/Edits Editor UI**
-   - View, edit, or delete existing edit rules.
-   - Show which transactions are affected by each rule.
-   - Filter rules by scope type, field, or target entity.
+7. **Advanced Rules/Edits Management**
+   - The usable-version bar only requires viewing and reverting rules.
+   - Richer follow-up work still remains: editing an existing rule in place,
+     advanced filtering by scope type/field/target entity, and more compact
+     audit drill-down.
 
 8. **Category Editor UI**
    - Dedicated page for managing the category hierarchy.
@@ -132,6 +132,15 @@ the web UI and docs.
 
 Kept here briefly so reviewers can see what has recently changed.
 
+- **Rule history and revert UI is now shipped.** The web app now includes a
+  dedicated **Rules** page that lists persisted edit rules, shows each rule's
+  scope and current transaction matches, and lets users append a new voiding
+  edit that restores imported values without deleting the original audit
+  record.
+- **Web date display now stays in UTC.** The shared web `formatDate()` helper
+  now formats ISO timestamps with `timeZone: 'UTC'`, preventing dates from
+  shifting backward or forward across local time zones in transaction and rule
+  views.
 - **Statement upload is now possible from the web UI.** Each account card now
   exposes an upload action that saves raw files into
   `Statements/<accountId>/` without requiring users to manipulate the data

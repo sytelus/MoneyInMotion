@@ -296,6 +296,7 @@ Transactions are immutable once created. All modifications are captured as `Tran
 - Lossless data preservation
 - Full reconstruction from source files + edits
 - Safe sharing of edit rules between users
+- UI-level rule maintenance without mutating the original audit record
 
 ### Content Hashing for Deduplication
 Every transaction gets an MD5 content hash (via `ts-md5`) computed from: `AccountId | TransactionReason | Amount | EntityName | PostedDate | TransactionDate | InstituteReference`. When merging imports, transactions with matching content hashes are deduplicated rather than duplicated.

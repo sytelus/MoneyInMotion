@@ -9,7 +9,7 @@
 - **Your data stays yours** -- All data stored locally as JSON files, no cloud dependency
 - **Multi-source aggregation** -- Import from banks, credit cards, PayPal, Amazon, Etsy, and more
 - **Intelligent matching** -- Automatically links Amazon order items to credit card charges, detects inter-account transfers
-- **Non-destructive editing** -- Original data is never modified; all changes stored as revertible edit rules
+- **Non-destructive editing** -- Original data is never modified; all changes stored as revertible edit rules you can inspect from the Rules page
 - **Rule-based categorization** -- Categorize one transaction and automatically apply to all similar ones
 - **Full audit trail** -- Every change is tracked with who, what, and when
 - **Cross-platform** -- Runs on Windows, macOS, and Linux via Node.js
@@ -70,6 +70,7 @@ cd MoneyInMotion
 | Inter-account transfers | Matches debits and credits across accounts by amount and date proximity |
 | Entity normalization | Cleans up messy bank entity names for consistent grouping |
 | Scope-based edits | Apply categorization, notes, and flags to all matching transactions at once |
+| Rules history and revert | Review persisted edit rules, inspect current matches, and append safe voiding edits without deleting history |
 | Web-based statement upload | Save raw statement exports into the correct account folder from the Accounts page |
 | Hierarchical grouping | Income / Expenses / Transfers with entity and category sub-groups |
 | Monthly navigation | Browse transactions by year and month |

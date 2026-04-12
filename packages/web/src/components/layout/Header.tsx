@@ -6,7 +6,14 @@
 
 import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Save, Settings, CreditCard, HelpCircle } from 'lucide-react';
+import {
+  CreditCard,
+  Download,
+  HelpCircle,
+  History,
+  Save,
+  Settings,
+} from 'lucide-react';
 import { Button } from '../ui/button.js';
 import { useScanStatements, useSaveData } from '../../api/hooks.js';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog.js';
@@ -14,7 +21,7 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 
 /**
  * Top bar component with the application title, Import/Save action buttons,
- * and navigation links to Accounts and Settings pages.
+ * and navigation links to Accounts, Rules, and Settings pages.
  */
 export const Header: React.FC = () => {
   const scanMutation = useScanStatements();
@@ -94,6 +101,13 @@ export const Header: React.FC = () => {
           <Button variant="ghost" size="sm">
             <CreditCard className="h-4 w-4 mr-1.5" />
             Accounts
+          </Button>
+        </Link>
+
+        <Link to="/rules">
+          <Button variant="ghost" size="sm">
+            <History className="h-4 w-4 mr-1.5" />
+            Rules
           </Button>
         </Link>
 
