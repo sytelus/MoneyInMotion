@@ -819,4 +819,25 @@ describe('Transactions.applyEdits', () => {
         expect(txns.getTransaction(tx1.id)!.note).toBe('Note 1');
         expect(txns.getTransaction(tx2.id)!.isUserFlagged).toBe(true);
     });
+
+    it('should ignore duplicate edit IDs when replaying the same edit', () => {
+        const { txns, tx1 } = makePopulatedTransactions();
+
+        const edit = makeEdit({
+            id: 'edit-replay',
+            scopeFilters: [createScopeFilter(ScopeType.TransactionId, [tx1.id])],
+            values: {
+                note: editValue('Replay-safe note'),
+            },
+        });
+
+        txns.apply(edit);
+        txns.apply(edit);
+
+        expect(txns.editsCount).toBe(1);
+        expect(txns.getTransaction(tx1.id)!.note).toBe('Replay-safe note');
+        expect(txns.getTransaction(tx1.id)!.appliedEditIdsDescending).toEqual([
+            'edit-replay',
+        ]);
+    });
 });

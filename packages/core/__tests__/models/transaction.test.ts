@@ -202,6 +202,22 @@ describe('Transaction.applyEdit', () => {
         expect(tx.appliedEditIdsDescending).toEqual(['edit-B', 'edit-A']);
     });
 
+    it('should ignore reapplying the same edit id', () => {
+        const tx = makeTransaction();
+        const edit = makeEdit({
+            id: 'edit-A',
+            values: { note: editValue('Deduped note') },
+        });
+
+        tx.applyEdit(edit);
+        const firstUpdateDate = tx.auditInfo.updateDate;
+        tx.applyEdit(edit);
+
+        expect(tx.note).toBe('Deduped note');
+        expect(tx.appliedEditIdsDescending).toEqual(['edit-A']);
+        expect(tx.auditInfo.updateDate).toBe(firstUpdateDate);
+    });
+
     it('should update auditInfo on edit', () => {
         const tx = makeTransaction();
         const originalCreateDate = tx.auditInfo.createDate;

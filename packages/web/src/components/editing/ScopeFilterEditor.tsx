@@ -80,7 +80,11 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({
       const margin = absAmount * 0.1; // +/-10%
       const min = (absAmount - margin).toFixed(2);
       const max = (absAmount + margin).toFixed(2);
-      filters.push(createScopeFilter(ScopeType.AmountRange, [min, max]));
+      const amountRangeParameters =
+        transaction.amount < 0 ? [min, max, 'true'] : [min, max];
+      filters.push(
+        createScopeFilter(ScopeType.AmountRange, amountRangeParameters),
+      );
     }
 
     return filters;

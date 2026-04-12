@@ -13,6 +13,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import type { Transaction } from '@moneyinmotion/core';
 import {
+  createAuditInfo,
   ScopeType,
   createScopeFilter,
   editValue,
@@ -91,10 +92,7 @@ export const AppShell: React.FC = () => {
 
       const edit: TransactionEditData = {
         id: generateEditId(),
-        auditInfo: {
-          createDate: new Date().toISOString(),
-          createdBy: 'web-ui',
-        },
+        auditInfo: createAuditInfo('web-ui'),
         scopeFilters: [createScopeFilter(ScopeType.TransactionId, [target.id])],
         values: {
           isFlagged: editValue(!target.isUserFlagged),
@@ -115,10 +113,7 @@ export const AppShell: React.FC = () => {
 
       const edit: TransactionEditData = {
         id: generateEditId(),
-        auditInfo: {
-          createDate: new Date().toISOString(),
-          createdBy: 'web-ui',
-        },
+        auditInfo: createAuditInfo('web-ui'),
         scopeFilters: [createScopeFilter(ScopeType.TransactionId, [target.id])],
         values: {
           isFlagged: voidedEditValue<boolean>(),

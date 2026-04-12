@@ -9,6 +9,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
+  createAuditInfo,
   ScopeType,
   createScopeFilter,
   editValue,
@@ -129,10 +130,7 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
 
     const edit: TransactionEditData = {
       id: generateEditId(),
-      auditInfo: {
-        createDate: new Date().toISOString(),
-        createdBy: 'web-ui',
-      },
+      auditInfo: createAuditInfo('web-ui'),
       scopeFilters,
       values: {
         categoryPath: editValue(path),

@@ -423,6 +423,10 @@ export class Transaction {
      * edit ID, and updates the audit trail.
      */
     applyEdit(edit: TransactionEditData): void {
+        if (this.data.appliedEditIdsDescending?.includes(edit.id)) {
+            return;
+        }
+
         if (this.data.mergedEdit == null) {
             // Deep-copy the edit values as the initial merged edit
             this.data.mergedEdit = edit.values ? { ...edit.values } : {};

@@ -44,6 +44,16 @@ export class TransactionEdits {
 
     /** Add an edit to the collection. */
     add(edit: TransactionEditData): void {
+        const existing = this.editsById.get(edit.id);
+        if (existing != null) {
+            if (JSON.stringify(existing) !== JSON.stringify(edit)) {
+                throw new Error(
+                    `Conflicting TransactionEditData detected for duplicate id "${edit.id}"`,
+                );
+            }
+            return;
+        }
+
         this.edits.push(edit);
         this.editsById.set(edit.id, edit);
     }

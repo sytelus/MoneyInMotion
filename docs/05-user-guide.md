@@ -6,7 +6,7 @@ When you first open MoneyInMotion, you'll see the **Getting Started** guide at `
 
 1. **Configure Data Folder** -- Choose where MoneyInMotion stores your financial data (default: `~/.moneyinmotion/data`). The app creates `Statements/` and `Merged/` subfolders automatically.
 2. **Add Accounts** -- Create accounts for each bank, credit card, or payment service.
-3. **Add Statement Files** -- Download CSV/JSON/IIF files from your bank and upload them from the Accounts page, or place them in the account folders manually.
+3. **Add Statement Files** -- Download CSV/JSON/IIF files from your bank and upload them from the Accounts page, or place them in the account folders manually. The step is marked complete once MoneyInMotion detects statement files for at least one account.
 4. **Import & Explore** -- Click Import to scan for new files. The app deduplicates automatically, so re-importing is safe.
 
 You can also reach the setup guide anytime by navigating to `/welcome` or clicking the link in the empty-state message.
@@ -138,7 +138,7 @@ The top navigation bar provides:
 4. Configure scope options (which transactions to apply the category to):
    - **Apply to all similar names**: Applies to all transactions with the same normalized entity name
    - **Apply only for this account**: Limits to the current account
-   - **Apply only for this amount range**: Limits to similar amounts
+   - **Apply only for this amount range**: Limits to similar amounts while preserving debit/credit direction
 5. Confirm the edit
 6. If multiple transactions are affected, a confirmation shows the count
 

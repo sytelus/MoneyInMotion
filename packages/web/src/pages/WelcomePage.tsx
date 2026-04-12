@@ -150,6 +150,8 @@ export const WelcomePage: React.FC = () => {
   const scanMutation = useScanStatements();
 
   const hasAccounts = accounts.length > 0;
+  const accountsWithStatementFiles = accounts.filter((account) => account.hasStatementFiles);
+  const hasStatementFiles = accountsWithStatementFiles.length > 0;
 
   const handleImport = () => {
     scanMutation.mutate(undefined, {
@@ -239,12 +241,19 @@ export const WelcomePage: React.FC = () => {
             number={3}
             title="Add Statement Files"
             icon={<FileText className="h-5 w-5" />}
-            complete={hasAccounts && dataPathConfigured}
+            complete={hasStatementFiles}
           >
             <p>
               Download CSV/JSON statement files from your bank's website and upload them
               from the Accounts page, or place them in the account folders manually.
             </p>
+            {accountsLoaded && hasAccounts && (
+              <p className="text-xs">
+                {hasStatementFiles
+                  ? `Statement files detected for ${accountsWithStatementFiles.length} account${accountsWithStatementFiles.length === 1 ? '' : 's'}.`
+                  : 'No statement files detected yet.'}
+              </p>
+            )}
             <div>
               <Link to="/accounts">
                 <Button variant="outline" size="sm">

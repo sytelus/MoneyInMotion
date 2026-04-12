@@ -229,7 +229,13 @@ function directoryHasContentBeyondConfig(dirPath: string): boolean {
                 continue;
             }
 
-            return true;
+            if (entry.isFile()) {
+                return true;
+            }
+
+            if (entry.isDirectory()) {
+                stack.push(path.join(current, entry.name));
+            }
         }
     }
 

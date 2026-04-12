@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import {
+  createAuditInfo,
   ScopeType,
   createScopeFilter,
   editValue,
@@ -49,10 +50,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
     const edit: TransactionEditData = {
       id: generateEditId(),
-      auditInfo: {
-        createDate: new Date().toISOString(),
-        createdBy: 'web-ui',
-      },
+      auditInfo: createAuditInfo('web-ui'),
       scopeFilters,
       values: {
         note: editValue(noteText),
@@ -76,10 +74,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
     const edit: TransactionEditData = {
       id: generateEditId(),
-      auditInfo: {
-        createDate: new Date().toISOString(),
-        createdBy: 'web-ui',
-      },
+      auditInfo: createAuditInfo('web-ui'),
       scopeFilters,
       values: {
         note: voidedEditValue<string>(),

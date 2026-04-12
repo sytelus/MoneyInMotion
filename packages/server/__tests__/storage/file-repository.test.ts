@@ -112,6 +112,9 @@ describe('FileRepository', () => {
         const locations = repo.getStatementLocations();
 
         expect(locations).toHaveLength(2);
+        expect(
+            locations.map((location) => location.portableAddress).sort(),
+        ).toEqual(['MyBank/2024/sub.csv', 'MyBank/main.csv']);
     });
 
     it('does not recurse when scanSubFolders is false', () => {

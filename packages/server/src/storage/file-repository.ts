@@ -53,8 +53,10 @@ export class FileRepository {
     getStatementLocations(
         startPath?: string,
         parentAccountConfig?: AccountConfig | null,
+        portableRootPath?: string,
     ): FileLocation[] {
         const dirPath = startPath ?? this.importFolderPath;
+        const rootPath = portableRootPath ?? dirPath;
 
         if (!fs.existsSync(dirPath)) {
             return [];
@@ -100,11 +102,11 @@ export class FileRepository {
 
                     if (entry.endsWith(extension)) {
                         const relativePath = path.relative(
-                            path.dirname(dirPath),
+                            rootPath,
                             fullPath,
                         );
                         results.push(
-                            new FileLocation(path.dirname(dirPath), relativePath, {
+                            new FileLocation(rootPath, relativePath, {
                                 accountConfig,
                                 isImportInfo: true,
                             }),
@@ -127,7 +129,11 @@ export class FileRepository {
                 }
                 if (stat.isDirectory()) {
                     results.push(
-                        ...this.getStatementLocations(fullPath, accountConfig),
+                        ...this.getStatementLocations(
+                            fullPath,
+                            accountConfig,
+                            rootPath,
+                        ),
                     );
                 }
             }

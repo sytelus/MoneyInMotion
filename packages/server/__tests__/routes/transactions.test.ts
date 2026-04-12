@@ -273,6 +273,47 @@ describe('accounts routes', () => {
         expect(credit.hasStatementFiles).toBe(true);
     });
 
+    it('GET /api/accounts ignores empty nested folders but counts nested statement files', async () => {
+        const emptyNestedDir = writeAccountConfig(tempDir, 'acct-empty-nested', {
+            title: 'Empty Nested',
+            scanSubFolders: true,
+        });
+        fs.mkdirSync(path.join(emptyNestedDir, '2024', 'Q1'), { recursive: true });
+
+        const nestedFileDir = writeAccountConfig(tempDir, 'acct-nested-files', {
+            title: 'Nested Files',
+            scanSubFolders: true,
+        });
+        const nestedStatementDir = path.join(nestedFileDir, '2024');
+        fs.mkdirSync(nestedStatementDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(nestedStatementDir, 'statement.csv'),
+            'Date,Amount\n',
+            'utf-8',
+        );
+
+        const cache = createMockCache({
+            allParentChildTransactions: [],
+        });
+        const config = createTestConfig(tempDir);
+        const app = createTestApp(config, cache);
+
+        const res = await request(app).get('/api/accounts');
+
+        expect(res.status).toBe(200);
+
+        const body = res.body as AccountSummaryResponse[];
+        const emptyNested = body.find(
+            (item) => item.config.accountInfo.id === 'acct-empty-nested',
+        );
+        const nestedFiles = body.find(
+            (item) => item.config.accountInfo.id === 'acct-nested-files',
+        );
+
+        expect(emptyNested.hasStatementFiles).toBe(false);
+        expect(nestedFiles.hasStatementFiles).toBe(true);
+    });
+
     it('PUT /api/accounts/:id updates the account config', async () => {
         const accountDir = writeAccountConfig(tempDir, 'acct-checking', {
             title: 'Old Title',

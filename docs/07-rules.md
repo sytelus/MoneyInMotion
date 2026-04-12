@@ -216,7 +216,7 @@ When child transactions don't sum exactly to parent amount:
 | EntityNameAllTokens | 1+ token(s) - AND matching |
 | AccountId | 1+ account ID(s) |
 | TransactionReason | 1+ reason code(s) |
-| AmountRange | Exactly 2 parameters (min, max) |
+| AmountRange | 2 or 3 parameters: `min`, `max`, and optional `isNegative` |
 
 ### Edit Merge Rules
 When multiple edits apply to the same transaction:

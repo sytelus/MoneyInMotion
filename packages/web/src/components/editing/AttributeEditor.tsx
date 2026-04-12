@@ -9,6 +9,7 @@
 
 import React, { useState, useCallback } from 'react';
 import {
+  createAuditInfo,
   ScopeType,
   createScopeFilter,
   editValue,
@@ -135,10 +136,7 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
 
     const edit: TransactionEditData = {
       id: generateEditId(),
-      auditInfo: {
-        createDate: new Date().toISOString(),
-        createdBy: 'web-ui',
-      },
+      auditInfo: createAuditInfo('web-ui'),
       scopeFilters,
       values,
       sourceId: 'web-ui',
