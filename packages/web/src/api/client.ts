@@ -47,6 +47,29 @@ export interface UploadAccountFilesResponse {
   uploadedFiles: UploadedAccountFile[];
 }
 
+interface ApiErrorResponse {
+  error?: string;
+  status?: number;
+}
+
+async function readApiErrorMessage(response: Response): Promise<string> {
+  const bodyText = await response.text().catch(() => '');
+  if (!bodyText) {
+    return response.statusText || 'Request failed';
+  }
+
+  try {
+    const parsed = JSON.parse(bodyText) as ApiErrorResponse;
+    if (typeof parsed.error === 'string' && parsed.error.trim()) {
+      return parsed.error;
+    }
+  } catch {
+    // Fall back to the raw response text below.
+  }
+
+  return bodyText;
+}
+
 /**
  * Thin wrapper around `fetch` that throws on non-OK responses and parses JSON.
  */
@@ -59,8 +82,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`API ${options?.method ?? 'GET'} ${path} failed (${response.status}): ${body}`);
+    const message = await readApiErrorMessage(response);
+    throw new Error(`API ${options?.method ?? 'GET'} ${path} failed (${response.status}): ${message}`);
   }
 
   return response.json() as Promise<T>;
@@ -73,8 +96,8 @@ async function requestFormData<T>(path: string, formData: FormData): Promise<T> 
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`API POST ${path} failed (${response.status}): ${body}`);
+    const message = await readApiErrorMessage(response);
+    throw new Error(`API POST ${path} failed (${response.status}): ${message}`);
   }
 
   return response.json() as Promise<T>;

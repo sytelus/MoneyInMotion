@@ -3,6 +3,7 @@
  *
  * GET    /api/accounts      - scan statementsDir for AccountConfig.json files
  * POST   /api/accounts      - create account folder + AccountConfig.json
+ * POST   /api/accounts/:id/upload - store raw statement files for an account
  * PUT    /api/accounts/:id  - update an existing account config
  * DELETE /api/accounts/:id  - remove an account config without touching raw statements
  *

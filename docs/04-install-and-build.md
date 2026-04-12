@@ -235,7 +235,7 @@ The server creates these directories automatically if they do not exist.
 
 1. Create a subfolder under `Statements/` (e.g., `Statements/chase-checking/`)
 2. Create an `AccountConfig.json` file in that folder (see [How It Works](03-how-it-works.md#1-account-configuration))
-3. Drop your CSV statement files into the folder
+3. Upload statement files from the Accounts page, or drop them into the folder manually
 4. In the web UI, click the **Import** button to scan and import new statements
 
 ---

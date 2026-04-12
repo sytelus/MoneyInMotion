@@ -444,7 +444,7 @@ export const AccountsPage: React.FC = () => {
       title: action === 'created' ? 'Account created' : 'Account updated',
       description:
         action === 'created'
-          ? 'Place your statement files in the folder below, then run Import.'
+          ? 'Upload statement files from this page, or place them in the folder below, then run Import.'
           : 'The account configuration has been saved.',
       path: dataPath ? `${dataPath}/Statements/${accountId}/` : undefined,
     });

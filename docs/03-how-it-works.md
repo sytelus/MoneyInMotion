@@ -312,6 +312,7 @@ The React UI provides year/month navigation:
 | `PUT` | `/api/config` | Updates data path configuration |
 | `GET` | `/api/accounts` | Returns all configured accounts |
 | `POST` | `/api/accounts` | Creates a new account |
+| `POST` | `/api/accounts/:id/upload` | Uploads raw statement files into the target account folder |
 | `GET` | `/api/transactions` | Returns all transactions as serialized JSON |
 | `POST` | `/api/transaction-edits` | Applies edit rules, returns affected count |
 | `POST` | `/api/import/scan` | Scans and imports new statement files |
