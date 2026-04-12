@@ -189,7 +189,7 @@ function setPayPalTransactionReason(
             }
         }
     } else {
-        // Mark as null-reason so validateImportedValues filters it out
-        (importedValues as { transactionReason: number | undefined }).transactionReason = undefined as unknown as number;
+        // Delete the reason so validateImportedValues filters this row out
+        delete (importedValues as Record<string, unknown>)['transactionReason'];
     }
 }

@@ -164,11 +164,7 @@ export class TransactionEdits {
      * @returns An object with `name` and `edits` fields.
      */
     serialize(): { name: string; edits: TransactionEditData[] } {
-        const editsArray: TransactionEditData[] = [];
-        for (const edit of this.edits) {
-            editsArray.push(edit);
-        }
-        return { name: this.sourceId, edits: editsArray };
+        return { name: this.sourceId, edits: [...this.edits] };
     }
 
     /** Deep-copy this collection via JSON round-trip. */
@@ -185,16 +181,7 @@ export class TransactionEdits {
     // Iteration
     // -----------------------------------------------------------------------
 
-    [Symbol.iterator](): Iterator<TransactionEditData> {
-        let index = 0;
-        const edits = this.edits;
-        return {
-            next(): IteratorResult<TransactionEditData> {
-                if (index < edits.length) {
-                    return { value: edits[index++]!, done: false };
-                }
-                return { value: undefined as unknown as TransactionEditData, done: true };
-            },
-        };
+    *[Symbol.iterator](): Generator<TransactionEditData> {
+        yield* this.edits;
     }
 }
