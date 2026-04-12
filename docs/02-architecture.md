@@ -148,6 +148,7 @@ The React single-page application. Key modules:
 | `GET` | `/api/health` | Returns lightweight liveness information for production health checks |
 | `GET` | `/api/accounts` | Scans `statementsDir` for `AccountConfig.json` files and returns each account plus import stats |
 | `POST` | `/api/accounts` | Creates a new account folder and AccountConfig.json |
+| `POST` | `/api/accounts/:id/upload` | Uploads raw statement files into `Statements/<accountId>/` |
 | `PUT` | `/api/accounts/:id` | Updates an existing account configuration |
 | `DELETE` | `/api/accounts/:id` | Removes `AccountConfig.json` without deleting raw statement files |
 | `GET` | `/api/transactions` | Returns all transactions as serialized JSON from the in-memory cache |

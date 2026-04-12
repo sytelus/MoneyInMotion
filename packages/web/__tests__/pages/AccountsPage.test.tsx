@@ -11,6 +11,7 @@ const getConfigMock = vi.fn();
 const createAccountMock = vi.fn();
 const updateAccountMock = vi.fn();
 const deleteAccountMock = vi.fn();
+const uploadAccountFilesMock = vi.fn();
 
 vi.mock('../../src/api/hooks.js', () => ({
   useAccounts: () => useAccountsMock(),
@@ -21,6 +22,7 @@ vi.mock('../../src/api/client.js', () => ({
   createAccount: (...args: unknown[]) => createAccountMock(...args),
   updateAccount: (...args: unknown[]) => updateAccountMock(...args),
   deleteAccount: (...args: unknown[]) => deleteAccountMock(...args),
+  uploadAccountFiles: (...args: unknown[]) => uploadAccountFilesMock(...args),
 }));
 
 function makeAccount(overrides?: Partial<AccountSummary>): AccountSummary {
@@ -164,5 +166,41 @@ describe('AccountsPage', () => {
       expect(deleteAccountMock).toHaveBeenCalledWith('acct-checking');
     });
     expect(refetchMock).toHaveBeenCalled();
+  });
+
+  it('uploads statement files through the account upload API', async () => {
+    const refetchMock = vi.fn().mockResolvedValue(undefined);
+    useAccountsMock.mockReturnValue({
+      data: [makeAccount()],
+      isLoading: false,
+      error: null,
+      refetch: refetchMock,
+    });
+    uploadAccountFilesMock.mockResolvedValue({
+      accountId: 'acct-checking',
+      uploadedFiles: [
+        {
+          originalName: 'statement.csv',
+          storedName: 'statement.csv',
+          portablePath: 'Statements/acct-checking/statement.csv',
+          sizeBytes: 18,
+        },
+      ],
+    });
+
+    renderPage();
+
+    const input = await screen.findByLabelText(/Upload statement files for Checking/i);
+    const file = new File(['Date,Amount\n'], 'statement.csv', { type: 'text/csv' });
+
+    fireEvent.change(input, {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => {
+      expect(uploadAccountFilesMock).toHaveBeenCalledWith('acct-checking', [file]);
+    });
+    expect(refetchMock).toHaveBeenCalled();
+    expect(await screen.findByText(/Uploaded 1 file/)).toBeInTheDocument();
   });
 });

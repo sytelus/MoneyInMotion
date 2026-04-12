@@ -350,6 +350,47 @@ describe('accounts routes', () => {
         expect(res.body.error).toContain('cannot be changed');
     });
 
+    it('POST /api/accounts/:id/upload stores uploaded files in the account folder', async () => {
+        const accountDir = writeAccountConfig(tempDir, 'acct-checking', {
+            fileFilters: ['*.csv', '*.json'],
+        });
+        const cache = createMockCache({
+            allParentChildTransactions: [],
+        });
+        const config = createTestConfig(tempDir);
+        const app = createTestApp(config, cache);
+
+        const res = await request(app)
+            .post('/api/accounts/acct-checking/upload')
+            .attach('files', Buffer.from('Date,Amount\n2024-01-01,-10.00\n'), 'statement.csv')
+            .attach('files', Buffer.from('[]\n'), 'orders.json');
+
+        expect(res.status).toBe(201);
+        expect(res.body.accountId).toBe('acct-checking');
+        expect(res.body.uploadedFiles).toHaveLength(2);
+        expect(fs.existsSync(path.join(accountDir, 'statement.csv'))).toBe(true);
+        expect(fs.existsSync(path.join(accountDir, 'orders.json'))).toBe(true);
+    });
+
+    it('POST /api/accounts/:id/upload rejects files that do not match file filters', async () => {
+        const accountDir = writeAccountConfig(tempDir, 'acct-checking', {
+            fileFilters: ['*.csv'],
+        });
+        const cache = createMockCache({
+            allParentChildTransactions: [],
+        });
+        const config = createTestConfig(tempDir);
+        const app = createTestApp(config, cache);
+
+        const res = await request(app)
+            .post('/api/accounts/acct-checking/upload')
+            .attach('files', Buffer.from('%PDF-1.7\n'), 'statement.pdf');
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toContain('does not match this account');
+        expect(fs.existsSync(path.join(accountDir, 'statement.pdf'))).toBe(false);
+    });
+
     it('DELETE /api/accounts/:id removes only AccountConfig.json and keeps statements', async () => {
         const accountDir = writeAccountConfig(tempDir, 'acct-checking');
         const statementPath = path.join(accountDir, 'statement.csv');

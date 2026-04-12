@@ -19,6 +19,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import { AccountType, type AccountConfig } from '@moneyinmotion/core';
 import { Button } from '../components/ui/button.js';
@@ -31,13 +32,14 @@ import {
   createAccount,
   deleteAccount,
   getConfig,
+  uploadAccountFiles,
   updateAccount,
   type AccountSummary,
 } from '../api/client.js';
 
 const institutionOptions: SelectOption[] = [
-  { value: 'American Express', label: 'American Express' },
-  { value: 'Barclay Bank', label: 'Barclay Bank' },
+  { value: 'AmericanExpress', label: 'American Express' },
+  { value: 'BarclayBank', label: 'Barclay Bank' },
   { value: 'PayPal', label: 'PayPal' },
   { value: 'Amazon', label: 'Amazon' },
   { value: 'Etsy', label: 'Etsy' },
@@ -86,6 +88,20 @@ function parseCsvList(value: string): string[] {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function formatInstitutionName(instituteName: string): string {
+  switch (instituteName.replace(/\s+/g, '').toLowerCase()) {
+    case 'americanexpress':
+      return 'American Express';
+    case 'barclaybank':
+    case 'barclaycard':
+      return 'Barclay Bank';
+    case 'paypal':
+      return 'PayPal';
+    default:
+      return instituteName;
+  }
 }
 
 function formatLastImportedAt(value: string | null): string {
@@ -389,8 +405,10 @@ export const AccountsPage: React.FC = () => {
   const [deletingAccount, setDeletingAccount] = useState<AccountSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [uploadingAccountId, setUploadingAccountId] = useState<string | null>(null);
   const [dataPath, setDataPath] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackMessage | null>(null);
+  const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -458,6 +476,47 @@ export const AccountsPage: React.FC = () => {
     }
   };
 
+  const handleUploadSelected = async (
+    account: AccountSummary,
+    fileList: FileList | null,
+    input: HTMLInputElement | null,
+  ) => {
+    if (!fileList || fileList.length === 0) {
+      return;
+    }
+
+    const files = Array.from(fileList);
+    const accountId = account.config.accountInfo.id;
+
+    setUploadingAccountId(accountId);
+    setFeedback(null);
+
+    try {
+      const result = await uploadAccountFiles(accountId, files);
+      await refetch();
+
+      const fileCount = result.uploadedFiles.length;
+      const fileLabel = fileCount === 1 ? 'file' : 'files';
+
+      setFeedback({
+        title: `Uploaded ${fileCount} ${fileLabel}`,
+        description:
+          'The statement files were saved to this account folder. Run Import to scan and merge them.',
+        path: dataPath ? `${dataPath}/Statements/${accountId}/` : undefined,
+      });
+    } catch (err) {
+      setFeedback({
+        title: 'Upload failed',
+        description: err instanceof Error ? err.message : 'Failed to upload statement files.',
+      });
+    } finally {
+      setUploadingAccountId(null);
+      if (input) {
+        input.value = '';
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between h-14 px-4 border-b border-border">
@@ -481,21 +540,50 @@ export const AccountsPage: React.FC = () => {
         <p className="text-sm text-muted-foreground mb-6">
           Each account represents a bank account, credit card, order history, or payment service.
           Configure the parser, file filters, and matching tags here before importing statements.
+          You can also upload raw statement files here instead of copying them into the data folder by hand.
         </p>
 
         {feedback && (
-          <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-4 mb-6">
+          <div
+            className={`rounded-md p-4 mb-6 ${
+              feedback.title === 'Upload failed'
+                ? 'bg-destructive/10'
+                : 'bg-green-50 dark:bg-green-900/20'
+            }`}
+          >
             <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+              {feedback.title === 'Upload failed' ? (
+                <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+              ) : (
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+              )}
               <div className="flex-1 space-y-2">
-                <p className="font-medium text-green-800 dark:text-green-200">
+                <p
+                  className={`font-medium ${
+                    feedback.title === 'Upload failed'
+                      ? 'text-destructive'
+                      : 'text-green-800 dark:text-green-200'
+                  }`}
+                >
                   {feedback.title}
                 </p>
-                <p className="text-sm text-green-700 dark:text-green-300">
+                <p
+                  className={`text-sm ${
+                    feedback.title === 'Upload failed'
+                      ? 'text-destructive'
+                      : 'text-green-700 dark:text-green-300'
+                  }`}
+                >
                   {feedback.description}
                 </p>
                 {feedback.path && (
-                  <code className="block text-sm bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100 px-3 py-2 rounded">
+                  <code
+                    className={`block text-sm px-3 py-2 rounded ${
+                      feedback.title === 'Upload failed'
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100'
+                    }`}
+                  >
                     {feedback.path}
                   </code>
                 )}
@@ -561,7 +649,7 @@ export const AccountsPage: React.FC = () => {
                             </Badge>
                           </div>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                            <span>{info.instituteName}</span>
+                            <span>{formatInstitutionName(info.instituteName)}</span>
                             <span className="text-border">|</span>
                             <span>ID: {info.id}</span>
                             <span className="text-border">|</span>
@@ -576,6 +664,32 @@ export const AccountsPage: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                          <input
+                            ref={(node) => {
+                              fileInputRefs.current[info.id] = node;
+                            }}
+                            id={`account-upload-${info.id}`}
+                            type="file"
+                            multiple
+                            className="sr-only"
+                            aria-label={`Upload statement files for ${info.title ?? info.id}`}
+                            onChange={(event) =>
+                              handleUploadSelected(
+                                account,
+                                event.target.files,
+                                event.currentTarget,
+                              )
+                            }
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRefs.current[info.id]?.click()}
+                            disabled={uploadingAccountId === info.id}
+                          >
+                            <Upload className="h-4 w-4 mr-1.5" />
+                            {uploadingAccountId === info.id ? 'Uploading...' : 'Upload Files'}
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -622,6 +736,11 @@ export const AccountsPage: React.FC = () => {
                       {account.hasStatementFiles && (
                         <div className="text-xs text-muted-foreground">
                           Statement files are present in this account folder.
+                        </div>
+                      )}
+                      {!account.hasStatementFiles && (
+                        <div className="text-xs text-muted-foreground">
+                          No raw statement files detected yet. Use Upload Files or place exports in this folder manually.
                         </div>
                       )}
                     </div>

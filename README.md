@@ -48,6 +48,8 @@ Or, for a faster, leaner production-mode run:
 Both modes share the exact same data, features, and UX — see [Install and Build](docs/04-install-and-build.md#dev-vs-production--whats-different) for the full comparison. For personal use, production mode is recommended.
 
 Open the URL shown in the terminal. The **Getting Started** guide walks you through setup — no need to read docs first.
+You can now upload statement files directly from the **Accounts** page instead
+of manually copying them into the data directory.
 
 ### Updating
 
@@ -68,6 +70,7 @@ cd MoneyInMotion
 | Inter-account transfers | Matches debits and credits across accounts by amount and date proximity |
 | Entity normalization | Cleans up messy bank entity names for consistent grouping |
 | Scope-based edits | Apply categorization, notes, and flags to all matching transactions at once |
+| Web-based statement upload | Save raw statement exports into the correct account folder from the Accounts page |
 | Hierarchical grouping | Income / Expenses / Transfers with entity and category sub-groups |
 | Monthly navigation | Browse transactions by year and month |
 | Immutable originals | Source files are never altered; all changes stored as separate edit rules |

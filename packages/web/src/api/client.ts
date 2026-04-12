@@ -35,6 +35,18 @@ export interface DeleteAccountResponse {
   keptStatementFiles: boolean;
 }
 
+export interface UploadedAccountFile {
+  originalName: string;
+  storedName: string;
+  portablePath: string;
+  sizeBytes: number;
+}
+
+export interface UploadAccountFilesResponse {
+  accountId: string;
+  uploadedFiles: UploadedAccountFile[];
+}
+
 /**
  * Thin wrapper around `fetch` that throws on non-OK responses and parses JSON.
  */
@@ -49,6 +61,20 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.text().catch(() => '');
     throw new Error(`API ${options?.method ?? 'GET'} ${path} failed (${response.status}): ${body}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function requestFormData<T>(path: string, formData: FormData): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`API POST ${path} failed (${response.status}): ${body}`);
   }
 
   return response.json() as Promise<T>;
@@ -146,6 +172,28 @@ export async function deleteAccount(
     {
       method: 'DELETE',
     },
+  );
+}
+
+/**
+ * Upload one or more raw statement files into an account folder.
+ *
+ * The server stores files under `Statements/<accountId>/` without importing
+ * them automatically. Call `scanStatements()` afterward to parse and merge.
+ */
+export async function uploadAccountFiles(
+  accountId: string,
+  files: File[],
+): Promise<UploadAccountFilesResponse> {
+  const formData = new FormData();
+
+  for (const file of files) {
+    formData.append('files', file);
+  }
+
+  return requestFormData<UploadAccountFilesResponse>(
+    `/accounts/${encodeURIComponent(accountId)}/upload`,
+    formData,
   );
 }
 

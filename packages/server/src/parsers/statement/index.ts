@@ -23,6 +23,10 @@ import { AmazonOrdersParser } from './amazon-orders-parser.js';
 import { EtsyBuyerParser } from './etsy-buyer-parser.js';
 import { BarclayParser } from './barclay-parser.js';
 
+function normalizeInstituteName(instituteName: string): string {
+    return instituteName.replace(/[^a-z0-9]+/gi, '').toLowerCase();
+}
+
 /**
  * Factory function to get the appropriate statement parser based on
  * institution name and account type.
@@ -41,22 +45,24 @@ export function getStatementParser(
     content: string,
     contentType: ContentType,
 ): StatementParserBase {
-    switch (instituteName) {
-        case 'AmericanExpress':
+    switch (normalizeInstituteName(instituteName)) {
+        case 'americanexpress':
+        case 'amex':
             return new AmexParser(content);
-        case 'BarclayBank':
+        case 'barclaybank':
+        case 'barclaycard':
             return new BarclayParser(content);
-        case 'Amazon':
+        case 'amazon':
             if (accountType === AT.OrderHistory) {
                 return new AmazonOrdersParser(content);
             }
             break;
-        case 'Etsy':
+        case 'etsy':
             if (accountType === AT.OrderHistory) {
                 return new EtsyBuyerParser(content);
             }
             break;
-        case 'Paypal':
+        case 'paypal':
             if (accountType === AT.EPayment) {
                 return new PayPalParser(content, contentType);
             }

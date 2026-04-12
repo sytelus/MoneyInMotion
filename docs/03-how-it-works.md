@@ -47,6 +47,11 @@ The `AccountConfig` interface is defined in `@moneyinmotion/core` (`packages/cor
 2. For each account, scans for files matching the `fileFilters` glob patterns
 3. Creates `FileLocation` objects with import metadata (address, content type, account config, import info)
 
+Raw statement files can reach the `Statements/` tree in two ways:
+
+- Uploaded from the Accounts page in the web UI via `POST /api/accounts/:id/upload`
+- Placed there manually by the user outside the app
+
 ### File Format Detection
 Content type is auto-detected from file extension:
 - `.csv`, `.newcsv` -> CSV (parsed with papaparse)

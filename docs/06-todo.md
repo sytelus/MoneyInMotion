@@ -3,10 +3,10 @@
 ## P0 - Must Do
 
 No remaining P0 items are blocking a usable local-first version of the app
-relative to `GOAL.md`. Account management now supports edit/delete, the UI
-shows per-account import status, the Settings page edits both data path and
-port, and the web account form exposes match tags needed by the matching
-algorithms.
+relative to `GOAL.md`. Users can now upload statement files from the Accounts
+page instead of manually copying files into the data directory, and the parser
+factory now accepts both canonical and human-readable institution names used by
+the web UI and docs.
 
 ---
 
@@ -92,19 +92,13 @@ algorithms.
     - Some unmatched transfers remain, causing non-zero totals.
     - Investigate matching algorithm edge cases.
 
-### P2 - Nice to Fix
-
-20. **Selected Month Highlight**
-    - Currently-selected month is not visually highlighted in the
-      `YearMonthNav` sidebar accordion.
-
 ---
 
 ## Technical Improvements
 
 ### P2 - Code Quality
 
-21. **Expand Web Component Test Coverage**
+20. **Expand Web Component Test Coverage**
     - Core domain logic has strong coverage, and the web layer now
       covers the app shell, Zustand store, `AccountsPage`, and
       `SettingsPage`.
@@ -112,22 +106,22 @@ algorithms.
       `WelcomePage` import flow, keyboard navigation, and responsive
       navigation states.
 
-22. **Remove Hardcoded Values**
+21. **Remove Hardcoded Values**
     - Transfer day tolerance is hardcoded to 3 days.
     - Amount tolerance is hardcoded in the parent-child matcher.
     - These should be configurable per account via `AccountConfig`.
 
-23. **Add Transaction Source Tracking**
+22. **Add Transaction Source Tracking**
     - Track how each transaction was created: Import, Synthetic,
       Adjustment, Manual.
     - Helps debugging matching and deduplication issues.
 
-24. **Improve PayPal Parser Robustness**
+23. **Improve PayPal Parser Robustness**
     - Current timezone handling is fragile.
     - Ignorable activity list may be incomplete.
     - Consider supporting PayPal API export format.
 
-25. **API Error Responses**
+24. **API Error Responses**
     - Standardize error response format across all endpoints.
     - Include request ID for debugging.
     - Add structured error codes beyond HTTP status.
@@ -138,6 +132,17 @@ algorithms.
 
 Kept here briefly so reviewers can see what has recently changed.
 
+- **Statement upload is now possible from the web UI.** Each account card now
+  exposes an upload action that saves raw files into
+  `Statements/<accountId>/` without requiring users to manipulate the data
+  directory manually. The server now exposes
+  `POST /api/accounts/:id/upload`, validates files against the account's
+  configured file filters, and never overwrites an existing filename.
+- **Parser selection is aligned with the UI and docs.** The parser factory now
+  accepts canonical and human-readable institution names such as
+  `AmericanExpress` / `American Express`, `BarclayBank` / `Barclay Bank`, and
+  `PayPal`, so accounts created through the browser select the correct
+  specialized parser instead of silently falling back to the generic one.
 - **Full account management in the web UI.** `AccountsPage` now supports
   editing and deleting accounts in addition to create. The server now
   exposes `PUT /api/accounts/:id` and `DELETE /api/accounts/:id`. Delete

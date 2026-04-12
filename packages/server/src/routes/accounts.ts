@@ -12,12 +12,20 @@
 import { Router } from 'express';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import multer from 'multer';
 import { z } from 'zod';
 import type { AccountConfig } from '@moneyinmotion/core';
 import type { TransactionCache } from '../cache/transaction-cache.js';
 import type { ServerConfig } from '../config.js';
 
 const ACCOUNT_CONFIG_FILE_NAME = 'AccountConfig.json';
+const uploadStatements = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        files: 25,
+        fileSize: 20 * 1024 * 1024,
+    },
+});
 
 interface AccountStats {
     transactionCount: number;
@@ -34,6 +42,18 @@ interface DiscoveredAccountConfig {
     config: AccountConfig;
     configPath: string;
     accountDir: string;
+}
+
+interface UploadedStatementFile {
+    originalName: string;
+    storedName: string;
+    portablePath: string;
+    sizeBytes: number;
+}
+
+interface UploadAccountFilesResponse {
+    accountId: string;
+    uploadedFiles: UploadedStatementFile[];
 }
 
 const accountInfoSchema = z.object({
@@ -128,6 +148,67 @@ function normalizeAccountConfig(accountConfig: AccountConfig): AccountConfig {
         },
         fileFilters: fileFilters.length > 0 ? fileFilters : ['*.csv'],
         scanSubFolders: accountConfig.scanSubFolders,
+    };
+}
+
+function findDiscoveredAccount(
+    statementsDir: string,
+    accountId: string,
+): DiscoveredAccountConfig | null {
+    return (
+        scanForAccountConfigs(statementsDir).find(
+            (account) => account.config.accountInfo.id === accountId,
+        ) ?? null
+    );
+}
+
+function matchesFileFilters(fileName: string, fileFilters: string[]): boolean {
+    const normalizedFileName = fileName.toLowerCase();
+
+    return fileFilters.some((filter) => {
+        const normalizedFilter = filter.trim().toLowerCase();
+        if (!normalizedFilter) {
+            return false;
+        }
+
+        if (normalizedFilter === '*') {
+            return true;
+        }
+
+        if (normalizedFilter.startsWith('*.')) {
+            return normalizedFileName.endsWith(normalizedFilter.slice(1));
+        }
+
+        return normalizedFileName === normalizedFilter;
+    });
+}
+
+function sanitizeUploadFileName(originalName: string): string {
+    const fileName = path.basename(originalName).trim();
+
+    if (!fileName || fileName === '.' || fileName === '..') {
+        throw new Error('Uploaded file must have a valid file name.');
+    }
+
+    return fileName;
+}
+
+function getUniqueFilePath(
+    dirPath: string,
+    fileName: string,
+): { storedName: string; fullPath: string } {
+    const parsed = path.parse(fileName);
+    let storedName = fileName;
+    let counter = 1;
+
+    while (fs.existsSync(path.join(dirPath, storedName))) {
+        storedName = `${parsed.name} (${counter})${parsed.ext}`;
+        counter += 1;
+    }
+
+    return {
+        storedName,
+        fullPath: path.join(dirPath, storedName),
     };
 }
 
@@ -282,6 +363,98 @@ export function createAccountsRouter(
         } satisfies AccountSummary);
     });
 
+    router.post('/:id/upload', (req, res, next) => {
+        uploadStatements.array('files')(req, res, (uploadError) => {
+            if (uploadError) {
+                res.status(400).json({
+                    error: uploadError.message,
+                    status: 400,
+                });
+                return;
+            }
+
+            try {
+                const accountId = req.params.id?.trim() ?? '';
+                if (!isValidAccountId(accountId)) {
+                    res.status(400).json({
+                        error: 'Invalid account ID in request path.',
+                        status: 400,
+                    });
+                    return;
+                }
+
+                const config = getConfig();
+                const discoveredAccount = findDiscoveredAccount(
+                    config.statementsDir,
+                    accountId,
+                );
+
+                if (!discoveredAccount) {
+                    res.status(404).json({
+                        error: `Account "${accountId}" was not found.`,
+                        status: 404,
+                    });
+                    return;
+                }
+
+                const files = Array.isArray(req.files) ? req.files : [];
+                if (files.length === 0) {
+                    res.status(400).json({
+                        error: 'At least one file must be uploaded.',
+                        status: 400,
+                    });
+                    return;
+                }
+
+                const invalidFile = files.find((file) => {
+                    const fileName = sanitizeUploadFileName(file.originalname);
+                    return !matchesFileFilters(
+                        fileName,
+                        discoveredAccount.config.fileFilters,
+                    );
+                });
+
+                if (invalidFile) {
+                    res.status(400).json({
+                        error:
+                            `File "${sanitizeUploadFileName(invalidFile.originalname)}" does not match this account's file filters ` +
+                            `(${discoveredAccount.config.fileFilters.join(', ')}).`,
+                        status: 400,
+                    });
+                    return;
+                }
+
+                const uploadedFiles = files.map((file) => {
+                    const originalName = sanitizeUploadFileName(file.originalname);
+                    const { storedName, fullPath } = getUniqueFilePath(
+                        discoveredAccount.accountDir,
+                        originalName,
+                    );
+
+                    fs.writeFileSync(fullPath, file.buffer);
+
+                    return {
+                        originalName,
+                        storedName,
+                        portablePath: [
+                            'Statements',
+                            discoveredAccount.config.accountInfo.id,
+                            storedName,
+                        ].join('/'),
+                        sizeBytes: file.size,
+                    } satisfies UploadedStatementFile;
+                });
+
+                res.status(201).json({
+                    accountId,
+                    uploadedFiles,
+                } satisfies UploadAccountFilesResponse);
+            } catch (err) {
+                next(err);
+            }
+        });
+    });
+
     router.put('/:id', async (req, res, next) => {
         try {
             const currentId = req.params.id?.trim() ?? '';
@@ -413,9 +586,10 @@ export function createAccountsRouter(
             }
 
             const config = getConfig();
-            const discoveredAccount = scanForAccountConfigs(
+            const discoveredAccount = findDiscoveredAccount(
                 config.statementsDir,
-            ).find((account) => account.config.accountInfo.id === accountId);
+                accountId,
+            );
 
             if (!discoveredAccount) {
                 res.status(404).json({

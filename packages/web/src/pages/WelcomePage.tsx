@@ -242,9 +242,17 @@ export const WelcomePage: React.FC = () => {
             complete={hasAccounts && dataPathConfigured}
           >
             <p>
-              Download CSV/JSON statement files from your bank's website and place them in
-              the account folders.
+              Download CSV/JSON statement files from your bank's website and upload them
+              from the Accounts page, or place them in the account folders manually.
             </p>
+            <div>
+              <Link to="/accounts">
+                <Button variant="outline" size="sm">
+                  Open Accounts
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
             {dataPathConfigured && hasAccounts && (
               <div className="space-y-2 mt-1">
                 <p className="text-xs font-medium text-foreground">

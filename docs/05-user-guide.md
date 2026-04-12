@@ -6,7 +6,7 @@ When you first open MoneyInMotion, you'll see the **Getting Started** guide at `
 
 1. **Configure Data Folder** -- Choose where MoneyInMotion stores your financial data (default: `~/.moneyinmotion/data`). The app creates `Statements/` and `Merged/` subfolders automatically.
 2. **Add Accounts** -- Create accounts for each bank, credit card, or payment service.
-3. **Add Statement Files** -- Download CSV/JSON/IIF files from your bank and place them in the account folders.
+3. **Add Statement Files** -- Download CSV/JSON/IIF files from your bank and upload them from the Accounts page, or place them in the account folders manually.
 4. **Import & Explore** -- Click Import to scan for new files. The app deduplicates automatically, so re-importing is safe.
 
 You can also reach the setup guide anytime by navigating to `/welcome` or clicking the link in the empty-state message.
@@ -59,11 +59,10 @@ For each bank account or credit card:
 ### Importing Statements
 
 1. Download statement files from your bank/credit card website
-2. Place the CSV/JSON/IIF files in the appropriate account folder under `Statements/`
-3. Open the application in your browser
-4. Click the **Import** button in the top navigation bar
-5. The application scans for new files, parses them, deduplicates, and merges
-6. Click **Save** to persist the merged data to disk
+2. Upload the CSV/JSON/IIF files from the relevant account card on the **Accounts** page, or place them in the appropriate account folder under `Statements/`
+3. Click the **Import** button in the top navigation bar
+4. The application scans for new files, parses them, deduplicates, and merges
+5. Click **Save** to persist the merged data to disk
 
 ---
 
@@ -196,6 +195,7 @@ The Accounts page allows you to:
 - Create new accounts (which creates the folder and `AccountConfig.json` file)
 - Edit existing account settings, including file filters and match tags
 - Delete an account configuration without deleting raw statement files
+- Upload raw statement files directly into the correct account folder
 - See per-account import status (transaction count and latest import timestamp)
 
 When creating or editing an account, pay attention to **Match Tags** (`interAccountNameTags`). These are the name fragments MoneyInMotion uses to:
