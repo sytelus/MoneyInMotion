@@ -55,6 +55,21 @@ function buildConfig(dataPath: string, port: number): ServerConfig {
     };
 }
 
+function parseConfiguredPort(value: unknown): number | null {
+    const parsed =
+        typeof value === 'number'
+            ? value
+            : typeof value === 'string'
+              ? Number.parseInt(value, 10)
+              : Number.NaN;
+
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+        return null;
+    }
+
+    return parsed;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -82,9 +97,10 @@ export function loadConfig(): ServerConfig {
         ?? fileConfig.dataPath
         ?? DEFAULT_DATA_PATH;
 
-    const port = process.env['MONEYAI_PORT']
-        ? parseInt(process.env['MONEYAI_PORT'], 10)
-        : fileConfig.port ?? DEFAULT_PORT;
+    const port =
+        parseConfiguredPort(process.env['MONEYAI_PORT'])
+        ?? parseConfiguredPort(fileConfig.port)
+        ?? DEFAULT_PORT;
 
     const config = buildConfig(dataPath, port);
 

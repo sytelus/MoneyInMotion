@@ -2,32 +2,11 @@
 
 ## P0 - Must Do
 
-These are gaps in features that were claimed complete but have missing
-pieces, or correctness issues that allow invalid data to be saved.
-
-1. **Account edit and delete**
-   - `AccountsPage` lists accounts and supports create, but has no
-     edit or delete. Mistakes in an account config can only be
-     corrected by hand-editing `Statements/<id>/AccountConfig.json`.
-   - Fix: add an edit dialog (same form, pre-populated) and a delete
-     action guarded by a confirmation prompt. Server needs
-     `PUT /api/accounts/:id` and `DELETE /api/accounts/:id`.
-
-2. **Per-account import status**
-   - `AccountsPage` shows the folder path but not the last import
-     date or how many transactions the account has contributed.
-   - Fix: compute per-account stats server-side (transaction count
-     and most recent `auditInfo.createDate` among them) and render
-     on the card.
-
-3. **Port configuration in Settings**
-   - `config.ts` supports `MONEYAI_PORT` env var and a `port` field
-     in `~/.moneyinmotion/config.json`, but `SettingsPage` only
-     edits `dataPath`. Users who need a non-default port must edit
-     the JSON by hand.
-   - Fix: add a port input to Settings. Validate 1-65535. Note that
-     port changes take effect after server restart (matching
-     existing dataPath behaviour).
+No remaining P0 items are blocking a usable local-first version of the app
+relative to `GOAL.md`. Account management now supports edit/delete, the UI
+shows per-account import status, the Settings page edits both data path and
+port, and the web account form exposes match tags needed by the matching
+algorithms.
 
 ---
 
@@ -166,6 +145,22 @@ pieces, or correctness issues that allow invalid data to be saved.
 
 Kept here briefly so reviewers can see what has recently changed.
 
+- **Full account management in the web UI.** `AccountsPage` now supports
+  editing and deleting accounts in addition to create. The server now
+  exposes `PUT /api/accounts/:id` and `DELETE /api/accounts/:id`. Delete
+  intentionally removes only `AccountConfig.json` (and the empty folder if
+  possible), leaving raw statement files untouched.
+- **Per-account import status.** `GET /api/accounts` now returns
+  transaction counts and the most recent `auditInfo.createDate` per
+  account, and the Accounts page renders those stats on each card.
+- **Port configuration in Settings.** `SettingsPage` now edits both
+  `dataPath` and `port`, validates port `1-65535`, and makes it explicit
+  that a server restart is required before either change takes effect.
+- **Matching tags exposed in account form.** The account create/edit dialog
+  now supports `interAccountNameTags` and `scanSubFolders`, which were
+  previously only editable by hand in `AccountConfig.json` even though the
+  transfer matcher and Amazon/Etsy parent-child matcher depend on those
+  fields.
 - **Bulk edit confirmation wired up.** `CategoryEditor` and
   `AttributeEditor` now compute the affected transactions for any
   non-single-ID scope and show `EditConfirmDialog` with an

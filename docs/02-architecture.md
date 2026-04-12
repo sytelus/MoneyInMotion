@@ -131,7 +131,7 @@ The React single-page application. Key modules:
 | `components/transactions/` | TransactionList, TransactionGroup, TransactionRow, TransactionSummary, AmountDisplay |
 | `components/editing/` | CategoryEditor, NoteEditor, AttributeEditor, ScopeFilterEditor, EditConfirmDialog, TransactionContextMenu |
 | `components/ui/` | Button, Dialog, Input, Select, Textarea, Badge (shared UI primitives) |
-| `pages/` | WelcomePage (first-run setup), AccountsPage, SettingsPage |
+| `pages/` | WelcomePage (first-run setup), AccountsPage (create/edit/delete + status), SettingsPage (data path + port + import/save) |
 | `api/` | HTTP client functions, React Query hooks |
 | `store/` | Zustand transactions store (filtering, selection, expansion state) |
 | `hooks/` | useKeyboardShortcuts (global keyboard navigation and editing shortcuts) |
@@ -143,10 +143,12 @@ The React single-page application. Key modules:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/config` | Returns current server configuration (dataPath, statementsDir, mergedDir) |
-| `PUT` | `/api/config` | Updates configuration (dataPath). Validates with Zod. |
-| `GET` | `/api/accounts` | Scans statementsDir for AccountConfig.json files, returns all accounts |
+| `GET` | `/api/config` | Returns current server configuration (`port`, `dataPath`, `statementsDir`, `mergedDir`) |
+| `PUT` | `/api/config` | Updates configuration (`dataPath` and/or `port`). Validates with Zod. |
+| `GET` | `/api/accounts` | Scans `statementsDir` for `AccountConfig.json` files and returns each account plus import stats |
 | `POST` | `/api/accounts` | Creates a new account folder and AccountConfig.json |
+| `PUT` | `/api/accounts/:id` | Updates an existing account configuration |
+| `DELETE` | `/api/accounts/:id` | Removes `AccountConfig.json` without deleting raw statement files |
 | `GET` | `/api/transactions` | Returns all transactions as serialized JSON from the in-memory cache |
 | `POST` | `/api/transaction-edits` | Applies an array of edits, returns `{ affectedTransactionsCount }` |
 | `POST` | `/api/import/scan` | Triggers scan of statement files, merges new transactions, returns import stats |

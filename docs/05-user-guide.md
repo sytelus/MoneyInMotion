@@ -194,8 +194,15 @@ Navigate to the Accounts page via the **Accounts** button in the top navigation 
 The Accounts page allows you to:
 - View all configured accounts (discovered from `AccountConfig.json` files)
 - Create new accounts (which creates the folder and `AccountConfig.json` file)
+- Edit existing account settings, including file filters and match tags
+- Delete an account configuration without deleting raw statement files
+- See per-account import status (transaction count and latest import timestamp)
 
-Account creation is done via the `POST /api/accounts` endpoint, which creates the account directory under `Statements/` and writes the `AccountConfig.json` file.
+When creating or editing an account, pay attention to **Match Tags** (`interAccountNameTags`). These are the name fragments MoneyInMotion uses to:
+- Match inter-account transfers
+- Match Amazon/Etsy order-history entries to the real credit-card charge
+
+Deleting an account removes only `AccountConfig.json`. Previously imported transactions remain in merged data, and the original statement files are left on disk.
 
 ---
 
@@ -206,6 +213,9 @@ Navigate to the Settings page via the **Settings** button in the top navigation 
 The Settings page allows you to:
 - View the current data directory path
 - Change the data directory path (updates `~/.moneyinmotion/config.json`)
+- View and change the server port
+
+Both the data-path change and port change take effect only after restarting the server.
 
 ---
 

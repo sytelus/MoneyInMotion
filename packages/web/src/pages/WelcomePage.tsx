@@ -21,9 +21,8 @@ import {
   Download,
   Keyboard,
 } from 'lucide-react';
-import type { AccountConfig } from '@moneyinmotion/core';
 import { Button } from '../components/ui/button.js';
-import { getConfig, getAccounts } from '../api/client.js';
+import { getConfig, getAccounts, type AccountSummary } from '../api/client.js';
 import { useScanStatements } from '../api/hooks.js';
 import { cn } from '../lib/utils.js';
 import { KEYBOARD_SHORTCUTS } from '../lib/shortcuts.js';
@@ -35,14 +34,14 @@ import { KEYBOARD_SHORTCUTS } from '../lib/shortcuts.js';
 interface StepStatus {
   dataPath: string | null;
   dataPathConfigured: boolean;
-  accounts: AccountConfig[];
+  accounts: AccountSummary[];
   accountsLoaded: boolean;
 }
 
 function useStepStatus(): StepStatus & { refresh: () => void } {
   const [dataPath, setDataPath] = useState<string | null>(null);
   const [dataPathConfigured, setDataPathConfigured] = useState(false);
-  const [accounts, setAccounts] = useState<AccountConfig[]>([]);
+  const [accounts, setAccounts] = useState<AccountSummary[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [tick, setTick] = useState(0);
 
@@ -253,13 +252,13 @@ export const WelcomePage: React.FC = () => {
                 </p>
                 <ul className="space-y-1">
                   {accounts.map((acct) => (
-                    <li key={acct.accountInfo.id} className="text-xs">
+                    <li key={acct.config.accountInfo.id} className="text-xs">
                       <span className="font-medium text-foreground">
-                        {acct.accountInfo.title ?? acct.accountInfo.id}
+                        {acct.config.accountInfo.title ?? acct.config.accountInfo.id}
                       </span>
                       :{' '}
                       <code className="px-1.5 py-0.5 bg-muted rounded">
-                        {dataPath}/Statements/{acct.accountInfo.id}/
+                        {dataPath}/Statements/{acct.config.accountInfo.id}/
                       </code>
                     </li>
                   ))}

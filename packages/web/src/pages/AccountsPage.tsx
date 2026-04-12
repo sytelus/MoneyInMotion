@@ -1,15 +1,25 @@
 /**
  * Account management page.
  *
- * Lists all configured accounts and provides a dialog for creating new ones.
- * Replaces the Phase 6 placeholder.
+ * Lists configured accounts, shows per-account import status, and provides
+ * dialogs for creating, editing, and deleting account configurations.
  *
  * @module
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, CreditCard, Building2, FolderOpen, CheckCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Building2,
+  CheckCircle,
+  CreditCard,
+  FolderOpen,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { AccountType, type AccountConfig } from '@moneyinmotion/core';
 import { Button } from '../components/ui/button.js';
 import { Badge } from '../components/ui/badge.js';
@@ -17,11 +27,13 @@ import { Input } from '../components/ui/input.js';
 import { Select, type SelectOption } from '../components/ui/select.js';
 import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog.js';
 import { useAccounts } from '../api/hooks.js';
-import { createAccount, getConfig } from '../api/client.js';
-
-// ---------------------------------------------------------------------------
-// Lookup tables for form options
-// ---------------------------------------------------------------------------
+import {
+  createAccount,
+  deleteAccount,
+  getConfig,
+  updateAccount,
+  type AccountSummary,
+} from '../api/client.js';
 
 const institutionOptions: SelectOption[] = [
   { value: 'American Express', label: 'American Express' },
@@ -50,37 +62,131 @@ const accountTypeLabels: Record<number, string> = {
 
 function badgeVariantForType(type: AccountType): 'default' | 'secondary' | 'info' | 'success' | 'warning' {
   switch (type) {
-    case AccountType.CreditCard: return 'default';
-    case AccountType.BankChecking: return 'info';
-    case AccountType.BankSavings: return 'success';
-    case AccountType.OrderHistory: return 'warning';
-    case AccountType.EPayment: return 'secondary';
-    default: return 'secondary';
+    case AccountType.CreditCard:
+      return 'default';
+    case AccountType.BankChecking:
+      return 'info';
+    case AccountType.BankSavings:
+      return 'success';
+    case AccountType.OrderHistory:
+      return 'warning';
+    case AccountType.EPayment:
+      return 'secondary';
+    default:
+      return 'secondary';
   }
 }
 
-// ---------------------------------------------------------------------------
-// Add Account Dialog
-// ---------------------------------------------------------------------------
-
-interface AddAccountDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreated: (accountId: string) => void;
+function formatCsvList(values: string[] | null | undefined): string {
+  return (values ?? []).join(', ');
 }
 
-const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
+function parseCsvList(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatLastImportedAt(value: string | null): string {
+  if (!value) {
+    return 'Not imported yet';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+}
+
+function buildAccountConfig(form: {
+  accountId: string;
+  title: string;
+  instituteName: string;
+  accountType: AccountType;
+  fileFilters: string;
+  interAccountNameTags: string;
+  scanSubFolders: boolean;
+}): AccountConfig {
+  return {
+    accountInfo: {
+      id: form.accountId.trim(),
+      instituteName: form.instituteName.trim(),
+      title: form.title.trim(),
+      type: form.accountType,
+      requiresParent: form.accountType === AccountType.OrderHistory,
+      interAccountNameTags: parseCsvList(form.interAccountNameTags),
+    },
+    fileFilters: parseCsvList(form.fileFilters).length > 0
+      ? parseCsvList(form.fileFilters)
+      : ['*.csv'],
+    scanSubFolders: form.scanSubFolders,
+  };
+}
+
+type AccountDialogMode = 'create' | 'edit';
+
+interface AccountFormDialogProps {
+  mode: AccountDialogMode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  account?: AccountSummary | null;
+  onSaved: (savedAccount: AccountSummary, previousId: string | null) => Promise<void> | void;
+}
+
+const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
+  mode,
   open,
   onOpenChange,
-  onCreated,
+  account,
+  onSaved,
 }) => {
   const [accountId, setAccountId] = useState('');
   const [title, setTitle] = useState('');
   const [instituteName, setInstituteName] = useState('Generic');
   const [accountType, setAccountType] = useState<AccountType>(AccountType.CreditCard);
   const [fileFilters, setFileFilters] = useState('*.csv');
+  const [interAccountNameTags, setInterAccountNameTags] = useState('');
+  const [scanSubFolders, setScanSubFolders] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (mode === 'edit' && account) {
+      setAccountId(account.config.accountInfo.id);
+      setTitle(account.config.accountInfo.title ?? account.config.accountInfo.id);
+      setInstituteName(account.config.accountInfo.instituteName);
+      setAccountType(account.config.accountInfo.type);
+      setFileFilters(formatCsvList(account.config.fileFilters));
+      setInterAccountNameTags(
+        formatCsvList(account.config.accountInfo.interAccountNameTags),
+      );
+      setScanSubFolders(account.config.scanSubFolders);
+    } else {
+      setAccountId('');
+      setTitle('');
+      setInstituteName('Generic');
+      setAccountType(AccountType.CreditCard);
+      setFileFilters('*.csv');
+      setInterAccountNameTags('');
+      setScanSubFolders(true);
+    }
+
+    setError(null);
+    setIsSaving(false);
+  }, [account, mode, open]);
+
+  const isOrderHistory = accountType === AccountType.OrderHistory;
+  const previousId = account?.config.accountInfo.id ?? null;
+  const canEditId = mode === 'create'
+    || !account
+    || (account.stats.transactionCount === 0 && !account.hasStatementFiles);
 
   const handleSubmit = async () => {
     if (!accountId.trim() || !title.trim()) {
@@ -92,46 +198,34 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
     setError(null);
 
     try {
-      const config: AccountConfig = {
-        accountInfo: {
-          id: accountId.trim(),
-          instituteName,
-          title: title.trim(),
-          type: accountType,
-          requiresParent: accountType === AccountType.OrderHistory,
-        },
-        fileFilters: fileFilters
-          .split(',')
-          .map((f) => f.trim())
-          .filter((f) => f.length > 0),
-        scanSubFolders: true,
-      };
+      const config = buildAccountConfig({
+        accountId,
+        title,
+        instituteName,
+        accountType,
+        fileFilters,
+        interAccountNameTags,
+        scanSubFolders,
+      });
 
-      await createAccount(config);
-      const createdId = accountId.trim();
-      onCreated(createdId);
+      const saved = mode === 'create'
+        ? await createAccount(config)
+        : await updateAccount(previousId ?? config.accountInfo.id, config);
+
+      await onSaved(saved, previousId);
       onOpenChange(false);
-
-      // Reset form
-      setAccountId('');
-      setTitle('');
-      setInstituteName('Generic');
-      setAccountType(AccountType.CreditCard);
-      setFileFilters('*.csv');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create account');
+      setError(err instanceof Error ? err.message : 'Failed to save account');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const isOrderHistory = accountType === AccountType.OrderHistory;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Add Account"
-        description="Configure a new financial account for importing statements."
+        title={mode === 'create' ? 'Add Account' : 'Edit Account'}
+        description="Configure how MoneyInMotion should discover and interpret files for this account."
         className="max-w-xl"
       >
         <div className="space-y-5">
@@ -142,27 +236,33 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
           )}
 
           <div className="space-y-1.5">
-            <label htmlFor="account-id" className="text-sm font-medium">
+            <label htmlFor={`${mode}-account-id`} className="text-sm font-medium">
               Account ID
             </label>
             <Input
-              id="account-id"
+              id={`${mode}-account-id`}
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               placeholder="e.g. amex-plat"
-              autoFocus
+              autoFocus={mode === 'create'}
+              disabled={!canEditId}
             />
             <p className="text-xs text-muted-foreground">
-              A short, unique identifier. This becomes the folder name for statement files.
+              This becomes the folder name under <code>Statements/</code>.
             </p>
+            {!canEditId && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Account ID is locked after statement files are added or transactions are imported.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="account-title" className="text-sm font-medium">
+            <label htmlFor={`${mode}-account-title`} className="text-sm font-medium">
               Account Title
             </label>
             <Input
-              id="account-title"
+              id={`${mode}-account-title`}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Platinum Card"
@@ -170,61 +270,91 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="institution" className="text-sm font-medium">
+            <label htmlFor={`${mode}-institution`} className="text-sm font-medium">
               Institution
             </label>
             <Select
-              id="institution"
+              id={`${mode}-institution`}
               value={instituteName}
               onChange={(e) => setInstituteName(e.target.value)}
               options={institutionOptions}
             />
             <p className="text-xs text-muted-foreground">
-              Select your bank or card issuer. Choose &lsquo;Generic&rsquo; if yours isn&rsquo;t listed — it works with most CSV formats.
+              Choose the institution-specific parser when available. Use &lsquo;Generic&rsquo; for most standard CSV exports.
             </p>
           </div>
 
           <div className="space-y-2">
             <span className="text-sm font-medium">Account Type</span>
             <p className="text-xs text-muted-foreground">
-              Select the type of financial account.
+              This controls how transactions are grouped and matched.
             </p>
             <div className="space-y-1.5">
-              {accountTypeOptions.map((opt) => (
-                <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+              {accountTypeOptions.map((option) => (
+                <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="radio"
-                    name="accountType"
-                    value={opt.value}
-                    checked={accountType === opt.value}
-                    onChange={() => setAccountType(opt.value)}
+                    name={`${mode}-accountType`}
+                    value={option.value}
+                    checked={accountType === option.value}
+                    onChange={() => setAccountType(option.value)}
                     className="accent-primary"
                   />
-                  {opt.label}
+                  {option.label}
                 </label>
               ))}
             </div>
             {isOrderHistory && (
-              <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-3 text-xs text-yellow-800 dark:text-yellow-200">
-                Order history accounts (Amazon, Etsy) match purchases to your credit card charges. They require a parent credit card account.
+              <div className="rounded-md bg-yellow-50 p-3 text-xs text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
+                Order history accounts (Amazon, Etsy) need match tags so purchases can be reconciled to the credit-card charge.
               </div>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="file-filters" className="text-sm font-medium">
+            <label htmlFor={`${mode}-match-tags`} className="text-sm font-medium">
+              Match Tags
+            </label>
+            <Input
+              id={`${mode}-match-tags`}
+              value={interAccountNameTags}
+              onChange={(e) => setInterAccountNameTags(e.target.value)}
+              placeholder="e.g. AMEX, AMERICAN EXPRESS"
+            />
+            <p className="text-xs text-muted-foreground">
+              Comma-separated name fragments used for transfer matching and Amazon/Etsy parent-charge matching.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor={`${mode}-file-filters`} className="text-sm font-medium">
               File Filters
             </label>
             <Input
-              id="file-filters"
+              id={`${mode}-file-filters`}
               value={fileFilters}
               onChange={(e) => setFileFilters(e.target.value)}
               placeholder="*.csv"
             />
             <p className="text-xs text-muted-foreground">
-              Comma-separated glob patterns for statement files
+              Comma-separated glob patterns for statement files.
             </p>
           </div>
+
+          <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={scanSubFolders}
+              onChange={(e) => setScanSubFolders(e.target.checked)}
+              className="mt-0.5 accent-primary"
+            />
+            <span>
+              <span className="font-medium">Scan subfolders</span>
+              <span className="block text-xs text-muted-foreground">
+                Enable this if your bank export files are organized in yearly or monthly subdirectories.
+              </span>
+            </span>
+          </label>
         </div>
 
         <DialogFooter>
@@ -232,7 +362,9 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving}>
-            {isSaving ? 'Creating...' : 'Create Account'}
+            {isSaving
+              ? (mode === 'create' ? 'Creating...' : 'Saving...')
+              : (mode === 'create' ? 'Create Account' : 'Save Changes')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -240,21 +372,26 @@ const AddAccountDialog: React.FC<AddAccountDialogProps> = ({
   );
 };
 
-// ---------------------------------------------------------------------------
-// AccountsPage
-// ---------------------------------------------------------------------------
+interface FeedbackMessage {
+  title: string;
+  description: string;
+  path?: string;
+}
 
 /**
- * Full account management page. Lists configured accounts and allows adding
- * new ones through a dialog.
+ * Full account management page. Lists configured accounts and allows adding,
+ * editing, and removing account configs through dialogs.
  */
 export const AccountsPage: React.FC = () => {
   const { data: accounts, isLoading, error, refetch } = useAccounts();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<AccountSummary | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<AccountSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [dataPath, setDataPath] = useState<string | null>(null);
-  const [createdAccountId, setCreatedAccountId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackMessage | null>(null);
 
-  // Load config to get dataPath
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -264,19 +401,61 @@ export const AccountsPage: React.FC = () => {
           setDataPath(config.dataPath);
         }
       } catch {
-        // Silently ignore — folder paths just won't be shown
+        // Folder paths are informative only; ignore load failures here.
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleAccountCreated = (accountId: string) => {
-    setCreatedAccountId(accountId);
-    refetch();
+  const dismissFeedback = () => {
+    setFeedback(null);
   };
 
-  const dismissSuccessMessage = () => {
-    setCreatedAccountId(null);
+  const handleAccountSaved = async (
+    savedAccount: AccountSummary,
+    previousId: string | null,
+  ) => {
+    await refetch();
+
+    const accountId = savedAccount.config.accountInfo.id;
+    const action = previousId == null ? 'created' : 'updated';
+
+    setFeedback({
+      title: action === 'created' ? 'Account created' : 'Account updated',
+      description:
+        action === 'created'
+          ? 'Place your statement files in the folder below, then run Import.'
+          : 'The account configuration has been saved.',
+      path: dataPath ? `${dataPath}/Statements/${accountId}/` : undefined,
+    });
+    setEditingAccount(null);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!deletingAccount) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const result = await deleteAccount(deletingAccount.config.accountInfo.id);
+      await refetch();
+      setDeletingAccount(null);
+      setFeedback({
+        title: 'Account configuration removed',
+        description: result.keptStatementFiles
+          ? 'The raw statement files were left in place. Only AccountConfig.json was removed.'
+          : 'The empty account folder was removed after deleting AccountConfig.json.',
+      });
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -298,30 +477,31 @@ export const AccountsPage: React.FC = () => {
         </Button>
       </header>
 
-      <main className="p-6 max-w-4xl mx-auto">
+      <main className="p-6 max-w-5xl mx-auto">
         <p className="text-sm text-muted-foreground mb-6">
-          Each account represents a bank account, credit card, or payment service.
-          Add your accounts here, then place statement files (CSV, JSON, IIF) in the account folders.
+          Each account represents a bank account, credit card, order history, or payment service.
+          Configure the parser, file filters, and matching tags here before importing statements.
         </p>
 
-        {/* Success message after creating an account */}
-        {createdAccountId && dataPath && (
+        {feedback && (
           <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-4 mb-6">
             <div className="flex items-start gap-3">
               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
               <div className="flex-1 space-y-2">
                 <p className="font-medium text-green-800 dark:text-green-200">
-                  Account created! Now place your statement files in:
+                  {feedback.title}
                 </p>
-                <code className="block text-sm bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100 px-3 py-2 rounded">
-                  {dataPath}/Statements/{createdAccountId}/
-                </code>
-                <p className="text-xs text-green-700 dark:text-green-300">
-                  Download transaction files from your bank&rsquo;s website. Most banks offer CSV export.
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  {feedback.description}
                 </p>
+                {feedback.path && (
+                  <code className="block text-sm bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100 px-3 py-2 rounded">
+                    {feedback.path}
+                  </code>
+                )}
               </div>
               <button
-                onClick={dismissSuccessMessage}
+                onClick={dismissFeedback}
                 className="text-green-600 dark:text-green-400 hover:opacity-70 text-sm"
                 aria-label="Dismiss"
               >
@@ -353,45 +533,98 @@ export const AccountsPage: React.FC = () => {
 
         {accounts && accounts.length > 0 && (
           <div className="space-y-3">
-            {accounts.map((config) => {
-              const info = config.accountInfo;
+            {accounts.map((account) => {
+              const info = account.config.accountInfo;
+              const transactionLabel = account.stats.transactionCount === 1
+                ? 'transaction'
+                : 'transactions';
+
               return (
                 <div
                   key={info.id}
-                  className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent/30 transition-colors"
+                  className="rounded-lg border border-border p-4 hover:bg-accent/20 transition-colors"
                 >
-                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-secondary shrink-0">
-                    <Building2 className="h-5 w-5 text-secondary-foreground" />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm truncate">
-                        {info.title ?? info.id}
-                      </span>
-                      <Badge variant={badgeVariantForType(info.type)}>
-                        {accountTypeLabels[info.type] ?? 'Unknown'}
-                      </Badge>
+                  <div className="flex gap-4">
+                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-secondary shrink-0">
+                      <Building2 className="h-5 w-5 text-secondary-foreground" />
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>{info.instituteName}</span>
-                      <span className="text-border">|</span>
-                      <span>ID: {info.id}</span>
-                      {config.fileFilters.length > 0 && (
-                        <>
-                          <span className="text-border">|</span>
-                          <span>Files: {config.fileFilters.join(', ')}</span>
-                        </>
+
+                    <div className="flex-1 min-w-0 space-y-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="font-medium text-sm truncate">
+                              {info.title ?? info.id}
+                            </span>
+                            <Badge variant={badgeVariantForType(info.type)}>
+                              {accountTypeLabels[info.type] ?? 'Unknown'}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span>{info.instituteName}</span>
+                            <span className="text-border">|</span>
+                            <span>ID: {info.id}</span>
+                            <span className="text-border">|</span>
+                            <span>
+                              Imported: {account.stats.transactionCount} {transactionLabel}
+                            </span>
+                            <span className="text-border">|</span>
+                            <span>
+                              Last import: {formatLastImportedAt(account.stats.lastImportedAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingAccount(account)}
+                          >
+                            <Pencil className="h-4 w-4 mr-1.5" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDeleteError(null);
+                              setDeletingAccount(account);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1.5" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {account.config.fileFilters.length > 0 && (
+                          <span>Files: {account.config.fileFilters.join(', ')}</span>
+                        )}
+                        <span className="text-border">|</span>
+                        <span>{account.config.scanSubFolders ? 'Scanning subfolders' : 'Top-level folder only'}</span>
+                        <span className="text-border">|</span>
+                        <span>
+                          Match tags: {account.config.accountInfo.interAccountNameTags?.join(', ') || 'None'}
+                        </span>
+                      </div>
+
+                      {dataPath && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <FolderOpen className="h-3 w-3 shrink-0" />
+                          <code className="px-1 py-0.5 bg-muted rounded truncate">
+                            {dataPath}/Statements/{info.id}/
+                          </code>
+                        </div>
+                      )}
+
+                      {account.hasStatementFiles && (
+                        <div className="text-xs text-muted-foreground">
+                          Statement files are present in this account folder.
+                        </div>
                       )}
                     </div>
-                    {dataPath && (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
-                        <FolderOpen className="h-3 w-3 shrink-0" />
-                        <code className="px-1 py-0.5 bg-muted rounded truncate">
-                          {dataPath}/Statements/{info.id}/
-                        </code>
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -400,11 +633,84 @@ export const AccountsPage: React.FC = () => {
         )}
       </main>
 
-      <AddAccountDialog
+      <AccountFormDialog
+        mode="create"
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
-        onCreated={handleAccountCreated}
+        onSaved={handleAccountSaved}
       />
+
+      <AccountFormDialog
+        mode="edit"
+        open={editingAccount != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingAccount(null);
+          }
+        }}
+        account={editingAccount}
+        onSaved={handleAccountSaved}
+      />
+
+      <Dialog
+        open={deletingAccount != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingAccount(null);
+            setDeleteError(null);
+          }
+        }}
+      >
+        <DialogContent
+          title="Delete Account"
+          description="This removes the account configuration from MoneyInMotion."
+          className="max-w-lg"
+        >
+          {deletingAccount && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-medium">
+                      {deletingAccount.config.accountInfo.title ?? deletingAccount.config.accountInfo.id}
+                    </p>
+                    <p>
+                      This deletes only <code>AccountConfig.json</code>. Raw statement files are preserved.
+                    </p>
+                    {deletingAccount.stats.transactionCount > 0 && (
+                      <p>
+                        {deletingAccount.stats.transactionCount} imported transaction(s) already exist in merged data and will not be removed automatically.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeletingAccount(null);
+                setDeleteError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleDeleteConfirmed} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete Account Config'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

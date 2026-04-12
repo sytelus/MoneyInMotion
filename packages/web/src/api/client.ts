@@ -11,6 +11,30 @@ import type { TransactionsData, TransactionEditData, AccountConfig } from '@mone
 
 const BASE_URL = '/api';
 
+export interface ApiConfig {
+  port: number;
+  dataPath: string;
+  statementsDir: string;
+  mergedDir: string;
+}
+
+export interface AccountStats {
+  transactionCount: number;
+  lastImportedAt: string | null;
+}
+
+export interface AccountSummary {
+  config: AccountConfig;
+  stats: AccountStats;
+  hasStatementFiles: boolean;
+}
+
+export interface DeleteAccountResponse {
+  deletedId: string;
+  removedDirectory: boolean;
+  keptStatementFiles: boolean;
+}
+
 /**
  * Thin wrapper around `fetch` that throws on non-OK responses and parses JSON.
  */
@@ -55,27 +79,30 @@ export async function applyEdits(
 /**
  * Retrieve application configuration.
  */
-export async function getConfig(): Promise<{ dataPath: string }> {
-  return request<{ dataPath: string }>('/config');
+export async function getConfig(): Promise<ApiConfig> {
+  return request<ApiConfig>('/config');
 }
 
 /**
- * Update the data-path configuration.
+ * Update application configuration.
  *
- * @param dataPath - The new path to the data directory.
+ * @param config - The new config values to persist.
  */
-export async function updateConfig(dataPath: string): Promise<{ dataPath: string }> {
-  return request<{ dataPath: string }>('/config', {
+export async function updateConfig(config: {
+  dataPath: string;
+  port: number;
+}): Promise<ApiConfig> {
+  return request<ApiConfig>('/config', {
     method: 'PUT',
-    body: JSON.stringify({ dataPath }),
+    body: JSON.stringify(config),
   });
 }
 
 /**
  * Retrieve all configured accounts.
  */
-export async function getAccounts(): Promise<AccountConfig[]> {
-  return request<AccountConfig[]>('/accounts');
+export async function getAccounts(): Promise<AccountSummary[]> {
+  return request<AccountSummary[]>('/accounts');
 }
 
 /**
@@ -83,11 +110,43 @@ export async function getAccounts(): Promise<AccountConfig[]> {
  *
  * @param config - The account configuration to create.
  */
-export async function createAccount(config: AccountConfig): Promise<AccountConfig> {
-  return request<AccountConfig>('/accounts', {
+export async function createAccount(config: AccountConfig): Promise<AccountSummary> {
+  return request<AccountSummary>('/accounts', {
     method: 'POST',
     body: JSON.stringify(config),
   });
+}
+
+/**
+ * Update an existing account configuration.
+ *
+ * @param currentId - The existing account ID in the route.
+ * @param config - The updated account configuration.
+ */
+export async function updateAccount(
+  currentId: string,
+  config: AccountConfig,
+): Promise<AccountSummary> {
+  return request<AccountSummary>(`/accounts/${encodeURIComponent(currentId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  });
+}
+
+/**
+ * Remove an existing account configuration.
+ *
+ * Raw statement files are intentionally preserved server-side.
+ */
+export async function deleteAccount(
+  accountId: string,
+): Promise<DeleteAccountResponse> {
+  return request<DeleteAccountResponse>(
+    `/accounts/${encodeURIComponent(accountId)}`,
+    {
+      method: 'DELETE',
+    },
+  );
 }
 
 /**

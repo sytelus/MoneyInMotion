@@ -1,36 +1,57 @@
 /**
  * Application settings page.
  *
- * Provides data path configuration and an import trigger button.
- * Replaces the Phase 6 placeholder.
+ * Provides data-path and port configuration plus import/save actions.
  *
  * @module
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, FolderOpen, Download, Check, AlertCircle, Save } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Download,
+  FolderOpen,
+  Save,
+  Waypoints,
+} from 'lucide-react';
 import { Button } from '../components/ui/button.js';
 import { Input } from '../components/ui/input.js';
 import { getConfig, updateConfig } from '../api/client.js';
 import { useScanStatements, useSaveData } from '../api/hooks.js';
 
+function parsePortInput(portInput: string): number | null {
+  if (!/^\d+$/.test(portInput.trim())) {
+    return null;
+  }
+
+  const port = Number.parseInt(portInput, 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    return null;
+  }
+
+  return port;
+}
+
 /**
- * Settings page with data path configuration and statement import controls.
+ * Settings page with configuration and import controls.
  */
 export const SettingsPage: React.FC = () => {
   const [dataPath, setDataPath] = useState('');
   const [originalPath, setOriginalPath] = useState('');
+  const [portInput, setPortInput] = useState('3001');
+  const [originalPortInput, setOriginalPortInput] = useState('3001');
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [isSavingPath, setIsSavingPath] = useState(false);
-  const [pathSaved, setPathSaved] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
 
   const scanMutation = useScanStatements();
   const saveMutation = useSaveData();
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Load current config on mount
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -39,6 +60,8 @@ export const SettingsPage: React.FC = () => {
         if (!cancelled) {
           setDataPath(config.dataPath);
           setOriginalPath(config.dataPath);
+          setPortInput(String(config.port));
+          setOriginalPortInput(String(config.port));
           setIsLoadingConfig(false);
         }
       } catch (err) {
@@ -48,27 +71,44 @@ export const SettingsPage: React.FC = () => {
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const hasPathChanged = dataPath !== originalPath;
+  const parsedPort = parsePortInput(portInput);
+  const hasChanges = dataPath !== originalPath || portInput !== originalPortInput;
 
-  const handleUpdatePath = async () => {
-    if (!hasPathChanged) return;
-    setIsSavingPath(true);
+  const handleSaveConfig = async () => {
+    if (!hasChanges) {
+      return;
+    }
+
+    const nextPort = parsePortInput(portInput);
+    if (nextPort == null) {
+      setConfigError('Port must be an integer between 1 and 65535.');
+      return;
+    }
+
+    setIsSavingConfig(true);
     setConfigError(null);
-    setPathSaved(false);
+    setConfigSaved(false);
 
     try {
-      const result = await updateConfig(dataPath);
+      const result = await updateConfig({
+        dataPath,
+        port: nextPort,
+      });
       setOriginalPath(result.dataPath);
       setDataPath(result.dataPath);
-      setPathSaved(true);
-      setTimeout(() => setPathSaved(false), 3000);
+      setOriginalPortInput(String(result.port));
+      setPortInput(String(result.port));
+      setConfigSaved(true);
+      setTimeout(() => setConfigSaved(false), 3000);
     } catch (err) {
-      setConfigError(err instanceof Error ? err.message : 'Failed to update path');
+      setConfigError(err instanceof Error ? err.message : 'Failed to update settings');
     } finally {
-      setIsSavingPath(false);
+      setIsSavingConfig(false);
     }
   };
 
@@ -101,52 +141,86 @@ export const SettingsPage: React.FC = () => {
       </header>
 
       <main className="p-6 max-w-2xl mx-auto space-y-8">
-        {/* Data Path Section */}
         <section className="space-y-4">
           <div>
             <h2 className="text-base font-semibold flex items-center gap-2">
               <FolderOpen className="h-5 w-5" />
-              Data Directory
+              Application Configuration
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              This is where MoneyInMotion stores all your data. The folder should contain
-              a &lsquo;Statements&rsquo; subfolder with your account directories.
+              Configure where MoneyInMotion stores data and which port the server listens on.
             </p>
           </div>
 
           {isLoadingConfig ? (
             <div className="text-sm text-muted-foreground">Loading configuration...</div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex gap-2">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="settings-data-path" className="text-sm font-medium">
+                  Data Directory
+                </label>
                 <Input
+                  id="settings-data-path"
                   value={dataPath}
                   onChange={(e) => {
                     setDataPath(e.target.value);
-                    setPathSaved(false);
+                    setConfigSaved(false);
                   }}
                   placeholder="/path/to/data"
-                  className="flex-1"
                 />
-                <Button
-                  onClick={handleUpdatePath}
-                  disabled={!hasPathChanged || isSavingPath}
-                  variant={hasPathChanged ? 'default' : 'outline'}
-                >
-                  {isSavingPath ? 'Updating...' : 'Update'}
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  This folder should contain the <code>Statements/</code> and <code>Merged/</code> subfolders.
+                </p>
               </div>
 
-              {pathSaved && (
+              <div className="space-y-1.5">
+                <label htmlFor="settings-port" className="text-sm font-medium">
+                  Server Port
+                </label>
+                <Input
+                  id="settings-port"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={portInput}
+                  onChange={(e) => {
+                    setPortInput(e.target.value);
+                    setConfigSaved(false);
+                  }}
+                  placeholder="3001"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Change this if another app is already using the default port.
+                </p>
+                {portInput.trim().length > 0 && parsedPort == null && (
+                  <p className="text-xs text-destructive">
+                    Port must be an integer between 1 and 65535.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  onClick={handleSaveConfig}
+                  disabled={!hasChanges || isSavingConfig || parsedPort == null}
+                  variant={hasChanges ? 'default' : 'outline'}
+                >
+                  {isSavingConfig ? 'Updating...' : 'Save Settings'}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Current port: <code className="px-1 py-0.5 bg-muted rounded">{originalPortInput}</code>
+                </p>
+              </div>
+
+              {configSaved && (
                 <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-3 text-sm space-y-1">
                   <p className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium">
                     <Check className="h-4 w-4" />
-                    Path saved to config file.
+                    Settings saved to the config file.
                   </p>
                   <p className="text-xs text-green-700/80 dark:text-green-400/80">
-                    The running server is still using the old path. Restart
-                    the server (stop with Ctrl+C and re-run <code>./run.sh</code>)
-                    for this change to take effect.
+                    Restart the server to apply the new data directory or port.
                   </p>
                 </div>
               )}
@@ -158,27 +232,33 @@ export const SettingsPage: React.FC = () => {
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">
-                Current path: <code className="px-1 py-0.5 bg-muted rounded">{originalPath}</code>
-              </p>
-
-              {/* Directory structure illustration */}
-              <div className="rounded-md bg-muted/50 p-4">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Expected directory structure:</p>
-                <pre className="text-xs text-muted-foreground font-mono leading-relaxed">
+              <div className="rounded-md bg-muted/50 p-4 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Expected directory structure:</p>
+                  <pre className="text-xs text-muted-foreground font-mono leading-relaxed">
 {`${originalPath || '{dataPath}'}/
 ├── Statements/          ← Put account folders here
-│   ├── my-checking/     ← Example account folder
-│   │   └── *.csv        ← Statement files
+│   ├── my-checking/
+│   │   └── *.csv
 │   └── my-credit-card/
 └── Merged/              ← Auto-generated`}
-                </pre>
+                  </pre>
+                </div>
+
+                <div className="border-t border-border/60 pt-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                    <Waypoints className="h-3.5 w-3.5" />
+                    Current server endpoint
+                  </p>
+                  <code className="text-xs px-1 py-0.5 bg-muted rounded">
+                    http://localhost:{originalPortInput}
+                  </code>
+                </div>
               </div>
             </div>
           )}
         </section>
 
-        {/* Import Section */}
         <section className="space-y-4 border-t border-border pt-6">
           <div>
             <h2 className="text-base font-semibold flex items-center gap-2">
@@ -186,8 +266,7 @@ export const SettingsPage: React.FC = () => {
               Import Statements
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Scan all account folders for new statement files. New transactions are
-              automatically deduplicated — re-importing the same file is safe.
+              Scan all account folders for new statement files. Re-importing the same file is safe because duplicates are merged by content hash.
             </p>
           </div>
 
@@ -227,7 +306,6 @@ export const SettingsPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Save Section */}
         <section className="space-y-4 border-t border-border pt-6">
           <div>
             <h2 className="text-base font-semibold flex items-center gap-2">

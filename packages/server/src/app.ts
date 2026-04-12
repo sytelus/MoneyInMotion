@@ -59,7 +59,7 @@ export function createApp(config: ServerConfig): Express & { cache: TransactionC
     // --- Routes ---
 
     app.use('/api/config', createConfigRouter(getConfig));
-    app.use('/api/accounts', createAccountsRouter(getConfig));
+    app.use('/api/accounts', createAccountsRouter(getConfig, cache));
     app.use('/api/transactions', createTransactionsRouter(cache));
     app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
     app.use('/api/import', createImportRouter(cache));
