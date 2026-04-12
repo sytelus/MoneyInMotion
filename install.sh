@@ -93,7 +93,18 @@ ok "All dependencies installed."
 
 echo ""
 
-# -- 4. Verify installation ---------------------------------------------------
+# -- 4. Build @moneyinmotion/core ---------------------------------------------
+# The server imports the core package at runtime via node's module resolution,
+# which reads dist/index.js from the core package's `main` field. Building it
+# here ensures that the server can start immediately after install, even
+# before the user runs ./build.sh.
+info "Building @moneyinmotion/core..."
+npm run build:core --silent
+ok "core built."
+
+echo ""
+
+# -- 5. Verify installation ---------------------------------------------------
 info "Verifying installation..."
 
 # Quick sanity check — can we import the core package?

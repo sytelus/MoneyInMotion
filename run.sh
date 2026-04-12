@@ -37,6 +37,28 @@ if [ ! -d "node_modules" ]; then
     echo ""
 fi
 
+# Ensure @moneyinmotion/core is built. The server imports it at runtime via
+# node's module resolution (which reads `dist/index.js` from the package's
+# `main` field), so the dist output must exist and be up to date. The web
+# package bypasses this via a Vite alias (see packages/web/vite.config.ts),
+# but the server has no such workaround.
+CORE_INDEX="packages/core/dist/index.js"
+NEED_BUILD=0
+if [ ! -f "$CORE_INDEX" ]; then
+    NEED_BUILD=1
+else
+    # Rebuild if any source file is newer than the compiled output.
+    if [ -n "$(find packages/core/src -name '*.ts' -newer "$CORE_INDEX" 2>/dev/null | head -1)" ]; then
+        NEED_BUILD=1
+    fi
+fi
+if [ "$NEED_BUILD" = "1" ]; then
+    info "Building @moneyinmotion/core (required for the server)..."
+    npm run build:core --silent
+    ok "core built."
+    echo ""
+fi
+
 MODE="${1:-dev}"
 
 if [ "$MODE" = "prod" ] || [ "$MODE" = "production" ]; then
