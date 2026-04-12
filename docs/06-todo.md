@@ -23,9 +23,14 @@
    - Attribute fix dialog (reason, entity name, amount)
    - Bulk edit confirmation showing affected transaction count
 
-4. **Fix Hardcoded User Identity**
-   - Edit audit info currently lacks proper user identity
-   - Implement configurable user identity or derive from OS username
+4. **Multi-User Audit Identity**
+   - The server currently attributes all audit records to the OS user running
+     the process (via `setDefaultAuditUser(os.userInfo().username)` at
+     startup).
+   - When MoneyInMotion is used by multiple users sharing a server, the audit
+     trail should instead reflect the authenticated end user. This requires
+     adding authentication to the API and threading the user identity through
+     each request.
 
 ---
 

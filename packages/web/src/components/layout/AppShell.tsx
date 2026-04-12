@@ -181,7 +181,7 @@ export const AppShell: React.FC = () => {
       )}
 
       {/* Empty state: no transactions loaded at all */}
-      {!isLoading && !error && transactions && transactions.topLevelTransactions.length === 0 && (
+      {!isLoading && !error && transactions && transactions.topLevelTransactionCount === 0 && (
         <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center p-8">
           <Sparkles className="h-12 w-12 text-muted-foreground/50" />
           <div>
@@ -199,7 +199,7 @@ export const AppShell: React.FC = () => {
       )}
 
       {/* Main three-column layout */}
-      {!isLoading && !error && (!transactions || transactions.topLevelTransactions.length > 0) && (
+      {!isLoading && !error && (!transactions || transactions.topLevelTransactionCount > 0) && (
         <div className="flex flex-1 min-h-0">
           {/* Left sidebar: year/month navigation */}
           <aside className="hidden md:block w-64 border-r border-border overflow-y-auto shrink-0">
@@ -209,7 +209,7 @@ export const AppShell: React.FC = () => {
           {/* Center: transaction list */}
           <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
             {/* Inline banner for users who have transactions but haven't selected a period */}
-            {transactions && transactions.topLevelTransactions.length > 0 && !selectedYear && !selectedMonth && (
+            {transactions && transactions.topLevelTransactionCount > 0 && !selectedYear && !selectedMonth && (
               <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border text-sm">
                 <Sparkles className="h-4 w-4 text-primary shrink-0" />
                 <span className="text-muted-foreground">

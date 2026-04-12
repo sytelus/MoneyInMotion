@@ -301,3 +301,14 @@ The project uses a shared `tsconfig.base.json` at the root with these key settin
 - **Strict mode**: Enabled
 - **Verbatim module syntax**: Enabled (explicit `import type` required)
 - **Declaration maps and source maps**: Enabled for debugging
+
+The root `tsconfig.json` uses project references (`tsc -b`) to build all three
+packages in dependency order. The core package has `composite: true` set so
+that downstream packages (server, web) can resolve its declaration files from
+`packages/core/dist/`.
+
+**Note on incremental builds.** Because `composite: true` makes `tsc`
+incremental and cache its decisions in `tsconfig.tsbuildinfo`, manually
+deleting `packages/core/dist/` can leave `tsc` thinking the output is still
+current. The `./run.sh`, `./build.sh`, and `./install.sh` scripts all handle
+this correctly by clearing the stale buildinfo when dist is missing.

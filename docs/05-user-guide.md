@@ -73,10 +73,19 @@ For each bank account or credit card:
 
 ```bash
 cd MoneyInMotion
-npm run dev
+./run.sh              # dev mode -- http://localhost:5173
 ```
 
-Open `http://localhost:5173` in your browser.
+Or for a leaner production run (single port, minified assets):
+
+```bash
+./build.sh
+./run.sh prod         # prod mode -- http://localhost:3001
+```
+
+Open the URL shown in the terminal. See
+[Install and Build](04-install-and-build.md#dev-vs-production--whats-different)
+for a detailed comparison of the two modes.
 
 ### Layout
 

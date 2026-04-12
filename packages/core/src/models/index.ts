@@ -26,6 +26,9 @@ export {
   type AuditInfo,
   createAuditInfo,
   updateAuditInfo,
+  FALLBACK_AUDIT_USER,
+  setDefaultAuditUser,
+  getDefaultAuditUser,
 } from './audit-info.js';
 
 export { type ImportInfo } from './import-info.js';

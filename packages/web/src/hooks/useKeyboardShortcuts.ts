@@ -2,19 +2,13 @@
  * Hook that registers global keyboard shortcuts for transaction navigation
  * and editing actions.
  *
- * Shortcuts are only active when no `<input>` or `<textarea>` has focus.
+ * Shortcuts are only active when no `<input>`, `<textarea>`, or other
+ * interactive form element has focus (Escape is the exception so dialogs
+ * can always be dismissed).
  *
- * | Shortcut        | Action                           |
- * |-----------------|----------------------------------|
- * | Up/Down Arrow   | Navigate transactions            |
- * | Left Arrow      | Collapse selected group          |
- * | Right Arrow     | Expand selected group            |
- * | Alt+T           | Open category editor             |
- * | Alt+N           | Open note editor                 |
- * | Alt+E           | Open attribute editor            |
- * | Alt+F           | Toggle flag on selected txn       |
- * | Alt+Shift+F     | Remove flag from selected txn     |
- * | Escape          | Close any open dialog            |
+ * The user-facing list of shortcuts lives in `lib/shortcuts.ts` and is
+ * rendered by `KeyboardShortcutsDialog` and `WelcomePage`. The wiring
+ * below must stay in sync with that list.
  *
  * @module
  */

@@ -82,10 +82,14 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       <div className="flex items-center gap-2 min-w-0">
         <span className="truncate">{transaction.displayEntityNameNormalized}</span>
         {transaction.isUserFlagged && (
-          <Flag className="h-3.5 w-3.5 shrink-0 text-destructive" title="Flagged for review" />
+          <span title="Flagged for review" className="shrink-0 inline-flex">
+            <Flag className="h-3.5 w-3.5 text-destructive" />
+          </span>
         )}
         {transaction.note && (
-          <StickyNote className="h-3.5 w-3.5 shrink-0 text-muted-foreground" title="Has a note" />
+          <span title="Has a note" className="shrink-0 inline-flex">
+            <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
+          </span>
         )}
       </div>
 

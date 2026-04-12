@@ -7,8 +7,6 @@
  * @module
  */
 
-import { userInfo } from 'node:os';
-
 // ---------------------------------------------------------------------------
 // Interface
 // ---------------------------------------------------------------------------
@@ -20,7 +18,7 @@ import { userInfo } from 'node:os';
  * ```json
  * {
  *   "createDate": "2024-01-15T08:30:00.000Z",
- *   "createdBy": "DOMAIN\\user",
+ *   "createdBy": "alice",
  *   "updateDate": null,
  *   "updatedBy": null
  * }
@@ -42,15 +40,33 @@ export interface AuditInfo {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the current OS username, falling back to `'moneyinmotion'` when
- * the OS user info is not available (e.g. in containerised CI environments).
+ * Fallback identity used when no `createdBy` / `updatedBy` is supplied and
+ * no caller has called {@link setDefaultAuditUser}.
+ *
+ * The core library is environment-agnostic (no `node:os`, no browser APIs)
+ * so it ships with a single static fallback. Runtimes that know more about
+ * the current user — for example the Node.js server — can register a better
+ * default at startup via {@link setDefaultAuditUser}.
  */
-function getDefaultUser(): string {
-  try {
-    return userInfo().username;
-  } catch {
-    return 'moneyinmotion';
-  }
+export const FALLBACK_AUDIT_USER = 'moneyinmotion';
+
+let currentDefaultUser: string = FALLBACK_AUDIT_USER;
+
+/**
+ * Register the default audit identity used by {@link createAuditInfo} and
+ * {@link updateAuditInfo} when no explicit user is passed.
+ *
+ * Typically called once at application startup — for example the Node.js
+ * server might call `setDefaultAuditUser(os.userInfo().username)` so all
+ * audit records reflect the real OS user.
+ */
+export function setDefaultAuditUser(user: string): void {
+  currentDefaultUser = user;
+}
+
+/** Read the currently registered default audit user. */
+export function getDefaultAuditUser(): string {
+  return currentDefaultUser;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,13 +76,15 @@ function getDefaultUser(): string {
 /**
  * Create a fresh {@link AuditInfo} stamped with the current UTC time.
  *
- * @param createdBy - The identity to record. Defaults to the current OS user.
+ * @param createdBy - Explicit identity to record. If omitted, uses the value
+ *                    most recently passed to {@link setDefaultAuditUser},
+ *                    or {@link FALLBACK_AUDIT_USER} if none.
  * @returns A new `AuditInfo` with no update information.
  */
 export function createAuditInfo(createdBy?: string): AuditInfo {
   return {
     createDate: new Date().toISOString(),
-    createdBy: createdBy ?? getDefaultUser(),
+    createdBy: createdBy ?? currentDefaultUser,
     updateDate: null,
     updatedBy: null,
   };
@@ -80,7 +98,9 @@ export function createAuditInfo(createdBy?: string): AuditInfo {
  * default) identity.
  *
  * @param existing  - The audit info to update.
- * @param updatedBy - The identity to record. Defaults to the current OS user.
+ * @param updatedBy - Explicit identity to record. If omitted, uses the value
+ *                    most recently passed to {@link setDefaultAuditUser},
+ *                    or {@link FALLBACK_AUDIT_USER} if none.
  * @returns A new `AuditInfo` object (the original is not mutated).
  */
 export function updateAuditInfo(
@@ -91,6 +111,6 @@ export function updateAuditInfo(
     createDate: existing.createDate,
     createdBy: existing.createdBy,
     updateDate: new Date().toISOString(),
-    updatedBy: updatedBy ?? getDefaultUser(),
+    updatedBy: updatedBy ?? currentDefaultUser,
   };
 }

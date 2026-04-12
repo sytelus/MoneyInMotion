@@ -9,66 +9,35 @@
 
 set -euo pipefail
 
-# Colours
-if [ -t 1 ]; then
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    BLUE='\033[0;34m'
-    BOLD='\033[1m'
-    NC='\033[0m'
-else
-    RED='' GREEN='' BLUE='' BOLD='' NC=''
-fi
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/scripts/lib.sh"
 
-info()  { echo -e "${BLUE}[info]${NC}  $*"; }
-ok()    { echo -e "${GREEN}[ok]${NC}    $*"; }
-fail()  { echo -e "${RED}[error]${NC} $*"; exit 1; }
+ensure_project_root
+ensure_deps_installed
 
-# Check we're in the right directory
-if [ ! -f "package.json" ] || ! grep -q '"moneyinmotion"' package.json 2>/dev/null; then
-    echo "Error: run this script from the MoneyInMotion project root." >&2
-    exit 1
-fi
+# Force a clean rebuild by clearing all incremental build state. Composite
+# tsc won't re-emit when its buildinfo says everything is current, even if
+# the dist/ directory is gone.
+find packages -maxdepth 2 -name 'tsconfig.tsbuildinfo' -delete 2>/dev/null
 
-# Check dependencies
-if [ ! -d "node_modules" ]; then
-    info "Dependencies not installed. Running install..."
-    npm install --no-audit --no-fund
-    echo ""
-fi
-
-# -- Build --
-info "Building @moneyinmotion/core..."
-npm run build:core 2>&1 | tail -1
-ok "core built."
-
-info "Building @moneyinmotion/server..."
-npm run build:server 2>&1 | tail -1
-ok "server built."
-
-info "Building @moneyinmotion/web..."
-npm run build:web 2>&1 | tail -3
-ok "web built."
+for pkg in core server web; do
+    info "Building @moneyinmotion/${pkg}..."
+    npm run "build:${pkg}" --silent
+    ok "${pkg} built."
+done
 
 echo ""
 
-# -- Optional: run tests --
 if [ "${1:-}" = "test" ]; then
     info "Running tests..."
-    npm test 2>&1 | tail -5
+    npm test --silent
     echo ""
 fi
 
-# -- Summary --
-echo -e "${BOLD}============================================================${NC}"
-echo -e "${BOLD}  Build complete!${NC}"
-echo -e "${BOLD}============================================================${NC}"
+echo -e "${C_BOLD}============================================================${C_NC}"
+echo -e "${C_BOLD}  Build complete!${C_NC}"
+echo -e "${C_BOLD}============================================================${C_NC}"
 echo ""
-echo -e "  ${BOLD}To start in production mode:${NC}"
-echo ""
-echo -e "    ./run.sh prod"
-echo ""
-echo -e "  ${BOLD}To start in development mode:${NC}"
-echo ""
-echo -e "    ./run.sh"
+echo -e "  ${C_BOLD}Start in production mode:${C_NC}  ./run.sh prod"
+echo -e "  ${C_BOLD}Start in development mode:${C_NC} ./run.sh"
 echo ""

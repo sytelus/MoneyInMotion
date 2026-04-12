@@ -1,8 +1,9 @@
 /**
  * Express application setup.
  *
- * Creates the Express app with JSON body parsing, CORS, route mounting,
- * and error handling middleware.
+ * Builds the Express app with JSON body parsing, CORS, route mounting,
+ * an error handler, and (in production) static file serving of the
+ * built React app with SPA-fallback routing.
  *
  * @module
  */
@@ -12,9 +13,6 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { ServerConfig } from './config.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import { corsMiddleware } from './middleware/cors.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { FileRepository } from './storage/file-repository.js';
@@ -25,11 +23,15 @@ import { createTransactionsRouter } from './routes/transactions.js';
 import { createTransactionEditsRouter } from './routes/transaction-edits.js';
 import { createImportRouter } from './routes/import.js';
 
+// ESM polyfill: resolve the directory of the compiled app.js at runtime.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /**
  * Create and configure the Express app.
  *
  * @param config - The server configuration.
- * @returns The configured Express app with a `dispose` function on the cache.
+ * @returns The configured Express app with a `cache` property attached for
+ *          shutdown handling (see `app.cache.dispose()` in index.ts).
  */
 export function createApp(config: ServerConfig): Express & { cache: TransactionCache } {
     const app = express() as Express & { cache: TransactionCache };
@@ -48,7 +50,10 @@ export function createApp(config: ServerConfig): Express & { cache: TransactionC
     const cache = new TransactionCache(config, repo);
     app.cache = cache;
 
-    // Config getter (returns the current config; re-reads for PUT updates)
+    // Config accessor passed to routes that need server config. The reference
+    // is stable for the lifetime of the Express app -- PUT /api/config
+    // persists to disk but does not update this in-memory copy, which means
+    // data-path changes only take effect after a server restart.
     const getConfig = () => config;
 
     // --- Routes ---
@@ -65,8 +70,11 @@ export function createApp(config: ServerConfig): Express & { cache: TransactionC
         const webDistPath = path.resolve(__dirname, '..', '..', 'web', 'dist');
         if (fs.existsSync(webDistPath)) {
             app.use(express.static(webDistPath));
-            // SPA fallback: serve index.html for non-API routes
-            app.get('*', (_req, res) => {
+            // SPA fallback: serve index.html for any GET request that didn't
+            // match an API route or a static asset. Express 5 requires a
+            // named wildcard (`*splat`) rather than the bare `*` accepted
+            // by Express 4 -- a RegExp works in both versions.
+            app.get(/.*/, (_req, res) => {
                 res.sendFile(path.join(webDistPath, 'index.html'));
             });
         }

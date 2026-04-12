@@ -3,88 +3,50 @@
 # MoneyInMotion — Start the application
 #
 # Usage:
-#   ./run.sh          Start in development mode (hot reload)
-#   ./run.sh prod     Start in production mode (requires build first)
+#   ./run.sh          Start in development mode (hot reload, port 5173)
+#   ./run.sh prod     Start in production mode (requires ./build.sh first)
 # ============================================================================
 
 set -euo pipefail
 
-# Colours
-if [ -t 1 ]; then
-    GREEN='\033[0;32m'
-    YELLOW='\033[1;33m'
-    BLUE='\033[0;34m'
-    BOLD='\033[1m'
-    NC='\033[0m'
-else
-    GREEN='' YELLOW='' BLUE='' BOLD='' NC=''
-fi
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/scripts/lib.sh"
 
-info()  { echo -e "${BLUE}[info]${NC}  $*"; }
-ok()    { echo -e "${GREEN}[ok]${NC}    $*"; }
-warn()  { echo -e "${YELLOW}[warn]${NC}  $*"; }
-
-# Check we're in the right directory
-if [ ! -f "package.json" ] || ! grep -q '"moneyinmotion"' package.json 2>/dev/null; then
-    echo "Error: run this script from the MoneyInMotion project root." >&2
-    exit 1
-fi
-
-# Check dependencies are installed
-if [ ! -d "node_modules" ]; then
-    warn "Dependencies not installed. Running install..."
-    npm install --no-audit --no-fund
-    echo ""
-fi
-
-# Ensure @moneyinmotion/core is built. The server imports it at runtime via
-# node's module resolution (which reads `dist/index.js` from the package's
-# `main` field), so the dist output must exist and be up to date. The web
-# package bypasses this via a Vite alias (see packages/web/vite.config.ts),
-# but the server has no such workaround.
-CORE_INDEX="packages/core/dist/index.js"
-NEED_BUILD=0
-if [ ! -f "$CORE_INDEX" ]; then
-    NEED_BUILD=1
-else
-    # Rebuild if any source file is newer than the compiled output.
-    if [ -n "$(find packages/core/src -name '*.ts' -newer "$CORE_INDEX" 2>/dev/null | head -1)" ]; then
-        NEED_BUILD=1
-    fi
-fi
-if [ "$NEED_BUILD" = "1" ]; then
-    info "Building @moneyinmotion/core (required for the server)..."
-    npm run build:core --silent
-    ok "core built."
-    echo ""
-fi
+ensure_project_root
+ensure_deps_installed
+ensure_core_built
 
 MODE="${1:-dev}"
 
-if [ "$MODE" = "prod" ] || [ "$MODE" = "production" ]; then
-    # -- Production mode --
-    if [ ! -d "packages/web/dist" ] || [ ! -d "packages/server/dist" ]; then
-        warn "Production build not found. Run ./build.sh first."
-        exit 1
-    fi
+case "$MODE" in
+    prod|production)
+        if [ ! -d packages/web/dist ] || [ ! -d packages/server/dist ]; then
+            fail "production build not found. Run ./build.sh first."
+        fi
 
-    info "Starting MoneyInMotion in production mode..."
-    echo ""
-    echo -e "  ${BOLD}Open in your browser:${NC}  ${GREEN}http://localhost:${MONEYAI_PORT:-3001}${NC}"
-    echo ""
+        info "Starting MoneyInMotion in production mode..."
+        echo ""
+        echo -e "  ${C_BOLD}Open in your browser:${C_NC}  ${C_GREEN}http://localhost:${MONEYAI_PORT:-3001}${C_NC}"
+        echo ""
+        echo -e "  Press ${C_BOLD}Ctrl+C${C_NC} to stop."
+        echo ""
 
-    cd packages/server
-    NODE_ENV=production node dist/index.js
-else
-    # -- Development mode --
-    info "Starting MoneyInMotion in development mode..."
-    echo ""
-    echo -e "  ${BOLD}Open in your browser:${NC}  ${GREEN}http://localhost:5173${NC}"
-    echo -e "  ${BOLD}API server:${NC}            http://localhost:${MONEYAI_PORT:-3001}"
-    echo -e "  ${BOLD}First time?${NC}            The app will guide you through setup."
-    echo ""
-    echo -e "  Press ${BOLD}Ctrl+C${NC} to stop."
-    echo ""
+        cd packages/server
+        NODE_ENV=production node dist/index.js
+        ;;
+    dev|development)
+        info "Starting MoneyInMotion in development mode..."
+        echo ""
+        echo -e "  ${C_BOLD}Open in your browser:${C_NC}  ${C_GREEN}http://localhost:5173${C_NC}"
+        echo -e "  ${C_BOLD}API server:${C_NC}            http://localhost:${MONEYAI_PORT:-3001}"
+        echo -e "  ${C_BOLD}First time?${C_NC}            The app will guide you through setup."
+        echo ""
+        echo -e "  Press ${C_BOLD}Ctrl+C${C_NC} to stop."
+        echo ""
 
-    npm run dev
-fi
+        npm run dev
+        ;;
+    *)
+        fail "unknown mode '$MODE'. Use 'dev' (default) or 'prod'."
+        ;;
+esac

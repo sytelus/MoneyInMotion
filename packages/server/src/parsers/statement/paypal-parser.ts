@@ -189,7 +189,11 @@ function setPayPalTransactionReason(
             }
         }
     } else {
-        // Delete the reason so validateImportedValues filters this row out
-        delete (importedValues as Record<string, unknown>)['transactionReason'];
+        // Clear the reason so `validateImportedValues` (which checks
+        // `transactionReason == null`) skips this row downstream.
+        // ImportedValues.transactionReason is declared as `number` (required)
+        // but the base class actually builds rows via `Partial<ImportedValues>`,
+        // so removing the property at runtime is safe.
+        Reflect.deleteProperty(importedValues, 'transactionReason');
     }
 }

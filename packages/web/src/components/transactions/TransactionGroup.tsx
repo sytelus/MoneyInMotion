@@ -7,8 +7,7 @@
 
 import React from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
-import type { TransactionAggregator } from '@moneyinmotion/core/src/aggregation/transaction-aggregator.js';
-import { transactionReasonPluralTitleLookup } from '@moneyinmotion/core';
+import { TransactionAggregator, transactionReasonPluralTitleLookup } from '@moneyinmotion/core';
 import { cn } from '../../lib/utils.js';
 import { AmountDisplay } from './AmountDisplay.js';
 

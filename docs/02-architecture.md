@@ -8,14 +8,21 @@ MoneyInMotion is organized as an npm workspaces monorepo with three packages:
 MoneyInMotion/
 |
 +-- packages/
-|   +-- core/       @moneyinmotion/core    Shared domain models, matching, aggregation
-|   +-- server/     @moneyinmotion/server  Express API, parsers, storage, caching
-|   +-- web/        @moneyinmotion/web     React SPA frontend
+|   +-- core/              @moneyinmotion/core    Shared domain models, matching, aggregation
+|   +-- server/            @moneyinmotion/server  Express API, parsers, storage, caching
+|   +-- web/               @moneyinmotion/web     React SPA frontend
 |
-+-- docs/           Documentation
-+-- legacy/         Original .NET/JS codebase (archived)
-+-- package.json    Root workspace configuration
-+-- tsconfig.base.json  Shared TypeScript compiler options
++-- scripts/
+|   +-- lib.sh             Shared bash helpers for run.sh and build.sh
++-- docs/                  Documentation
++-- legacy/                Original .NET/JS codebase (archived for reference)
++-- install.sh             One-line install / update
++-- run.sh                 Start the app in dev or prod mode
++-- build.sh               Production build
++-- package.json           Root workspace configuration
++-- tsconfig.json          Root TypeScript project references
++-- tsconfig.base.json     Shared TypeScript compiler options
++-- vitest.config.ts       Root Vitest config (aggregates all three packages)
 ```
 
 ### Package Dependency Graph
@@ -119,15 +126,16 @@ The React single-page application. Key modules:
 
 | Directory | Contents |
 |-----------|----------|
-| `components/layout/` | AppShell (three-column layout), Header (navigation bar) |
+| `components/layout/` | AppShell (three-column layout), Header (navigation bar), KeyboardShortcutsDialog |
 | `components/navigation/` | YearMonthNav (year/month accordion sidebar) |
 | `components/transactions/` | TransactionList, TransactionGroup, TransactionRow, TransactionSummary, AmountDisplay |
 | `components/editing/` | CategoryEditor, NoteEditor, AttributeEditor, ScopeFilterEditor, EditConfirmDialog, TransactionContextMenu |
 | `components/ui/` | Button, Dialog, Input, Select, Textarea, Badge (shared UI primitives) |
-| `pages/` | AccountsPage, SettingsPage |
+| `pages/` | WelcomePage (first-run setup), AccountsPage, SettingsPage |
 | `api/` | HTTP client functions, React Query hooks |
 | `store/` | Zustand transactions store (filtering, selection, expansion state) |
 | `hooks/` | useKeyboardShortcuts (global keyboard navigation and editing shortcuts) |
+| `lib/` | cn/format helpers (utils), canonical keyboard-shortcut list (shortcuts) |
 
 ---
 

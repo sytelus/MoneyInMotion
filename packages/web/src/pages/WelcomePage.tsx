@@ -26,6 +26,7 @@ import { Button } from '../components/ui/button.js';
 import { getConfig, getAccounts } from '../api/client.js';
 import { useScanStatements } from '../api/hooks.js';
 import { cn } from '../lib/utils.js';
+import { KEYBOARD_SHORTCUTS } from '../lib/shortcuts.js';
 
 // ---------------------------------------------------------------------------
 // Step status helpers
@@ -135,22 +136,6 @@ const Step: React.FC<StepProps> = ({ number, title, icon, complete, children }) 
     </div>
   </div>
 );
-
-// ---------------------------------------------------------------------------
-// Keyboard shortcuts table
-// ---------------------------------------------------------------------------
-
-const shortcuts = [
-  { keys: 'Up / Down', action: 'Navigate transactions' },
-  { keys: 'Left / Right', action: 'Collapse / Expand group' },
-  { keys: 'Alt+T', action: 'Edit category' },
-  { keys: 'Alt+N', action: 'Edit note' },
-  { keys: 'Alt+E', action: 'Edit attributes' },
-  { keys: 'Alt+F', action: 'Toggle flag' },
-  { keys: 'Alt+Shift+F', action: 'Remove flag' },
-  { keys: 'Escape', action: 'Close dialog' },
-  { keys: '?', action: 'Show keyboard shortcuts help' },
-];
 
 // ---------------------------------------------------------------------------
 // WelcomePage
@@ -372,7 +357,7 @@ export const WelcomePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {shortcuts.map((s) => (
+                {KEYBOARD_SHORTCUTS.map((s) => (
                   <tr key={s.keys} className="border-t border-border">
                     <td className="px-4 py-2">
                       <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">

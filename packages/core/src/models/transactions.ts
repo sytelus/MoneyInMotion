@@ -234,6 +234,11 @@ export class Transactions {
         return this.topItemsById.values();
     }
 
+    /** The number of top-level transactions (excludes children). */
+    get topLevelTransactionCount(): number {
+        return this.topItemsById.size;
+    }
+
     /** The total number of transactions (including children). */
     get allTransactionCount(): number {
         return this.allItemsById.size;
