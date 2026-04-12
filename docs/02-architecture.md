@@ -1,193 +1,261 @@
 # MoneyInMotion - Architecture
 
-## Solution Structure
+## Monorepo Structure
+
+MoneyInMotion is organized as an npm workspaces monorepo with three packages:
 
 ```
-MoneyAI.sln (Visual Studio 2013, Format Version 12.00)
+MoneyInMotion/
 |
-+-- MoneyAI/                    Core domain library (Class Library, .NET 4.5)
-+-- MoneyAI.Repositories/       Data access layer (Class Library, .NET 4.5)
-+-- MoneyAI.WebApi/             REST API + web host (ASP.NET Web API 5.0, .NET 4.5)
-+-- MoneyAI.JS/                 JavaScript SPA frontend (RequireJS + Knockout.js)
-+-- MoneyAI.WinForms/           Windows Forms desktop client (.NET 4.5)
-+-- MoneyAI.Wpf/                WPF desktop client - stub (.NET 4.5)
-+-- ObjectListView/             Third-party ListView control (Class Library)
-+-- ListViewPrinter/            ListView printing support (Class Library)
-+-- External/
-|   +-- DotNetCommonUtils/
-|       +-- CommonUtils/        Shared utility library (Class Library, .NET 4.5)
-|       +-- CommonUtilsTests/   Unit tests for CommonUtils
-+-- Notes/                      Architecture notes (HTML)
-+-- packages/                   NuGet package cache
++-- packages/
+|   +-- core/       @moneyinmotion/core    Shared domain models, matching, aggregation
+|   +-- server/     @moneyinmotion/server  Express API, parsers, storage, caching
+|   +-- web/        @moneyinmotion/web     React SPA frontend
+|
++-- docs/           Documentation
++-- legacy/         Original .NET/JS codebase (archived)
++-- package.json    Root workspace configuration
++-- tsconfig.base.json  Shared TypeScript compiler options
 ```
+
+### Package Dependency Graph
+
+```
+@moneyinmotion/core       (no internal dependencies)
+        ^
+        |
+@moneyinmotion/server     (depends on core)
+        ^
+        |
+@moneyinmotion/web        (depends on core)
+```
+
+Both `server` and `web` depend on `core`. The server and web packages do not depend on each other; they communicate via HTTP at runtime.
+
+---
 
 ## Layer Architecture
 
 ```
 +----------------------------------------------------------+
-|                    USER INTERFACES                         |
-|  +------------------+  +------------+  +---------------+  |
-|  |   MoneyAI.JS     |  |  WinForms  |  |     WPF       |  |
-|  |  (Web SPA)       |  |  (Desktop) |  |   (Desktop)   |  |
-|  |  Knockout/AMD    |  |  ObjListVw |  |   (Stub)      |  |
-|  +--------+---------+  +------+-----+  +-------+-------+  |
-|           |                   |                |           |
+|                     USER INTERFACE                         |
+|  +-----------------------------------------------------+ |
+|  |  @moneyinmotion/web                                 | |
+|  |  React 19 + React Router 7 + Tailwind CSS           | |
+|  |  State: Zustand (client) + React Query (server)     | |
+|  |  UI: Radix UI primitives + Lucide icons             | |
+|  |  Build: Vite 6                                      | |
+|  +---------------------------+-------------------------+ |
 +----------------------------------------------------------+
-            |                   |                |
-+-----------v-------------------v----------------v-----------+
-|                    WEB API LAYER                            |
-|  +-------------------------------------------------------+ |
-|  |  MoneyAI.WebApi (ASP.NET Web API 5.0)                 | |
-|  |  - TransactionsController (GET /api/transactions)     | |
-|  |  - TransactionEditsController (POST /api/edits)       | |
-|  |  - TransactionCache (in-memory + file watcher)        | |
-|  +-------------------------------------------------------+ |
-+------------------------------------------------------------+
-            |
-+-----------v------------------------------------------------+
-|                 DATA ACCESS LAYER                           |
-|  +-------------------------------------------------------+ |
-|  |  MoneyAI.Repositories                                 | |
-|  |  - FileRepository (JSON file-based storage)           | |
-|  |  - TransactionsStorage / TransactionEditsStorage      | |
-|  |  - Statement Parsers (Amex, PayPal, Amazon, etc.)     | |
-|  |  - File Format Parsers (CSV, JSON, IIF)               | |
-|  +-------------------------------------------------------+ |
-+------------------------------------------------------------+
-            |
-+-----------v------------------------------------------------+
-|                    CORE DOMAIN                              |
-|  +-------------------------------------------------------+ |
-|  |  MoneyAI                                              | |
-|  |  - Transaction (immutable entity)                     | |
-|  |  - Transactions (collection + merge logic)            | |
-|  |  - TransactionEdit / TransactionEdits (edit system)   | |
-|  |  - AccountInfo / AccountConfig                        | |
-|  |  - ImportInfo / AuditInfo                             | |
-|  |  - Parent-Child Matchers                              | |
-|  |  - Entity Name Normalizer                             | |
-|  |  - Transaction Aggregates                             | |
-|  +-------------------------------------------------------+ |
-+------------------------------------------------------------+
-            |
-+-----------v------------------------------------------------+
-|                   SHARED UTILITIES                          |
-|  +-------------------------------------------------------+ |
-|  |  CommonUtils (External/DotNetCommonUtils)             | |
-|  |  - JsonSerializer<T>                                  | |
-|  |  - CsvParser / TsvReader                              | |
-|  |  - Hasher / CompactID                                 | |
-|  |  - CloudStorage (Dropbox integration)                 | |
-|  |  - QuickbooksIifParser                                | |
-|  +-------------------------------------------------------+ |
-+------------------------------------------------------------+
-            |
-+-----------v------------------------------------------------+
-|                    FILE SYSTEM                              |
-|  Statements/   - Raw imported CSV/JSON/IIF files           |
-|  Merged/       - LatestMerged.json, LatestMergedEdits.json |
-|  AccountConfig.json - Per-account configuration            |
-+------------------------------------------------------------+
+                               |
+                          HTTP / JSON
+                               |
++------------------------------v---------------------------+
+|                     API SERVER                            |
+|  +-----------------------------------------------------+ |
+|  |  @moneyinmotion/server                              | |
+|  |  Express 5 + Zod validation                         | |
+|  |  TransactionCache (in-memory, chokidar file watch)  | |
+|  |  Statement Parsers (papaparse CSV, JSON, IIF)       | |
+|  |  FileRepository (JSON file-based storage)           | |
+|  +-----------------------------------------------------+ |
++----------------------------------------------------------+
+                               |
++------------------------------v---------------------------+
+|                     CORE DOMAIN                           |
+|  +-----------------------------------------------------+ |
+|  |  @moneyinmotion/core                                | |
+|  |  Transaction / Transactions (immutable entities)    | |
+|  |  TransactionEdit / TransactionEdits (edit system)   | |
+|  |  AccountInfo / AccountConfig                        | |
+|  |  Parent-Child Matchers (Amazon, Etsy, generic)      | |
+|  |  Inter-Account Transfer Matcher                     | |
+|  |  Entity Name Normalizer                             | |
+|  |  NetAggregator / TransactionAggregates              | |
+|  |  Content hashing (ts-md5)                           | |
+|  +-----------------------------------------------------+ |
++----------------------------------------------------------+
+                               |
++------------------------------v---------------------------+
+|                     FILE SYSTEM                           |
+|  Statements/   Raw imported CSV/JSON/IIF files            |
+|  Merged/       LatestMerged.json, LatestMergedEdits.json  |
+|  AccountConfig.json   Per-account configuration           |
++----------------------------------------------------------+
 ```
 
-## Key Design Patterns
+---
 
-### Immutability Pattern
-Transactions are immutable once created. All modifications are captured as `TransactionEdit` objects, maintaining a complete audit trail. Edits are stored separately from source data and can be voided (reverted). This enables:
-- Lossless data preservation
-- Full reconstruction from source files + edits
-- Safe sharing of edit rules between users
+## Package Details
 
-### Content Hashing for Deduplication
-Every transaction gets an MD5 content hash computed from: `AccountId | TransactionReason | Amount | EntityName | PostedDate | TransactionDate | InstituteReference`. When merging imports, transactions with matching content hashes are deduplicated rather than duplicated.
+### @moneyinmotion/core
 
-### Scope-Based Edit System
-Edits use `ScopeFilter` objects to define which transactions they affect. This enables:
-- **Single transaction edits**: Scope by transaction ID
-- **Bulk categorization**: Scope by entity name (all "AMAZON" transactions get category "Shopping")
-- **Pattern matching**: Scope by name tokens (any transaction containing "GROCERY")
-- **Conditional edits**: Scope by account, amount range, or transaction reason
+The shared domain library. Contains all business logic, models, and algorithms with zero Node.js-specific APIs (pure TypeScript). Key modules:
 
-### Plugin Architecture
-- **Statement Parsers**: `StatementParserBase` with institution-specific implementations (AmexParser, PayPalParser, etc.)
-- **File Format Parsers**: `IFileFormatParser` with CSV, JSON, and IIF implementations
-- **Parent-Child Matchers**: `IParentChildMatch` interface with Amazon, Etsy, and generic implementations
+| Directory | Contents |
+|-----------|----------|
+| `models/` | Transaction, Transactions, TransactionEdit, TransactionEdits, AccountInfo, AccountConfig, AuditInfo, ImportInfo, LineItemType, TransactionReason |
+| `matching/` | ParentChildMatch, AmazonOrderMatcher, EtsyOrderMatcher, GenericOrderMatcher, GenericTxMatcher |
+| `normalization/` | EntityNameNormalizer |
+| `aggregation/` | NetAggregator, TransactionAggregates, TransactionReasonUtils, KeyCounter |
+| `utils/` | Hash (ts-md5), DateUtils, StringUtils, CollectionUtils |
 
-### Repository Abstraction
-`IRepository` and `IStorage<T>` interfaces abstract data access. Current implementation is `FileRepository` (JSON files on local filesystem), but the architecture supports alternative backends.
+### @moneyinmotion/server
 
-### MVVM on Web
-The JavaScript frontend uses Knockout.js for MVVM data binding, RequireJS for AMD module loading, and Handlebars for templating. Client-side models mirror the C# domain objects (Transaction, TransactionEdit, Transactions, EditedValues).
+The Express API server. Handles HTTP requests, file I/O, statement parsing, and in-memory caching. Key modules:
+
+| Directory | Contents |
+|-----------|----------|
+| `routes/` | Config, Accounts, Transactions, TransactionEdits, Import |
+| `parsers/file-format/` | CsvFileParser (papaparse), JsonFileParser, IifFileParser |
+| `parsers/statement/` | GenericStatementParser, AmexParser, PayPalParser, AmazonOrdersParser, EtsyBuyerParser, BarclayParser |
+| `storage/` | FileRepository, FileLocation, TransactionsStorage, TransactionEditsStorage |
+| `cache/` | TransactionCache (lazy load, chokidar file watcher, debounced invalidation) |
+| `middleware/` | CORS, ErrorHandler |
+
+### @moneyinmotion/web
+
+The React single-page application. Key modules:
+
+| Directory | Contents |
+|-----------|----------|
+| `components/layout/` | AppShell (three-column layout), Header (navigation bar) |
+| `components/navigation/` | YearMonthNav (year/month accordion sidebar) |
+| `components/transactions/` | TransactionList, TransactionGroup, TransactionRow, TransactionSummary, AmountDisplay |
+| `components/editing/` | CategoryEditor, NoteEditor, AttributeEditor, ScopeFilterEditor, EditConfirmDialog, TransactionContextMenu |
+| `components/ui/` | Button, Dialog, Input, Select, Textarea, Badge (shared UI primitives) |
+| `pages/` | AccountsPage, SettingsPage |
+| `api/` | HTTP client functions, React Query hooks |
+| `store/` | Zustand transactions store (filtering, selection, expansion state) |
+| `hooks/` | useKeyboardShortcuts (global keyboard navigation and editing shortcuts) |
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/config` | Returns current server configuration (dataPath, statementsDir, mergedDir) |
+| `PUT` | `/api/config` | Updates configuration (dataPath). Validates with Zod. |
+| `GET` | `/api/accounts` | Scans statementsDir for AccountConfig.json files, returns all accounts |
+| `POST` | `/api/accounts` | Creates a new account folder and AccountConfig.json |
+| `GET` | `/api/transactions` | Returns all transactions as serialized JSON from the in-memory cache |
+| `POST` | `/api/transaction-edits` | Applies an array of edits, returns `{ affectedTransactionsCount }` |
+| `POST` | `/api/import/scan` | Triggers scan of statement files, merges new transactions, returns import stats |
+| `POST` | `/api/import/save` | Persists cached transactions and/or edits to disk |
+
+---
 
 ## Data Flow
 
 ### Import Flow
+
 ```
-Raw Files (CSV/JSON/IIF)
+Statement files (CSV/JSON/IIF) in Statements/[AccountId]/
     |
     v
-StatementParser (institution-specific)
+POST /api/import/scan
     |
     v
-Transaction objects (with content hashes)
+FileRepository.getStatementLocations()
+    -> Discovers AccountConfig.json + statement files
     |
     v
-Transactions.Merge() -- deduplication via content hash
+FileFormatParser (CsvFileParser / JsonFileParser / IifFileParser)
+    -> Produces column-value record arrays
     |
     v
-Parent-Child Matching (Amazon/Etsy order reconciliation)
+StatementParser (institution-specific: Amex, PayPal, Amazon, Etsy, Barclay, Generic)
+    -> Maps columns to ImportedValues
+    -> Infers TransactionReason from amount sign and keywords
     |
     v
-Inter-Account Transfer Matching (by amount + date proximity)
+Transaction.create() + content hash computation (ts-md5)
     |
     v
-LatestMerged.json (serialized to filesystem)
+Transactions.merge() -- deduplication via content hash
+    |
+    v
+Transactions.matchTransactions()
+    -> Parent-Child matching (Amazon/Etsy order reconciliation)
+    -> Inter-Account transfer matching (by amount + date proximity)
+    |
+    v
+Apply saved edits from LatestMergedEdits.json
+    |
+    v
+Return { newTransactions, totalTransactions, importedFiles }
 ```
 
 ### Edit Flow
+
 ```
-User Action (categorize, flag, note, fix error)
+User action in React UI (categorize, flag, note, fix attribute)
     |
     v
-TransactionEdit created (with ScopeFilters + EditedValues)
+Build TransactionEditData with ScopeFilters + EditedValues
     |
     v
-Applied to all matching transactions in-memory
+POST /api/transaction-edits  (array of edits)
     |
     v
-Saved to LatestMergedEdits.json (with timestamped backup)
+Zod validation on request body
     |
     v
-POST /api/transactionedits (Web UI sends to API)
+TransactionCache.applyEdits()
+    -> Transactions.apply() for each edit
+    -> Matches scope filters against all transactions
+    -> Merges edited values into matching transactions
     |
     v
-TransactionCache invalidated, reloaded on next GET
+Auto-save to LatestMerged.json + LatestMergedEdits.json (with timestamped backup)
+    |
+    v
+Return { affectedTransactionsCount }
+    |
+    v
+React Query invalidates transactions cache -> UI refreshes
 ```
 
 ### Display Flow
+
 ```
-GET /api/transactions
+React app mounts AppShell
     |
     v
-TransactionCache (lazy-loaded, file-watcher refresh)
+useTransactions() hook -> React Query -> GET /api/transactions
     |
     v
-JSON serialized to client
+TransactionCache.getTransactions()
+    -> Lazy load from LatestMerged.json + apply edits
+    -> Return serialized TransactionsData
     |
     v
-Transactions.js (client-side model construction)
+Zustand store: Transactions.fromData(data)
+    -> Deserialize into Transaction objects
     |
     v
-NetAggregator (hierarchical grouping: Income/Expense/Transfers)
+YearMonthNav: selectYearMonth() filters transactions
     |
     v
-TxListView (Handlebars rendering with Knockout bindings)
+getFilteredTransactions() -> filter by year/month
+    |
+    v
+NetAggregator groups into hierarchy: Income / Expenses / Transfers
+    |
+    v
+TransactionList -> TransactionGroup -> TransactionRow (React components)
+    |
+    v
+TransactionSummary: aggregates for selected transactions
 ```
+
+---
 
 ## File Storage Layout
 
 ```
-[DropBox Folder]/MoneyAI/
+[Data Directory]/
 |
 +-- Statements/
 |   +-- [AccountId]/
@@ -202,20 +270,52 @@ TxListView (Handlebars rendering with Knockout bindings)
 +-- Merged/
     +-- LatestMerged.json         (all merged transactions)
     +-- LatestMergedEdits.json    (all user edits/rules)
-    +-- NamedLocations.json       (file path mapping)
     +-- *.backup.json             (timestamped backups)
 ```
 
+The data directory defaults to `~/.moneyinmotion/data` and can be overridden via the `MONEYAI_DATA_PATH` environment variable or the `~/.moneyinmotion/config.json` file.
+
+---
+
+## Key Design Patterns
+
+### Immutability Pattern
+Transactions are immutable once created. All modifications are captured as `TransactionEdit` objects, maintaining a complete audit trail. Edits are stored separately from source data and can be voided (reverted). This enables:
+- Lossless data preservation
+- Full reconstruction from source files + edits
+- Safe sharing of edit rules between users
+
+### Content Hashing for Deduplication
+Every transaction gets an MD5 content hash (via `ts-md5`) computed from: `AccountId | TransactionReason | Amount | EntityName | PostedDate | TransactionDate | InstituteReference`. When merging imports, transactions with matching content hashes are deduplicated rather than duplicated.
+
+### Scope-Based Edit System
+Edits use `ScopeFilter` objects to define which transactions they affect. This enables:
+- **Single transaction edits**: Scope by transaction ID
+- **Bulk categorization**: Scope by entity name (all "AMAZON" transactions get category "Shopping")
+- **Pattern matching**: Scope by name tokens (any transaction containing "GROCERY")
+- **Conditional edits**: Scope by account, amount range, or transaction reason
+
+### State Management (Dual Layer)
+- **Server state** (React Query): Manages data fetching, caching, background refetching, and cache invalidation for API data. Stale time is set to 5 minutes.
+- **Client state** (Zustand): Manages UI-only concerns such as year/month filter selection, transaction selection, and group expand/collapse state.
+
+### Plugin Architecture for Parsers
+- **File Format Parsers**: CSV (via papaparse), JSON, and IIF implementations behind a common interface
+- **Statement Parsers**: `StatementParserBase` with institution-specific implementations (AmexParser, PayPalParser, AmazonOrdersParser, EtsyBuyerParser, BarclayParser, GenericStatementParser)
+- **Parent-Child Matchers**: Amazon, Etsy, and generic matcher implementations
+
+---
+
 ## Concurrency and Caching
 
-### Web API Cache (TransactionCache)
-- Per-user `Lazy<T>` initialization with thread-safe double-check locking
-- FileSystemWatcher monitors for external file changes
-- 5-second debounce on file change to avoid reload storms
-- Lock-based synchronization for concurrent read/write access
-- Cache invalidation on edit save
+### Server-Side Cache (TransactionCache)
+- Lazy initialization: transactions loaded from disk on first request
+- Chokidar file watcher monitors the Merged directory for external changes
+- 2-second debounce on file change events to avoid reload storms
+- Self-triggered changes (saves) are ignored via `isSaving` flag and a 5-second cooldown
+- Cache invalidated on external file change; reloaded on next `getTransactions()` call
 
 ### Client-Side Caching
-- Transaction corrected values memoized after first computation
-- Aggregator expand/collapse state preserved in static map across refreshes
-- Repository caches API response until explicit invalidation
+- React Query caches API responses with a 5-minute stale time and single retry
+- Zustand store holds deserialized Transaction objects for immediate UI rendering
+- React Query invalidation triggers automatic refetch after mutations (edits, imports)

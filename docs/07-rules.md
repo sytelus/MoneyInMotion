@@ -6,7 +6,7 @@ This document catalogs all business rules implemented in the application, organi
 
 ## Core Design Principles
 
-These principles (from `Notes/Principles.html`) govern the entire architecture:
+These principles govern the entire architecture:
 
 1. **Never alter or delete original source transaction files**
 2. **Always be able to reconstruct all outputs at any time** from source files + edits
@@ -32,7 +32,7 @@ These principles (from `Notes/Principles.html`) govern the entire architecture:
 - `AuditInfo` must be provided
 
 ### Content Hash
-- Computed as MD5 of: `AccountId \t TransactionReason \t Amount \t EntityIdOrName(UPPER) \t PostedDate(UTC) \t TransactionDate(UTC) \t InstituteReference`
+- Computed as MD5 (via `ts-md5`) of: `AccountId \t TransactionReason \t Amount \t EntityIdOrName(UPPER) \t PostedDate(UTC) \t TransactionDate(UTC) \t InstituteReference`
 - Two transactions with the same content hash are considered duplicates
 - Content hash is used for merge deduplication across imports
 
@@ -44,36 +44,39 @@ These principles (from `Notes/Principles.html`) govern the entire architecture:
 
 ## Transaction Reason Classification
 
+Transaction reasons are defined as a const object with numeric bit-flag values in `@moneyinmotion/core` (`packages/core/src/models/transaction-reason.ts`). Values are combined with bitwise OR and tested with bitwise AND.
+
 ### Outgoing (Negative Amount Required)
-| Reason | Description |
-|--------|-------------|
-| Purchase | General purchase (default for negative amounts) |
-| Fee | Service fees, bank fees |
-| CheckPayment | Payment by check |
-| AtmWithdrawal | ATM cash withdrawal |
-| LoanPayment | Loan installment payment |
-| ExpenseAdjustment | Expense-side adjustment |
-| MatchAdjustmentDebit | System-generated debit adjustment for matching |
-| CashAdvance | Cash advance on credit card |
+| Reason | Value | Description |
+|--------|-------|-------------|
+| Purchase | 0 | General purchase (default for negative amounts) |
+| ExpenseAdjustment | 1 | Expense-side adjustment |
+| Fee | 2 | Service fees, bank fees |
+| InterAccountPayment | 4 | Payment between own accounts |
+| CheckPayment | 128 | Payment by check |
+| AtmWithdrawal | 512 | ATM cash withdrawal |
+| LoanPayment | 2048 | Loan installment payment |
+| MatchAdjustmentDebit | 32768 | System-generated debit adjustment for matching |
+| CashAdvance | 131072 | Cash advance on credit card |
 
 ### Incoming (Positive Amount Required)
-| Reason | Description |
-|--------|-------------|
-| Return | Refund or return credit |
-| PointsCredit | Rewards points credit |
-| OtherCredit | Miscellaneous credit (default for positive amounts) |
-| CheckRecieved | Check deposit |
-| Interest | Interest earned |
-| DiscountRecieved | Discount or rebate |
-| IncomeAdjustment | Income-side adjustment |
-| MatchAdjustmentCredit | System-generated credit adjustment for matching |
-| PaymentRecieved | Payment received (for business accounts) |
+| Reason | Value | Description |
+|--------|-------|-------------|
+| Return | 8 | Refund or return credit |
+| PointsCredit | 32 | Rewards points credit |
+| OtherCredit | 64 | Miscellaneous credit (default for positive amounts) |
+| CheckRecieved | 256 | Check deposit |
+| Interest | 1024 | Interest earned |
+| DiscountRecieved | 4096 | Discount or rebate |
+| IncomeAdjustment | 8192 | Income-side adjustment |
+| MatchAdjustmentCredit | 16384 | System-generated credit adjustment for matching |
+| PaymentRecieved | 65536 | Payment received (for business accounts) |
 
 ### Inter-Account (Either Sign)
-| Reason | Description |
-|--------|-------------|
-| InterAccountPayment | Payment between own accounts |
-| InterAccountTransfer | Transfer between own accounts |
+| Reason | Value | Description |
+|--------|-------|-------------|
+| InterAccountPayment | 4 | Payment between own accounts |
+| InterAccountTransfer | 16 | Transfer between own accounts |
 
 ---
 
@@ -227,7 +230,7 @@ When multiple edits apply to the same transaction:
 ### Edit Audit Rules
 - Every edit must have `AuditInfo` with creator identity and timestamp
 - Edit IDs are recorded in `AppliedEditIdsDescending` on each transaction
-- Timestamp backups are created before saving edits to prevent data loss
+- Timestamped backups are created before saving edits to prevent data loss
 
 ---
 
@@ -236,8 +239,7 @@ When multiple edits apply to the same transaction:
 ### File Repository Rules
 - Statements directory is read-only (never modified by the application)
 - Merged directory is the only writable location
-- Named locations are stored in `NamedLocations.json` for path resolution
-- Edits are saved with timestamped backup: `{filename}.{yyyyMMddHHmmssffff}.{ext}`
+- Edits are saved with timestamped backup
 
 ### Merge Rules
 - Transactions with matching content hashes are merged (not duplicated)
@@ -246,25 +248,32 @@ When multiple edits apply to the same transaction:
 - After merge, parent-child matching and transfer matching are re-run
 
 ### Serialization Rules
-- All domain objects use `[DataContract]` / `[DataMember]` attributes
-- JSON serialization via `System.Runtime.Serialization` and Newtonsoft.Json
+- All domain objects use TypeScript interfaces matching the legacy JSON wire format
 - Dates serialized in UTC format
-- Content hashes and IDs serialized as Base64 strings
+- Content hashes and IDs serialized as strings
 
 ---
 
-## Web API Rules
+## API Rules
+
+### Validation Rules
+- All `POST` and `PUT` request bodies are validated with Zod schemas
+- Invalid requests receive a 400 response with descriptive error messages
+- JSON body parser accepts up to 50 MB payloads (for large transaction files)
 
 ### Caching Rules
-- Transactions are cached per-user in `Lazy<T>` containers
-- Cache is invalidated when `FileSystemWatcher` detects file changes
-- 5-second debounce on file change events to prevent rapid reloads
+- Transactions are cached in memory via `TransactionCache`
+- Cache is invalidated when chokidar detects file changes in the Merged directory
+- 2-second debounce on file change events to prevent rapid reloads
+- Self-triggered file changes are ignored (via `isSaving` flag and 5-second cooldown)
 - Cache is invalidated after edit save operations
 
 ### Request Rules
-- `GET /api/transactions` returns the full transaction set for the current user
-- `POST /api/transactionedits` accepts an array of `TransactionEdit` objects
-- Edit response includes `AffectedTransactionsCount` for client verification
+- `GET /api/transactions` returns the full serialized transaction set
+- `POST /api/transaction-edits` accepts an array of `TransactionEditData` objects
+- Edit response includes `affectedTransactionsCount` for client verification
+- `POST /api/import/scan` triggers scan and merge, returns import statistics
+- `POST /api/import/save` persists cached data to disk
 
 ---
 
@@ -272,25 +281,21 @@ When multiple edits apply to the same transaction:
 
 ### Amount Formatting
 - Negative amounts displayed in red
-- Currency formatted with `accounting.js`: `$1,234.56`
+- Positive amounts displayed in green
+- Currency formatted with standard locale formatting
 - Amount ranges for scope filters use 0.9x (min) and 1.1x (max) of actual amount
-
-### Entity Name Truncation
-- Entity names truncated based on hierarchy depth
-- More indentation = more truncation
-- Full name shown in tooltip on hover
 
 ### Group Visibility
 - Groups with `isOptional = true` and single child are auto-collapsed
 - Empty groups are hidden
 - Visibility propagates from parent to children
 
-### Date Display
-- Dates formatted using moment.js locale settings
-- Default format follows browser locale
-- Navigation shows year/month selectors
+### Responsive Layout
+- Three-column layout: left sidebar (w-64), center (flex-1), right sidebar (w-72)
+- Left sidebar hidden below `md` breakpoint (768px)
+- Right sidebar hidden below `lg` breakpoint (1024px)
+- Center panel always visible and takes remaining width
 
-### Marked Transactions
-- Transactions within marked date range get blue italic styling
-- Marked totals shown separately in group summaries
-- Marking is session-only (not persisted)
+### Date Display
+- Dates formatted using standard JavaScript locale formatting
+- Navigation shows year/month selectors in an accordion sidebar

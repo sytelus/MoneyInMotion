@@ -1,0 +1,144 @@
+/**
+ * Hook that registers global keyboard shortcuts for transaction navigation
+ * and editing actions.
+ *
+ * Shortcuts are only active when no `<input>` or `<textarea>` has focus.
+ *
+ * | Shortcut        | Action                           |
+ * |-----------------|----------------------------------|
+ * | Up/Down Arrow   | Navigate transactions            |
+ * | Left Arrow      | Collapse selected group          |
+ * | Right Arrow     | Expand selected group            |
+ * | Alt+T           | Open category editor             |
+ * | Alt+N           | Open note editor                 |
+ * | Alt+E           | Open attribute editor            |
+ * | Alt+F           | Toggle flag on selected txn       |
+ * | Alt+Shift+F     | Remove flag from selected txn     |
+ * | Escape          | Close any open dialog            |
+ *
+ * @module
+ */
+
+import { useEffect, useRef } from 'react';
+
+export interface KeyboardShortcutActions {
+  /** Open the category editor dialog. */
+  onEditCategory?: () => void;
+  /** Open the note editor dialog. */
+  onEditNote?: () => void;
+  /** Open the attribute editor dialog. */
+  onEditAttributes?: () => void;
+  /** Toggle the user flag on the selected transaction. */
+  onToggleFlag?: () => void;
+  /** Remove the user flag from the selected transaction. */
+  onRemoveFlag?: () => void;
+  /** Close any open editing dialog. */
+  onEscape?: () => void;
+  /** Collapse the selected group (Left Arrow). */
+  onCollapseGroup?: () => void;
+  /** Expand the selected group (Right Arrow). */
+  onExpandGroup?: () => void;
+  /** Expand all group levels (Alt+Right Arrow). */
+  onExpandAll?: () => void;
+  /** Show the keyboard shortcuts help dialog. */
+  onShowHelp?: () => void;
+}
+
+/**
+ * Determine whether the event target is an interactive form element where
+ * keyboard shortcuts should be suppressed.
+ */
+function isInputFocused(event: KeyboardEvent): boolean {
+  const target = event.target as HTMLElement | null;
+  if (!target) return false;
+  const tagName = target.tagName.toLowerCase();
+  return (
+    tagName === 'input' ||
+    tagName === 'textarea' ||
+    tagName === 'select' ||
+    target.isContentEditable
+  );
+}
+
+/**
+ * Register global keyboard shortcuts for the application.
+ *
+ * Uses a ref to store the actions so the event listener is registered once
+ * and always sees the latest callbacks without re-attaching on every render.
+ *
+ * @param actions - Callback map for each shortcut action.
+ */
+export function useKeyboardShortcuts(actions: KeyboardShortcutActions): void {
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      const a = actionsRef.current;
+
+      // Escape always works, even in inputs (to close dialogs)
+      if (event.key === 'Escape') {
+        a.onEscape?.();
+        return;
+      }
+
+      // All other shortcuts require no input focus
+      if (isInputFocused(event)) return;
+
+      // Arrow key shortcuts for group expand/collapse
+      // Note: Up/Down arrow navigation is handled in TransactionList component
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        a.onCollapseGroup?.();
+        return;
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        if (event.altKey) {
+          a.onExpandAll?.();
+        } else {
+          a.onExpandGroup?.();
+        }
+        return;
+      }
+
+      // `?` key — show help dialog
+      if (event.key === '?') {
+        event.preventDefault();
+        a.onShowHelp?.();
+        return;
+      }
+
+      // Alt+key shortcuts
+      if (event.altKey) {
+        switch (event.key.toLowerCase()) {
+          case 't':
+            event.preventDefault();
+            a.onEditCategory?.();
+            return;
+          case 'n':
+            event.preventDefault();
+            a.onEditNote?.();
+            return;
+          case 'e':
+            event.preventDefault();
+            a.onEditAttributes?.();
+            return;
+          case 'f':
+            event.preventDefault();
+            if (event.shiftKey) {
+              a.onRemoveFlag?.();
+            } else {
+              a.onToggleFlag?.();
+            }
+            return;
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []); // Register once, actionsRef always has latest callbacks
+}

@@ -4,7 +4,9 @@
 
 MoneyInMotion (also referred to as MoneyAI) is a personal finance management application that aggregates financial transactions from multiple sources (banks, credit cards, payment services, and online retailers), then provides tools to categorize, edit, analyze, and track spending and income. The tagline is "Personal Finance with Smarts."
 
-The application is designed for power users who want full control over their financial data without relying on third-party cloud services (like Mint or Quicken Online). All data remains local, stored as JSON files on the user's filesystem (optionally synced via Dropbox).
+The application is designed for power users who want full control over their financial data without relying on third-party cloud services. All data remains local, stored as JSON files on the user's filesystem (optionally synced via any cloud storage provider such as Dropbox or OneDrive).
+
+The application is built as a TypeScript monorepo with a React frontend, Express API server, and a shared core domain library. It runs entirely on Node.js and can be launched from any platform that supports it.
 
 ## Core Goals
 
@@ -54,16 +56,15 @@ The application is designed for power users who want full control over their fin
 - **Net Income Calculation**: Automatic savings/deficit calculation
 - **Transaction Aggregates**: Counts, positive/negative totals, grouped by reason
 - **Flagging and Notes**: Mark transactions for follow-up with notes and flags
-- **Date Range Marking**: Highlight transactions within a specific date range
 
-### Multiple User Interfaces
-- **Web UI (MoneyAI.JS)**: Single-page application with Knockout.js, Bootstrap, keyboard shortcuts
-- **Windows Forms (MoneyAI.WinForms)**: Desktop client with ObjectListView grid, tree-based category navigation
-- **Web API (MoneyAI.WebApi)**: REST API serving transaction data and accepting edits
-- **WPF (MoneyAI.Wpf)**: Stub implementation for future WPF client
+### User Interface
+- **React Web UI**: Single-page application with three-column layout, Radix UI components, keyboard shortcuts, and Tailwind CSS styling
+- **REST API**: Express server providing transaction data and accepting edits
+- **Web-Based Account Management**: Configure accounts through the browser
+- **Web-Based Settings**: Configure data paths and application settings through the browser
 
 ### Data Storage
 - **File-Based Repository**: JSON files stored locally on filesystem
-- **Dropbox Sync**: Default storage location in Dropbox for cross-device access
+- **Cloud Sync Compatible**: Default storage location supports syncing via any cloud storage provider
 - **No Database Required**: Entirely file-based persistence
 - **Backup on Save**: Timestamped backups created when saving edits

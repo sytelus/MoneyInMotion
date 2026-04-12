@@ -1,74 +1,94 @@
-# MoneyInMotion (MoneyAI)
+# MoneyInMotion
 
-**Personal Finance with Smarts** - A comprehensive personal finance management application that aggregates transactions from multiple banks, credit cards, and online services into a unified view with intelligent categorization and analysis.
+**Personal Finance with Smarts** -- A local-first personal finance application that aggregates transactions from multiple banks, credit cards, and online services into a unified view with intelligent categorization, matching, and analysis.
+
+---
 
 ## Why MoneyInMotion?
 
-- **Your data stays yours** - All data stored locally as JSON files, no cloud dependency
-- **Multi-source aggregation** - Import from banks, credit cards, PayPal, Amazon, Etsy, and more
-- **Intelligent matching** - Automatically links Amazon order items to credit card charges, detects inter-account transfers
-- **Non-destructive editing** - Original data is never modified; all changes stored as revertible edit rules
-- **Rule-based categorization** - Categorize one transaction and automatically apply to all similar ones
-- **Full audit trail** - Every change is tracked with who, what, and when
+- **Your data stays yours** -- All data stored locally as JSON files, no cloud dependency
+- **Multi-source aggregation** -- Import from banks, credit cards, PayPal, Amazon, Etsy, and more
+- **Intelligent matching** -- Automatically links Amazon order items to credit card charges, detects inter-account transfers
+- **Non-destructive editing** -- Original data is never modified; all changes stored as revertible edit rules
+- **Rule-based categorization** -- Categorize one transaction and automatically apply to all similar ones
+- **Full audit trail** -- Every change is tracked with who, what, and when
+- **Cross-platform** -- Runs on Windows, macOS, and Linux via Node.js
+
+---
 
 ## Quick Start
 
-### Prerequisites
-- Visual Studio 2013+ (with .NET 4.5 support)
-- Node.js (16 LTS recommended)
-- Git
-
-### Build
+### One-line install
 
 ```bash
-# Clone the repository
-git clone https://github.com/sytelus/MoneyInMotion.git
-cd MoneyInMotion
-
-# Initialize submodules
-git submodule update --init --recursive
-
-# Restore .NET packages and build
-nuget restore MoneyAI.sln
-msbuild MoneyAI.sln /p:Configuration=Release
-
-# Build JavaScript frontend
-cd MoneyAI.JS
-npm install
-npx bower install
-npx grunt build
+git clone https://github.com/sytelus/MoneyInMotion.git && cd MoneyInMotion && ./install.sh
 ```
 
-Or open `MoneyAI.sln` in Visual Studio, restore NuGet packages, and build (Ctrl+Shift+B).
+Or step by step:
 
-### Set Up Data
+```bash
+git clone https://github.com/sytelus/MoneyInMotion.git
+cd MoneyInMotion
+./install.sh        # checks dependencies, installs packages, prints instructions
+```
 
-1. Create a data directory (default: `[Dropbox]/MoneyAI/Statements/`)
-2. For each bank account or credit card, create a folder with an `AccountConfig.json`:
-   ```json
-   {
-     "accountInfo": {
-       "type": 2,
-       "id": "my-checking",
-       "title": "My Checking Account",
-       "instituteName": "Generic"
-     },
-     "fileFilters": ["*.csv"]
-   }
-   ```
-3. Drop your bank CSV export files into the account folder
-4. Run the application - it auto-imports and deduplicates
+### Start the application
 
-Account types: `1` = Credit Card, `2` = Checking, `4` = Savings, `5` = Order History, `6` = E-Payment (PayPal)
+```bash
+npm run dev
+```
 
-### Run
+Open `http://localhost:5173` in your browser. The **Getting Started** guide walks you through setup — no need to read docs first.
 
-- **Web UI**: Set `MoneyAI.WebApi` as startup project in Visual Studio, press F5
-- **Desktop**: Set `MoneyAI.WinForms` as startup project, press F5
+### Updating
+
+```bash
+cd MoneyInMotion
+./install.sh        # pulls latest changes and updates dependencies
+```
+
+---
 
 ## Features
 
-### Supported Import Sources
+| Feature | Description |
+|---------|-------------|
+| Multi-source import | CSV (banks, Amex, Barclaycard, PayPal), JSON (Etsy), IIF (QuickBooks) with auto-column detection |
+| Content deduplication | MD5-based content hashing prevents duplicate imports from overlapping sources |
+| Parent-child matching | Links Amazon/Etsy order line items to corresponding credit card charges |
+| Inter-account transfers | Matches debits and credits across accounts by amount and date proximity |
+| Entity normalization | Cleans up messy bank entity names for consistent grouping |
+| Scope-based edits | Apply categorization, notes, and flags to all matching transactions at once |
+| Hierarchical grouping | Income / Expenses / Transfers with entity and category sub-groups |
+| Monthly navigation | Browse transactions by year and month |
+| Immutable originals | Source files are never altered; all changes stored as separate edit rules |
+| File-based storage | JSON files on local filesystem, no database required |
+
+---
+
+## Architecture
+
+MoneyInMotion is an npm workspaces monorepo with three packages:
+
+```
+@moneyinmotion/core       Shared domain models, matching, aggregation (pure TypeScript)
+         ^
+         |
+@moneyinmotion/server     Express API, statement parsers, file storage, caching
+         ^
+         |
+@moneyinmotion/web        React SPA with Tailwind CSS, Zustand, React Query
+```
+
+**Design principles:**
+- Original source files are never altered
+- All changes stored as separate, revertible edit rules
+- Full audit trail on every modification
+- Data can be reconstructed from source files + edits at any time
+
+---
+
+## Supported Import Sources
 
 | Source | Format | Special Features |
 |--------|--------|---------|
@@ -80,82 +100,110 @@ Account types: `1` = Credit Card, `2` = Checking, `4` = Savings, `5` = Order His
 | Etsy Orders | JSON | Receipt reconciliation |
 | QuickBooks | IIF | Standard interchange format |
 
-### Transaction Management
+---
 
-- **Categorize**: Hierarchical categories (e.g., "Food > Groceries > Organic")
-- **Flag**: Mark transactions for follow-up
-- **Note**: Add free-text annotations
-- **Fix**: Correct merchant names, amounts, or transaction types
-- **Scope Rules**: Apply edits to all matching transactions at once (by entity name, account, amount range, etc.)
-- **Deduplication**: Content hashing prevents duplicate imports from overlapping sources
-
-### Intelligent Matching
-
-- **Parent-Child**: Links Amazon/Etsy order line items to corresponding credit card charges
-- **Inter-Account Transfers**: Matches debits and credits across accounts by amount and date proximity
-- **Entity Normalization**: Cleans up messy bank entity names for consistent grouping
-
-### Analysis
-
-- Monthly/yearly navigation with hierarchical grouping (Income / Expenses / Transfers)
-- Category-level spending summaries
-- Net income (savings/deficit) calculation
-- Date range transaction highlighting
-- Transaction aggregation with flag and note indicators
-
-### Keyboard Shortcuts (Web UI)
+## Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| Up/Down Arrow | Navigate transaction rows |
-| Left/Right Arrow | Collapse/Expand groups |
+| Up / Down Arrow | Navigate transaction rows |
+| Left / Right Arrow | Collapse / Expand groups |
 | Alt + Right Arrow | Expand all nested levels |
 | Alt + T | Edit category |
 | Alt + N | Edit note |
 | Alt + E | Fix transaction attributes |
 | Alt + F | Toggle flag |
 | Alt + Shift + F | Remove flag |
+| Escape | Close dialog |
+| ? | Show keyboard shortcuts help |
 
-## Architecture
+---
 
+## Technology Stack
+
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Language | TypeScript | 5.7 |
+| Runtime | Node.js | 18+ |
+| API Server | Express | 5.0 |
+| Validation | Zod | 3.24 |
+| CSV Parsing | papaparse | 5.5 |
+| File Watching | chokidar | 4.0 |
+| Hashing | ts-md5 | 1.3 |
+| Frontend | React | 19.0 |
+| Routing | React Router | 7.1 |
+| Server State | React Query (TanStack) | 5.62 |
+| Client State | Zustand | 5.0 |
+| UI Components | Radix UI | 1.x / 2.x |
+| Icons | Lucide React | 0.469 |
+| Styling | Tailwind CSS | 3.4 |
+| Build Tool | Vite | 6.0 |
+| Test Framework | Vitest | 3.0 |
+| Linting | ESLint | 9.17 |
+| Formatting | Prettier | 3.4 |
+
+---
+
+## Development
+
+### Prerequisites
+
+- Node.js 18+ (LTS recommended)
+- npm
+- Git
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm install` | Install all dependencies |
+| `npm run dev` | Start server + web dev servers concurrently |
+| `npm run dev:server` | Start only the API server (port 3001) |
+| `npm run dev:web` | Start only the Vite dev server (port 5173) |
+| `npm run build` | Production build (core -> server -> web) |
+| `npm test` | Run all tests |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run lint` | Lint all packages |
+| `npm run typecheck` | Type-check all packages |
+| `npm run clean` | Remove all build artifacts and node_modules |
+
+### Configuration
+
+The server reads configuration in this priority: environment variables > config file > defaults.
+
+| Setting | Env Variable | Config File Key | Default |
+|---------|-------------|-----------------|---------|
+| Data path | `MONEYAI_DATA_PATH` | `dataPath` | `~/.moneyinmotion/data` |
+| Port | `MONEYAI_PORT` | `port` | `3001` |
+
+Config file location: `~/.moneyinmotion/config.json`
+
+### Production
+
+```bash
+npm run build
+cd packages/server
+NODE_ENV=production node dist/index.js
 ```
-MoneyAI             Core domain (transactions, edits, matching logic)
-MoneyAI.Repositories File-based data access, statement parsers (CSV/JSON/IIF)
-MoneyAI.WebApi      REST API server (ASP.NET Web API 5.0)
-MoneyAI.JS          Web frontend SPA (Knockout.js + RequireJS + Bootstrap 3)
-MoneyAI.WinForms    Windows desktop client (ObjectListView grid)
-CommonUtils         Shared utilities (JSON serialization, CSV parsing, hashing)
-```
 
-**Design Principles:**
-- Original source files are never altered
-- All changes stored as separate, revertible edit rules
-- Full audit trail on every modification
-- Data can be reconstructed from source files + edits at any time
+The Express server serves the built React app as static files in production mode.
+
+---
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
 | [Purpose and Goals](docs/01-purpose-and-goals.md) | Project motivation, goals, and feature overview |
-| [Architecture](docs/02-architecture.md) | System design, layer diagram, and data flow |
+| [Architecture](docs/02-architecture.md) | Monorepo structure, layer diagram, API endpoints, data flow |
 | [How It Works](docs/03-how-it-works.md) | Detailed walkthrough of import, matching, editing, and display |
 | [Install and Build](docs/04-install-and-build.md) | Prerequisites, build steps, and full dependency listing |
-| [User Guide](docs/05-user-guide.md) | End-user guide for web and desktop interfaces |
+| [User Guide](docs/05-user-guide.md) | End-user guide for the web interface |
 | [TODO Items](docs/06-todo.md) | Prioritized list of bugs, features, and technical debt |
 | [Business Rules](docs/07-rules.md) | Comprehensive catalog of all business rules in the system |
 
-## Technology Stack
-
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Backend | .NET Framework | 4.5 |
-| API | ASP.NET Web API | 5.0 |
-| Frontend | Knockout.js + RequireJS | - |
-| UI Framework | Bootstrap | 3.x |
-| Build Tools | Grunt + Bower | 0.4.x |
-| Serialization | Newtonsoft.Json | 5.0.8 |
-| Storage | JSON files | Local filesystem |
+---
 
 ## Author
 

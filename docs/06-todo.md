@@ -1,185 +1,152 @@
-# MoneyInMotion - High Priority TODO Items
+# MoneyInMotion - TODO Items
 
-## Critical: Modernization
+## P0 - Must Do
 
-### P0 - Must Do for Continued Use
+### Finish In-Progress Features
 
-1. **Fix git:// Protocol URLs in bower.json**
-   - GitHub disabled unencrypted git:// protocol in 2022
-   - Change all `git://github.com/...` to `https://github.com/...` in `MoneyAI.JS/bower.json`
-   - Affected packages: knockoutjs, buckets, jquery.ba-bbq, jquery.hotkeys, typeahead-less
+1. **Complete Account Management Page**
+   - The Accounts page is currently a placeholder
+   - Implement account list display with edit/delete capability
+   - Implement account creation form with validation
+   - Display import status per account (last import date, transaction count)
 
-2. **Update Node.js Compatibility**
-   - Current `package.json` specifies `node >= 0.8.0` (ancient)
-   - Grunt plugins from 2013 may not work with Node.js 20+
-   - Test with Node.js 16 LTS as a compatibility baseline
-   - Consider updating grunt and plugins to latest versions
+2. **Complete Settings Page**
+   - The Settings page is currently a placeholder
+   - Implement data path configuration form
+   - Display current configuration values (data path, statements dir, merged dir)
+   - Add port configuration option
 
-3. **Fix Hardcoded User Identity**
-   - `MoneyAI.WebApi/Controllers/TransactionsController.cs` hardcodes user as `"sytelus"`
-   - `MoneyAI.JS/js/userProfile.js` hardcodes user as `"test@gmail.com"`
-   - Implement proper user authentication or configuration
+3. **Implement Transaction Editing UI**
+   - Category edit dialog with autocomplete and scope filter configuration
+   - Note edit dialog
+   - Flag toggle action
+   - Attribute fix dialog (reason, entity name, amount)
+   - Bulk edit confirmation showing affected transaction count
 
-4. **Migrate from Bower to npm**
-   - Bower has been deprecated since 2017
-   - Move all bower dependencies to npm packages or include as vendored files
-   - Update RequireJS paths configuration accordingly
-
-### P1 - Should Do Soon
-
-5. **Upgrade .NET Framework Target**
-   - Current: .NET Framework 4.5 (end-of-life since April 2022)
-   - Recommended: Migrate to .NET 6+ or .NET 8 (LTS)
-   - This would require migrating from ASP.NET Web API to ASP.NET Core
-   - The domain layer (MoneyAI) has minimal framework dependencies and should port easily
-
-6. **Update NuGet Package Versions**
-   - Newtonsoft.Json 5.0.8 -> 13.x (many bug fixes and security patches)
-   - RestSharp 104.4.0 -> 110.x (complete rewrite, breaking API changes)
-   - ASP.NET packages 5.0.0 -> latest compatible versions (or migrate to ASP.NET Core)
-
-7. **Update JavaScript Library Versions**
-   - jQuery 1.10.2 -> 3.x (security fixes, performance improvements)
-   - Bootstrap 3.x -> 5.x (major UI improvements, no jQuery dependency)
-   - lodash 2.2.1 -> 4.x (breaking changes in API)
-   - moment.js -> dayjs or Luxon (moment.js is in maintenance mode)
-
-8. **Add Proper Error Handling to Web API**
-   - Current error handling is minimal
-   - Add global exception handler
-   - Return proper HTTP status codes
-   - Add request validation
+4. **Fix Hardcoded User Identity**
+   - Edit audit info currently lacks proper user identity
+   - Implement configurable user identity or derive from OS username
 
 ---
 
-## Feature Gaps (from FeaturesToDo.html)
+## P1 - High Priority Features
 
-### P1 - High Priority Features
+5. **Search Functionality**
+   - Full-text search across entity names, notes, and categories
+   - Search by amount, date range, or account
+   - Highlight matching transactions in the list
 
-9. **Search Functionality**
-   - No search capability exists in the web UI
-   - Users need to find specific transactions by name, amount, or date
-   - Should support full-text search across entity names and notes
+6. **Support New Amex CSV Format**
+   - American Express has changed their CSV export format
+   - Verify and update the AmexParser for the new column layout
 
-10. **Support New Amex CSV Format**
-    - American Express has changed their CSV export format
-    - Current parser may not handle the new column layout
-    - File extension `.newcsv` was planned
+7. **Category Editor UI**
+   - Dedicated UI for managing the category hierarchy
+   - Ability to rename, merge, and reorganize categories
+   - Category usage statistics (transaction count per category)
 
-11. **Category Editor UI**
-    - No dedicated UI for managing the category hierarchy
-    - Users can only set categories through transaction edits
-    - Need ability to rename, merge, and reorganize categories
+8. **Rules/Edits Editor UI**
+   - View all existing edit rules
+   - Edit or delete existing rules
+   - See which transactions are affected by each rule
+   - Filter rules by scope type, field, or target entity
 
-12. **Rules/Edits Editor UI**
-    - No way to view, edit, or delete existing edit rules
-    - Users cannot see which rules are applied to which transactions
-    - Need a dedicated rules management interface
+9. **Transaction Splitting**
+   - Split a single transaction into multiple categories
+   - Common need: grocery trip with both food and household items
+   - Child transactions that sum to parent amount
 
-13. **Transaction Splitting**
-    - No ability to split a single transaction into multiple categories
-    - Common need: grocery trip with both food and household items
-    - Requires creating child transactions that sum to parent amount
+---
 
-### P2 - Medium Priority Features
+## P2 - Medium Priority Features
 
-14. **Budgeting System**
+10. **Budgeting System**
     - Set spending limits by category or entity
     - Track actual vs. budget by month/quarter/year
-    - Alert when approaching or exceeding budget
+    - Visual indicators when approaching or exceeding budget
 
-15. **Column Sorting and Filtering**
-    - Transaction columns are not sortable
-    - No filter capability on the transaction list
-    - Standard data grid features expected by users
+11. **Column Sorting and Filtering**
+    - Make transaction columns sortable (by amount, date, entity)
+    - Add filter capability on the transaction list
+    - Leverage @tanstack/react-table for column features
 
-16. **Show Total Deficit/Savings**
+12. **Show Total Deficit/Savings**
     - Display running totals for month, quarter, and year
     - Show savings rate (income - expenses / income)
     - Historical trend visualization
 
-17. **Entity Historical Stats**
+13. **Entity Historical Stats**
     - Show previous charges and trends for a given entity
     - "You spent $X at Amazon last month, $Y this month"
     - Frequency of purchases from each merchant
 
-18. **Remember Last Selection**
-    - Currently resets to default view on page load
-    - Should remember last selected year/month
-    - Persist view state (expanded groups, scroll position)
+14. **Remember Last Selection**
+    - Persist last selected year/month across page loads
+    - Persist expanded group state in localStorage
+    - Restore scroll position on navigation
 
-19. **Flat View with Sort and Filter**
-    - Option to view all transactions without hierarchy
-    - Full sort/filter capability on all columns
-    - Toggle between grouped and flat views
+15. **Flat View with Sort and Filter**
+    - Toggle between hierarchical grouped view and flat list view
+    - Full sort/filter capability on all columns in flat view
 
-20. **Quick Selection UI**
-    - "Only these" button to quickly filter to specific transactions
-    - Filter by selected entity name, category, or rule
+16. **Mobile Responsive Layout**
+    - The left and right sidebars are hidden on small screens but no alternative navigation is provided
+    - Add mobile navigation (hamburger menu, bottom sheet, or tabs)
+    - Responsive transaction row layout for narrow viewports
 
 ---
 
-## Known Bugs
+## Known Issues
 
 ### P1 - Should Fix
 
-21. **App Pool Restart Required After Data Overwrite**
-    - FileSystemWatcher may not detect all file changes
-    - Manual IIS app pool restart needed after external data changes
-    - May be related to watcher buffer overflow or timing issue
-
-22. **Transaction Grid Display Bug (< 1000px)**
-    - Transaction grid doesn't render properly on viewports less than ~1000px wide
-    - Bootstrap responsive breakpoints not configured for the grid
-    - Affects tablet and small laptop screens
-
-23. **Non-Zero Total Transfers**
+17. **Non-Zero Total Transfers**
     - Inter-account transfers should net to zero
     - Some unmatched transfers remain, causing non-zero totals
     - Investigate matching algorithm edge cases
 
-24. **Edit Scope Validation**
+18. **Edit Scope Validation**
     - Empty category name allowed when creating edit rules
     - No validation on scope filter parameters from user input
     - Could create invalid edits that silently fail
 
 ### P2 - Nice to Fix
 
-25. **Chrome Cache Issue**
-    - Chrome doesn't refresh HTML even when file is changed on IIS
-    - May need cache-busting query parameters on static files
-    - Add build-time hash to file references
-
-26. **Selected Month/Year Highlight**
-    - Currently selected month is not visually highlighted in navigation
-    - CSS class not being applied to the active month pill
+19. **Selected Month Highlight**
+    - Currently selected month should be visually highlighted in the YearMonthNav sidebar
+    - Active state styling needed in the accordion
 
 ---
 
-## Technical Debt
+## Technical Improvements
 
-### P2 - Code Improvements
+### P2 - Code Quality
 
-27. **Clean Up TransactionAggregator**
-    - Current implementation uses callback chains
-    - Should be refactored to iterative code for readability
-    - Referenced in FeaturesToDo.html as existing item
+20. **Expand Test Coverage**
+    - Core domain logic needs comprehensive unit tests (matching, edit application, aggregation)
+    - Server API endpoints need integration tests
+    - Web components need component tests with @testing-library/react
 
-28. **Remove Hardcoded Values**
+21. **Remove Hardcoded Values**
     - Transfer day tolerance hardcoded to 3 days
     - Amount tolerance hardcoded in parent-child matcher
-    - These should be configurable per account
+    - These should be configurable per account via AccountConfig
 
-29. **Add Unit Tests for Core Logic**
-    - Only CommonUtils has test coverage
-    - MoneyAI core domain has no unit tests
-    - Transaction matching, edit application, and parsing need tests
-
-30. **Add Transaction Source Tracking**
+22. **Add Transaction Source Tracking**
     - Track how each transaction was created: Import, Synthetic, Adjustment, Manual
     - Helps debugging matching and deduplication issues
 
-31. **Improve PayPal Parser Robustness**
+23. **Improve PayPal Parser Robustness**
     - Current timezone handling is fragile
     - Ignorable activity list may be incomplete
-    - Consider using PayPal API instead of CSV export
+    - Consider supporting PayPal API export format
+
+24. **API Error Responses**
+    - Standardize error response format across all endpoints
+    - Include request ID for debugging
+    - Add structured error codes beyond HTTP status
+
+25. **Production Deployment**
+    - Add Dockerfile for containerized deployment
+    - Add environment variable documentation for production configuration
+    - Add health check endpoint

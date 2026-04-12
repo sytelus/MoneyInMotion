@@ -1,69 +1,53 @@
-# Visual Studio files
-*.pch
-*.vspscc
-*.vssscc
-*_i.c
-*_p.c
-*.ncb
-*.suo
-*.sln.DotSettings.user
-*.scc
-*.publishsettings
-*.user
-*.userosscache
-*.dbmdl
-*.jmconfig
-.vs/
-Web.Release.Config
-
-# Build results
-[Bb]in/
-[Oo]bj/
-[Dd]ebug/
-[Rr]elease/
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# NuGet
-*.nupkg
-**/packages/*
-!**/packages/build/
-!**/packages/*.config
-
-# Tooling
-_ReSharper*/
-*.[Rr]e[Ss]harper
-*.DotSettings.user
-
-# Subversion files
-*.svn
-
-# Office Temp Files
-~$*
-
-# PII/large files
-data/
-App_Data/
-
-# JS build
-**/.tmp
-**/.sass-cache
-**/dist/
-
-# Node
+# Dependencies
 node_modules/
-npm-debug.log
-yarn-error.log
-package-lock.json
+.pnp
+.pnp.js
 
-# Bower
-bower_components/
+# Build output
+dist/
+*.tsbuildinfo
 
-# OS junk files
+# Testing
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+*.swp
+*~
+*.suo
+*.user
+
+# OS
+.DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
-.DS_Store
-*.swp
-*~
+
+# Legacy .NET artifacts
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.pch
+*.ncb
+*.scc
+_ReSharper*/
+*.DotSettings.user
+
+# Data (PII)
+data/
+App_Data/
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+
+# Misc
+**/.tmp
+**/.sass-cache
