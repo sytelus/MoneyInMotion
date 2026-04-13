@@ -15,7 +15,7 @@ import { Transaction } from '../models/transaction.js';
 import type { Transactions } from '../models/transactions.js';
 import { TransactionReason } from '../models/transaction-reason.js';
 import { LineItemType } from '../models/line-item-type.js';
-import { parseDate } from '../utils/date-utils.js';
+import { parseDate, daysBetween } from '../utils/date-utils.js';
 import { isMissingAmountTolerable, addAdjustmentChild } from './generic-tx-matcher.js';
 
 const IMPORT_INFO_ID = 'CreatedBy.GenericOrderMatcher';
@@ -111,45 +111,30 @@ export class GenericOrderMatcher implements ParentChildMatch {
                 let parents = nonLineitemParents.get(exactKey) ?? null;
 
                 if (parents == null || parents.length === 0) {
-                    // Fuzzy match: amount +/- 1, date +/- 2 days
+                    // Fuzzy match: amount +/- 1, date +/- 2 days.
+                    // Score by amount_delta * (days_delta + 1) so that smaller
+                    // amount differences dominate and, within ties, closer
+                    // dates win.
                     const childDate = parseDate(child.transactionDate);
-                    const fuzzyMatches: Transaction[] = [];
+                    const fuzzyMatches: Array<{ tx: Transaction; score: number }> = [];
 
                     for (const txArray of nonLineitemParents.values()) {
                         for (const tx of txArray) {
                             const amountDelta = Math.abs(tx.amount - child.amount);
-                            const txDate = parseDate(tx.transactionDate);
-                            const daysDelta = Math.abs(
-                                (txDate.getTime() - childDate.getTime()) / 86_400_000,
-                            );
+                            const daysDelta = daysBetween(parseDate(tx.transactionDate), childDate);
                             const hasChildren = tx.children != null && Object.keys(tx.children).length > 0;
 
                             if (amountDelta <= 1 && daysDelta <= 2 && !hasChildren) {
-                                fuzzyMatches.push(tx);
+                                fuzzyMatches.push({
+                                    tx,
+                                    score: amountDelta * (daysDelta + 1),
+                                });
                             }
                         }
                     }
 
-                    // Sort by delta score: amount_delta * (days_delta + 1)
-                    fuzzyMatches.sort((a, b) => {
-                        const aAmountDelta = Math.abs(a.amount - child.amount);
-                        const aDate = parseDate(a.transactionDate);
-                        const aDaysDelta = Math.abs(
-                            (aDate.getTime() - childDate.getTime()) / 86_400_000,
-                        );
-                        const aScore = aAmountDelta * (aDaysDelta + 1);
-
-                        const bAmountDelta = Math.abs(b.amount - child.amount);
-                        const bDate = parseDate(b.transactionDate);
-                        const bDaysDelta = Math.abs(
-                            (bDate.getTime() - childDate.getTime()) / 86_400_000,
-                        );
-                        const bScore = bAmountDelta * (bDaysDelta + 1);
-
-                        return aScore - bScore;
-                    });
-
-                    parents = fuzzyMatches;
+                    fuzzyMatches.sort((a, b) => a.score - b.score);
+                    parents = fuzzyMatches.map((m) => m.tx);
                 }
 
                 if (parents.length > 0) {

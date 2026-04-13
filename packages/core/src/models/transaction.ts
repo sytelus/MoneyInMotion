@@ -585,6 +585,10 @@ export class Transaction {
     /**
      * Mark the parent as complete and compute the missing child amount.
      *
+     * Uses a half-cent epsilon when checking whether the remainder is zero —
+     * plain `!== 0` would spuriously flag parents as incomplete because of
+     * floating-point rounding in the child-amount sum.
+     *
      * @returns An object with `isComplete` (true when amounts balance) and
      *          `missingChildAmount` (the unmatched remainder).
      */
@@ -594,7 +598,7 @@ export class Transaction {
             : [];
         const childSum = childrenValues.reduce((sum, c) => sum + c.amount, 0);
         const missingChildAmount = this.data.amount - childSum;
-        this.data.hasMissingChild = missingChildAmount !== 0;
+        this.data.hasMissingChild = Math.abs(missingChildAmount) >= 0.005;
 
         this.completeUpdate();
 
