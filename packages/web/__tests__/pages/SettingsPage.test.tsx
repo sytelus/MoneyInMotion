@@ -35,6 +35,9 @@ describe('SettingsPage', () => {
       dataPath: '/tmp/mim-data',
       statementsDir: '/tmp/mim-data/Statements',
       mergedDir: '/tmp/mim-data/Merged',
+      activePort: 3001,
+      activeDataPath: '/tmp/mim-data',
+      restartRequired: false,
     });
     useScanStatementsMock.mockReturnValue({
       mutate: vi.fn(),
@@ -58,6 +61,9 @@ describe('SettingsPage', () => {
       dataPath: '/tmp/mim-data-2',
       statementsDir: '/tmp/mim-data-2/Statements',
       mergedDir: '/tmp/mim-data-2/Merged',
+      activePort: 3001,
+      activeDataPath: '/tmp/mim-data',
+      restartRequired: true,
     });
 
     renderPage();
@@ -76,7 +82,41 @@ describe('SettingsPage', () => {
       });
     });
 
-    expect(await screen.findByText(/Settings saved to the config file/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Saved data directory and port to the config file/i),
+    ).toBeInTheDocument();
+  });
+
+  it('only sends the dataPath field when the port was not changed', async () => {
+    updateConfigMock.mockResolvedValue({
+      port: 3001,
+      dataPath: '/tmp/mim-data-2',
+      statementsDir: '/tmp/mim-data-2/Statements',
+      mergedDir: '/tmp/mim-data-2/Merged',
+      activePort: 3001,
+      activeDataPath: '/tmp/mim-data',
+      restartRequired: true,
+    });
+
+    renderPage();
+
+    fireEvent.change(await screen.findByLabelText('Data Directory'), {
+      target: { value: '/tmp/mim-data-2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Save Settings/i }));
+
+    await waitFor(() => {
+      expect(updateConfigMock).toHaveBeenCalledWith({
+        dataPath: '/tmp/mim-data-2',
+      });
+    });
+    expect(
+      await screen.findByText(/Saved data directory to the config file/i),
+    ).toBeInTheDocument();
+    // The restart hint should reference only "data directory", not "port".
+    expect(
+      screen.getByText(/Restart the server for the new data directory to take effect/i),
+    ).toBeInTheDocument();
   });
 
   it('shows validation for an invalid port and does not call updateConfig', async () => {

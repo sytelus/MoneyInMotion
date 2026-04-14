@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -399,6 +399,7 @@ interface FeedbackMessage {
  * editing, and removing account configs through dialogs.
  */
 export const AccountsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { data: accounts, isLoading, error, refetch } = useAccounts();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AccountSummary | null>(null);
@@ -521,11 +522,14 @@ export const AccountsPage: React.FC = () => {
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between h-14 px-4 border-b border-border">
         <div className="flex items-center gap-4">
-          <Link to="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Go back"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div>
             <h1 className="font-bold text-lg">Accounts</h1>
           </div>
@@ -545,24 +549,24 @@ export const AccountsPage: React.FC = () => {
 
         {feedback && (
           <div
-            className={`rounded-md p-4 mb-6 ${
+            className={`rounded-md border p-4 mb-6 ${
               feedback.title === 'Upload failed'
-                ? 'bg-destructive/10'
-                : 'bg-green-50 dark:bg-green-900/20'
+                ? 'border-destructive/30 bg-destructive/10'
+                : 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20'
             }`}
           >
             <div className="flex items-start gap-3">
               {feedback.title === 'Upload failed' ? (
                 <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
               ) : (
-                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                <CheckCircle className="h-5 w-5 text-emerald-700 dark:text-emerald-300 mt-0.5 shrink-0" />
               )}
               <div className="flex-1 space-y-2">
                 <p
                   className={`font-medium ${
                     feedback.title === 'Upload failed'
                       ? 'text-destructive'
-                      : 'text-green-800 dark:text-green-200'
+                      : 'text-emerald-900 dark:text-emerald-200'
                   }`}
                 >
                   {feedback.title}
@@ -571,7 +575,7 @@ export const AccountsPage: React.FC = () => {
                   className={`text-sm ${
                     feedback.title === 'Upload failed'
                       ? 'text-destructive'
-                      : 'text-green-700 dark:text-green-300'
+                      : 'text-emerald-900/90 dark:text-emerald-200/90'
                   }`}
                 >
                   {feedback.description}
@@ -581,7 +585,7 @@ export const AccountsPage: React.FC = () => {
                     className={`block text-sm px-3 py-2 rounded ${
                       feedback.title === 'Upload failed'
                         ? 'bg-destructive/10 text-destructive'
-                        : 'bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100'
+                        : 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100'
                     }`}
                   >
                     {feedback.path}
@@ -590,7 +594,7 @@ export const AccountsPage: React.FC = () => {
               </div>
               <button
                 onClick={dismissFeedback}
-                className="text-green-600 dark:text-green-400 hover:opacity-70 text-sm"
+                className="text-emerald-800 dark:text-emerald-200 hover:opacity-70 text-sm"
                 aria-label="Dismiss"
               >
                 &times;

@@ -19,7 +19,10 @@ vi.mock('../../src/api/hooks.js', () => ({
   useScanStatements: () => useScanStatementsMock(),
 }));
 
-function makeAccount(hasStatementFiles: boolean): AccountSummary {
+function makeAccount(
+  hasStatementFiles: boolean,
+  transactionCount = 0,
+): AccountSummary {
   return {
     config: {
       accountInfo: {
@@ -34,8 +37,8 @@ function makeAccount(hasStatementFiles: boolean): AccountSummary {
       scanSubFolders: true,
     },
     stats: {
-      transactionCount: 0,
-      lastImportedAt: null,
+      transactionCount,
+      lastImportedAt: transactionCount > 0 ? '2024-01-01T00:00:00Z' : null,
     },
     hasStatementFiles,
   };
@@ -68,23 +71,27 @@ describe('WelcomePage', () => {
     });
   });
 
-  it('does not mark statement upload complete before files exist', async () => {
+  it('leaves the import step incomplete before any transactions are imported', async () => {
     getAccountsMock.mockResolvedValue([makeAccount(false)]);
 
     renderPage();
 
-    expect(await screen.findByText('No statement files detected yet.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('No statement files uploaded yet.'),
+    ).toBeInTheDocument();
+    // Only step 1 (data folder) and step 2 (accounts) should be complete.
     expect(screen.getAllByText('Complete')).toHaveLength(2);
   });
 
-  it('marks statement upload complete when statement files are detected', async () => {
-    getAccountsMock.mockResolvedValue([makeAccount(true)]);
+  it('marks the import step complete once transactions have been imported', async () => {
+    getAccountsMock.mockResolvedValue([makeAccount(true, 42)]);
 
     renderPage();
 
     expect(
       await screen.findByText('Statement files detected for 1 account.'),
     ).toBeInTheDocument();
+    // All three steps should now show Complete.
     expect(screen.getAllByText('Complete')).toHaveLength(3);
   });
 

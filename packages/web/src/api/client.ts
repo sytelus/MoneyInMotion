@@ -12,10 +12,23 @@ import type { TransactionsData, TransactionEditData, AccountConfig } from '@mone
 const BASE_URL = '/api';
 
 export interface ApiConfig {
+  /** Port persisted to the config file (what the next server start will use). */
   port: number;
+  /** Data path persisted to the config file. */
   dataPath: string;
+  /** Derived from the saved dataPath. */
   statementsDir: string;
+  /** Derived from the saved dataPath. */
   mergedDir: string;
+  /** Port the currently-running server process is bound to. */
+  activePort: number;
+  /** Data path the currently-running server process is using. */
+  activeDataPath: string;
+  /**
+   * True when the persisted config and the active config disagree, i.e. a
+   * server restart is required before the saved values take effect.
+   */
+  restartRequired: boolean;
 }
 
 export interface AccountStats {
@@ -133,13 +146,14 @@ export async function getConfig(): Promise<ApiConfig> {
 }
 
 /**
- * Update application configuration.
+ * Update application configuration. Either field can be omitted to leave
+ * the persisted value for that field unchanged.
  *
- * @param config - The new config values to persist.
+ * @param config - The config values to persist.
  */
 export async function updateConfig(config: {
-  dataPath: string;
-  port: number;
+  dataPath?: string;
+  port?: number;
 }): Promise<ApiConfig> {
   return request<ApiConfig>('/config', {
     method: 'PUT',

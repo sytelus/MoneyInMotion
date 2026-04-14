@@ -9,7 +9,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowLeft,
@@ -244,6 +244,7 @@ function buildSampleLabel(transaction: Transaction): string {
  * Rule history page used to inspect edit rules and append revert edits.
  */
 export const RulesPage: React.FC = () => {
+  const navigate = useNavigate();
   const { data, isLoading, error } = useTransactions();
   const applyEdits = useApplyEdits();
   const [selectedRule, setSelectedRule] = useState<RuleHistoryItem | null>(null);
@@ -310,11 +311,14 @@ export const RulesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
-        <Link to="/">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Go back"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <h1 className="font-bold text-lg">Rules &amp; History</h1>
       </header>
 
@@ -338,7 +342,7 @@ export const RulesPage: React.FC = () => {
         )}
 
         {actionSuccess && (
-          <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-300">
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-200">
             {actionSuccess}
           </div>
         )}

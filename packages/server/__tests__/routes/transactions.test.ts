@@ -126,10 +126,14 @@ describe('config routes', () => {
         vi.restoreAllMocks();
     });
 
-    it('GET /api/config returns config with port, dataPath, statementsDir, and mergedDir', async () => {
+    it('GET /api/config returns saved + active configuration with restart flag', async () => {
         const config = createTestConfig();
         const cache = createMockCache();
         const app = createTestApp(config, cache);
+
+        // Stub loadConfig (the "saved" source) so the test does not depend
+        // on the host machine's ~/.moneyinmotion/config.json.
+        vi.spyOn(configModule, 'loadConfig').mockReturnValue(config);
 
         const res = await request(app).get('/api/config');
 
@@ -139,7 +143,28 @@ describe('config routes', () => {
             dataPath: config.dataPath,
             statementsDir: config.statementsDir,
             mergedDir: config.mergedDir,
+            activePort: config.port,
+            activeDataPath: config.dataPath,
+            restartRequired: false,
         });
+    });
+
+    it('GET /api/config flags restartRequired when saved differs from active', async () => {
+        const active = createTestConfig('/tmp/active-mim');
+        const cache = createMockCache();
+        const app = createTestApp(active, cache);
+
+        // Saved config on disk is different from the active in-memory copy.
+        vi.spyOn(configModule, 'loadConfig').mockReturnValue(
+            createTestConfig('/tmp/saved-mim'),
+        );
+
+        const res = await request(app).get('/api/config');
+
+        expect(res.status).toBe(200);
+        expect(res.body.dataPath).toBe('/tmp/saved-mim');
+        expect(res.body.activeDataPath).toBe('/tmp/active-mim');
+        expect(res.body.restartRequired).toBe(true);
     });
 
     it('PUT /api/config persists both dataPath and port', async () => {
@@ -149,7 +174,7 @@ describe('config routes', () => {
         const saveConfigSpy = vi
             .spyOn(configModule, 'saveConfig')
             .mockImplementation(() => undefined);
-        const loadConfigSpy = vi
+        vi
             .spyOn(configModule, 'loadConfig')
             .mockReturnValue({
                 port: 4010,
@@ -171,12 +196,14 @@ describe('config routes', () => {
             dataPath: '/tmp/new-moneyinmotion',
             port: 4010,
         });
-        expect(loadConfigSpy).toHaveBeenCalledOnce();
         expect(res.body).toEqual({
             port: 4010,
             dataPath: '/tmp/new-moneyinmotion',
             statementsDir: '/tmp/new-moneyinmotion/Statements',
             mergedDir: '/tmp/new-moneyinmotion/Merged',
+            activePort: config.port,
+            activeDataPath: config.dataPath,
+            restartRequired: true,
         });
     });
 

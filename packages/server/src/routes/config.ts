@@ -1,8 +1,19 @@
 /**
  * Configuration API routes.
  *
- * GET  /api/config - returns { port, dataPath, statementsDir, mergedDir }
- * PUT  /api/config - updates config and returns new config
+ * GET  /api/config - returns the saved config (from disk) plus fields that
+ *                    describe whether a server restart is required
+ * PUT  /api/config - persists a new dataPath and/or port to disk
+ *
+ * Note on semantics: the running server's FileRepository and
+ * TransactionCache are bound to the config read at process start. PUT
+ * only updates the persisted config; the active data-path and port are
+ * not swapped live because that would require re-opening files, moving
+ * the chokidar watcher, and re-binding the TCP port mid-flight.
+ *
+ * So GET returns the *saved* config (what the next server start will
+ * use), along with `activeDataPath` / `activePort` / `restartRequired`
+ * so the UI can show both values and warn when they disagree.
  *
  * @module
  */
@@ -29,17 +40,37 @@ const configUpdateSchema = z.object({
     },
 );
 
+function buildResponse(
+    saved: ServerConfig,
+    active: ServerConfig,
+): {
+    port: number;
+    dataPath: string;
+    statementsDir: string;
+    mergedDir: string;
+    activePort: number;
+    activeDataPath: string;
+    restartRequired: boolean;
+} {
+    return {
+        port: saved.port,
+        dataPath: saved.dataPath,
+        statementsDir: saved.statementsDir,
+        mergedDir: saved.mergedDir,
+        activePort: active.port,
+        activeDataPath: active.dataPath,
+        restartRequired:
+            saved.port !== active.port || saved.dataPath !== active.dataPath,
+    };
+}
+
 export function createConfigRouter(getConfig: () => ServerConfig): Router {
     const router = Router();
 
     router.get('/', (_req, res) => {
-        const config = getConfig();
-        res.json({
-            port: config.port,
-            dataPath: config.dataPath,
-            statementsDir: config.statementsDir,
-            mergedDir: config.mergedDir,
-        });
+        const active = getConfig();
+        const saved = loadConfig();
+        res.json(buildResponse(saved, active));
     });
 
     router.put('/', (req, res) => {
@@ -76,14 +107,9 @@ export function createConfigRouter(getConfig: () => ServerConfig): Router {
 
         saveConfig(partialConfig);
 
-        // Reload config so derived dirs are correct
-        const newConfig = loadConfig();
-        res.json({
-            port: newConfig.port,
-            dataPath: newConfig.dataPath,
-            statementsDir: newConfig.statementsDir,
-            mergedDir: newConfig.mergedDir,
-        });
+        const active = getConfig();
+        const saved = loadConfig();
+        res.json(buildResponse(saved, active));
     });
 
     return router;

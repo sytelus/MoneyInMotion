@@ -106,12 +106,12 @@ const Step: React.FC<StepProps> = ({ number, title, icon, complete, children }) 
         className={cn(
           'flex items-center justify-center h-10 w-10 rounded-full border-2 shrink-0 transition-colors',
           complete
-            ? 'border-green-500 bg-green-50 dark:bg-green-900/30'
+            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
             : 'border-border bg-muted',
         )}
       >
         {complete ? (
-          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <CheckCircle className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
         ) : (
           <span className="text-sm font-semibold text-muted-foreground">{number}</span>
         )}
@@ -126,7 +126,7 @@ const Step: React.FC<StepProps> = ({ number, title, icon, complete, children }) 
         {icon}
         {title}
         {complete && (
-          <span className="text-xs font-normal text-green-600 dark:text-green-400">
+          <span className="text-xs font-medium text-emerald-800 dark:text-emerald-200">
             Complete
           </span>
         )}
@@ -152,6 +152,12 @@ export const WelcomePage: React.FC = () => {
   const hasAccounts = accounts.length > 0;
   const accountsWithStatementFiles = accounts.filter((account) => account.hasStatementFiles);
   const hasStatementFiles = accountsWithStatementFiles.length > 0;
+  const hasImportedTransactions = accounts.some(
+    (account) => account.stats.transactionCount > 0,
+  );
+  const importJustRan =
+    scanMutation.isSuccess === true &&
+    (scanMutation.data?.totalTransactions ?? 0) > 0;
 
   const handleImport = () => {
     scanMutation.mutate(undefined, {
@@ -165,11 +171,14 @@ export const WelcomePage: React.FC = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
-        <Link to="/">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Go back"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <h1 className="font-bold text-lg">Getting Started</h1>
       </header>
 
@@ -236,89 +245,54 @@ export const WelcomePage: React.FC = () => {
             </div>
           </Step>
 
-          {/* Step 3: Add Statement Files */}
+          {/* Step 3: Upload + Import */}
           <Step
             number={3}
-            title="Add Statement Files"
-            icon={<FileText className="h-5 w-5" />}
-            complete={hasStatementFiles}
+            title="Import Statements"
+            icon={<Sparkles className="h-5 w-5" />}
+            complete={hasImportedTransactions || importJustRan}
           >
             <p>
-              Download CSV/JSON statement files from your bank's website and upload them
-              from the Accounts page, or place them in the account folders manually.
+              Upload statement files (CSV, JSON, or IIF) from the Accounts
+              page — one account at a time, or several at once. After files
+              are uploaded, click <strong>Import</strong> and MoneyInMotion
+              will parse, deduplicate, and categorize them for you.
             </p>
             {accountsLoaded && hasAccounts && (
               <p className="text-xs">
                 {hasStatementFiles
                   ? `Statement files detected for ${accountsWithStatementFiles.length} account${accountsWithStatementFiles.length === 1 ? '' : 's'}.`
-                  : 'No statement files detected yet.'}
+                  : 'No statement files uploaded yet.'}
               </p>
             )}
-            <div>
-              <Link to="/accounts">
-                <Button variant="outline" size="sm">
-                  Open Accounts
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </Link>
-            </div>
-            {dataPathConfigured && hasAccounts && (
-              <div className="space-y-2 mt-1">
-                <p className="text-xs font-medium text-foreground">
-                  Place files in these directories:
-                </p>
-                <ul className="space-y-1">
-                  {accounts.map((acct) => (
-                    <li key={acct.config.accountInfo.id} className="text-xs">
-                      <span className="font-medium text-foreground">
-                        {acct.config.accountInfo.title ?? acct.config.accountInfo.id}
-                      </span>
-                      :{' '}
-                      <code className="px-1.5 py-0.5 bg-muted rounded">
-                        {dataPath}/Statements/{acct.config.accountInfo.id}/
-                      </code>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+
             {!dataPathConfigured && (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
                 Configure the data folder first (Step 1).
               </p>
             )}
             {dataPathConfigured && !hasAccounts && (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
                 Add at least one account first (Step 2).
               </p>
             )}
-            <p className="text-xs">
-              Supported formats: <strong>CSV</strong> (most banks),{' '}
-              <strong>JSON</strong> (Etsy), <strong>IIF</strong> (QuickBooks)
-            </p>
-          </Step>
 
-          {/* Step 4: Import & Explore */}
-          <Step
-            number={4}
-            title="Import & Explore"
-            icon={<Sparkles className="h-5 w-5" />}
-            complete={
-              scanMutation.isSuccess === true &&
-              (scanMutation.data?.totalTransactions ?? 0) > 0
-            }
-          >
-            <p>Scan your statement folders and import transactions.</p>
             <div className="flex flex-wrap items-center gap-2">
+              <Link to="/accounts">
+                <Button variant="outline" size="sm" disabled={!hasAccounts}>
+                  <FileText className="h-4 w-4 mr-1.5" />
+                  Upload Files
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
               <Button
                 size="sm"
                 onClick={handleImport}
-                disabled={scanMutation.isPending}
+                disabled={scanMutation.isPending || !hasAccounts}
               >
                 <Download className="h-4 w-4 mr-1.5" />
-                {scanMutation.isPending ? 'Scanning...' : 'Import Statements'}
+                {scanMutation.isPending ? 'Importing...' : 'Import'}
               </Button>
-
               {scanMutation.isSuccess && scanMutation.data && (
                 <Button
                   size="sm"
@@ -331,23 +305,30 @@ export const WelcomePage: React.FC = () => {
               )}
             </div>
 
+            <p className="text-xs">
+              Supported formats: <strong>CSV</strong> (most banks),{' '}
+              <strong>JSON</strong> (Etsy), <strong>IIF</strong> (QuickBooks).
+              Re-importing the same file is safe — duplicates are merged by
+              content hash.
+            </p>
+
             {scanMutation.isSuccess && scanMutation.data && (
-              <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-3 text-sm">
-                <p className="font-medium text-green-800 dark:text-green-200">
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-900/40 dark:bg-emerald-900/20">
+                <p className="font-medium text-emerald-900 dark:text-emerald-200">
                   Import complete
                 </p>
-                <p className="text-green-700 dark:text-green-300 mt-1">
+                <p className="text-emerald-900/90 dark:text-emerald-200/90 mt-1">
                   Found {scanMutation.data.totalTransactions} transaction
                   {scanMutation.data.totalTransactions === 1 ? '' : 's'}!{' '}
                   ({scanMutation.data.newTransactions} new)
                 </p>
                 {scanMutation.data.failedFiles?.length > 0 && (
-                  <div className="mt-2 rounded-md bg-amber-50 dark:bg-amber-900/20 p-2 text-xs">
-                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs dark:border-amber-900/40 dark:bg-amber-900/20">
+                    <p className="font-medium text-amber-900 dark:text-amber-200">
                       {scanMutation.data.failedFiles.length} file
                       {scanMutation.data.failedFiles.length === 1 ? '' : 's'} could not be parsed:
                     </p>
-                    <ul className="mt-1 space-y-0.5 text-amber-700 dark:text-amber-300">
+                    <ul className="mt-1 space-y-0.5 text-amber-900/90 dark:text-amber-200/90">
                       {scanMutation.data.failedFiles.map((f) => (
                         <li key={f.path}>
                           <code>{f.path}</code> — {f.error}

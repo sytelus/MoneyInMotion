@@ -104,7 +104,9 @@ export const Header: React.FC = () => {
           <span className="text-destructive text-sm">Import failed</span>
         )}
         {importSuccess && (
-          <span className="text-green-600 text-sm">{importSuccess}</span>
+          <span className="text-emerald-800 dark:text-emerald-200 text-sm font-medium">
+            {importSuccess}
+          </span>
         )}
 
         <Button
@@ -120,7 +122,9 @@ export const Header: React.FC = () => {
           <span className="text-destructive text-sm">Save failed</span>
         )}
         {saveSuccess && (
-          <span className="text-green-600 text-sm">{saveSuccess}</span>
+          <span className="text-emerald-800 dark:text-emerald-200 text-sm font-medium">
+            {saveSuccess}
+          </span>
         )}
 
         <Link to="/accounts">
