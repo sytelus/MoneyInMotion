@@ -4,7 +4,7 @@
  * @module
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CreditCard,
@@ -19,6 +19,8 @@ import { useScanStatements, useSaveData } from '../../api/hooks.js';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 
+const FLASH_MESSAGE_DURATION_MS = 3000;
+
 /**
  * Top bar component with the application title, Import/Save action buttons,
  * and navigation links to Accounts, Rules, and Settings pages.
@@ -30,11 +32,31 @@ export const Header: React.FC = () => {
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
+  const importTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (importTimerRef.current) clearTimeout(importTimerRef.current);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
   const handleImport = () => {
     scanMutation.mutate(undefined, {
       onSuccess: (data) => {
-        setImportSuccess(`Imported ${data.newTransactions} transactions`);
-        setTimeout(() => setImportSuccess(null), 3000);
+        const failedCount = data.failedFiles?.length ?? 0;
+        const base = `Imported ${data.newTransactions} transactions`;
+        setImportSuccess(
+          failedCount > 0
+            ? `${base} (${failedCount} file${failedCount === 1 ? '' : 's'} failed)`
+            : base,
+        );
+        if (importTimerRef.current) clearTimeout(importTimerRef.current);
+        importTimerRef.current = setTimeout(() => {
+          setImportSuccess(null);
+          importTimerRef.current = null;
+        }, FLASH_MESSAGE_DURATION_MS);
       },
     });
   };
@@ -43,7 +65,11 @@ export const Header: React.FC = () => {
     saveMutation.mutate({ saveMerged: true, saveEdits: true }, {
       onSuccess: () => {
         setSaveSuccess('Saved!');
-        setTimeout(() => setSaveSuccess(null), 3000);
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+          setSaveSuccess(null);
+          saveTimerRef.current = null;
+        }, FLASH_MESSAGE_DURATION_MS);
       },
     });
   };
@@ -123,6 +149,7 @@ export const Header: React.FC = () => {
           size="sm"
           onClick={handleShowHelp}
           title="Keyboard shortcuts (?)"
+          aria-label="Show keyboard shortcuts"
         >
           <HelpCircle className="h-4 w-4" />
         </Button>

@@ -352,3 +352,48 @@ describe('Transaction.fromData', () => {
         expect(restored.contentHash).toBe(tx.contentHash);
     });
 });
+
+// ---------------------------------------------------------------------------
+// completeParent
+// ---------------------------------------------------------------------------
+
+describe('Transaction.completeParent', () => {
+    it('should mark parent complete when children sum matches amount exactly', () => {
+        const parent = makeTransaction({ amount: -10 });
+        const child1 = makeTransaction({ amount: -6, entityName: 'Child 1' });
+        const child2 = makeTransaction({ amount: -4, entityName: 'Child 2' });
+        parent.addChild(child1);
+        parent.addChild(child2);
+
+        const result = parent.completeParent();
+        expect(result.isComplete).toBe(true);
+        expect(result.missingChildAmount).toBe(0);
+        expect(parent.hasMissingChild).toBe(false);
+    });
+
+    it('should treat floating-point rounding within half a cent as complete', () => {
+        const parent = makeTransaction({ amount: -0.3 });
+        // 0.1 + 0.1 + 0.1 = 0.30000000000000004 in IEEE 754
+        const c1 = makeTransaction({ amount: -0.1, entityName: 'C1' });
+        const c2 = makeTransaction({ amount: -0.1, entityName: 'C2' });
+        const c3 = makeTransaction({ amount: -0.1, entityName: 'C3' });
+        parent.addChild(c1);
+        parent.addChild(c2);
+        parent.addChild(c3);
+
+        const result = parent.completeParent();
+        expect(result.isComplete).toBe(true);
+        expect(parent.hasMissingChild).toBe(false);
+    });
+
+    it('should flag parent incomplete when missing amount exceeds epsilon', () => {
+        const parent = makeTransaction({ amount: -10 });
+        const child = makeTransaction({ amount: -6, entityName: 'Partial' });
+        parent.addChild(child);
+
+        const result = parent.completeParent();
+        expect(result.isComplete).toBe(false);
+        expect(result.missingChildAmount).toBeCloseTo(-4, 5);
+        expect(parent.hasMissingChild).toBe(true);
+    });
+});

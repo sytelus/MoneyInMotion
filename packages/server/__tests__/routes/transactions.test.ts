@@ -16,6 +16,7 @@ import { createAccountsRouter } from '../../src/routes/accounts.js';
 import { createHealthRouter } from '../../src/routes/health.js';
 import { createTransactionsRouter } from '../../src/routes/transactions.js';
 import { createTransactionEditsRouter } from '../../src/routes/transaction-edits.js';
+import { createImportRouter } from '../../src/routes/import.js';
 import type { TransactionCache } from '../../src/cache/transaction-cache.js';
 import * as configModule from '../../src/config.js';
 import type { ServerConfig } from '../../src/config.js';
@@ -48,6 +49,7 @@ function createMockCache(
             newTransactions: 0,
             totalTransactions: 0,
             importedFiles: [],
+            failedFiles: [],
         }),
         dispose: vi.fn(),
     } as unknown as TransactionCache;
@@ -64,6 +66,7 @@ function createTestApp(
     app.use('/api/accounts', createAccountsRouter(() => config, cache));
     app.use('/api/transactions', createTransactionsRouter(cache));
     app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
+    app.use('/api/import', createImportRouter(cache));
     return app;
 }
 
@@ -532,6 +535,63 @@ describe('transaction edit routes', () => {
         const res = await request(app)
             .post('/api/transaction-edits')
             .send({ invalid: true })
+            .set('Content-Type', 'application/json');
+
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('error');
+    });
+});
+
+describe('import routes', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('POST /api/import/scan returns import stats including failedFiles', async () => {
+        const cache = createMockCache();
+        (cache.scanAndImport as ReturnType<typeof vi.fn>).mockResolvedValue({
+            newTransactions: 3,
+            totalTransactions: 42,
+            importedFiles: ['MyBank/ok.csv'],
+            failedFiles: [{ path: 'MyBank/bad.csv', error: 'boom' }],
+        });
+        const config = createTestConfig();
+        const app = createTestApp(config, cache);
+
+        const res = await request(app).post('/api/import/scan');
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({
+            newTransactions: 3,
+            totalTransactions: 42,
+            importedFiles: ['MyBank/ok.csv'],
+            failedFiles: [{ path: 'MyBank/bad.csv', error: 'boom' }],
+        });
+    });
+
+    it('POST /api/import/save accepts saveMerged/saveEdits and calls cache.save', async () => {
+        const cache = createMockCache();
+        const config = createTestConfig();
+        const app = createTestApp(config, cache);
+
+        const res = await request(app)
+            .post('/api/import/save')
+            .send({ saveMerged: true, saveEdits: false })
+            .set('Content-Type', 'application/json');
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ success: true });
+        expect(cache.save).toHaveBeenCalledWith(true, false);
+    });
+
+    it('POST /api/import/save returns 400 when body has non-boolean flags', async () => {
+        const cache = createMockCache();
+        const config = createTestConfig();
+        const app = createTestApp(config, cache);
+
+        const res = await request(app)
+            .post('/api/import/save')
+            .send({ saveMerged: 'yes' })
             .set('Content-Type', 'application/json');
 
         expect(res.status).toBe(400);

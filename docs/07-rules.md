@@ -37,7 +37,7 @@ These principles govern the entire architecture:
 - Content hash is used for merge deduplication across imports
 
 ### Transaction ID
-- Computed as MD5 of: `ContentHash + TransactionDate + InstituteReference`
+- Computed as MD5 of: `ContentHash \t LineNumber \t InstituteReference`
 - Must be unique within the merged transaction collection
 
 ---
@@ -150,9 +150,14 @@ These PayPal activity types are skipped during import:
 - Transaction has `ParentChildMatchFilter` set
 
 ### Matching Criteria
-1. Date match: Child transaction date within `transferDayTolerance` days of parent date (default: 3 days)
-2. Amount match: Sum of child amounts equals parent amount (within tolerance)
-3. Filter match: `ParentChildMatchFilter` value matches (e.g., order ID)
+1. Line-item children: parents must share the same `ParentChildMatchFilter`
+   (e.g. Amazon `orderId|tracking`, Etsy `receipt_id`)
+2. Non-line-item children: first match by exact `amount + transactionDate`,
+   then fall back to fuzzy match within ±$1 and ±2 days, ranked by
+   `abs(amountDelta) * (daysDelta + 1)`
+3. Parents must be in a different account that does not itself
+   `requiresParent`, and the parent's entity name must contain one of the
+   child account's `interAccountNameTags`
 
 ### Tolerance Rules for Incomplete Parents
 When child transactions don't sum exactly to parent amount:
@@ -160,9 +165,10 @@ When child transactions don't sum exactly to parent amount:
   - Create a synthetic adjustment transaction for the difference
   - Use `MatchAdjustmentCredit` for positive adjustments
   - Use `MatchAdjustmentDebit` for negative adjustments
-- If missing amount exceeds tolerance:
-  - Mark parent with `HasMissingChild = true`
-  - Leave unmatched for manual review
+- Sums within half a cent of the parent amount are treated as balanced
+  (avoids spurious incomplete-parent flags from floating-point rounding)
+- If the remainder exceeds tolerance, mark parent with
+  `HasMissingChild = true` and leave it unmatched for review
 
 ### Amazon-Specific Rules
 - Line items identified by presence of `item subtotal` attribute
@@ -189,8 +195,13 @@ When child transactions don't sum exactly to parent amount:
 4. **Different accounts**: Must be from different account IDs
 
 ### Matching Priority
-1. First: Cross-institution matching (different `instituteName`)
-2. Second: Same-institution matching with looser criteria (amount tolerance +-$1, date tolerance +-2 days)
+1. First pass: any transfer-reason transaction, matched using the child
+   account's `interAccountNameTags` and a ±3 day date tolerance
+2. Second pass: transactions whose entity name contains the literal word
+   "transfer" across accounts at the **same** institution, using a
+   tighter ±0.5 day tolerance and no name-tag filter
+3. In both passes, amounts must be exact opposites (e.g. -$500 matches
+   +$500); there is no amount fuzz
 
 ### Match Result
 - Both transactions get `RelatedTransferId` set to each other's ID

@@ -87,4 +87,33 @@ describe('WelcomePage', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText('Complete')).toHaveLength(3);
   });
+
+  it('surfaces per-file import errors in the scan success banner', async () => {
+    getAccountsMock.mockResolvedValue([makeAccount(true)]);
+    useScanStatementsMock.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isSuccess: true,
+      data: {
+        newTransactions: 5,
+        totalTransactions: 5,
+        importedFiles: ['MyBank/ok.csv'],
+        failedFiles: [
+          { path: 'MyBank/bad.csv', error: 'Could not parse header row' },
+        ],
+      },
+      isError: false,
+      error: null,
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/1 file could not be parsed:/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText('MyBank/bad.csv')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Could not parse header row/i),
+    ).toBeInTheDocument();
+  });
 });

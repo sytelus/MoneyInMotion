@@ -61,12 +61,21 @@ export function parseDate(value: string): Date {
     const usMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
     if (usMatch) {
         const [, month, day, year] = usMatch;
-        const date = new Date(Date.UTC(
-            parseInt(year!, 10),
-            parseInt(month!, 10) - 1,
-            parseInt(day!, 10),
-        ));
-        if (isNaN(date.getTime())) {
+        const m = parseInt(month!, 10);
+        const d = parseInt(day!, 10);
+        const y = parseInt(year!, 10);
+        // Date.UTC silently wraps out-of-range month/day values
+        // (e.g. 13/32/2024 => Feb 1 2025), so validate bounds explicitly
+        // and then verify the constructed date's components match.
+        if (m < 1 || m > 12 || d < 1 || d > 31) {
+            throw new Error(`Invalid date string: "${value}"`);
+        }
+        const date = new Date(Date.UTC(y, m - 1, d));
+        if (
+            isNaN(date.getTime()) ||
+            date.getUTCMonth() !== m - 1 ||
+            date.getUTCDate() !== d
+        ) {
             throw new Error(`Invalid date string: "${value}"`);
         }
         return date;

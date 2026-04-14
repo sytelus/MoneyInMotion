@@ -66,6 +66,28 @@ describe('parseDate', () => {
     it('should throw on empty string', () => {
         expect(() => parseDate('')).toThrow('Invalid date string');
     });
+
+    it('should reject out-of-range month in US format', () => {
+        expect(() => parseDate('13/01/2024')).toThrow('Invalid date string');
+    });
+
+    it('should reject out-of-range day in US format', () => {
+        expect(() => parseDate('01/32/2024')).toThrow('Invalid date string');
+    });
+
+    it('should reject day that overflows month length (e.g. Feb 30)', () => {
+        expect(() => parseDate('02/30/2024')).toThrow('Invalid date string');
+    });
+
+    it('should accept Feb 29 in a leap year', () => {
+        const date = parseDate('02/29/2024');
+        expect(date.getUTCMonth()).toBe(1);
+        expect(date.getUTCDate()).toBe(29);
+    });
+
+    it('should reject Feb 29 in a non-leap year', () => {
+        expect(() => parseDate('02/29/2023')).toThrow('Invalid date string');
+    });
 });
 
 describe('daysBetween', () => {

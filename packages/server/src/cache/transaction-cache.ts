@@ -34,6 +34,11 @@ export class TransactionCache {
     private debounceTimer: ReturnType<typeof setTimeout> | null = null;
     private isSaving = false;
     private lastSaveTime = 0;
+    /**
+     * Serializes concurrent `save()` calls so that two overlapping writes
+     * cannot interleave and corrupt the merged JSON.
+     */
+    private savePromise: Promise<void> = Promise.resolve();
 
     private readonly transactionsStorage = new TransactionsStorage();
     private readonly editsStorage = new TransactionEditsStorage();
@@ -96,10 +101,25 @@ export class TransactionCache {
     /**
      * Persist the current cached transactions to disk.
      *
+     * Concurrent calls are serialized via {@link savePromise} so that two
+     * simultaneous save requests (e.g. an auto-save from applyEdits and a
+     * user-triggered save) cannot interleave and corrupt the JSON files.
+     *
      * @param saveMerged - Whether to save the LatestMerged.json file.
      * @param saveEdits  - Whether to save the LatestMergedEdits.json file.
      */
     async save(saveMerged: boolean, saveEdits: boolean): Promise<void> {
+        const next = this.savePromise.then(() =>
+            this.saveInternal(saveMerged, saveEdits),
+        );
+        // Swallow errors on the chained promise so that one failed save
+        // does not permanently block every subsequent save; the original
+        // caller still sees the rejection via `next`.
+        this.savePromise = next.catch(() => undefined);
+        return next;
+    }
+
+    private async saveInternal(saveMerged: boolean, saveEdits: boolean): Promise<void> {
         if (this.transactions == null) {
             return;
         }
@@ -129,7 +149,10 @@ export class TransactionCache {
      * Scan the Statements directory for new statement files, parse them,
      * and merge into the current transactions.
      *
-     * Mirrors C# AppState.MergeNewStatements.
+     * Mirrors C# AppState.MergeNewStatements. Parse errors on individual
+     * files do not abort the scan; they are collected and returned in
+     * `failedFiles` so the UI can surface them instead of silently
+     * dropping data.
      *
      * @returns Statistics about the import.
      */
@@ -137,10 +160,12 @@ export class TransactionCache {
         newTransactions: number;
         totalTransactions: number;
         importedFiles: string[];
+        failedFiles: Array<{ path: string; error: string }>;
     }> {
         const txns = await this.getTransactions();
         const statementLocations = this.repo.getStatementLocations();
         const importedFiles: string[] = [];
+        const failedFiles: Array<{ path: string; error: string }> = [];
         let isAnyMerged = false;
 
         const oldCount = txns.allTransactionCount;
@@ -154,10 +179,18 @@ export class TransactionCache {
             }
 
             // Parse statement file into a Transactions object
-            const statementTxns = this.loadStatementFile(loc);
-            if (statementTxns == null) continue;
+            const parseResult = this.loadStatementFile(loc);
+            if (parseResult.error != null) {
+                failedFiles.push({
+                    path: loc.portableAddress,
+                    error: parseResult.error,
+                });
+                continue;
+            }
 
-            txns.merge(statementTxns, false);
+            if (parseResult.transactions == null) continue;
+
+            txns.merge(parseResult.transactions, false);
             isAnyMerged = true;
             importedFiles.push(loc.portableAddress);
         }
@@ -178,6 +211,7 @@ export class TransactionCache {
             newTransactions: totalTransactions - oldCount,
             totalTransactions,
             importedFiles,
+            failedFiles,
         };
     }
 
@@ -223,10 +257,16 @@ export class TransactionCache {
 
     /**
      * Parse a single statement file into a Transactions collection.
+     *
+     * Returns an object with either `transactions` (on success) or `error`
+     * (on parse failure). Callers use the error field to surface per-file
+     * failures to the UI instead of dropping them silently.
      */
-    private loadStatementFile(loc: FileLocation): Transactions | null {
+    private loadStatementFile(
+        loc: FileLocation,
+    ): { transactions: Transactions | null; error: string | null } {
         if (loc.accountConfig == null || loc.importInfo == null) {
-            return null;
+            return { transactions: null, error: null };
         }
 
         try {
@@ -251,10 +291,11 @@ export class TransactionCache {
                 );
                 txns.addNew(tx, accountInfo, loc.importInfo, false);
             }
-            return txns;
+            return { transactions: txns, error: null };
         } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
             console.error(`Error parsing statement file ${loc.address}:`, err);
-            return null;
+            return { transactions: null, error: message };
         }
     }
 

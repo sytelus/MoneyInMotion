@@ -11,6 +11,7 @@
  */
 
 import type { AuditInfo } from './audit-info.js';
+import { getMD5HashString } from '../utils/hash.js';
 
 // ---------------------------------------------------------------------------
 // ScopeType enum
@@ -145,15 +146,13 @@ export function createScopeFilter(
 
   // Replicate the C# content-hash logic:
   // Hash = MD5( join("\t", [...parameters, String(scopeType)]) )
-  // We use a simple string-based hash here; the actual MD5 is computed at
-  // a higher layer when full parity with legacy hashing is needed.
   const hashInput = [...params, String(type as number)].join('\t');
 
   return {
     type,
     parameters: [...params],
     referenceParameters: refParams ?? null,
-    contentHash: hashInput,
+    contentHash: getMD5HashString(hashInput, true),
   };
 }
 

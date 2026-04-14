@@ -58,8 +58,11 @@ export class TransactionEditsStorage {
             fs.copyFileSync(filePath, archiveFilePath);
         }
 
+        // Atomic write: temp file + rename (see TransactionsStorage.save).
         const serializedData = JSON.stringify(edits.serialize(), null, 2);
-        fs.writeFileSync(filePath, serializedData, 'utf-8');
+        const tmpPath = `${filePath}.tmp`;
+        fs.writeFileSync(tmpPath, serializedData, 'utf-8');
+        fs.renameSync(tmpPath, filePath);
     }
 
     /**

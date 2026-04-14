@@ -128,6 +128,13 @@ describe('createScopeFilter', () => {
     const f2 = createScopeFilter(ScopeType.EntityName, ['Target']);
     expect(f1.contentHash).not.toBe(f2.contentHash);
   });
+
+  it('should produce a 22-char URL-safe base64 MD5 hash', () => {
+    const filter = createScopeFilter(ScopeType.EntityName, ['Walmart']);
+    // URL-safe base64 of a 16-byte MD5 is 22 chars (no padding).
+    expect(filter.contentHash).toHaveLength(22);
+    expect(filter.contentHash).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
 });
 
 // ---------------------------------------------------------------------------

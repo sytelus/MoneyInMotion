@@ -220,15 +220,19 @@ export async function uploadAccountFiles(
   );
 }
 
-/**
- * Trigger a scan of statement files for new transactions.
- */
-export async function scanStatements(): Promise<{
+export interface ScanStatementsResponse {
   newTransactions: number;
   totalTransactions: number;
   importedFiles: string[];
-}> {
-  return request<{ newTransactions: number; totalTransactions: number; importedFiles: string[] }>('/import/scan', {
+  /** Files that were found but could not be parsed; user-visible. */
+  failedFiles: Array<{ path: string; error: string }>;
+}
+
+/**
+ * Trigger a scan of statement files for new transactions.
+ */
+export async function scanStatements(): Promise<ScanStatementsResponse> {
+  return request<ScanStatementsResponse>('/import/scan', {
     method: 'POST',
   });
 }

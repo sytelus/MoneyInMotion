@@ -153,8 +153,8 @@ The React single-page application. Key modules:
 | `DELETE` | `/api/accounts/:id` | Removes `AccountConfig.json` without deleting raw statement files |
 | `GET` | `/api/transactions` | Returns all transactions as serialized JSON from the in-memory cache |
 | `POST` | `/api/transaction-edits` | Applies an array of edits, returns `{ affectedTransactionsCount }` |
-| `POST` | `/api/import/scan` | Triggers scan of statement files, merges new transactions, returns import stats |
-| `POST` | `/api/import/save` | Persists cached transactions and/or edits to disk |
+| `POST` | `/api/import/scan` | Triggers scan of statement files, merges new transactions, returns `{ newTransactions, totalTransactions, importedFiles, failedFiles }` so unparseable files are surfaced to the UI |
+| `POST` | `/api/import/save` | Persists cached transactions and/or edits to disk (atomic via temp-file + rename; concurrent calls are serialized) |
 
 ---
 

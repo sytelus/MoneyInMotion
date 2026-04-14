@@ -34,13 +34,20 @@ export class TransactionsStorage {
     /**
      * Save transactions to a JSON file.
      *
+     * Writes to a sibling `.tmp` file first, then renames it into place so
+     * that a crash or full disk mid-write cannot leave a half-written
+     * `LatestMerged.json` on disk. The rename is atomic on POSIX; on
+     * Windows the pre-existing target is replaced.
+     *
      * @param filePath     - The path to write the file to.
      * @param transactions - The Transactions instance to save.
      */
     save(filePath: string, transactions: Transactions): void {
         const data = transactions.serialize();
         const serializedData = JSON.stringify(data, null, 2);
-        fs.writeFileSync(filePath, serializedData, 'utf-8');
+        const tmpPath = `${filePath}.tmp`;
+        fs.writeFileSync(tmpPath, serializedData, 'utf-8');
+        fs.renameSync(tmpPath, filePath);
     }
 
     /**

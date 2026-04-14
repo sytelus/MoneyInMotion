@@ -162,13 +162,17 @@ Order history accounts (Amazon, Etsy) produce line-item transactions that must b
 ### How It Works
 1. Identify transactions from `requiresParent` accounts (order history)
 2. Find matching parent transactions in regular accounts by:
-   - Matching date (within tolerance window, default 3 days)
-   - Matching total amount (sum of children = parent amount)
-   - Using `ParentChildMatchFilter` for order ID correlation
+   - Exact match first by `amount + transactionDate`
+   - Fuzzy fallback of amount ±$1 and date ±2 days, ranked by
+     `abs(amountDelta) * (daysDelta + 1)`
+   - Line-item children instead match by `ParentChildMatchFilter`
+     (Amazon order ID + tracking; Etsy receipt ID)
 3. Link children to parent via `ParentId` field
 4. Handle discrepancies:
    - Small rounding differences (< 2% of parent or < $0.50): Create synthetic adjustment transactions
-   - Missing children: Mark parent with `HasMissingChild = true`
+   - Sum within half a cent of the parent amount is treated as balanced
+     (avoids spurious `HasMissingChild` from IEEE-754 rounding)
+   - Otherwise mark parent with `HasMissingChild = true`
 
 ### Amazon Order Matching (`AmazonOrderMatcher`)
 - Attributes tracked: shipping charge, tax charged, total promotions
@@ -308,14 +312,17 @@ The React UI provides year/month navigation:
 ### REST Endpoints
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET` | `/api/health` | Liveness payload (status, uptime, environment) |
 | `GET` | `/api/config` | Returns server configuration |
-| `PUT` | `/api/config` | Updates data path configuration |
-| `GET` | `/api/accounts` | Returns all configured accounts |
-| `POST` | `/api/accounts` | Creates a new account |
+| `PUT` | `/api/config` | Updates data path or port; requires server restart to take effect |
+| `GET` | `/api/accounts` | Returns all configured accounts plus per-account import stats |
+| `POST` | `/api/accounts` | Creates a new account folder and `AccountConfig.json` |
 | `POST` | `/api/accounts/:id/upload` | Uploads raw statement files into the target account folder |
+| `PUT` | `/api/accounts/:id` | Updates an existing account configuration |
+| `DELETE` | `/api/accounts/:id` | Removes `AccountConfig.json` (statement files kept) |
 | `GET` | `/api/transactions` | Returns all transactions as serialized JSON |
 | `POST` | `/api/transaction-edits` | Applies edit rules, returns affected count |
-| `POST` | `/api/import/scan` | Scans and imports new statement files |
+| `POST` | `/api/import/scan` | Scans and imports new statement files; returns `{ newTransactions, totalTransactions, importedFiles, failedFiles }` |
 | `POST` | `/api/import/save` | Persists data to disk |
 
 All endpoints accept and return JSON. Request bodies are validated using Zod schemas on the server.

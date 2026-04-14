@@ -341,6 +341,21 @@ export const WelcomePage: React.FC = () => {
                   {scanMutation.data.totalTransactions === 1 ? '' : 's'}!{' '}
                   ({scanMutation.data.newTransactions} new)
                 </p>
+                {scanMutation.data.failedFiles?.length > 0 && (
+                  <div className="mt-2 rounded-md bg-amber-50 dark:bg-amber-900/20 p-2 text-xs">
+                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                      {scanMutation.data.failedFiles.length} file
+                      {scanMutation.data.failedFiles.length === 1 ? '' : 's'} could not be parsed:
+                    </p>
+                    <ul className="mt-1 space-y-0.5 text-amber-700 dark:text-amber-300">
+                      {scanMutation.data.failedFiles.map((f) => (
+                        <li key={f.path}>
+                          <code>{f.path}</code> — {f.error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
