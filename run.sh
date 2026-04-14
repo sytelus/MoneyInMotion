@@ -22,8 +22,8 @@ case "$MODE" in
         ensure_core_built
 
         info "Starting development mode..."
-        echo -e "  ${C_BOLD}Web:${C_NC}    http://localhost:5173"
-        echo -e "  ${C_BOLD}API:${C_NC}    http://localhost:3001"
+        echo -e "  ${C_BOLD}Open this URL in your browser:${C_NC}  http://localhost:5173"
+        echo -e "  ${C_NC}(API server runs on :3001 and is called via the web UI — don't open it directly)"
         echo ""
 
         exec npm run dev --silent
@@ -39,7 +39,7 @@ case "$MODE" in
         export NODE_ENV=production
 
         info "Starting production server..."
-        echo -e "  ${C_BOLD}App:${C_NC}    http://localhost:${MONEYAI_PORT:-3001}"
+        echo -e "  ${C_BOLD}Open this URL in your browser:${C_NC}  http://localhost:${MONEYAI_PORT:-3001}"
         echo ""
 
         exec npm run start -w packages/server --silent

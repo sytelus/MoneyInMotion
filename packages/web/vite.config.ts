@@ -18,6 +18,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Fail fast if 5173 is busy instead of silently falling back to
+    // 5174/5175/... — the run.sh banner advertises 5173, and silently
+    // shifting the port makes users open the wrong URL and see
+    // "Cannot GET /" from the API server on 3001.
+    strictPort: true,
     proxy: {
       '/api': 'http://localhost:3001',
     },
