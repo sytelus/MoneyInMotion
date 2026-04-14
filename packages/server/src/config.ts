@@ -83,13 +83,27 @@ function parseConfiguredPort(value: unknown): number | null {
 export function loadConfig(): ServerConfig {
     let fileConfig: Partial<ServerConfig> = {};
 
-    // Try loading from config file
+    // Try loading from config file. If the file is malformed, warn loudly
+    // and rename it aside so the user notices (silently falling back to
+    // defaults has bitten users who thought their saved path was in use).
     if (fs.existsSync(CONFIG_FILE)) {
         try {
             const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
             fileConfig = JSON.parse(raw) as Partial<ServerConfig>;
-        } catch {
-            // Ignore malformed config
+        } catch (err) {
+            const backupPath = `${CONFIG_FILE}.corrupt-${Date.now()}`;
+            try {
+                fs.renameSync(CONFIG_FILE, backupPath);
+                console.error(
+                    `Config file at ${CONFIG_FILE} is malformed (${err instanceof Error ? err.message : String(err)}). ` +
+                        `Moved it to ${backupPath} and falling back to defaults.`,
+                );
+            } catch {
+                console.error(
+                    `Config file at ${CONFIG_FILE} is malformed (${err instanceof Error ? err.message : String(err)}). ` +
+                        `Could not rename it — falling back to defaults for this session.`,
+                );
+            }
         }
     }
 
@@ -126,8 +140,22 @@ export function saveConfig(partial: Partial<ServerConfig>): void {
         try {
             const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
             existing = JSON.parse(raw) as Partial<ServerConfig>;
-        } catch {
-            // Ignore malformed config
+        } catch (err) {
+            // If the existing file can't be parsed, rename it aside before
+            // overwriting so we never clobber whatever was there silently.
+            const backupPath = `${CONFIG_FILE}.corrupt-${Date.now()}`;
+            try {
+                fs.renameSync(CONFIG_FILE, backupPath);
+                console.warn(
+                    `Config file at ${CONFIG_FILE} was malformed (${err instanceof Error ? err.message : String(err)}); ` +
+                        `backed up to ${backupPath} before rewriting.`,
+                );
+            } catch {
+                console.warn(
+                    `Config file at ${CONFIG_FILE} was malformed and could not be backed up; ` +
+                        `rewriting with the new values.`,
+                );
+            }
         }
     }
 
@@ -139,5 +167,9 @@ export function saveConfig(partial: Partial<ServerConfig>): void {
         merged.mergedDir = path.join(partial.dataPath, 'Merged');
     }
 
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+    // Atomic write: temp file + rename so a crash mid-write can't leave
+    // a truncated config.json that would later be renamed to .corrupt-*.
+    const tmpPath = `${CONFIG_FILE}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(merged, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, CONFIG_FILE);
 }

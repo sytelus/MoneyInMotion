@@ -33,6 +33,8 @@ import { KEYBOARD_SHORTCUTS } from '../lib/shortcuts.js';
 
 interface StepStatus {
   dataPath: string | null;
+  activeDataPath: string | null;
+  restartRequired: boolean;
   dataPathConfigured: boolean;
   accounts: AccountSummary[];
   accountsLoaded: boolean;
@@ -40,6 +42,8 @@ interface StepStatus {
 
 function useStepStatus(): StepStatus & { refresh: () => void } {
   const [dataPath, setDataPath] = useState<string | null>(null);
+  const [activeDataPath, setActiveDataPath] = useState<string | null>(null);
+  const [restartRequired, setRestartRequired] = useState(false);
   const [dataPathConfigured, setDataPathConfigured] = useState(false);
   const [accounts, setAccounts] = useState<AccountSummary[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
@@ -55,11 +59,15 @@ function useStepStatus(): StepStatus & { refresh: () => void } {
         const config = await getConfig();
         if (!cancelled) {
           setDataPath(config.dataPath);
+          setActiveDataPath(config.activeDataPath);
+          setRestartRequired(config.restartRequired);
           setDataPathConfigured(!!config.dataPath && config.dataPath.length > 0);
         }
       } catch {
         if (!cancelled) {
           setDataPath(null);
+          setActiveDataPath(null);
+          setRestartRequired(false);
           setDataPathConfigured(false);
         }
       }
@@ -83,7 +91,15 @@ function useStepStatus(): StepStatus & { refresh: () => void } {
     };
   }, [tick]);
 
-  return { dataPath, dataPathConfigured, accounts, accountsLoaded, refresh };
+  return {
+    dataPath,
+    activeDataPath,
+    restartRequired,
+    dataPathConfigured,
+    accounts,
+    accountsLoaded,
+    refresh,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +162,15 @@ const Step: React.FC<StepProps> = ({ number, title, icon, complete, children }) 
  */
 export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { dataPath, dataPathConfigured, accounts, accountsLoaded, refresh } = useStepStatus();
+  const {
+    dataPath,
+    activeDataPath,
+    restartRequired,
+    dataPathConfigured,
+    accounts,
+    accountsLoaded,
+    refresh,
+  } = useStepStatus();
   const scanMutation = useScanStatements();
 
   const hasAccounts = accounts.length > 0;
@@ -208,6 +232,14 @@ export const WelcomePage: React.FC = () => {
                 <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">
                   {dataPath || '(not set)'}
                 </code>
+              </p>
+            )}
+            {restartRequired && activeDataPath && activeDataPath !== dataPath && (
+              <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+                The server is still using{' '}
+                <code className="px-1 py-0.5 bg-background rounded">{activeDataPath}</code>.
+                Restart the server for the saved path to take effect — until then,
+                Import will scan the old folder.
               </p>
             )}
             <div>

@@ -6,7 +6,7 @@
  * @module
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -55,6 +55,16 @@ export const SettingsPage: React.FC = () => {
   const scanMutation = useScanStatements();
   const saveMutation = useSaveData();
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const savedBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (savedBannerTimerRef.current) clearTimeout(savedBannerTimerRef.current);
+      if (saveSuccessTimerRef.current) clearTimeout(saveSuccessTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,7 +133,11 @@ export const SettingsPage: React.FC = () => {
       setPortInput(String(result.port));
       setActivePort(result.activePort);
       setSavedDimensions(changed.join(' and '));
-      setTimeout(() => setSavedDimensions(''), 4000);
+      if (savedBannerTimerRef.current) clearTimeout(savedBannerTimerRef.current);
+      savedBannerTimerRef.current = setTimeout(() => {
+        setSavedDimensions('');
+        savedBannerTimerRef.current = null;
+      }, 4000);
     } catch (err) {
       setConfigError(err instanceof Error ? err.message : 'Failed to update settings');
     } finally {
@@ -142,7 +156,11 @@ export const SettingsPage: React.FC = () => {
       {
         onSuccess: () => {
           setSaveSuccess(true);
-          setTimeout(() => setSaveSuccess(false), 3000);
+          if (saveSuccessTimerRef.current) clearTimeout(saveSuccessTimerRef.current);
+          saveSuccessTimerRef.current = setTimeout(() => {
+            setSaveSuccess(false);
+            saveSuccessTimerRef.current = null;
+          }, 3000);
         },
       },
     );

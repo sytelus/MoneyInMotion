@@ -7,6 +7,7 @@ import { AccountsPage } from '../../src/pages/AccountsPage.js';
 import type { AccountSummary } from '../../src/api/client.js';
 
 const useAccountsMock = vi.fn();
+const useScanStatementsMock = vi.fn();
 const getConfigMock = vi.fn();
 const createAccountMock = vi.fn();
 const updateAccountMock = vi.fn();
@@ -15,6 +16,7 @@ const uploadAccountFilesMock = vi.fn();
 
 vi.mock('../../src/api/hooks.js', () => ({
   useAccounts: () => useAccountsMock(),
+  useScanStatements: () => useScanStatementsMock(),
 }));
 
 vi.mock('../../src/api/client.js', () => ({
@@ -64,12 +66,29 @@ describe('AccountsPage', () => {
       dataPath: '/tmp/mim-data',
       statementsDir: '/tmp/mim-data/Statements',
       mergedDir: '/tmp/mim-data/Merged',
+      activePort: 3001,
+      activeDataPath: '/tmp/mim-data',
+      restartRequired: false,
     });
     useAccountsMock.mockReturnValue({
       data: [makeAccount()],
       isLoading: false,
       error: null,
       refetch: vi.fn().mockResolvedValue(undefined),
+    });
+    useScanStatementsMock.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn().mockResolvedValue({
+        newTransactions: 0,
+        totalTransactions: 0,
+        importedFiles: [],
+        failedFiles: [],
+      }),
+      isPending: false,
+      isSuccess: false,
+      data: null,
+      isError: false,
+      error: null,
     });
   });
 
@@ -201,6 +220,11 @@ describe('AccountsPage', () => {
       expect(uploadAccountFilesMock).toHaveBeenCalledWith('acct-checking', [file]);
     });
     expect(refetchMock).toHaveBeenCalled();
-    expect(await screen.findByText(/Uploaded 1 file/)).toBeInTheDocument();
+    // After a successful upload the page now auto-triggers a scan, so the
+    // banner says "Uploaded and imported 1 file" instead of just "Uploaded
+    // 1 file".
+    expect(
+      await screen.findByText(/Uploaded and imported 1 file/i),
+    ).toBeInTheDocument();
   });
 });

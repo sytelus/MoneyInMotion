@@ -27,7 +27,7 @@ import { Badge } from '../components/ui/badge.js';
 import { Input } from '../components/ui/input.js';
 import { Select, type SelectOption } from '../components/ui/select.js';
 import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog.js';
-import { useAccounts } from '../api/hooks.js';
+import { useAccounts, useScanStatements } from '../api/hooks.js';
 import {
   createAccount,
   deleteAccount,
@@ -401,12 +401,16 @@ interface FeedbackMessage {
 export const AccountsPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: accounts, isLoading, error, refetch } = useAccounts();
+  const scanMutation = useScanStatements();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AccountSummary | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<AccountSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [uploadingAccountId, setUploadingAccountId] = useState<string | null>(null);
+  // The *active* data path (what the running server actually uses). We
+  // show this rather than the saved path because uploads hit the running
+  // process's statements dir; after a restart the two will agree again.
   const [dataPath, setDataPath] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackMessage | null>(null);
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
@@ -417,7 +421,7 @@ export const AccountsPage: React.FC = () => {
       try {
         const config = await getConfig();
         if (!cancelled) {
-          setDataPath(config.dataPath);
+          setDataPath(config.activeDataPath);
         }
       } catch {
         // Folder paths are informative only; ignore load failures here.
@@ -494,17 +498,44 @@ export const AccountsPage: React.FC = () => {
 
     try {
       const result = await uploadAccountFiles(accountId, files);
-      await refetch();
 
       const fileCount = result.uploadedFiles.length;
       const fileLabel = fileCount === 1 ? 'file' : 'files';
 
-      setFeedback({
-        title: `Uploaded ${fileCount} ${fileLabel}`,
-        description:
-          'The statement files were saved to this account folder. Run Import to scan and merge them.',
-        path: dataPath ? `${dataPath}/Statements/${accountId}/` : undefined,
-      });
+      // Auto-scan immediately so the user doesn't have to click Import as
+      // a separate step. The scan is cheap for new files and deduplicates
+      // by content hash, so re-scanning is safe if the user edits files
+      // later and clicks Upload again.
+      try {
+        const scan = await scanMutation.mutateAsync();
+        await refetch();
+        const failed = scan.failedFiles?.length ?? 0;
+        const parts = [
+          `${scan.newTransactions} new transaction${scan.newTransactions === 1 ? '' : 's'} imported`,
+        ];
+        if (failed > 0) {
+          parts.push(
+            `${failed} file${failed === 1 ? '' : 's'} could not be parsed — see the Getting Started page for details.`,
+          );
+        }
+        setFeedback({
+          title: `Uploaded and imported ${fileCount} ${fileLabel}`,
+          description: parts.join(' · '),
+          path: dataPath ? `${dataPath}/Statements/${accountId}/` : undefined,
+        });
+      } catch (scanErr) {
+        // Upload succeeded but the auto-scan failed; keep the files in
+        // place and tell the user what happened so they can retry Import.
+        await refetch();
+        setFeedback({
+          title: `Uploaded ${fileCount} ${fileLabel} (import failed)`,
+          description:
+            scanErr instanceof Error
+              ? `Files were saved but import failed: ${scanErr.message}. Try Import from the header to retry.`
+              : 'Files were saved but import failed. Try Import from the header to retry.',
+          path: dataPath ? `${dataPath}/Statements/${accountId}/` : undefined,
+        });
+      }
     } catch (err) {
       setFeedback({
         title: 'Upload failed',
