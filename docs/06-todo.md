@@ -3,7 +3,7 @@
 ## P0 - Must Do
 
 No remaining P0 items. The current app meets the usable-version bar from
-`GOAL.md`: users can configure accounts, upload statements, import and save
+`VISION.md`: users can configure accounts, upload statements, import and save
 data, edit transactions with scoped rules, and inspect/revert those rules from
 the web UI without losing audit history.
 

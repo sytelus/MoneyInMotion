@@ -40,6 +40,6 @@ most:
 
 ## Canonical Source
 
-The detailed long-form goal document remains [GOAL.md](../GOAL.md). This file
+The detailed long-form vision document remains [VISION.md](../VISION.md). This file
 exists to provide the missing documentation entry point referenced throughout
 the repo and to summarize the intent of the project in a shorter, stable form.
