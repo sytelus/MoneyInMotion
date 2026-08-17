@@ -62,20 +62,20 @@ cd MoneyInMotion
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| Multi-source import | CSV (banks, Amex, Barclaycard, PayPal), JSON (Etsy), IIF (QuickBooks) with auto-column detection |
-| Content deduplication | MD5-based content hashing prevents duplicate imports from overlapping sources |
-| Parent-child matching | Links Amazon/Etsy order line items to corresponding credit card charges |
-| Inter-account transfers | Matches debits and credits across accounts by amount and date proximity |
-| Entity normalization | Cleans up messy bank entity names for consistent grouping |
-| Scope-based edits | Apply categorization, notes, and flags to all matching transactions at once |
-| Rules history and revert | Review persisted edit rules, inspect current matches, and append safe voiding edits without deleting history |
-| Web-based statement upload | Save raw statement exports into the correct account folder from the Accounts page |
-| Hierarchical grouping | Income / Expenses / Transfers with entity and category sub-groups |
-| Monthly navigation | Browse transactions by year and month |
-| Immutable originals | Source files are never altered; all changes stored as separate edit rules |
-| File-based storage | JSON files on local filesystem, no database required |
+| Feature                    | Description                                                                                                  |
+|----------------------------|--------------------------------------------------------------------------------------------------------------|
+| Multi-source import        | CSV (banks, Amex, Barclaycard, PayPal), JSON (Etsy), IIF (QuickBooks) with auto-column detection             |
+| Content deduplication      | MD5-based content hashing prevents duplicate imports from overlapping sources                                |
+| Parent-child matching      | Links Amazon/Etsy order line items to corresponding credit card charges                                      |
+| Inter-account transfers    | Matches debits and credits across accounts by amount and date proximity                                      |
+| Entity normalization       | Cleans up messy bank entity names for consistent grouping                                                    |
+| Scope-based edits          | Apply categorization, notes, and flags to all matching transactions at once                                  |
+| Rules history and revert   | Review persisted edit rules, inspect current matches, and append safe voiding edits without deleting history |
+| Web-based statement upload | Save raw statement exports into the correct account folder from the Accounts page                            |
+| Hierarchical grouping      | Income / Expenses / Transfers with entity and category sub-groups                                            |
+| Monthly navigation         | Browse transactions by year and month                                                                        |
+| Immutable originals        | Source files are never altered; all changes stored as separate edit rules                                    |
+| File-based storage         | JSON files on local filesystem, no database required                                                         |
 
 ---
 
@@ -103,57 +103,57 @@ MoneyInMotion is an npm workspaces monorepo with three packages:
 
 ## Supported Import Sources
 
-| Source | Format | Special Features |
-|--------|--------|---------|
-| Generic Banks | CSV | Auto-column detection |
-| American Express | CSV | Phone/category extraction |
-| Barclaycard | CSV | Banner line handling |
-| PayPal | CSV/IIF | Timezone-aware, activity filtering |
-| Amazon Orders | CSV | Order-to-charge matching |
-| Etsy Orders | JSON | Receipt reconciliation |
-| QuickBooks | IIF | Standard interchange format |
+| Source           | Format  | Special Features                   |
+|------------------|---------|------------------------------------|
+| Generic Banks    | CSV     | Auto-column detection              |
+| American Express | CSV     | Phone/category extraction          |
+| Barclaycard      | CSV     | Banner line handling               |
+| PayPal           | CSV/IIF | Timezone-aware, activity filtering |
+| Amazon Orders    | CSV     | Order-to-charge matching           |
+| Etsy Orders      | JSON    | Receipt reconciliation             |
+| QuickBooks       | IIF     | Standard interchange format        |
 
 ---
 
 ## Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| Up / Down Arrow | Navigate transaction rows |
-| Left / Right Arrow | Collapse / Expand groups |
-| Alt + Right Arrow | Expand all nested levels |
-| Alt + T | Edit category |
-| Alt + N | Edit note |
-| Alt + E | Fix transaction attributes |
-| Alt + F | Toggle flag |
-| Alt + Shift + F | Remove flag |
-| Escape | Close dialog |
-| ? | Show keyboard shortcuts help |
+| Key                | Action                       |
+|--------------------|------------------------------|
+| Up / Down Arrow    | Navigate transaction rows    |
+| Left / Right Arrow | Collapse / Expand groups     |
+| Alt + Right Arrow  | Expand all nested levels     |
+| Alt + T            | Edit category                |
+| Alt + N            | Edit note                    |
+| Alt + E            | Fix transaction attributes   |
+| Alt + F            | Toggle flag                  |
+| Alt + Shift + F    | Remove flag                  |
+| Escape             | Close dialog                 |
+| ?                  | Show keyboard shortcuts help |
 
 ---
 
 ## Technology Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Language | TypeScript | 5.7 |
-| Runtime | Node.js | 18+ |
-| API Server | Express | 5.0 |
-| Validation | Zod | 3.24 |
-| CSV Parsing | papaparse | 5.5 |
-| File Watching | chokidar | 4.0 |
-| Hashing | ts-md5 | 1.3 |
-| Frontend | React | 19.0 |
-| Routing | React Router | 7.1 |
-| Server State | React Query (TanStack) | 5.62 |
-| Client State | Zustand | 5.0 |
-| UI Components | Radix UI | 1.x / 2.x |
-| Icons | Lucide React | 0.469 |
-| Styling | Tailwind CSS | 3.4 |
-| Build Tool | Vite | 6.0 |
-| Test Framework | Vitest | 3.0 |
-| Linting | ESLint | 9.17 |
-| Formatting | Prettier | 3.4 |
+| Layer          | Technology             | Version   |
+|----------------|------------------------|-----------|
+| Language       | TypeScript             | 5.7       |
+| Runtime        | Node.js                | 18+       |
+| API Server     | Express                | 5.0       |
+| Validation     | Zod                    | 3.24      |
+| CSV Parsing    | papaparse              | 5.5       |
+| File Watching  | chokidar               | 4.0       |
+| Hashing        | ts-md5                 | 1.3       |
+| Frontend       | React                  | 19.0      |
+| Routing        | React Router           | 7.1       |
+| Server State   | React Query (TanStack) | 5.62      |
+| Client State   | Zustand                | 5.0       |
+| UI Components  | Radix UI               | 1.x / 2.x |
+| Icons          | Lucide React           | 0.469     |
+| Styling        | Tailwind CSS           | 3.4       |
+| Build Tool     | Vite                   | 6.0       |
+| Test Framework | Vitest                 | 3.0       |
+| Linting        | ESLint                 | 9.17      |
+| Formatting     | Prettier               | 3.4       |
 
 ---
 
@@ -167,33 +167,33 @@ MoneyInMotion is an npm workspaces monorepo with three packages:
 
 ### Commands
 
-| Command | Description |
-|---------|-------------|
-| `./install.sh` | Install or update dependencies (checks tools, pulls latest) |
-| `./run.sh` | Start in dev mode (hot reload, port 5173) |
-| `./run.sh prod` | Start in production mode (port 3001, requires `./build.sh` first) |
-| `./build.sh` | Production build of all packages |
-| `./build.sh test` | Build and run tests |
-| `npm install` | Install all dependencies (manual alternative to `./install.sh`) |
-| `npm run dev` | Start server + web dev servers concurrently |
-| `npm run dev:server` | Start only the API server (port 3001) |
-| `npm run dev:web` | Start only the Vite dev server (port 5173) |
-| `npm run build` | Production build (core -> server -> web) |
-| `npm test` | Run all tests |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with coverage report |
-| `npm run lint` | Lint all packages |
-| `npm run typecheck` | Type-check all packages |
-| `npm run clean` | Remove all build artifacts and node_modules |
+| Command                 | Description                                                       |
+|-------------------------|-------------------------------------------------------------------|
+| `./install.sh`          | Install or update dependencies (checks tools, pulls latest)       |
+| `./run.sh`              | Start in dev mode (hot reload, port 5173)                         |
+| `./run.sh prod`         | Start in production mode (port 3001, requires `./build.sh` first) |
+| `./build.sh`            | Production build of all packages                                  |
+| `./build.sh test`       | Build and run tests                                               |
+| `npm install`           | Install all dependencies (manual alternative to `./install.sh`)   |
+| `npm run dev`           | Start server + web dev servers concurrently                       |
+| `npm run dev:server`    | Start only the API server (port 3001)                             |
+| `npm run dev:web`       | Start only the Vite dev server (port 5173)                        |
+| `npm run build`         | Production build (core -> server -> web)                          |
+| `npm test`              | Run all tests                                                     |
+| `npm run test:watch`    | Run tests in watch mode                                           |
+| `npm run test:coverage` | Run tests with coverage report                                    |
+| `npm run lint`          | Lint all packages                                                 |
+| `npm run typecheck`     | Type-check all packages                                           |
+| `npm run clean`         | Remove all build artifacts and node_modules                       |
 
 ### Configuration
 
 The server reads configuration in this priority: environment variables > config file > defaults.
 
-| Setting | Env Variable | Config File Key | Default |
-|---------|-------------|-----------------|---------|
-| Data path | `MONEYAI_DATA_PATH` | `dataPath` | `~/.moneyinmotion/data` |
-| Port | `MONEYAI_PORT` | `port` | `3001` |
+| Setting   | Env Variable        | Config File Key | Default                 |
+|-----------|---------------------|-----------------|-------------------------|
+| Data path | `MONEYAI_DATA_PATH` | `dataPath`      | `~/.moneyinmotion/data` |
+| Port      | `MONEYAI_PORT`      | `port`          | `3001`                  |
 
 Config file location: `~/.moneyinmotion/config.json`
 
@@ -216,19 +216,14 @@ includes a production `Dockerfile` and a health endpoint at `GET /api/health`.
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Purpose and Goals](docs/01-purpose-and-goals.md) | Project motivation, goals, and feature overview |
-| [Architecture](docs/02-architecture.md) | Monorepo structure, layer diagram, API endpoints, data flow |
-| [How It Works](docs/03-how-it-works.md) | Detailed walkthrough of import, matching, editing, and display |
-| [Install and Build](docs/04-install-and-build.md) | Prerequisites, build steps, and full dependency listing |
-| [User Guide](docs/05-user-guide.md) | End-user guide for the web interface |
-| [TODO Items](docs/06-todo.md) | Prioritized list of bugs, features, and technical debt |
-| [Business Rules](docs/07-rules.md) | Comprehensive catalog of all business rules in the system |
+| Document                                                  | Description                                                        |
+|-----------------------------------------------------------|--------------------------------------------------------------------|
+| [Purpose and Goals](docs/01-purpose-and-goals.md)         | Project motivation, goals, and feature overview                    |
+| [Architecture](docs/02-architecture.md)                   | Monorepo structure, layer diagram, API endpoints, data flow        |
+| [How It Works](docs/03-how-it-works.md)                   | Detailed walkthrough of import, matching, editing, and display     |
+| [Install and Build](docs/04-install-and-build.md)         | Prerequisites, build steps, and full dependency listing            |
+| [User Guide](docs/05-user-guide.md)                       | End-user guide for the web interface                               |
+| [TODO Items](docs/06-todo.md)                             | Prioritized list of bugs, features, and technical debt             |
+| [Business Rules](docs/07-rules.md)                        | Comprehensive catalog of all business rules in the system          |
 | [Production Deployment](docs/08-production-deployment.md) | Docker, environment variables, health checks, and deployment notes |
 
----
-
-## Author
-
-Shital Shah ([@sytelus](https://github.com/sytelus))
