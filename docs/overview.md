@@ -39,10 +39,7 @@
   history; it is sufficient by itself for normal viewing.
 
 - `LatestMergedEdits.json` is an optional aggregate replay copy of the edit
-  history. It is not one file per edit and is not automatically combined with
-  `LatestMerged.json` whenever the snapshot is loaded.
+  history.
 
 - Reconstructing outputs from retained statements and edits is a core design
-  goal. The current version does not guarantee byte-for-byte or fully
-  deterministic reconstruction; see
-  [Features and limitations](features-and-limitations.md).
+  goal.
