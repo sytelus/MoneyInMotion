@@ -1,53 +1,46 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Build output
-dist/
-*.tsbuildinfo
-
-# Testing
-coverage/
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# IDE
-.idea/
-*.swp
-*~
+#Visual Studio files
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.ncb
 *.suo
-*.user
+*.sln.DotSettings.user
+*.scc
+Web.Release.Config
+*.publishsettings
 
-# OS
-.DS_Store
+# Build results
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+[Tt]est[Rr]esult*/
+
+#Tooling
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+#Subversion files
+*.svn
+
+# Office Temp Files
+~$*
+
+#PII/large files
+data/
+App_Data/
+
+#JS build
+**/.tmp
+**/.sass-cache
+
+#node
+npm-debug.log
+
+#OS junk files
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
-
-# Legacy .NET artifacts
-[Bb]in/
-[Oo]bj/
-[Dd]ebug/
-[Rr]elease/
-*.pch
-*.ncb
-*.scc
-_ReSharper*/
-*.DotSettings.user
-
-# Data (PII)
-data/
-App_Data/
-
-# Logs
-npm-debug.log*
-yarn-error.log*
-
-# Misc
-**/.tmp
-**/.sass-cache
+.DS_Store

@@ -1,0 +1,37 @@
+{
+  "name": "MoneyAI",
+  "description": "Personal Finance with Smarts.",
+  "author": "Shital Shah (@sytelus)",
+  "homepage": "http://www.MoneyAI.com", 
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:sytelus/MoneyInMotion.git"
+  },
+  "version": "0.0.1",
+
+  "dependencies": {},
+  "devDependencies": {
+    "bower": "latest",
+    "grunt": "~0.4.1",
+    "grunt-cli": "~0.1.9",
+    "grunt-contrib-copy": "~0.4.1",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-uglify": "~0.2.5",
+    "grunt-contrib-jshint": "~0.7.1",
+    "grunt-contrib-cssmin": "~0.6.2",
+    "grunt-contrib-clean": "~0.5.0",
+    "grunt-contrib-htmlmin": "~0.1.3",
+    "grunt-usemin": "~2.0.0",
+    "grunt-requirejs": "~0.4.0",
+    "grunt-open": "~0.2.2",
+    "matchdep": "~0.3.0",
+	"almond": "~0.2.6",
+	"grunt-htmlrefs": "~0.4.2",
+	"grunt-contrib-less": "~0.8.2",
+	"grunt-contrib-csslint": "~0.1.2",
+	"grunt-bower-task": "~0.3.4"
+  },
+  "engines": {
+    "node": ">=0.8.0"
+  }
+}
