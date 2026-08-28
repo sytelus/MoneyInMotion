@@ -1,36 +1,40 @@
 # MoneyInMotion documentation
 
-This documentation describes the MoneyInMotion behavior preserved by the
-`before-upgrade` tag. It focuses on workflows, data contracts, and observable
-behavior so that the system can be maintained or reimplemented independently
-of its current application technology.
+These documents describe the hosted website in this revision. Historical C#,
+desktop, and local-browser implementation details remain available in Git
+history but are deliberately absent from the working tree.
 
-## Documents
+## Use and operation
 
-- [Overview](overview.md) — concise description of the inputs, processing,
-  user actions, and outputs.
-- [Data layout and import](data-layout-and-import.md) — root-folder layout,
-  account configuration, supported statement sources, identity, and
-  deduplication.
-- [Processing workflow](processing-workflow.md) — complete rebuild, enrichment,
-  order matching, transfers, adjustments, and reporting behavior.
-- [Edits and persistence](edits-and-persistence.md) — edit rules, replay,
-  snapshots, backups, and the meaning of each output file.
-- [Features and limitations](features-and-limitations.md) — supported behavior,
-  operational requirements, and guarantees that the current version does not
-  enforce.
+- [Data and imports](data-and-imports.md) describes account folders, browser
+  uploads, staging, deduplication, and snapshot creation.
+- [Transaction edits and rules](transaction-edits.md) explains non-destructive
+  corrections, rule scopes, persistence, and reversal.
+- [Production deployment](deployment.md) covers Node and container deployment,
+  TLS, access controls, volumes, health checks, and backups.
+- [HTTP API](api.md) is the integration reference.
 
-## Terminology
+## Engineering
 
-- **Data root**: the user-selected directory containing `Statements` and
-  `Merged`.
-- **Statement**: a downloaded financial or commerce file that produces
-  transactions.
-- **Top-level transaction**: a transaction reported directly unless matching
-  replaces it with a completed child hierarchy.
-- **Parent/child match**: a hierarchy that connects a payment to an order and
-  the order to its line items.
-- **Edit**: an immutable user action containing a scope and one or more changed
-  values.
-- **Materialized snapshot**: a complete serialized transaction graph that can
-  be loaded without rescanning statements.
+- [Architecture](architecture.md) explains package boundaries, data flow,
+  lifecycle guarantees, and design decisions.
+- [Development](development.md) contains setup, commands, coding conventions,
+  and common change paths.
+- [Testing and legacy verification](testing-and-verification.md) documents the
+  test pyramid and the strictly read-only comparison workflow.
+- [Domain rules](domain-rules.md) records parser, matching, aggregation, and
+  presentation behavior that maintainers must preserve intentionally.
+
+## Migration record
+
+- [Legacy divergences](legacy_divergence.md) records intentional behavior
+  changes and their justification.
+- [Legacy limitations](legacy_limitations.md) records work that is intentionally
+  deferred or cannot yet match the legacy application exactly.
+- [Suggested improvements](legacy_suggested_improvements.md) is the forward
+  engineering and product backlog.
+- [Prioritized TODO backlog](../todo.md) turns the deferred migration work into
+  an actionable checklist with completion criteria.
+
+Repository-wide contribution and disclosure policies are in
+[CONTRIBUTING.md](../CONTRIBUTING.md) and [SECURITY.md](../SECURITY.md).

@@ -1,0 +1,9 @@
+.git
+.gitignore
+legacy
+node_modules
+packages/*/node_modules
+packages/*/dist
+coverage
+vitest.config.ts.timestamp-*
+*.log

@@ -1,0 +1,150 @@
+# Data and imports
+
+## Storage contract
+
+`MIM_DATA_ROOT` is the parent of username folders. The default is `~/min_root`;
+the active username defaults to the server operating-system user.
+
+```text
+~/min_root/
+└── shitals/
+    ├── Statements/
+    │   ├── amex/
+    │   │   ├── AccountConfig.json
+    │   │   ├── 2025.csv
+    │   │   └── archive/2024.csv
+    │   └── amazon/
+    │       ├── AccountConfig.json
+    │       └── orders.csv
+    ├── staging/
+    │   └── 20260827...-12ab34cd/
+    │       ├── files/<uploaded relative tree>
+    │       └── manifest.json
+    └── Merged/
+        ├── LatestMerged.json
+        ├── LatestMergedEdits.json
+        └── <timestamped backup files>
+```
+
+Only the server needs filesystem access. Browser users do not mount this path
+and do not install MiM.
+
+### Statements
+
+Every directory containing `AccountConfig.json` is an account. Discovery is
+recursive and deterministic, so nested organizational folders are allowed. The
+directory path relative to `Statements` is the upload identity shown in the
+Accounts screen. An account config contains:
+
+- stable account ID;
+- display title and institution/parser name;
+- account type and whether order lines require a financial parent;
+- transfer or parent-match name tags;
+- case-insensitive file filters; and
+- whether nested statement directories are scanned.
+
+The website writes a canonical camel-case JSON shape and reads both that shape
+and the legacy Pascal-case inner `AccountInfo`. Account IDs permit letters,
+numbers, dots, underscores, and hyphens only. Once files or transactions exist,
+the ID is locked because it participates in stable transaction identity.
+
+Deleting an account through the website removes its config only. The directory
+is removed only when it is empty; raw statements are never recursively deleted.
+Restore or recreate the config to rediscover preserved files.
+
+### Staging
+
+Each folder upload gets a collision-resistant batch ID. Every accepted HTTP
+file is written below `staging/<batch>/files` before it is evaluated. The final
+manifest records relative path, account ID, size, SHA-256, decision, destination
+or duplicate source, explanation, username, and timestamp.
+
+Staging is an audit and recovery aid, not a temporary browser cache. MiM does
+not currently expire it automatically. Include it in retention planning or
+remove old batches through an administrator-controlled process after backups.
+
+### Merged
+
+`LatestMerged.json` is a replaceable materialized view: it can be regenerated
+from `Statements` plus saved edits. `LatestMergedEdits.json` is durable user
+intent and should receive the strongest backup treatment. Storage creates
+timestamped backups before replacing an existing output and uses temporary-file
+rename so readers do not observe partially written JSON.
+
+## Browser directory upload
+
+A hosted website cannot accept a user's local directory path and later read it
+from the server. The directory picker instead returns browser `File` objects
+and relative paths. The client sends both in one multipart request.
+
+The selected layout may include a picker root:
+
+```text
+MyStatements/
+├── amex/statement.csv
+└── amazon/orders.csv
+```
+
+If every path shares `MyStatements` and that is not an account directory, the
+server removes that first component. It then matches `amex` and `amazon`
+case-insensitively to configured relative account directories. More-specific
+nested account directories win.
+
+The server rejects the request before creating a batch if paths are missing,
+duplicated, absolute, empty, contain dot segments, contain NULs, or could escape
+the storage root. Multer accepts at most 500 files, 50 MiB per file, and 512
+multipart parts. Unsupported files and uploaded `AccountConfig.json` files are
+staged but marked rejected in the manifest; account configuration is owned by
+the web editor.
+
+## Deduplication and promotion
+
+For each account, MiM hashes current statement files whose names match the
+configured filters. A staged file with an existing SHA-256 is marked duplicate
+regardless of filename and is not promoted. Hashes are updated during the
+batch, so two identical new files in one upload cannot both be promoted.
+
+A new file retains its path beneath the matching account. If its intended name
+already exists with different content, MiM creates `name (1).ext`, then the next
+available number. Existing files are never overwritten.
+
+Deduplication is account-local by design. The same bytes in two distinct
+accounts may be meaningful and are retained for both.
+
+## Automatic rebuild
+
+Promotion is immediately followed by a deterministic rebuild over every
+discoverable statement:
+
+1. Pick the institution-specific parser or the generic parser.
+2. Parse transactions and attach account/import metadata.
+3. Merge sources, match related transactions, and build the hierarchy.
+4. Load and replay all persisted edits.
+5. Commit `LatestMerged.json` and `LatestMergedEdits.json` only after the whole
+   candidate succeeds.
+
+If a file cannot parse, promoted source files and the staging manifest remain
+for diagnosis, but the last known-good financial snapshot is not replaced by a
+partial result. Fix or remove the bad server-side input and use **Rebuild
+snapshot** in Settings, or upload a corrected export. The response identifies
+every failed source path.
+
+The maintenance rebuild endpoint runs the same algorithm without uploading
+anything. It is useful after an administrator restores or changes server-side
+files; normal users do not need a separate scan or save step.
+
+## Supported source families
+
+| Source | Inputs | Specialized behavior |
+| --- | --- | --- |
+| Generic bank/card | CSV | Header/column discovery and standard debit/credit conversion |
+| American Express | CSV | Amex columns and merchant metadata |
+| Barclaycard | CSV | Banner/header variations |
+| PayPal | CSV or IIF | Activity filtering and payment semantics |
+| Amazon orders | CSV | Order-line synthesis and charge matching |
+| Etsy buyer history | JSON | Receipt and item reconciliation |
+| QuickBooks-compatible export | IIF | Transaction and split parsing |
+
+Institution export formats change. Add parser fixtures before modifying a
+parser, and treat a reported parse failure as safer than silently accepting
+ambiguous columns.

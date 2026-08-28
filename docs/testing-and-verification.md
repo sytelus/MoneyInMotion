@@ -1,0 +1,123 @@
+# Testing and legacy verification
+
+MoneyInMotion uses Vitest projects for all three workspaces and Testing Library
+for browser behavior. The suite is designed to protect domain compatibility and
+the hosted security/storage boundary, not just individual utility functions.
+
+## Required verification
+
+Run from the repository root:
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm audit --audit-level=high
+```
+
+`./build.sh test` combines the first four product checks. CI uses Node 24 and
+runs type checking, lint, the full test suite, the production build, and a
+high-severity dependency audit on pushes and pull requests.
+
+## Test coverage map
+
+- Core tests cover audit data, serialization, effective edited values, edit
+  merge/void semantics, date and string helpers, merchant normalization,
+  parent-child and generic matching, key counters, net totals, and aggregation.
+- Server tests cover each source parser, CSV ambiguity/recovery, parser
+  selection, recursive/case-insensitive file discovery, legacy snapshot codecs,
+  cache load/replay/save, all-or-nothing rebuild behavior, folder path safety,
+  staging manifests, content deduplication, collision naming, and HTTP routes.
+- Web tests cover API failures and payloads, navigation state, account CRUD,
+  folder upload interaction, Settings restart semantics, Welcome workflow,
+  scope editing, amount/date/reason/name correction, Rules history/revert, and
+  keyboard-driven application behavior.
+
+Use `npm run test:coverage` to find unexercised branches, but do not treat a
+percentage as a substitute for fixtures that represent real provider exports.
+
+## Last verified baseline
+
+The complete acceptance run on 2026-08-27 produced:
+
+- 41 passing test files and 499 passing tests;
+- 71.37% statement, 60.47% branch, 66.93% function, and 72.21% line coverage;
+- a clean TypeScript build, ESLint run, and optimized Vite production build;
+- zero vulnerabilities reported by `npm audit --audit-level=high`; and
+- a successful production-mode HTTP smoke test with the expected health,
+  static-site fallback, CORS, and security-header behavior.
+
+Coverage is a directional baseline rather than a release threshold. The most
+important safety paths—staging path validation and deduplication, all-or-nothing
+snapshot commits, legacy codecs and IDs, rule migration, child persistence,
+parsers, account operations, and edit workflows—have direct behavioral tests.
+
+## Read-only legacy comparison
+
+The supplied reference at `/mnt/d/Dropbox/MoneyAI/` is strictly read-only. The
+verification command enforces the intended workflow operationally: it reads the
+legacy snapshot and edits, copies account configs plus only the statement
+generation referenced by that snapshot into a newly created OS temporary
+directory, rebuilds there, prints JSON metrics, and removes the temporary copy.
+
+```bash
+npm run build
+npm run verify:legacy -- /mnt/d/Dropbox/MoneyAI/
+```
+
+Use `--keep-temp` only when a maintainer needs to inspect the isolated output:
+
+```bash
+npm run verify:legacy -- /mnt/d/Dropbox/MoneyAI/ --keep-temp
+```
+
+The script never constructs a write-capable cache or repository on the supplied
+legacy root. It exits nonzero if a selected statement fails or the rebuilt
+candidate is not committed. It also reloads the newly saved snapshot and exits
+nonzero if top-level count, all-node count, or effective total changed across
+that persistence round trip. This protects child-graph serialization, not just
+the pre-save in-memory model.
+
+## Interpreting parity
+
+Exact equality is expected for account/date coverage and saved-edit replay.
+Transaction counts can differ when content-identical overlapping exports are
+deduplicated; top-level and all-node counts must be compared separately. The
+report includes account counts, account amounts, top-level amounts, exact-ID
+rule-target resolution, and save/reload deltas so a count shift cannot
+masquerade as silent loss of an account or correction.
+
+The verified reference snapshot ends in April 2015 while its Statements tree
+contains later exports through 2016. Comparing every current file with that old
+snapshot is invalid, so the script selects source basenames and accounts from
+legacy import metadata. One legacy synthetic matcher source has no physical
+statement by design. Current observed results and their explanation are recorded
+in [Legacy divergences](legacy_divergence.md).
+
+The 2026-08-27 reference run selected 102 physical files for 103 legacy import
+sources (the extra source is synthetic), spanning eight accounts from
+2000-08-09 through 2015-04-08. It replayed all 431 rules. Of 162 exact-ID scope
+parameters, 125 resolved and 37 were already orphaned in the legacy snapshot;
+the rebuilt snapshot retained precisely the same 125/37 split after migrating
+61 changed target occurrences. It persisted 5,256 top-level and 8,069 all-node
+transactions with zero top-level count, all-node count, or effective-amount
+change on reload. The documented difference from the legacy materialization is
+31 deduplicated top-level rows totaling $509.65 and one additional relationship
+graph-node difference; it is not missing source coverage or persistence loss.
+
+## Adding a regression
+
+Use sanitized, minimal fixture data. Tests must not import a person's complete
+financial tree or snapshot into the repository. For a discovered production
+failure:
+
+1. reduce it to the smallest row/header/config that reproduces the behavior;
+2. remove personal identifiers while retaining delimiters and field shapes;
+3. prove the test fails for the intended reason;
+4. implement the correction in the responsible layer; and
+5. run the full suite and isolated legacy comparison.
+
+A deliberate parity change also requires an entry in
+[Legacy divergences](legacy_divergence.md); a deferred mismatch belongs in
+[Legacy limitations](legacy_limitations.md).
