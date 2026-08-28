@@ -27,10 +27,10 @@ const IMPORT_INFO_ID = 'CreatedBy.GenericOrderMatcher';
  * two decimal places, date is formatted as a short date string.
  */
 function getNonLineItemKey(tx: Transaction): string {
-    const amountStr = tx.amount.toFixed(2);
-    const d = parseDate(tx.transactionDate);
-    const dateStr = `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${d.getUTCFullYear()}`;
-    return `${amountStr}|${dateStr}`;
+  const amountStr = tx.amount.toFixed(2);
+  const d = parseDate(tx.transactionDate);
+  const dateStr = `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${d.getUTCFullYear()}`;
+  return `${amountStr}|${dateStr}`;
 }
 
 /**
@@ -38,172 +38,181 @@ function getNonLineItemKey(tx: Transaction): string {
  * attribute names for shipping, tax, and discount fields.
  */
 export class GenericOrderMatcher implements ParentChildMatch {
-    protected accountInfo: AccountInfo;
-    protected shippingAttribute: string;
-    protected taxAttribute: string;
-    protected discountAttribute: string;
+  protected accountInfo: AccountInfo;
+  protected shippingAttribute: string;
+  protected taxAttribute: string;
+  protected discountAttribute: string;
 
-    constructor(
-        accountInfo: AccountInfo,
-        shippingAttribute: string,
-        taxAttribute: string,
-        discountAttribute: string,
-    ) {
-        this.accountInfo = accountInfo;
-        this.shippingAttribute = shippingAttribute;
-        this.taxAttribute = taxAttribute;
-        this.discountAttribute = discountAttribute;
+  constructor(
+    accountInfo: AccountInfo,
+    shippingAttribute: string,
+    taxAttribute: string,
+    discountAttribute: string,
+  ) {
+    this.accountInfo = accountInfo;
+    this.shippingAttribute = shippingAttribute;
+    this.taxAttribute = taxAttribute;
+    this.discountAttribute = discountAttribute;
+  }
+
+  getParents(
+    children: Transaction[],
+    availableTransactions: Transactions,
+  ): Array<{ child: Transaction; parent: Transaction }> {
+    // Build index of line-item parents: same account, LineItemType.None, has matchFilter
+    const lineitemParents = new Map<string, Transaction[]>();
+    for (const tx of availableTransactions.allParentChildTransactions) {
+      if (
+        tx.accountId === this.accountInfo.id &&
+        tx.lineItemType === LineItemType.None &&
+        tx.parentChildMatchFilter != null
+      ) {
+        const key = tx.parentChildMatchFilter;
+        const arr = lineitemParents.get(key) ?? [];
+        arr.push(tx);
+        lineitemParents.set(key, arr);
+      }
     }
 
-    getParents(
-        children: Transaction[],
-        availableTransactions: Transactions,
-    ): Array<{ child: Transaction; parent: Transaction }> {
-        // Build index of line-item parents: same account, LineItemType.None, has matchFilter
-        const lineitemParents = new Map<string, Transaction[]>();
-        for (const tx of availableTransactions.allParentChildTransactions) {
-            if (
-                tx.accountId === this.accountInfo.id &&
-                tx.lineItemType === LineItemType.None &&
-                tx.parentChildMatchFilter != null
-            ) {
-                const key = tx.parentChildMatchFilter;
-                const arr = lineitemParents.get(key) ?? [];
-                arr.push(tx);
-                lineitemParents.set(key, arr);
-            }
-        }
-
-        // Build index of non-line-item parents: different account, not requiresParent,
-        // entity name contains one of this account's interAccountNameTags
-        const nameTags = this.accountInfo.interAccountNameTags ?? [];
-        const nonLineitemParents = new Map<string, Transaction[]>();
-        for (const tx of availableTransactions.allParentChildTransactions) {
-            if (
-                tx.accountId !== this.accountInfo.id &&
-                !availableTransactions.getAccountInfo(tx.accountId).requiresParent &&
-                nameTags.some((nt) => tx.entityName.toLowerCase().includes(nt.toLowerCase()))
-            ) {
-                const key = getNonLineItemKey(tx);
-                const arr = nonLineitemParents.get(key) ?? [];
-                arr.push(tx);
-                nonLineitemParents.set(key, arr);
-            }
-        }
-
-        const results: Array<{ child: Transaction; parent: Transaction }> = [];
-
-        for (const child of children) {
-            if (child.lineItemType !== LineItemType.None) {
-                // Line item: find parent by match filter
-                const parents = lineitemParents.get(child.parentChildMatchFilter ?? '') ?? null;
-
-                if (parents != null && parents.length === 1) {
-                    results.push({ child, parent: parents[0]! });
-                } else if (parents != null && parents.length > 0) {
-                    throw new Error(
-                        `${parents.length} parents for Child ID ${child.id} were found in AccountID ${child.accountId}`,
-                    );
-                }
-            } else {
-                // Non-line-item: find parent by amount+date key, or fuzzy match
-                const exactKey = getNonLineItemKey(child);
-                let parents = nonLineitemParents.get(exactKey) ?? null;
-
-                if (parents == null || parents.length === 0) {
-                    // Fuzzy match: amount +/- 1, date +/- 2 days.
-                    // Score by amount_delta * (days_delta + 1) so that smaller
-                    // amount differences dominate and, within ties, closer
-                    // dates win.
-                    const childDate = parseDate(child.transactionDate);
-                    const fuzzyMatches: Array<{ tx: Transaction; score: number }> = [];
-
-                    for (const txArray of nonLineitemParents.values()) {
-                        for (const tx of txArray) {
-                            const amountDelta = Math.abs(tx.amount - child.amount);
-                            const daysDelta = daysBetween(parseDate(tx.transactionDate), childDate);
-                            const hasChildren = tx.children != null && Object.keys(tx.children).length > 0;
-
-                            if (amountDelta <= 1 && daysDelta <= 2 && !hasChildren) {
-                                fuzzyMatches.push({
-                                    tx,
-                                    score: amountDelta * (daysDelta + 1),
-                                });
-                            }
-                        }
-                    }
-
-                    fuzzyMatches.sort((a, b) => a.score - b.score);
-                    parents = fuzzyMatches.map((m) => m.tx);
-                }
-
-                if (parents.length > 0) {
-                    results.push({ child, parent: parents[0]! });
-                }
-            }
-        }
-
-        return results;
+    // Build index of non-line-item parents: different account, not requiresParent,
+    // entity name contains one of this account's interAccountNameTags
+    const nameTags = this.accountInfo.interAccountNameTags ?? [];
+    const nonLineitemParents = new Map<string, Transaction[]>();
+    for (const tx of availableTransactions.allParentChildTransactions) {
+      if (
+        tx.accountId !== this.accountInfo.id &&
+        !availableTransactions.getAccountInfo(tx.accountId).requiresParent &&
+        nameTags.some((nt) => tx.entityName.toLowerCase().includes(nt.toLowerCase()))
+      ) {
+        const key = getNonLineItemKey(tx);
+        const arr = nonLineitemParents.get(key) ?? [];
+        arr.push(tx);
+        nonLineitemParents.set(key, arr);
+      }
     }
 
-    handleIncompleteParent(
-        parent: Transaction,
-        availableTransactions: Transactions,
-        missingChildAmount: number,
-    ): boolean {
-        if (missingChildAmount === 0) {
-            return true;
+    const results: Array<{ child: Transaction; parent: Transaction }> = [];
+
+    for (const child of children) {
+      if (child.lineItemType !== LineItemType.None) {
+        // Line item: find parent by match filter
+        const parents = lineitemParents.get(child.parentChildMatchFilter ?? '') ?? null;
+
+        if (parents != null && parents.length === 1) {
+          results.push({ child, parent: parents[0]! });
+        } else if (parents != null && parents.length > 0) {
+          throw new Error(
+            `${parents.length} parents for Child ID ${child.id} were found in AccountID ${child.accountId}`,
+          );
+        }
+      } else {
+        // Non-line-item: find parent by amount+date key, or fuzzy match
+        const exactKey = getNonLineItemKey(child);
+        let parents = nonLineitemParents.get(exactKey) ?? null;
+
+        if (parents == null || parents.length === 0) {
+          // Fuzzy match: amount +/- 1, date +/- 2 days.
+          // Score by amount_delta * (days_delta + 1) so that smaller
+          // amount differences dominate and, within ties, closer
+          // dates win.
+          const childDate = parseDate(child.transactionDate);
+          const fuzzyMatches: Array<{ tx: Transaction; score: number }> = [];
+
+          for (const txArray of nonLineitemParents.values()) {
+            for (const tx of txArray) {
+              const amountDelta = Math.abs(tx.amount - child.amount);
+              const daysDelta = daysBetween(parseDate(tx.transactionDate), childDate);
+              const hasChildren = tx.children != null && Object.keys(tx.children).length > 0;
+
+              if (amountDelta <= 1 && daysDelta <= 2 && !hasChildren) {
+                fuzzyMatches.push({
+                  tx,
+                  score: amountDelta * (daysDelta + 1),
+                });
+              }
+            }
+          }
+
+          fuzzyMatches.sort((a, b) => a.score - b.score);
+          parents = fuzzyMatches.map((m) => m.tx);
         }
 
-        const attrs = parent.providerAttributes ?? {};
-        const promotionsAmount = parseFloat(attrs[this.discountAttribute] ?? '0') || 0;
-        const shippingAmount = parseFloat(attrs[this.shippingAttribute] ?? '0') || 0;
-        const taxAmount = parseFloat(attrs[this.taxAttribute] ?? '0') || 0;
-
-        const updatedMissingChildAmount =
-            missingChildAmount - (promotionsAmount + shippingAmount + taxAmount);
-
-        if (isMissingAmountTolerable(parent, updatedMissingChildAmount)) {
-            addAdjustmentChild(
-                parent,
-                availableTransactions,
-                promotionsAmount,
-                TransactionReason.DiscountRecieved,
-                'Discount',
-                IMPORT_INFO_ID,
-            );
-            addAdjustmentChild(
-                parent,
-                availableTransactions,
-                shippingAmount,
-                TransactionReason.Purchase,
-                'Shipping',
-                IMPORT_INFO_ID,
-            );
-            addAdjustmentChild(
-                parent,
-                availableTransactions,
-                taxAmount,
-                TransactionReason.Purchase,
-                'Tax',
-                IMPORT_INFO_ID,
-            );
-
-            const finalMissingAmount = -1 * updatedMissingChildAmount;
-            addAdjustmentChild(
-                parent,
-                availableTransactions,
-                finalMissingAmount,
-                finalMissingAmount >= 0
-                    ? TransactionReason.MatchAdjustmentCredit
-                    : TransactionReason.MatchAdjustmentDebit,
-                'Adjustment',
-                IMPORT_INFO_ID,
-            );
-
-            return true;
+        if (parents.length > 0) {
+          results.push({ child, parent: parents[0]! });
         }
-
-        return false;
+      }
     }
+
+    return results;
+  }
+
+  handleIncompleteParent(
+    parent: Transaction,
+    availableTransactions: Transactions,
+    missingChildAmount: number,
+  ): boolean {
+    if (missingChildAmount === 0) {
+      return true;
+    }
+
+    const attrs = parent.providerAttributes ?? {};
+    const numericAttribute = (attribute: string): number => {
+      const raw = attrs[attribute];
+      if (raw == null || raw.trim() === '') return 0;
+      const value = Number(raw);
+      if (!Number.isFinite(value)) {
+        throw new Error(`Order attribute "${attribute}" is not a valid amount: "${raw}"`);
+      }
+      return value;
+    };
+    const promotionsAmount = numericAttribute(this.discountAttribute);
+    const shippingAmount = numericAttribute(this.shippingAttribute);
+    const taxAmount = numericAttribute(this.taxAttribute);
+
+    const updatedMissingChildAmount =
+      missingChildAmount - (promotionsAmount + shippingAmount + taxAmount);
+
+    if (isMissingAmountTolerable(parent, updatedMissingChildAmount)) {
+      addAdjustmentChild(
+        parent,
+        availableTransactions,
+        promotionsAmount,
+        TransactionReason.DiscountRecieved,
+        'Discount',
+        IMPORT_INFO_ID,
+      );
+      addAdjustmentChild(
+        parent,
+        availableTransactions,
+        shippingAmount,
+        TransactionReason.Purchase,
+        'Shipping',
+        IMPORT_INFO_ID,
+      );
+      addAdjustmentChild(
+        parent,
+        availableTransactions,
+        taxAmount,
+        TransactionReason.Purchase,
+        'Tax',
+        IMPORT_INFO_ID,
+      );
+
+      const finalMissingAmount = -1 * updatedMissingChildAmount;
+      addAdjustmentChild(
+        parent,
+        availableTransactions,
+        finalMissingAmount,
+        finalMissingAmount >= 0
+          ? TransactionReason.MatchAdjustmentCredit
+          : TransactionReason.MatchAdjustmentDebit,
+        'Adjustment',
+        IMPORT_INFO_ID,
+      );
+
+      return true;
+    }
+
+    return false;
+  }
 }

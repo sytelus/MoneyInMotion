@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import type { Transaction } from '@moneyinmotion/core';
 import {
   createAuditInfo,
+  createUUID,
   ScopeType,
   createScopeFilter,
   editValue,
@@ -28,11 +29,10 @@ import { CategoryEditor } from '../editing/CategoryEditor.js';
 import { NoteEditor } from '../editing/NoteEditor.js';
 import { AttributeEditor } from '../editing/AttributeEditor.js';
 import { CalendarRange, PanelRight, Sparkles } from 'lucide-react';
-import { Button } from '../ui/button.js';
+import { buttonClassName } from '../ui/button.js';
 import { useTransactions, useApplyEdits } from '../../api/hooks.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
-import { generateEditId } from '../../lib/utils.js';
 
 type EditDialog = 'category' | 'note' | 'attributes' | null;
 
@@ -65,7 +65,7 @@ export const AppShell: React.FC = () => {
   const selectedTransaction = useMemo(() => {
     if (!transactions || selectedIds.size === 0) return null;
     const firstId = [...selectedIds][0];
-    return firstId ? transactions.getTransaction(firstId) ?? null : null;
+    return firstId ? (transactions.getTransaction(firstId) ?? null) : null;
   }, [transactions, selectedIds]);
 
   // Edit dialog openers
@@ -91,7 +91,7 @@ export const AppShell: React.FC = () => {
       if (!target) return;
 
       const edit: TransactionEditData = {
-        id: generateEditId(),
+        id: createUUID(),
         auditInfo: createAuditInfo('web-ui'),
         scopeFilters: [createScopeFilter(ScopeType.TransactionId, [target.id])],
         values: {
@@ -112,7 +112,7 @@ export const AppShell: React.FC = () => {
       if (!target) return;
 
       const edit: TransactionEditData = {
-        id: generateEditId(),
+        id: createUUID(),
         auditInfo: createAuditInfo('web-ui'),
         scopeFilters: [createScopeFilter(ScopeType.TransactionId, [target.id])],
         values: {
@@ -185,10 +185,8 @@ export const AppShell: React.FC = () => {
               Set up your accounts and import statement files to get started.
             </p>
           </div>
-          <Link to="/welcome">
-            <Button size="lg">
-              Get Started
-            </Button>
+          <Link to="/welcome" className={buttonClassName({ size: 'lg' })}>
+            Get Started
           </Link>
         </div>
       )}
@@ -228,17 +226,23 @@ export const AppShell: React.FC = () => {
             </div>
 
             {/* Inline banner for users who have transactions but haven't selected a period */}
-            {transactions && transactions.topLevelTransactionCount > 0 && !selectedYear && !selectedMonth && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border text-sm">
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-muted-foreground">
-                  New here? Check the{' '}
-                  <Link to="/welcome" className="text-primary underline underline-offset-4 hover:text-primary/80">
-                    Getting Started guide
-                  </Link>
-                </span>
-              </div>
-            )}
+            {transactions &&
+              transactions.topLevelTransactionCount > 0 &&
+              !selectedYear &&
+              !selectedMonth && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border text-sm">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-muted-foreground">
+                    New here? Check the{' '}
+                    <Link
+                      to="/welcome"
+                      className="text-primary underline underline-offset-4 hover:text-primary/80"
+                    >
+                      Getting Started guide
+                    </Link>
+                  </span>
+                </div>
+              )}
             <div className="flex-1 min-h-0">
               <TransactionList
                 onEditCategory={handleRowEditCategory}
@@ -261,7 +265,9 @@ export const AppShell: React.FC = () => {
       {editingTransaction && activeDialog === 'category' && (
         <CategoryEditor
           open={true}
-          onOpenChange={(open) => { if (!open) closeDialogs(); }}
+          onOpenChange={(open) => {
+            if (!open) closeDialogs();
+          }}
           transaction={editingTransaction}
         />
       )}
@@ -269,7 +275,9 @@ export const AppShell: React.FC = () => {
       {editingTransaction && activeDialog === 'note' && (
         <NoteEditor
           open={true}
-          onOpenChange={(open) => { if (!open) closeDialogs(); }}
+          onOpenChange={(open) => {
+            if (!open) closeDialogs();
+          }}
           transaction={editingTransaction}
         />
       )}
@@ -277,7 +285,9 @@ export const AppShell: React.FC = () => {
       {editingTransaction && activeDialog === 'attributes' && (
         <AttributeEditor
           open={true}
-          onOpenChange={(open) => { if (!open) closeDialogs(); }}
+          onOpenChange={(open) => {
+            if (!open) closeDialogs();
+          }}
           transaction={editingTransaction}
         />
       )}

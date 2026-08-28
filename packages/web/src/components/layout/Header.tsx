@@ -17,7 +17,7 @@ import {
   Settings,
   UploadCloud,
 } from 'lucide-react';
-import { Button } from '../ui/button.js';
+import { Button, buttonClassName } from '../ui/button.js';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 import { cn } from '../../lib/utils.js';
@@ -46,11 +46,12 @@ export const Header: React.FC = () => {
         <span className="text-lg sm:hidden">MiM</span>
       </Link>
 
-      <Link to="/accounts" className="hidden md:block">
-        <Button size="sm">
-          <UploadCloud className="mr-1.5 h-4 w-4" />
-          Import statements
-        </Button>
+      <Link
+        to="/accounts"
+        className={buttonClassName({ size: 'sm', className: 'hidden md:inline-flex' })}
+      >
+        <UploadCloud className="mr-1.5 h-4 w-4" />
+        Import statements
       </Link>
 
       <nav aria-label="Primary navigation" className="flex items-center gap-0.5">

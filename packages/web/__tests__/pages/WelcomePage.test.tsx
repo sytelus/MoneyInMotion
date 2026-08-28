@@ -14,10 +14,7 @@ vi.mock('../../src/api/client.js', () => ({
   getAccounts: (...args: unknown[]) => getAccountsMock(...args),
 }));
 
-function makeAccount(
-  hasStatementFiles: boolean,
-  transactionCount = 0,
-): AccountSummary {
+function makeAccount(hasStatementFiles: boolean, transactionCount = 0): AccountSummary {
   return {
     config: {
       accountInfo: {
@@ -72,9 +69,7 @@ describe('WelcomePage', () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText('No statement files uploaded yet.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('No statement files uploaded yet.')).toBeInTheDocument();
     // Only step 1 (data folder) and step 2 (accounts) should be complete.
     expect(screen.getAllByText('Complete')).toHaveLength(2);
   });
@@ -84,9 +79,7 @@ describe('WelcomePage', () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText('Statement files detected for 1 account.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Statement files detected for 1 account.')).toBeInTheDocument();
     // All three steps should now show Complete.
     expect(screen.getAllByText('Complete')).toHaveLength(3);
   });
@@ -96,11 +89,7 @@ describe('WelcomePage', () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText(/builds the snapshot automatically/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Choose Statement Folder/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/builds the snapshot automatically/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Choose Statement Folder/i })).toBeInTheDocument();
   });
 });

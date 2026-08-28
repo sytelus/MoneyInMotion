@@ -20,7 +20,8 @@ export default defineConfig({
         },
         resolve: {
           alias: {
-            '@moneyinmotion/core': new URL('./packages/core/src/index.ts', import.meta.url).pathname,
+            '@moneyinmotion/core': new URL('./packages/core/src/index.ts', import.meta.url)
+              .pathname,
           },
         },
       },
@@ -35,7 +36,8 @@ export default defineConfig({
         },
         resolve: {
           alias: {
-            '@moneyinmotion/core': new URL('./packages/core/src/index.ts', import.meta.url).pathname,
+            '@moneyinmotion/core': new URL('./packages/core/src/index.ts', import.meta.url)
+              .pathname,
           },
         },
       },

@@ -61,6 +61,13 @@ export function createApp(config: ServerConfig): Express {
   app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
   app.use('/api/import', createImportRouter(cache, config));
 
+  // Keep unknown API requests inside the JSON contract. Without this guard,
+  // production's SPA fallback would return index.html with HTTP 200 for a
+  // misspelled API URL, which is difficult for clients to diagnose safely.
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'API endpoint not found.', status: 404 });
+  });
+
   // --- Static files (production) ---
 
   if (process.env['NODE_ENV'] === 'production') {

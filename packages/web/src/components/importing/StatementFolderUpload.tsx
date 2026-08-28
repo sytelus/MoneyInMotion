@@ -31,17 +31,12 @@ function relativePathFor(file: File): string {
   return candidate.replaceAll('\\', '/');
 }
 
-export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({
-  accounts,
-}) => {
+export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ accounts }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [items, setItems] = useState<FolderUploadItem[]>([]);
   const upload = useUploadStatementFolder();
 
-  const selectedRoot = useMemo(
-    () => items[0]?.relativePath.split('/')[0] ?? null,
-    [items],
-  );
+  const selectedRoot = useMemo(() => items[0]?.relativePath.split('/')[0] ?? null, [items]);
   const selectedAccountFolders = useMemo(() => {
     const folders = new Set<string>();
     for (const item of items) {
@@ -79,13 +74,11 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({
             <UploadCloud className="h-3.5 w-3.5" />
             Secure browser upload
           </div>
-          <h2 className="text-xl font-bold tracking-tight">
-            Bring in a statement folder
-          </h2>
+          <h2 className="text-xl font-bold tracking-tight">Bring in a statement folder</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Choose the local folder that contains one subfolder for each account.
-            MoneyInMotion stages every file, skips content already on the server,
-            and rebuilds your financial snapshot automatically.
+            Choose the local folder that contains one subfolder for each account. MoneyInMotion
+            stages every file, skips content already on the server, and rebuilds your financial
+            snapshot automatically.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-3">
@@ -133,8 +126,8 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({
                 {selectedRoot ? ` from ${selectedRoot}` : ''}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Detected folders: {selectedAccountFolders.join(', ') || 'none'}.
-                Nothing is sent until you choose “Upload & build snapshot.”
+                Detected folders: {selectedAccountFolders.join(', ') || 'none'}. Nothing is sent
+                until you choose “Upload & build snapshot.”
               </p>
             </div>
           )}
@@ -194,13 +187,11 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                {rebuildFailed
-                  ? 'Files staged; previous snapshot kept safe'
-                  : 'Snapshot is ready'}
+                {rebuildFailed ? 'Files staged; previous snapshot kept safe' : 'Snapshot is ready'}
               </p>
               <p className="mt-1 text-sm opacity-90">
-                {result.staging.promotedCount} new, {result.staging.duplicateCount} already
-                present, {result.staging.rejectedCount} rejected
+                {result.staging.promotedCount} new, {result.staging.duplicateCount} already present,{' '}
+                {result.staging.rejectedCount} rejected
                 {result.rebuild.committed
                   ? `; ${result.rebuild.totalTransactions} transactions rebuilt with ${result.rebuild.appliedEdits} saved rules.`
                   : `; ${result.rebuild.failedFiles.length} statement files need attention before a safe rebuild.`}
@@ -211,7 +202,8 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({
               {result.rebuild.migratedEditTargets > 0 && (
                 <p className="mt-1 text-xs opacity-75">
                   Preserved {result.rebuild.migratedEditTargets} legacy rule target
-                  {result.rebuild.migratedEditTargets === 1 ? '' : 's'} by migrating transaction IDs.
+                  {result.rebuild.migratedEditTargets === 1 ? '' : 's'} by migrating transaction
+                  IDs.
                 </p>
               )}
             </div>
@@ -221,9 +213,9 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({
             </Button>
           </div>
 
-          {(result.staging.rejectedCount > 0
-            || rebuildFailed
-            || result.rebuild.unresolvedEditTargets > 0) && (
+          {(result.staging.rejectedCount > 0 ||
+            rebuildFailed ||
+            result.rebuild.unresolvedEditTargets > 0) && (
             <details className="mt-3 rounded-lg border border-current/15 bg-background/40 p-3 text-xs">
               <summary className="cursor-pointer font-semibold">Review issues</summary>
               <ul className="mt-2 space-y-1.5">
@@ -242,8 +234,8 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({
                 {result.rebuild.unresolvedEditTargets > 0 && (
                   <li>
                     {result.rebuild.unresolvedEditTargets} legacy exact-ID rule target
-                    {result.rebuild.unresolvedEditTargets === 1 ? '' : 's'} no longer
-                    identify a transaction and were retained unchanged in Rules.
+                    {result.rebuild.unresolvedEditTargets === 1 ? '' : 's'} no longer identify a
+                    transaction and were retained unchanged in Rules.
                   </li>
                 )}
               </ul>

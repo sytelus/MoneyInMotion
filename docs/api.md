@@ -15,6 +15,8 @@ Errors use an HTTP error status and normally return:
 ```
 
 Unexpected production errors do not expose internal exception details.
+Unknown `/api` routes return the same JSON shape with status 404; they never
+fall through to the website's HTML shell.
 
 ## Health
 
@@ -59,7 +61,10 @@ expected in browser uploads.
 
 Creates an account directory and canonical `AccountConfig.json`. The JSON body
 is an `AccountConfig` with `accountInfo`, `fileFilters`, and `scanSubFolders`.
-Returns 409 if the destination directory already exists.
+Account types are restricted to the supported financial and order-history
+types. File filters support `*`, `*.extension`, or one exact filename. Returns
+409 if a directory or recursively discovered account already has the logical
+ID; ID comparison is case-insensitive.
 
 ### `PUT /api/accounts/:id`
 
@@ -87,8 +92,13 @@ Accepts an array of validated `TransactionEditData` objects and returns:
 { "affectedTransactionsCount": 12 }
 ```
 
-The operation applies edits in order and automatically persists the snapshot
-and `LatestMergedEdits.json` before returning success.
+The server validates every field type, date, scope parameter count, amount
+range, and scope content hash. A request must have 1–100 edits, each with at
+least one scope and one changed or voided field. The complete batch is
+preflighted before any transaction changes. It is applied to a candidate graph,
+persisted, and only then swapped into the live cache, so validation or disk
+failure leaves the active graph unchanged. A stale exact transaction ID returns
+409; malformed input returns 400.
 
 ## Imports
 

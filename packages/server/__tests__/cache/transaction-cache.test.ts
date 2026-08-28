@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { FileRepository } from '../../src/storage/file-repository.js';
 import { TransactionCache } from '../../src/cache/transaction-cache.js';
+import { ScopeType, createAuditInfo, createScopeFilter, editValue } from '@moneyinmotion/core';
 
 describe('TransactionCache', () => {
   let tempDir: string;
@@ -12,9 +13,11 @@ describe('TransactionCache', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moneyai-cache-'));
     fs.mkdirSync(path.join(tempDir, 'Statements'), { recursive: true });
     fs.mkdirSync(path.join(tempDir, 'Merged'), { recursive: true });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -139,5 +142,91 @@ describe('TransactionCache', () => {
     expect(fs.readFileSync(path.join(tempDir, 'Merged', 'LatestMerged.json'), 'utf-8')).toBe(
       savedSnapshot,
     );
+  });
+
+  it('keeps the active snapshot unchanged when a rebuild cannot be persisted', async () => {
+    const statementsDir = path.join(tempDir, 'Statements', 'MyBank');
+    fs.mkdirSync(statementsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(statementsDir, 'AccountConfig.json'),
+      JSON.stringify({
+        accountInfo: {
+          id: 'my-bank',
+          instituteName: 'TestBank',
+          type: 1,
+          requiresParent: false,
+        },
+        fileFilters: ['*.csv'],
+        scanSubFolders: false,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(statementsDir, 'first.csv'),
+      'Date,Description,Amount\n01/01/2024,First,-10\n',
+    );
+    const cache = new TransactionCache(new FileRepository(tempDir));
+    await cache.rebuildFromStatements();
+    expect((await cache.getTransactions()).allTransactionCount).toBe(1);
+
+    fs.writeFileSync(
+      path.join(statementsDir, 'second.csv'),
+      'Date,Description,Amount\n01/02/2024,Second,-20\n',
+    );
+    const storage = (cache as unknown as { transactionsStorage: { save: () => void } })
+      .transactionsStorage;
+    vi.spyOn(storage, 'save').mockImplementation(() => {
+      throw new Error('disk full');
+    });
+
+    await expect(cache.rebuildFromStatements()).rejects.toThrow('disk full');
+    expect((await cache.getTransactions()).allTransactionCount).toBe(1);
+  });
+
+  it('keeps edits out of live memory when their snapshot save fails', async () => {
+    const statementsDir = path.join(tempDir, 'Statements', 'MyBank');
+    fs.mkdirSync(statementsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(statementsDir, 'AccountConfig.json'),
+      JSON.stringify({
+        accountInfo: {
+          id: 'my-bank',
+          instituteName: 'TestBank',
+          type: 1,
+          requiresParent: false,
+        },
+        fileFilters: ['*.csv'],
+        scanSubFolders: false,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(statementsDir, 'statement.csv'),
+      'Date,Description,Amount\n01/01/2024,First,-10\n',
+    );
+    const cache = new TransactionCache(new FileRepository(tempDir));
+    await cache.rebuildFromStatements();
+    const before = await cache.getTransactions();
+    const transaction = [...before.topLevelTransactions][0]!;
+
+    const storage = (cache as unknown as { transactionsStorage: { save: () => void } })
+      .transactionsStorage;
+    vi.spyOn(storage, 'save').mockImplementation(() => {
+      throw new Error('disk full');
+    });
+
+    await expect(
+      cache.applyEdits([
+        {
+          id: 'edit-note',
+          auditInfo: createAuditInfo('test'),
+          scopeFilters: [createScopeFilter(ScopeType.TransactionId, [transaction.id])],
+          values: { note: editValue('must not leak') },
+          sourceId: 'test',
+        },
+      ]),
+    ).rejects.toThrow('disk full');
+
+    const after = await cache.getTransactions();
+    expect(after.getTransaction(transaction.id)?.note).toBeNull();
+    expect(after.editsCount).toBe(0);
   });
 });

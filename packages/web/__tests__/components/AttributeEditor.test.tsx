@@ -1,10 +1,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import {
-  Transaction,
-  TransactionReason,
-} from '@moneyinmotion/core';
+import { Transaction, TransactionReason } from '@moneyinmotion/core';
 import { AttributeEditor } from '../../src/components/editing/AttributeEditor.js';
 
 const mocks = vi.hoisted(() => ({ mutate: vi.fn() }));
@@ -36,11 +33,7 @@ describe('AttributeEditor', () => {
 
   it('creates a persisted transaction-date correction', () => {
     render(
-      <AttributeEditor
-        open={true}
-        onOpenChange={vi.fn()}
-        transaction={createTransaction()}
-      />,
+      <AttributeEditor open={true} onOpenChange={vi.fn()} transaction={createTransaction()} />,
     );
 
     fireEvent.click(screen.getByLabelText('Change Transaction Date'));

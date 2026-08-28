@@ -11,7 +11,7 @@ import { GenericStatementParser } from './generic-statement-parser.js';
 import { ContentType } from '../file-format/index.js';
 
 export class BarclayParser extends GenericStatementParser {
-    constructor(content: string) {
-        super(content, ContentType.Csv, [ContentType.Csv], { hasBannerLines: true });
-    }
+  constructor(content: string) {
+    super(content, ContentType.Csv, [ContentType.Csv], { hasBannerLines: true });
+  }
 }

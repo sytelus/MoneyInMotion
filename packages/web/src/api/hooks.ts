@@ -54,9 +54,7 @@ export function useApplyEdits() {
 
   return useMutation({
     mutationFn: (edits: TransactionEditData[]) => applyEdits(edits),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }),
   });
 }
 
@@ -69,10 +67,11 @@ export function useRebuildSnapshot() {
 
   return useMutation({
     mutationFn: rebuildSnapshot,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts });
-    },
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.transactions }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts }),
+      ]),
   });
 }
 
@@ -85,9 +84,10 @@ export function useUploadStatementFolder() {
 
   return useMutation({
     mutationFn: (items: FolderUploadItem[]) => uploadStatementFolder(items),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts });
-    },
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.transactions }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts }),
+      ]),
   });
 }

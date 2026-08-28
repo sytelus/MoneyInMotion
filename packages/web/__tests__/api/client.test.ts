@@ -30,9 +30,7 @@ describe('api client', () => {
         dataRoot: '/tmp/mim-data',
         port: 70000,
       }),
-    ).rejects.toThrow(
-      'API PUT /config failed (400): port must be between 1 and 65535',
-    );
+    ).rejects.toThrow('API PUT /config failed (400): port must be between 1 and 65535');
   });
 
   it('extracts JSON error messages for multipart uploads', async () => {
@@ -55,12 +53,14 @@ describe('api client', () => {
     );
 
     await expect(
-      uploadStatementFolder([{
-        file: new File(['%PDF-1.7'], 'statement.pdf', {
+      uploadStatementFolder([
+        {
+          file: new File(['%PDF-1.7'], 'statement.pdf', {
             type: 'application/pdf',
-        }),
-        relativePath: 'selected/acct-checking/statement.pdf',
-      }]),
+          }),
+          relativePath: 'selected/acct-checking/statement.pdf',
+        },
+      ]),
     ).rejects.toThrow(
       'API POST /import/folder failed (400): File "statement.pdf" does not match this account\'s file filters (*.csv).',
     );

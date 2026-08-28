@@ -20,7 +20,7 @@ function parsePortInput(portInput: string): number | null {
     return null;
   }
 
-  const port = Number.parseInt(portInput, 10);
+  const port = Number(portInput);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     return null;
   }

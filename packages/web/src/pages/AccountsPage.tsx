@@ -24,7 +24,6 @@ import { AccountType, type AccountConfig } from '@moneyinmotion/core';
 import { Button } from '../components/ui/button.js';
 import { Badge } from '../components/ui/badge.js';
 import { Input } from '../components/ui/input.js';
-import { Select, type SelectOption } from '../components/ui/select.js';
 import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog.js';
 import { useAccounts } from '../api/hooks.js';
 import {
@@ -36,7 +35,7 @@ import {
 } from '../api/client.js';
 import { StatementFolderUpload } from '../components/importing/StatementFolderUpload.js';
 
-const institutionOptions: SelectOption[] = [
+const institutionOptions = [
   { value: 'AmericanExpress', label: 'American Express' },
   { value: 'BarclayBank', label: 'Barclay Bank' },
   { value: 'PayPal', label: 'PayPal' },
@@ -61,7 +60,9 @@ const accountTypeLabels: Record<number, string> = {
   [AccountType.EPayment]: 'E-Payment',
 };
 
-function badgeVariantForType(type: AccountType): 'default' | 'secondary' | 'info' | 'success' | 'warning' {
+function badgeVariantForType(
+  type: AccountType,
+): 'default' | 'secondary' | 'info' | 'success' | 'warning' {
   switch (type) {
     case AccountType.CreditCard:
       return 'default';
@@ -125,6 +126,7 @@ function buildAccountConfig(form: {
   interAccountNameTags: string;
   scanSubFolders: boolean;
 }): AccountConfig {
+  const parsedFileFilters = parseCsvList(form.fileFilters);
   return {
     accountInfo: {
       id: form.accountId.trim(),
@@ -134,9 +136,7 @@ function buildAccountConfig(form: {
       requiresParent: form.accountType === AccountType.OrderHistory,
       interAccountNameTags: parseCsvList(form.interAccountNameTags),
     },
-    fileFilters: parseCsvList(form.fileFilters).length > 0
-      ? parseCsvList(form.fileFilters)
-      : ['*.csv'],
+    fileFilters: parsedFileFilters.length > 0 ? parsedFileFilters : ['*.csv'],
     scanSubFolders: form.scanSubFolders,
   };
 }
@@ -159,9 +159,7 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
   onSaved,
 }) => {
   const editedConfig = mode === 'edit' ? account?.config : undefined;
-  const [accountId, setAccountId] = useState(
-    editedConfig?.accountInfo.id ?? '',
-  );
+  const [accountId, setAccountId] = useState(editedConfig?.accountInfo.id ?? '');
   const [title, setTitle] = useState(
     editedConfig?.accountInfo.title ?? editedConfig?.accountInfo.id ?? '',
   );
@@ -177,17 +175,16 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
   const [interAccountNameTags, setInterAccountNameTags] = useState(
     formatCsvList(editedConfig?.accountInfo.interAccountNameTags),
   );
-  const [scanSubFolders, setScanSubFolders] = useState(
-    editedConfig?.scanSubFolders ?? true,
-  );
+  const [scanSubFolders, setScanSubFolders] = useState(editedConfig?.scanSubFolders ?? true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isOrderHistory = accountType === AccountType.OrderHistory;
   const previousId = account?.config.accountInfo.id ?? null;
-  const canEditId = mode === 'create'
-    || !account
-    || (account.stats.transactionCount === 0 && !account.hasStatementFiles);
+  const canEditId =
+    mode === 'create' ||
+    !account ||
+    (account.stats.transactionCount === 0 && !account.hasStatementFiles);
 
   const handleSubmit = async () => {
     if (!accountId.trim() || !title.trim()) {
@@ -209,9 +206,10 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
         scanSubFolders,
       });
 
-      const saved = mode === 'create'
-        ? await createAccount(config)
-        : await updateAccount(previousId ?? config.accountInfo.id, config);
+      const saved =
+        mode === 'create'
+          ? await createAccount(config)
+          : await updateAccount(previousId ?? config.accountInfo.id, config);
 
       await onSaved(saved, previousId);
       onOpenChange(false);
@@ -231,9 +229,7 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
       >
         <div className="space-y-5">
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
           <div className="space-y-1.5">
@@ -274,14 +270,23 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
             <label htmlFor={`${mode}-institution`} className="text-sm font-medium">
               Institution
             </label>
-            <Select
+            <Input
               id={`${mode}-institution`}
+              list={`${mode}-institution-options`}
               value={instituteName}
               onChange={(e) => setInstituteName(e.target.value)}
-              options={institutionOptions}
+              placeholder="e.g. Chase or Generic"
             />
+            <datalist id={`${mode}-institution-options`}>
+              {institutionOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </datalist>
             <p className="text-xs text-muted-foreground">
-              Choose the institution-specific parser when available. Use &lsquo;Generic&rsquo; for most standard CSV exports.
+              Enter the institution name. Known names select a specialized parser; other names use
+              the generic statement parser.
             </p>
           </div>
 
@@ -292,7 +297,10 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
             </p>
             <div className="space-y-1.5">
               {accountTypeOptions.map((option) => (
-                <label key={option.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                <label
+                  key={option.value}
+                  className="flex items-center gap-2 text-sm cursor-pointer"
+                >
                   <input
                     type="radio"
                     name={`${mode}-accountType`}
@@ -307,7 +315,8 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
             </div>
             {isOrderHistory && (
               <div className="rounded-md bg-yellow-50 p-3 text-xs text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
-                Order history accounts (Amazon, Etsy) need match tags so purchases can be reconciled to the credit-card charge.
+                Order history accounts (Amazon, Etsy) need match tags so purchases can be reconciled
+                to the credit-card charge.
               </div>
             )}
           </div>
@@ -323,7 +332,8 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
               placeholder="e.g. AMEX, AMERICAN EXPRESS"
             />
             <p className="text-xs text-muted-foreground">
-              Comma-separated name fragments used for transfer matching and Amazon/Etsy parent-charge matching.
+              Comma-separated name fragments used for transfer matching and Amazon/Etsy
+              parent-charge matching.
             </p>
           </div>
 
@@ -338,7 +348,7 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
               placeholder="*.csv"
             />
             <p className="text-xs text-muted-foreground">
-              Comma-separated glob patterns for statement files.
+              Comma-separated filters: <code>*.csv</code>, an exact filename, or <code>*</code>.
             </p>
           </div>
 
@@ -352,7 +362,8 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
             <span>
               <span className="font-medium">Scan subfolders</span>
               <span className="block text-xs text-muted-foreground">
-                Enable this if your bank export files are organized in yearly or monthly subdirectories.
+                Enable this if your bank export files are organized in yearly or monthly
+                subdirectories.
               </span>
             </span>
           </label>
@@ -364,8 +375,12 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving}>
             {isSaving
-              ? (mode === 'create' ? 'Creating...' : 'Saving...')
-              : (mode === 'create' ? 'Create Account' : 'Save Changes')}
+              ? mode === 'create'
+                ? 'Creating...'
+                : 'Saving...'
+              : mode === 'create'
+                ? 'Create Account'
+                : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -418,10 +433,7 @@ export const AccountsPage: React.FC = () => {
     setFeedback(null);
   };
 
-  const handleAccountSaved = async (
-    savedAccount: AccountSummary,
-    previousId: string | null,
-  ) => {
+  const handleAccountSaved = async (savedAccount: AccountSummary, previousId: string | null) => {
     await refetch();
 
     const action = previousId == null ? 'created' : 'updated';
@@ -432,9 +444,7 @@ export const AccountsPage: React.FC = () => {
         action === 'created'
           ? 'This account is ready. Choose a statement folder above to upload and build the snapshot.'
           : 'The account configuration has been saved.',
-      path: dataPath
-        ? `${dataPath}/Statements/${savedAccount.relativeDirectory}/`
-        : undefined,
+      path: dataPath ? `${dataPath}/Statements/${savedAccount.relativeDirectory}/` : undefined,
     });
     setEditingAccount(null);
   };
@@ -468,12 +478,7 @@ export const AccountsPage: React.FC = () => {
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between h-14 px-4 border-b border-border">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Go back"
-            onClick={() => navigate(-1)}
-          >
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -556,9 +561,7 @@ export const AccountsPage: React.FC = () => {
         )}
 
         {isLoading && (
-          <div className="text-center text-muted-foreground py-12">
-            Loading accounts...
-          </div>
+          <div className="text-center text-muted-foreground py-12">Loading accounts...</div>
         )}
 
         {error && (
@@ -579,9 +582,8 @@ export const AccountsPage: React.FC = () => {
           <div className="space-y-3">
             {accounts.map((account) => {
               const info = account.config.accountInfo;
-              const transactionLabel = account.stats.transactionCount === 1
-                ? 'transaction'
-                : 'transactions';
+              const transactionLabel =
+                account.stats.transactionCount === 1 ? 'transaction' : 'transactions';
 
               return (
                 <div
@@ -647,10 +649,15 @@ export const AccountsPage: React.FC = () => {
                           <span>Files: {account.config.fileFilters.join(', ')}</span>
                         )}
                         <span className="text-border">|</span>
-                        <span>{account.config.scanSubFolders ? 'Scanning subfolders' : 'Top-level folder only'}</span>
+                        <span>
+                          {account.config.scanSubFolders
+                            ? 'Scanning subfolders'
+                            : 'Top-level folder only'}
+                        </span>
                         <span className="text-border">|</span>
                         <span>
-                          Match tags: {account.config.accountInfo.interAccountNameTags?.join(', ') || 'None'}
+                          Match tags:{' '}
+                          {account.config.accountInfo.interAccountNameTags?.join(', ') || 'None'}
                         </span>
                       </div>
 
@@ -670,7 +677,8 @@ export const AccountsPage: React.FC = () => {
                       )}
                       {!account.hasStatementFiles && (
                         <div className="text-xs text-muted-foreground">
-                          No raw statement files detected yet. Choose a statement folder above to add this account's exports.
+                          No raw statement files detected yet. Choose a statement folder above to
+                          add this account's exports.
                         </div>
                       )}
                     </div>
@@ -724,14 +732,17 @@ export const AccountsPage: React.FC = () => {
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                   <div className="space-y-1">
                     <p className="font-medium">
-                      {deletingAccount.config.accountInfo.title ?? deletingAccount.config.accountInfo.id}
+                      {deletingAccount.config.accountInfo.title ??
+                        deletingAccount.config.accountInfo.id}
                     </p>
                     <p>
-                      This deletes only <code>AccountConfig.json</code>. Raw statement files are preserved.
+                      This deletes only <code>AccountConfig.json</code>. Raw statement files are
+                      preserved.
                     </p>
                     {deletingAccount.stats.transactionCount > 0 && (
                       <p>
-                        {deletingAccount.stats.transactionCount} imported transaction(s) already exist in merged data and will not be removed automatically.
+                        {deletingAccount.stats.transactionCount} imported transaction(s) already
+                        exist in merged data and will not be removed automatically.
                       </p>
                     )}
                   </div>

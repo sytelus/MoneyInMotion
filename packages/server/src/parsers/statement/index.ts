@@ -24,7 +24,7 @@ import { EtsyBuyerParser } from './etsy-buyer-parser.js';
 import { BarclayParser } from './barclay-parser.js';
 
 function normalizeInstituteName(instituteName: string): string {
-    return instituteName.replace(/[^a-z0-9]+/gi, '').toLowerCase();
+  return instituteName.replace(/[^a-z0-9]+/gi, '').toLowerCase();
 }
 
 /**
@@ -40,35 +40,35 @@ function normalizeInstituteName(instituteName: string): string {
  * @returns A statement parser instance.
  */
 export function getStatementParser(
-    instituteName: string,
-    accountType: AccountType,
-    content: string,
-    contentType: ContentType,
+  instituteName: string,
+  accountType: AccountType,
+  content: string,
+  contentType: ContentType,
 ): StatementParserBase {
-    switch (normalizeInstituteName(instituteName)) {
-        case 'americanexpress':
-        case 'amex':
-            return new AmexParser(content);
-        case 'barclaybank':
-        case 'barclaycard':
-            return new BarclayParser(content);
-        case 'amazon':
-            if (accountType === AT.OrderHistory) {
-                return new AmazonOrdersParser(content);
-            }
-            break;
-        case 'etsy':
-            if (accountType === AT.OrderHistory) {
-                return new EtsyBuyerParser(content);
-            }
-            break;
-        case 'paypal':
-            if (accountType === AT.EPayment) {
-                return new PayPalParser(content, contentType);
-            }
-            break;
-    }
+  switch (normalizeInstituteName(instituteName)) {
+    case 'americanexpress':
+    case 'amex':
+      return new AmexParser(content);
+    case 'barclaybank':
+    case 'barclaycard':
+      return new BarclayParser(content);
+    case 'amazon':
+      if (accountType === AT.OrderHistory) {
+        return new AmazonOrdersParser(content);
+      }
+      break;
+    case 'etsy':
+      if (accountType === AT.OrderHistory) {
+        return new EtsyBuyerParser(content);
+      }
+      break;
+    case 'paypal':
+      if (accountType === AT.EPayment) {
+        return new PayPalParser(content, contentType);
+      }
+      break;
+  }
 
-    // Default: generic parser for CSV
-    return new GenericStatementParser(content, contentType, [ContentType.Csv]);
+  // Default: generic parser for CSV
+  return new GenericStatementParser(content, contentType, [ContentType.Csv]);
 }

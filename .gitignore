@@ -19,8 +19,6 @@ coverage/
 .idea/
 *.swp
 *~
-*.suo
-*.user
 
 # OS
 .DS_Store
@@ -28,17 +26,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
-
-# Legacy .NET artifacts
-[Bb]in/
-[Oo]bj/
-[Dd]ebug/
-[Rr]elease/
-*.pch
-*.ncb
-*.scc
-_ReSharper*/
-*.DotSettings.user
 
 # Data (PII)
 data/

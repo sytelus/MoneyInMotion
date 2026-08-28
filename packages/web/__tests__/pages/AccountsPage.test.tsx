@@ -129,6 +129,9 @@ describe('AccountsPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Edit/i }));
 
+    // Institution names are user data, not a closed enum. A custom value must
+    // survive opening and saving the form even though it is not in the datalist.
+    expect(screen.getByLabelText('Institution')).toHaveValue('TestBank');
     fireEvent.change(screen.getByLabelText('Account Title'), {
       target: { value: 'Updated Checking' },
     });
@@ -207,9 +210,7 @@ describe('AccountsPage', () => {
     fireEvent.change(input, {
       target: { files: [file] },
     });
-    fireEvent.click(
-      screen.getByRole('button', { name: /Upload & build snapshot/i }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: /Upload & build snapshot/i }));
 
     expect(mutate).toHaveBeenCalledWith([
       {
@@ -217,8 +218,6 @@ describe('AccountsPage', () => {
         relativePath: 'exports/acct-checking/statement.csv',
       },
     ]);
-    expect(
-      screen.getByText(/1 file ready from exports/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/1 file ready from exports/i)).toBeInTheDocument();
   });
 });

@@ -13,10 +13,10 @@ import { Router } from 'express';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
-import type { AccountConfig } from '@moneyinmotion/core';
+import { AccountType, type AccountConfig } from '@moneyinmotion/core';
 import type { TransactionCache } from '../cache/transaction-cache.js';
 import type { ServerConfig } from '../config.js';
-import { encodeAccountConfig } from '../storage/account-config-codec.js';
+import { encodeAccountConfig, isSupportedAccountType } from '../storage/account-config-codec.js';
 import {
   ACCOUNT_CONFIG_FILE_NAME,
   accountDirectoryHasStatements,
@@ -38,20 +38,39 @@ interface AccountSummary {
   relativeDirectory: string;
 }
 
-const accountInfoSchema = z.object({
-  id: z.string().trim().min(1),
-  instituteName: z.string().trim().min(1),
-  title: z.string().optional().nullable(),
-  type: z.number(),
-  requiresParent: z.boolean(),
-  interAccountNameTags: z.array(z.string()).optional().nullable(),
-});
+const accountInfoSchema = z
+  .object({
+    id: z.string().trim().min(1).max(100),
+    instituteName: z.string().trim().min(1).max(200),
+    title: z.string().trim().max(200).optional().nullable(),
+    type: z.number().int().refine(isSupportedAccountType, 'Unsupported account type.'),
+    requiresParent: z.boolean(),
+    interAccountNameTags: z.array(z.string().max(200)).max(100).optional().nullable(),
+  })
+  .strict();
 
-const accountConfigSchema = z.object({
-  accountInfo: accountInfoSchema,
-  fileFilters: z.array(z.string()).default(['*.csv']),
-  scanSubFolders: z.boolean().default(true),
-});
+const accountConfigSchema = z
+  .object({
+    accountInfo: accountInfoSchema,
+    fileFilters: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1)
+          .max(200)
+          .refine(
+            (filter) =>
+              !/[/\\]/.test(filter) &&
+              (filter === '*' || /^\*\.[^*?]+$/.test(filter) || !/[*?]/.test(filter)),
+            'File filters support only "*", "*.extension", or an exact filename.',
+          ),
+      )
+      .max(100)
+      .default(['*.csv']),
+    scanSubFolders: z.boolean().default(true),
+  })
+  .strict();
 
 function isValidAccountId(accountId: string): boolean {
   return (
@@ -83,6 +102,7 @@ function normalizeAccountConfig(accountConfig: AccountConfig): AccountConfig {
       id: accountConfig.accountInfo.id.trim(),
       instituteName: accountConfig.accountInfo.instituteName.trim(),
       title: normalizeOptionalString(accountConfig.accountInfo.title),
+      requiresParent: accountConfig.accountInfo.type === AccountType.OrderHistory,
       interAccountNameTags: interAccountNameTags.length > 0 ? interAccountNameTags : null,
     },
     fileFilters: fileFilters.length > 0 ? fileFilters : ['*.csv'],
@@ -160,50 +180,72 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
     }
   });
 
-  router.post('/', (req, res) => {
-    const result = accountConfigSchema.safeParse(req.body);
-    if (!result.success) {
-      res.status(400).json({
-        error: result.error.issues.map((i) => i.message).join('; '),
-        status: 400,
-      });
-      return;
+  router.post('/', (req, res, next) => {
+    try {
+      const result = accountConfigSchema.safeParse(req.body);
+      if (!result.success) {
+        res.status(400).json({
+          error: result.error.issues.map((i) => i.message).join('; '),
+          status: 400,
+        });
+        return;
+      }
+
+      const accountConfig = normalizeAccountConfig(result.data as AccountConfig);
+
+      // Validate account ID to prevent path traversal
+      const accountId = accountConfig.accountInfo.id;
+      if (!isValidAccountId(accountId)) {
+        res.status(400).json({
+          error:
+            'Invalid account ID: must contain only alphanumeric characters, hyphens, underscores, and dots, and must not contain path separators or ".."',
+          status: 400,
+        });
+        return;
+      }
+
+      const duplicateAccount = discoverAccountConfigs(config.statementsDir).find(
+        (account) => account.config.accountInfo.id.toLowerCase() === accountId.toLowerCase(),
+      );
+      if (duplicateAccount) {
+        res.status(409).json({
+          error: `Account "${accountId}" already exists.`,
+          status: 409,
+        });
+        return;
+      }
+
+      // Create account folder named by account id
+      const accountDir = path.join(config.statementsDir, accountConfig.accountInfo.id);
+      if (fs.existsSync(accountDir)) {
+        res.status(409).json({
+          error: `Account "${accountId}" already exists.`,
+          status: 409,
+        });
+        return;
+      }
+      fs.mkdirSync(accountDir, { recursive: true });
+
+      const configPath = path.join(accountDir, ACCOUNT_CONFIG_FILE_NAME);
+      try {
+        writeAccountConfig(configPath, accountConfig);
+      } catch (err) {
+        // The directory was created by this request and no asynchronous work
+        // can add user files before this synchronous write completes. Remove a
+        // failed partial creation so a corrected retry is not blocked forever.
+        fs.rmSync(accountDir, { recursive: true, force: true });
+        throw err;
+      }
+
+      res.status(201).json({
+        config: accountConfig,
+        stats: buildEmptyStats(),
+        hasStatementFiles: false,
+        relativeDirectory: accountConfig.accountInfo.id,
+      } satisfies AccountSummary);
+    } catch (err) {
+      next(err);
     }
-
-    const accountConfig = normalizeAccountConfig(result.data as AccountConfig);
-
-    // Validate account ID to prevent path traversal
-    const accountId = accountConfig.accountInfo.id;
-    if (!isValidAccountId(accountId)) {
-      res.status(400).json({
-        error:
-          'Invalid account ID: must contain only alphanumeric characters, hyphens, underscores, and dots, and must not contain path separators or ".."',
-        status: 400,
-      });
-      return;
-    }
-
-    // Create account folder named by account id
-    const accountDir = path.join(config.statementsDir, accountConfig.accountInfo.id);
-    if (fs.existsSync(accountDir)) {
-      res.status(409).json({
-        error: `Account "${accountId}" already exists.`,
-        status: 409,
-      });
-      return;
-    }
-    fs.mkdirSync(accountDir, { recursive: true });
-
-    // Write AccountConfig.json
-    const configPath = path.join(accountDir, ACCOUNT_CONFIG_FILE_NAME);
-    writeAccountConfig(configPath, accountConfig);
-
-    res.status(201).json({
-      config: accountConfig,
-      stats: buildEmptyStats(),
-      hasStatementFiles: false,
-      relativeDirectory: accountConfig.accountInfo.id,
-    } satisfies AccountSummary);
   });
 
   router.put('/:id', async (req, res, next) => {
@@ -240,7 +282,7 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
 
       const discoveredAccounts = discoverAccountConfigs(config.statementsDir);
       const currentAccount = discoveredAccounts.find(
-        (account) => account.config.accountInfo.id === currentId,
+        (account) => account.config.accountInfo.id.toLowerCase() === currentId.toLowerCase(),
       );
 
       if (!currentAccount) {
@@ -253,7 +295,8 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
 
       const duplicateAccount = discoveredAccounts.find(
         (account) =>
-          account.config.accountInfo.id === nextId && account.config.accountInfo.id !== currentId,
+          account.config.accountInfo.id.toLowerCase() === nextId.toLowerCase() &&
+          account.accountDir !== currentAccount.accountDir,
       );
       if (duplicateAccount) {
         res.status(409).json({
@@ -264,10 +307,13 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
       }
 
       const statsByAccount = await getAccountStats(cache);
-      const currentStats = statsByAccount.get(currentId) ?? buildEmptyStats();
+      const currentStats =
+        statsByAccount.get(currentAccount.config.accountInfo.id) ?? buildEmptyStats();
+      const storedCurrentId = currentAccount.config.accountInfo.id;
+      const accountIdChanged = storedCurrentId !== nextId;
 
       let accountDir = currentAccount.accountDir;
-      if (currentId !== nextId) {
+      if (accountIdChanged) {
         if (currentStats.transactionCount > 0) {
           res.status(400).json({
             error:
@@ -304,7 +350,7 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
 
       res.json({
         config: updatedConfig,
-        stats: currentId === nextId ? currentStats : buildEmptyStats(),
+        stats: accountIdChanged ? buildEmptyStats() : currentStats,
         hasStatementFiles: accountDirectoryHasStatements(accountDir),
         relativeDirectory: path
           .relative(config.statementsDir, accountDir)

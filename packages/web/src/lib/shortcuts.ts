@@ -19,8 +19,6 @@ export interface ShortcutEntry {
 /** Canonical shortcut reference, ordered by expected frequency of use. */
 export const KEYBOARD_SHORTCUTS: readonly ShortcutEntry[] = [
   { keys: 'Up / Down', action: 'Navigate transactions' },
-  { keys: 'Left / Right', action: 'Collapse / Expand group' },
-  { keys: 'Alt + Right', action: 'Expand all nested levels' },
   { keys: 'Alt + T', action: 'Edit category' },
   { keys: 'Alt + N', action: 'Edit note' },
   { keys: 'Alt + E', action: 'Fix attributes' },

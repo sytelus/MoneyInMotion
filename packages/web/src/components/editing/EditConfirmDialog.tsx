@@ -50,18 +50,15 @@ export const EditConfirmDialog: React.FC<EditConfirmDialogProps> = ({
         <div className="space-y-4">
           <p className="text-sm">
             This edit will affect{' '}
-            <span className="font-semibold text-foreground">{affectedCount}</span>{' '}
-            transaction{affectedCount !== 1 ? 's' : ''}.
+            <span className="font-semibold text-foreground">{affectedCount}</span> transaction
+            {affectedCount !== 1 ? 's' : ''}.
           </p>
 
           {displayedNames.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-md border border-border">
               <ul className="divide-y divide-border">
                 {displayedNames.map((name, idx) => (
-                  <li
-                    key={`${name}-${idx}`}
-                    className="px-3 py-1.5 text-sm text-foreground"
-                  >
+                  <li key={`${name}-${idx}`} className="px-3 py-1.5 text-sm text-foreground">
                     {name}
                   </li>
                 ))}

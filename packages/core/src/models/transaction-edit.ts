@@ -41,7 +41,7 @@ export enum ScopeType {
   AccountId = 7,
   /** Match by transaction reason value(s). */
   TransactionReason = 8,
-  /** Match by an amount range (exactly two parameters: min, max). */
+  /** Match by amount range: min, max, and optional `isNegative`. */
   AmountRange = 9,
 }
 
@@ -52,21 +52,21 @@ export enum ScopeType {
 /**
  * Minimum and maximum parameter counts per {@link ScopeType}.
  *
- * The tuple is `[min, max, requiresReferenceParameters]`.
+ * The tuple is `[minimum, maximum]`.
  */
 const scopeParameterRules: Readonly<
-  Record<ScopeType, readonly [min: number, max: number, requiresRef: boolean]>
+  Record<ScopeType, readonly [minimum: number, maximum: number]>
 > = {
-  [ScopeType.None]: [0, 0, false],
-  [ScopeType.All]: [0, 0, false],
-  [ScopeType.TransactionId]: [1, Number.MAX_SAFE_INTEGER, false],
-  [ScopeType.EntityName]: [1, Number.MAX_SAFE_INTEGER, false],
-  [ScopeType.EntityNameNormalized]: [1, Number.MAX_SAFE_INTEGER, false],
-  [ScopeType.EntityNameAnyTokens]: [1, Number.MAX_SAFE_INTEGER, false],
-  [ScopeType.EntityNameAllTokens]: [1, Number.MAX_SAFE_INTEGER, false],
-  [ScopeType.AccountId]: [1, Number.MAX_SAFE_INTEGER, false],
-  [ScopeType.TransactionReason]: [1, Number.MAX_SAFE_INTEGER, false],
-  [ScopeType.AmountRange]: [2, 3, false],
+  [ScopeType.None]: [0, 0],
+  [ScopeType.All]: [0, 0],
+  [ScopeType.TransactionId]: [1, Number.MAX_SAFE_INTEGER],
+  [ScopeType.EntityName]: [1, Number.MAX_SAFE_INTEGER],
+  [ScopeType.EntityNameNormalized]: [1, Number.MAX_SAFE_INTEGER],
+  [ScopeType.EntityNameAnyTokens]: [1, Number.MAX_SAFE_INTEGER],
+  [ScopeType.EntityNameAllTokens]: [1, Number.MAX_SAFE_INTEGER],
+  [ScopeType.AccountId]: [1, Number.MAX_SAFE_INTEGER],
+  [ScopeType.TransactionReason]: [1, Number.MAX_SAFE_INTEGER],
+  [ScopeType.AmountRange]: [2, 3],
 };
 
 /**
@@ -77,10 +77,7 @@ const scopeParameterRules: Readonly<
  * @param params - The parameter array to check.
  * @returns An error message string, or an empty string when valid.
  */
-export function validateScopeFilter(
-  type: ScopeType,
-  params: readonly string[],
-): string {
+export function validateScopeFilter(type: ScopeType, params: readonly string[]): string {
   const rule = scopeParameterRules[type];
   if (rule === undefined) {
     return `Unknown ScopeType: ${type}`;
@@ -177,16 +174,9 @@ export function createScopeFilter(
  * { "value": "Groceries", "isVoided": false }
  * ```
  */
-export interface EditValue<T> {
-  /** The replacement value. Meaningless when {@link isVoided} is `true`. */
-  readonly value: T;
-
-  /**
-   * When `true`, the field should revert to its original (un-edited) state,
-   * effectively removing any prior edit.
-   */
-  readonly isVoided: boolean;
-}
+export type EditValue<T> =
+  | { readonly value: T; readonly isVoided: false }
+  | { readonly value: null; readonly isVoided: true };
 
 /**
  * Convenience factory: create an {@link EditValue} that carries a real value.
@@ -204,7 +194,7 @@ export function editValue<T>(value: T): EditValue<T> {
  * for reference types).
  */
 export function voidedEditValue<T>(): EditValue<T> {
-  return { value: null as unknown as T, isVoided: true };
+  return { value: null, isVoided: true };
 }
 
 // ---------------------------------------------------------------------------

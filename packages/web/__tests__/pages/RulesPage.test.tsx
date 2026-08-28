@@ -186,8 +186,6 @@ describe('RulesPage', () => {
     renderPage();
 
     expect(await screen.findByText('Audit Only')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Revert to Imported Values/i }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Revert to Imported Values/i })).toBeDisabled();
   });
 });

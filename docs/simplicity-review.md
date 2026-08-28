@@ -44,8 +44,9 @@ measurements, not hard resource guarantees.
 | Frontend libraries in the VM runtime                        | Vite has already compiled them into static assets, so the production installer now prunes them.                                 |
 
 The upload and JSON limits were also reduced to fit a small VM: 2 MiB for API
-JSON, 100 MiB for a declared folder request, at most 200 files, and 20 MiB per
-file. Larger histories can be uploaded in batches.
+JSON, 100 MiB of received files per folder request (with an earlier declared-
+length rejection when available), at most 200 files, and 20 MiB per file.
+Larger histories can be uploaded in batches.
 
 ## Boundaries retained deliberately
 

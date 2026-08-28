@@ -33,9 +33,9 @@ Data now lives beneath configurable `<data-root>/<username>`, defaulting to
 `~/min_root/<OS username>`. The legacy single `dataPath` setting is translated
 on read, and older `MONEYAI_*` environment aliases are accepted.
 
-Justification: the directory contract is ready for future users without
-premature authentication or tenancy logic. A running process intentionally
-serves one active username until that work exists.
+Justification: this preserves the requested and existing username-folder data
+layout without adding authentication or tenancy infrastructure. A running
+process intentionally serves one configured username.
 
 ## Staging, SHA-256 deduplication, and automatic rebuild
 
@@ -99,9 +99,19 @@ instead of being truncated. A narrow compatibility recovery handles legacy
 rows whose unquoted final negative amount contains a thousands separator (for
 example, two trailing columns that mathematically form one amount).
 
+Numeric fields no longer accept a valid prefix followed by junk, date-only
+values reject impossible calendar dates, Etsy timestamps must be complete
+integers, and account-config booleans are not truthy-coerced from strings.
+Corrupt nested account configs no longer inherit their parent's identity.
+Date-only statement fields are stored at UTC midnight so IDs and month
+placement do not depend on the server's timezone. Upgrade migration compares
+the calendar date as a conservative fallback after exact timestamp identity,
+so this normalization does not orphan an otherwise unique legacy rule target.
+
 Justification: filesystem case should not change imported history, while silent
-column loss is unsafe. The recovery is constrained to a recognizable numeric
-case found in the supplied reference data.
+column loss, partial numeric parsing, normalized impossible dates, or importing
+under the wrong account are unsafe. The recovery is constrained to a
+recognizable numeric case found in the supplied reference data.
 
 ## Verified duplicate and relationship differences
 
@@ -111,7 +121,7 @@ matcher source. Both results cover eight accounts and the same date span
 (`2000-08-09` through `2015-04-08`). All 431 saved rules are replayed. The edit
 file contains 162 exact-ID target parameters; 125 still identify transactions
 in the legacy snapshot and 37 were already orphaned there. MiM safely migrates
-61 target occurrences whose generated ID changed, and the persisted rebuild
+107 target occurrences whose generated ID changed, and the persisted rebuild
 resolves the same 125 while preserving the same 37 unresolved parameters.
 
 The legacy snapshot has 5,287 top-level and 8,101 total graph nodes. The
@@ -121,7 +131,7 @@ count or amount change after save/reload. The remaining deltas are therefore
 
 The 31 top-level rows are semantically repeated transactions retained from
 overlapping exports in the old materialized snapshot: 29 Chase rows totaling
--$397.19, one Barclay row at -$5.46, and one Etsy order/receipt at -$107.00.
+\-$397.19, one Barclay row at -$5.46, and one Etsy order/receipt at -$107.00.
 Modern canonical parsing and content merging retain one financial occurrence,
 so the top-level total is $509.65 less negative. Amazon, Amex, checking,
 savings, and PayPal top-level counts and totals match exactly.

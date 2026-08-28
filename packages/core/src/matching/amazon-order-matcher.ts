@@ -12,7 +12,7 @@ import type { AccountInfo } from '../models/account-info.js';
 import { GenericOrderMatcher } from './generic-order-matcher.js';
 
 export class AmazonOrderMatcher extends GenericOrderMatcher {
-    constructor(accountInfo: AccountInfo) {
-        super(accountInfo, 'shipping charge', 'tax charged', 'total promotions');
-    }
+  constructor(accountInfo: AccountInfo) {
+    super(accountInfo, 'shipping charge', 'tax charged', 'total promotions');
+  }
 }

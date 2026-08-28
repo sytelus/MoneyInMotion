@@ -40,13 +40,17 @@ Accounts screen. An account config contains:
 - display title and institution/parser name;
 - account type and whether order lines require a financial parent;
 - transfer or parent-match name tags;
-- case-insensitive file filters; and
+- case-insensitive file filters (`*`, `*.extension`, or an exact filename); and
 - whether nested statement directories are scanned.
 
 The website writes a canonical camel-case JSON shape and reads both that shape
 and the legacy Pascal-case inner `AccountInfo`. Account IDs permit letters,
 numbers, dots, underscores, and hyphens only. Once files or transactions exist,
 the ID is locked because it participates in stable transaction identity.
+Order-history account types always require a financial parent; the server
+derives that invariant rather than trusting a contradictory browser value. A
+corrupt nested config is reported and never inherits the parent account's
+identity, preventing its files from being assigned to the wrong account.
 
 Deleting an account through the website removes its config only. The directory
 is removed only when it is empty; raw statements are never recursively deleted.
@@ -94,7 +98,9 @@ The server rejects the request before creating a batch if paths are missing,
 duplicated, absolute, empty, contain dot segments, contain NULs, or could escape
 the storage root. One request accepts at most 200 files, 20 MiB per file, 203
 multipart parts, and 100 MiB when the browser supplies the request length.
-Split a larger folder into multiple selections. Unsupported files and uploaded
+The server also checks the received file bytes after multipart decoding, so a
+missing or dishonest length header cannot bypass the aggregate limit. Split a
+larger folder into multiple selections. Unsupported files and uploaded
 `AccountConfig.json` files are staged but marked rejected in the manifest;
 account configuration is owned by the web editor.
 
@@ -149,3 +155,7 @@ files; normal users do not need a separate scan or save step.
 Institution export formats change. Add parser fixtures before modifying a
 parser, and treat a reported parse failure as safer than silently accepting
 ambiguous columns.
+
+Numeric fields reject trailing text instead of accepting a partial prefix, and
+date-only values must be real calendar dates. Etsy timestamps and account-config
+booleans are likewise validated without permissive coercion.

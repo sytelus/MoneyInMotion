@@ -29,7 +29,10 @@ export const KeyboardShortcutsDialog: React.FC<KeyboardShortcutsDialogProps> = (
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Keyboard Shortcuts" description="Quick reference for all available shortcuts.">
+      <DialogContent
+        title="Keyboard Shortcuts"
+        description="Quick reference for all available shortcuts."
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
@@ -41,9 +44,7 @@ export const KeyboardShortcutsDialog: React.FC<KeyboardShortcutsDialogProps> = (
             {KEYBOARD_SHORTCUTS.map((entry) => (
               <tr key={entry.keys} className="border-b border-border last:border-b-0">
                 <td className="py-2 pr-4">
-                  <kbd className="rounded bg-muted px-2 py-0.5 text-xs font-mono">
-                    {entry.keys}
-                  </kbd>
+                  <kbd className="rounded bg-muted px-2 py-0.5 text-xs font-mono">{entry.keys}</kbd>
                 </td>
                 <td className="py-2">{entry.action}</td>
               </tr>

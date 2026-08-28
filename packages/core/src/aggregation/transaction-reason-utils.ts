@@ -10,9 +10,9 @@
  */
 
 import {
-    transactionReasonTitleLookup,
-    transactionReasonPluralTitleLookup,
-    transactionReasonCategoryLookup,
+  transactionReasonTitleLookup,
+  transactionReasonPluralTitleLookup,
+  transactionReasonCategoryLookup,
 } from '../models/transaction-reason.js';
 
 // ---------------------------------------------------------------------------
@@ -25,7 +25,7 @@ import {
  * Falls back to `"Unknown"` when the reason is not found in the lookup table.
  */
 export function getReasonTitle(reason: number): string {
-    return transactionReasonTitleLookup[String(reason)] ?? 'Unknown';
+  return transactionReasonTitleLookup[String(reason)] ?? 'Unknown';
 }
 
 /**
@@ -34,7 +34,7 @@ export function getReasonTitle(reason: number): string {
  * Falls back to `"Unknown"` when the reason is not found in the lookup table.
  */
 export function getReasonPluralTitle(reason: number): string {
-    return transactionReasonPluralTitleLookup[String(reason)] ?? 'Unknown';
+  return transactionReasonPluralTitleLookup[String(reason)] ?? 'Unknown';
 }
 
 /**
@@ -44,7 +44,8 @@ export function getReasonPluralTitle(reason: number): string {
  * Falls back to `"Expense"` when the reason is not found.
  */
 export function getReasonCategory(reason: number): 'Expense' | 'Income' | 'InterAccount' {
-    return (transactionReasonCategoryLookup[String(reason)] ?? 'Expense') as 'Expense' | 'Income' | 'InterAccount';
+  return (transactionReasonCategoryLookup[String(reason)] ?? 'Expense') as
+    'Expense' | 'Income' | 'InterAccount';
 }
 
 /**
@@ -57,16 +58,14 @@ export function getReasonCategory(reason: number): 'Expense' | 'Income' | 'Inter
  *          sorted descending by count.
  */
 export function formatReasonBreakdown(breakdown: Map<number, number>): string {
-    const entries = Array.from(breakdown.entries())
-        .filter(([, count]) => count > 0)
-        .sort((a, b) => b[1] - a[1]);
+  const entries = Array.from(breakdown.entries())
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
 
-    return entries
-        .map(([reason, count]) => {
-            const title = count === 1
-                ? getReasonTitle(reason)
-                : getReasonPluralTitle(reason);
-            return `${count} ${title}`;
-        })
-        .join(', ');
+  return entries
+    .map(([reason, count]) => {
+      const title = count === 1 ? getReasonTitle(reason) : getReasonPluralTitle(reason);
+      return `${count} ${title}`;
+    })
+    .join(', ');
 }

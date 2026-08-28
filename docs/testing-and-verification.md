@@ -13,12 +13,15 @@ npm run typecheck
 npm run lint
 npm test
 npm run build
+npm run smoke:production
 npm audit --audit-level=high
 ```
 
 `./build.sh test` combines the first four product checks. CI uses Node 24 and
 runs type checking, lint, the full test suite, the production build, and a
-high-severity dependency audit on pushes and pull requests.
+high-severity dependency audit on pushes and pull requests. CI then runs the
+production installer (including development-dependency pruning) and the
+dependency-free production smoke test.
 
 ## Test coverage map
 
@@ -27,8 +30,10 @@ high-severity dependency audit on pushes and pull requests.
   parent-child and generic matching, key counters, net totals, and aggregation.
 - Server tests cover each source parser, CSV ambiguity/recovery, parser
   selection, recursive/case-insensitive file discovery, legacy snapshot codecs,
-  cache load/replay/save, all-or-nothing rebuild behavior, folder path safety,
-  staging manifests, content deduplication, collision naming, and HTTP routes.
+  cache load/replay/save, side-effect-free edit and rebuild failures,
+  all-or-nothing rebuild behavior, folder path safety, persisted JSON shape
+  validation, staging manifests, content deduplication, collision naming, and
+  strict HTTP routes.
 - Web tests cover API failures and payloads, navigation state, account CRUD,
   folder upload interaction, Settings restart semantics, Welcome workflow,
   scope editing, amount/date/reason/name correction, Rules history/revert, and
@@ -41,8 +46,8 @@ percentage as a substitute for fixtures that represent real provider exports.
 
 The complete acceptance run on 2026-08-28 produced:
 
-- 41 passing test files and 500 passing tests;
-- 72.32% statement, 60.95% branch, 68.29% function, and 73.19% line coverage;
+- 47 passing test files and 546 passing tests;
+- 73.72% statement, 62.45% branch, 69.87% function, and 74.58% line coverage;
 - a clean TypeScript build, ESLint run, and optimized Vite production build;
 - zero vulnerabilities in the most recent completed
   `npm audit --audit-level=high` run; and
@@ -108,7 +113,7 @@ sources (the extra source is synthetic), spanning eight accounts from
 2000-08-09 through 2015-04-08. It replayed all 431 rules. Of 162 exact-ID scope
 parameters, 125 resolved and 37 were already orphaned in the legacy snapshot;
 the rebuilt snapshot retained precisely the same 125/37 split after migrating
-61 changed target occurrences. It persisted 5,256 top-level and 8,069 all-node
+107 changed target occurrences. It persisted 5,256 top-level and 8,069 all-node
 transactions with zero top-level count, all-node count, or effective-amount
 change on reload. The documented difference from the legacy materialization is
 31 deduplicated top-level rows totaling $509.65 and one additional relationship

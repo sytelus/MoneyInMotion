@@ -99,6 +99,20 @@ describe('transactions-store', () => {
         useTransactionsStore.getState().setTransactions(null as unknown as TransactionsData),
       ).toThrow();
     });
+
+    it('clears selection and expansion state tied to the previous snapshot', () => {
+      useTransactionsStore.setState({
+        selectedTransactionIds: new Set(['old-tx']),
+        expandedGroupIds: new Set(['old-group']),
+      });
+
+      useTransactionsStore
+        .getState()
+        .setTransactions(makeTransactionsData([makeTxData({ id: 'new-tx' })]));
+
+      expect(useTransactionsStore.getState().selectedTransactionIds.size).toBe(0);
+      expect(useTransactionsStore.getState().expandedGroupIds.size).toBe(0);
+    });
   });
 
   describe('selectYearMonth', () => {
@@ -106,6 +120,7 @@ describe('transactions-store', () => {
       // Pre-set a selection
       useTransactionsStore.setState({
         selectedTransactionIds: new Set(['tx-1']),
+        expandedGroupIds: new Set(['old-group']),
       });
 
       useTransactionsStore.getState().selectYearMonth('2024', '03');
@@ -114,6 +129,7 @@ describe('transactions-store', () => {
       expect(state.selectedYear).toBe('2024');
       expect(state.selectedMonth).toBe('03');
       expect(state.selectedTransactionIds.size).toBe(0);
+      expect(state.expandedGroupIds.size).toBe(0);
     });
   });
 

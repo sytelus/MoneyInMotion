@@ -48,43 +48,43 @@ const nonDigitsRegex = /[^\p{N}]/gu;
  * @returns The cleaned token string.
  */
 function normalizeToken(token: string): string {
-    let cleaned = '';
+  let cleaned = '';
 
-    // Reset the regex (it has the `g` flag so `lastIndex` must be reset).
-    slicerRegex.lastIndex = 0;
+  // Reset the regex (it has the `g` flag so `lastIndex` must be reset).
+  slicerRegex.lastIndex = 0;
 
-    // Collect all matches first so we know which is the last one.
-    const matches: RegExpExecArray[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = slicerRegex.exec(token)) !== null) {
-        matches.push(m);
+  // Collect all matches first so we know which is the last one.
+  const matches: RegExpExecArray[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = slicerRegex.exec(token)) !== null) {
+    matches.push(m);
+  }
+
+  for (let i = 0; i < matches.length; i++) {
+    const groups = matches[i]!;
+    const startingNonLetterPart = groups[1]!;
+    const middlePart = groups[2]!;
+    const finalNonLetterPart = groups[3]!;
+
+    // Skip leading non-letters of the first match
+    if (i > 0) {
+      cleaned += startingNonLetterPart;
     }
 
-    for (let i = 0; i < matches.length; i++) {
-        const groups = matches[i]!;
-        const startingNonLetterPart = groups[1]!;
-        const middlePart = groups[2]!;
-        const finalNonLetterPart = groups[3]!;
+    cleaned += middlePart;
 
-        // Skip leading non-letters of the first match
-        if (i > 0) {
-            cleaned += startingNonLetterPart;
-        }
-
-        cleaned += middlePart;
-
-        if (i === matches.length - 1) {
-            // Last match: strip non-digits, keep only if < 4 chars
-            const digitsOnly = finalNonLetterPart.replace(nonDigitsRegex, '');
-            if (digitsOnly.length < 4) {
-                cleaned += digitsOnly;
-            }
-        } else {
-            cleaned += finalNonLetterPart;
-        }
+    if (i === matches.length - 1) {
+      // Last match: strip non-digits, keep only if < 4 chars
+      const digitsOnly = finalNonLetterPart.replace(nonDigitsRegex, '');
+      if (digitsOnly.length < 4) {
+        cleaned += digitsOnly;
+      }
+    } else {
+      cleaned += finalNonLetterPart;
     }
+  }
 
-    return cleaned;
+  return cleaned;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,34 +109,31 @@ function normalizeToken(token: string): string {
  * @returns The normalised entity name.
  */
 export function normalize(text: string): string {
-    const input = text ?? '';
-    const tokens = input.split(/\s+/);
+  const input = text ?? '';
+  const tokens = input.split(/\s+/);
 
-    const cleanedTokens = tokens
-        .map((t) => normalizeToken(t))
-        .filter((t) => t.trim().length > 0);
+  const cleanedTokens = tokens.map((t) => normalizeToken(t)).filter((t) => t.trim().length > 0);
 
-    let cleanedName = cleanedTokens.join(' ').trim();
+  let cleanedName = cleanedTokens.join(' ').trim();
 
-    // Case conversion logic
-    const hasAnyUpperCase = /\p{Lu}/u.test(cleanedName);
-    const hasAnyLowerCase = /\p{Ll}/u.test(cleanedName);
+  // Case conversion logic
+  const hasAnyUpperCase = /\p{Lu}/u.test(cleanedName);
+  const hasAnyLowerCase = /\p{Ll}/u.test(cleanedName);
 
-    // Only convert case when NOT mixed case
-    if (!(hasAnyLowerCase && hasAnyUpperCase)) {
-        const isAllUpperCase =
-            !hasAnyLowerCase &&
-            [...cleanedName].every((c) => /\p{Lu}/u.test(c) || !/\p{L}/u.test(c));
-        const hasDot = cleanedName.indexOf('.') > 1; // Possible .com names
+  // Only convert case when NOT mixed case
+  if (!(hasAnyLowerCase && hasAnyUpperCase)) {
+    const isAllUpperCase =
+      !hasAnyLowerCase && [...cleanedName].every((c) => /\p{Lu}/u.test(c) || !/\p{L}/u.test(c));
+    const hasDot = cleanedName.indexOf('.') > 1; // Possible .com names
 
-        if (isAllUpperCase) {
-            cleanedName = hasDot ? cleanedName.toLowerCase() : toTitleCase(cleanedName);
-        }
+    if (isAllUpperCase) {
+      cleanedName = hasDot ? cleanedName.toLowerCase() : toTitleCase(cleanedName);
     }
+  }
 
-    if (cleanedName.length === 0) {
-        cleanedName = input.trim();
-    }
+  if (cleanedName.length === 0) {
+    cleanedName = input.trim();
+  }
 
-    return cleanedName;
+  return cleanedName;
 }

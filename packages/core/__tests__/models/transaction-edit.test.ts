@@ -90,11 +90,7 @@ describe('createScopeFilter', () => {
   });
 
   it('should include referenceParameters when provided', () => {
-    const filter = createScopeFilter(
-      ScopeType.EntityName,
-      ['Walmart'],
-      ['ref-1'],
-    );
+    const filter = createScopeFilter(ScopeType.EntityName, ['Walmart'], ['ref-1']);
     expect(filter.referenceParameters).toEqual(['ref-1']);
   });
 
@@ -197,13 +193,13 @@ describe('mergeEditedValues', () => {
     };
 
     const source: EditedValues = {
-      transactionReason: editValue(4),           // Case 1: apply
-      transactionDate: null,                      // Case 2: keep
-      amount: voidedEditValue<number>(),          // Case 3: revert
-      entityName: editValue('New'),               // Case 1: apply
-      isFlagged: null,                            // Case 2: keep
-      note: voidedEditValue<string>(),            // Case 3: revert
-      categoryPath: editValue(['Transport']),     // Case 1: apply
+      transactionReason: editValue(4), // Case 1: apply
+      transactionDate: null, // Case 2: keep
+      amount: voidedEditValue<number>(), // Case 3: revert
+      entityName: editValue('New'), // Case 1: apply
+      isFlagged: null, // Case 2: keep
+      note: voidedEditValue<string>(), // Case 3: revert
+      categoryPath: editValue(['Transport']), // Case 1: apply
     };
 
     mergeEditedValues(target, source);

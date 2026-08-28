@@ -193,20 +193,28 @@ describe('lookup tables', () => {
   it('transactionReasonTitleLookup maps every value to the correct title', () => {
     expect(transactionReasonTitleLookup[String(TransactionReason.Purchase)]).toBe('Purchase');
     expect(transactionReasonTitleLookup[String(TransactionReason.Fee)]).toBe('Fee');
-    expect(transactionReasonTitleLookup[String(TransactionReason.CheckRecieved)]).toBe('Check (Recieved)');
-    expect(transactionReasonTitleLookup[String(TransactionReason.CashAdvance)]).toBe('Cash Advance');
+    expect(transactionReasonTitleLookup[String(TransactionReason.CheckRecieved)]).toBe(
+      'Check (Received)',
+    );
+    expect(transactionReasonTitleLookup[String(TransactionReason.CashAdvance)]).toBe(
+      'Cash Advance',
+    );
   });
 
   it('transactionReasonPluralTitleLookup maps to plural titles', () => {
     expect(transactionReasonPluralTitleLookup[String(TransactionReason.Fee)]).toBe('Fees');
-    expect(transactionReasonPluralTitleLookup[String(TransactionReason.CashAdvance)]).toBe('Cash Advances');
+    expect(transactionReasonPluralTitleLookup[String(TransactionReason.CashAdvance)]).toBe(
+      'Cash Advances',
+    );
   });
 
   it('transactionReasonCategoryLookup maps to categories', () => {
     expect(transactionReasonCategoryLookup[String(TransactionReason.Purchase)]).toBe('Expense');
     expect(transactionReasonCategoryLookup[String(TransactionReason.Return)]).toBe('Expense');
     expect(transactionReasonCategoryLookup[String(TransactionReason.Interest)]).toBe('Income');
-    expect(transactionReasonCategoryLookup[String(TransactionReason.InterAccountPayment)]).toBe('InterAccount');
+    expect(transactionReasonCategoryLookup[String(TransactionReason.InterAccountPayment)]).toBe(
+      'InterAccount',
+    );
   });
 
   it('transactionReasonInfo has an entry for every TransactionReason member', () => {

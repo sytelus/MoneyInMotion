@@ -26,17 +26,17 @@ corrected value. The raw imported value remains available for reconstruction.
 An edit contains one or more filters. All filters on the edit must match; a
 multi-value filter matches any of its values. Supported scope types are:
 
-| Scope | Meaning |
-| --- | --- |
-| All | Every transaction |
-| Transaction ID | One or more exact transactions |
-| Exact entity | Exact merchant/payee names |
-| Normalized entity | Equivalent names after entity normalization |
-| Any entity tokens | At least one supplied token appears in the name |
-| All entity tokens | Every supplied token appears in the name |
-| Account | One or more stable account IDs |
-| Transaction reason | One or more effective reason values |
-| Amount range | Inclusive effective numeric range |
+| Scope              | Meaning                                         |
+| ------------------ | ----------------------------------------------- |
+| All                | Every transaction                               |
+| Transaction ID     | One or more exact transactions                  |
+| Exact entity       | Exact merchant/payee names                      |
+| Normalized entity  | Equivalent names after entity normalization     |
+| Any entity tokens  | At least one supplied token appears in the name |
+| All entity tokens  | Every supplied token appears in the name        |
+| Account            | One or more stable account IDs                  |
+| Transaction reason | One or more effective reason values             |
+| Amount range       | Inclusive effective numeric range               |
 
 The editor begins with a transaction-specific scope. The confirmation dialog
 shows and validates broader choices before saving, helping prevent accidental
@@ -49,10 +49,16 @@ Each object includes an ID, timestamps and creator identity, scope filters,
 changed values, and a source ID. The active username is used for the audit
 identity in the current single-user deployment.
 
-The server applies edits sequentially and saves:
+The server validates the whole request and exact-ID targets before changing
+state. It then applies edits sequentially to a cloned candidate and saves:
 
 - the materialized, corrected transaction graph in `LatestMerged.json`; and
 - the independent chronological rules in `LatestMergedEdits.json`.
+
+The candidate becomes active only after persistence succeeds. This makes a
+rejected batch or failed disk write side-effect free in live memory. Mutating
+requests are serialized so two browser actions cannot overwrite each other's
+candidate state.
 
 During a statement rebuild, MiM creates a clean graph, completes transaction
 matching, and then replays the separate rules. This ensures a broader rule can

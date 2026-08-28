@@ -80,7 +80,8 @@ At startup the server:
 
 The cache loads `Merged/LatestMerged.json` lazily. If no snapshot exists, the UI
 receives an empty transaction collection. The server is the sole supported
-writer and updates the cache through edits and rebuilds. If an administrator
+writer and serializes edit/rebuild mutations through one process-local queue.
+It updates the cache through edits and rebuilds. If an administrator
 changes statement files directly, **Rebuild snapshot** in Settings refreshes it.
 
 Changing data root, username, or port in Settings writes
@@ -114,7 +115,7 @@ statement inputs in deterministic order, parses all of them, runs parent-child
 and inter-account matching, then replays `LatestMergedEdits.json`. If any parser
 fails, the candidate is discarded and the previously committed snapshot stays
 active. On success, JSON storage writes a temporary file and atomically renames
-it into place.
+it into place before the candidate becomes the live in-memory graph.
 
 ## Edit model
 
@@ -125,9 +126,11 @@ Imported transaction facts are immutable. A `TransactionEditData` records:
 - only the fields being changed; and
 - the source identifier for the change.
 
-Applying an edit derives corrected values on every matching transaction and
-immediately persists the materialized snapshot plus the independent edit
-aggregate. Rebuilding from statements replays the edit aggregate, so corrected
+An edit request is completely validated and preflighted before application.
+The server derives a candidate from the active graph, applies the full batch,
+persists the materialized snapshot plus the independent edit aggregate, and
+only then swaps the candidate into live memory. Rebuilding from statements
+replays the edit aggregate, so corrected
 behavior is reproducible without modifying source exports. Reversal appends a
 voiding edit; history is not silently erased.
 

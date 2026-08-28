@@ -58,7 +58,13 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
   expandedGroupIds: new Set<string>(),
 
   setTransactions(data: TransactionsData) {
-    set({ transactions: Transactions.fromData(data) });
+    // A rebuild can replace transaction identities. Clear view state tied to
+    // the previous snapshot so invisible stale selections cannot drive edits.
+    set({
+      transactions: Transactions.fromData(data),
+      selectedTransactionIds: new Set<string>(),
+      expandedGroupIds: new Set<string>(),
+    });
   },
 
   selectYearMonth(year: string, month: string) {
@@ -66,6 +72,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
       selectedYear: year,
       selectedMonth: month,
       selectedTransactionIds: new Set<string>(),
+      expandedGroupIds: new Set<string>(),
     });
   },
 

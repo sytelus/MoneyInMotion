@@ -19,9 +19,7 @@
  * ```
  */
 export function toTitleCase(str: string): string {
-    return str
-        .toLowerCase()
-        .replace(/(?:^|\s)\S/g, (ch) => ch.toUpperCase());
+  return str.toLowerCase().replace(/(?:^|\s)\S/g, (ch) => ch.toUpperCase());
 }
 
 /**
@@ -38,11 +36,11 @@ export function toTitleCase(str: string): string {
  * ```
  */
 export function splitWhitespace(str: string): string[] {
-    const trimmed = str.trim();
-    if (trimmed.length === 0) {
-        return [];
-    }
-    return trimmed.split(/\s+/);
+  const trimmed = str.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+  return trimmed.split(/\s+/);
 }
 
 /**
@@ -61,7 +59,7 @@ export function splitWhitespace(str: string): string[] {
  * ```
  */
 export function isNullOrEmpty(str: string | null | undefined): str is null | undefined | '' {
-    return str == null || str === '';
+  return str == null || str === '';
 }
 
 /**
@@ -81,7 +79,7 @@ export function isNullOrEmpty(str: string | null | undefined): str is null | und
  * ```
  */
 export function isNullOrWhitespace(str: string | null | undefined): boolean {
-    return str == null || str.trim().length === 0;
+  return str == null || str.trim().length === 0;
 }
 
 /**
@@ -102,5 +100,5 @@ export function isNullOrWhitespace(str: string | null | undefined): boolean {
  * ```
  */
 export function compareStringsInsensitive(a: string, b: string): number {
-    return a.localeCompare(b, undefined, { sensitivity: 'accent' });
+  return a.localeCompare(b, undefined, { sensitivity: 'accent' });
 }

@@ -103,18 +103,19 @@ React application and `/api` from one origin.
 
 ## Commands
 
-| Command                                          | Purpose                                                         |
-| ------------------------------------------------ | --------------------------------------------------------------- |
-| `./install.sh`                                   | Build a VM release and prune development-only packages          |
-| `./install.sh --development`                     | Install the compiler, test, lint, and hot-reload toolchain      |
-| `./run.sh`                                       | Development API and website with hot reload                     |
-| `./build.sh`                                     | Type check, lint, and build every package                       |
-| `./build.sh test`                                | Build, then run the full test suite                             |
-| `./run.sh prod`                                  | Serve the built website and API on `MIM_PORT`                   |
-| `npm test`                                       | Run all unit, integration, route, storage, parser, and UI tests |
-| `npm run test:coverage`                          | Run tests and generate a coverage report                        |
-| `npm run verify:legacy -- /absolute/legacy/root` | Read-only compatibility report using an isolated temporary copy |
-| `npm run clean`                                  | Remove generated build, coverage, and dependency artifacts      |
+| Command                                          | Purpose                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------- |
+| `./install.sh`                                   | Build a VM release and prune development-only packages              |
+| `./install.sh --development`                     | Install the compiler, test, lint, and hot-reload toolchain          |
+| `./run.sh`                                       | Development API and website with hot reload                         |
+| `./build.sh`                                     | Type check, lint, and build every package                           |
+| `./build.sh test`                                | Build, then run the full test suite                                 |
+| `./run.sh prod`                                  | Serve the built website and API on `MIM_PORT`                       |
+| `npm test`                                       | Run all unit, integration, route, storage, parser, and UI tests     |
+| `npm run test:coverage`                          | Run tests and generate a coverage report                            |
+| `npm run smoke:production`                       | Verify a built production server and restart in isolation           |
+| `npm run verify:legacy -- /absolute/legacy/root` | Read-only compatibility report using an isolated temporary copy     |
+| `npm run clean`                                  | Remove package build output while preserving installed dependencies |
 
 ## Configuration
 

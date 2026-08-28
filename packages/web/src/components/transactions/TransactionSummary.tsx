@@ -16,9 +16,7 @@ import { useTransactionsStore } from '../../store/transactions-store.js';
  * Collapsible section for provider attributes (arbitrary key-value metadata
  * attached to a transaction by the statement parser).
  */
-const ProviderAttributes: React.FC<{ attributes: Record<string, string> }> = ({
-  attributes,
-}) => {
+const ProviderAttributes: React.FC<{ attributes: Record<string, string> }> = ({ attributes }) => {
   const [isOpen, setIsOpen] = useState(false);
   const entries = Object.entries(attributes);
   if (entries.length === 0) return null;
@@ -47,10 +45,7 @@ const ProviderAttributes: React.FC<{ attributes: Record<string, string> }> = ({
 };
 
 /** Detail row helper. */
-const DetailRow: React.FC<{ label: string; children: React.ReactNode }> = ({
-  label,
-  children,
-}) => (
+const DetailRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex justify-between gap-2 text-sm">
     <span className="text-muted-foreground shrink-0">{label}</span>
     <span className="text-right truncate">{children}</span>
@@ -61,7 +56,10 @@ const DetailRow: React.FC<{ label: string; children: React.ReactNode }> = ({
 const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) => {
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold text-base truncate" title={transaction.displayEntityNameNormalized}>
+      <h3
+        className="font-semibold text-base truncate"
+        title={transaction.displayEntityNameNormalized}
+      >
         {transaction.displayEntityNameNormalized}
       </h3>
 
@@ -135,10 +133,7 @@ export const TransactionSummary: React.FC = () => {
   }
 
   if (selectedTransactions.length > 1) {
-    const total = selectedTransactions.reduce(
-      (sum, tx) => sum + tx.correctedAmount,
-      0,
-    );
+    const total = selectedTransactions.reduce((sum, tx) => sum + tx.correctedAmount, 0);
     return (
       <div className="p-4 space-y-3">
         <h3 className="font-semibold text-base">
@@ -153,11 +148,7 @@ export const TransactionSummary: React.FC = () => {
 
   // No selection: show net income summary
   if (!netIncome) {
-    return (
-      <div className="p-4 text-muted-foreground text-sm">
-        No transactions loaded.
-      </div>
-    );
+    return <div className="p-4 text-muted-foreground text-sm">No transactions loaded.</div>;
   }
 
   const subs = netIncome.aggregator.getSubAggregatorsBySortOrder();

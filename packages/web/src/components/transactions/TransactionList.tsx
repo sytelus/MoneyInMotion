@@ -106,10 +106,19 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const filteredTxns = useTransactionsStore((s) => s.getFilteredTransactions());
   const selectedIds = useTransactionsStore((s) => s.selectedTransactionIds);
   const expandedGroupIds = useTransactionsStore((s) => s.expandedGroupIds);
+  const transactions = useTransactionsStore((s) => s.transactions);
+  const selectedYear = useTransactionsStore((s) => s.selectedYear);
+  const selectedMonth = useTransactionsStore((s) => s.selectedMonth);
   const selectTransaction = useTransactionsStore((s) => s.selectTransaction);
   const toggleGroupExpand = useTransactionsStore((s) => s.toggleGroupExpand);
 
   const hasAutoExpanded = useRef(false);
+
+  // A new snapshot or period has different group identities. Allow its
+  // top-level groups to receive the same initial expansion as the first view.
+  useEffect(() => {
+    hasAutoExpanded.current = false;
+  }, [transactions, selectedYear, selectedMonth]);
 
   // Build the aggregator and flatten into rows
   const flatRows = useMemo(() => {

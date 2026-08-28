@@ -52,11 +52,7 @@ export {
   type TransactionEditData,
 } from './transaction-edit.js';
 
-export {
-  type ImportedValues,
-  type TransactionData,
-  Transaction,
-} from './transaction.js';
+export { type ImportedValues, type TransactionData, Transaction } from './transaction.js';
 
 export { TransactionEdits } from './transaction-edits.js';
 
@@ -67,6 +63,7 @@ export {
 
 export {
   Transactions,
+  TransactionEditTargetError,
   type TransactionsData,
   deserializeDictionary,
 } from './transactions.js';

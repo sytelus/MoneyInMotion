@@ -28,12 +28,6 @@ export interface KeyboardShortcutActions {
   onRemoveFlag?: () => void;
   /** Close any open editing dialog. */
   onEscape?: () => void;
-  /** Collapse the selected group (Left Arrow). */
-  onCollapseGroup?: () => void;
-  /** Expand the selected group (Right Arrow). */
-  onExpandGroup?: () => void;
-  /** Expand all group levels (Alt+Right Arrow). */
-  onExpandAll?: () => void;
   /** Show the keyboard shortcuts help dialog. */
   onShowHelp?: () => void;
 }
@@ -43,8 +37,8 @@ export interface KeyboardShortcutActions {
  * keyboard shortcuts should be suppressed.
  */
 function isInputFocused(event: KeyboardEvent): boolean {
-  const target = event.target as HTMLElement | null;
-  if (!target) return false;
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return false;
   const tagName = target.tagName.toLowerCase();
   return (
     tagName === 'input' ||
@@ -72,27 +66,10 @@ export function useKeyboardShortcuts(actions: KeyboardShortcutActions): void {
     // All other shortcuts require no input focus
     if (isInputFocused(event)) return;
 
-    // Arrow key shortcuts for group expand/collapse
-    // Note: Up/Down arrow navigation is handled in TransactionList component
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      a.onCollapseGroup?.();
-      return;
-    }
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      if (event.altKey) {
-        a.onExpandAll?.();
-      } else {
-        a.onExpandGroup?.();
-      }
-      return;
-    }
-
     // `?` key — show help dialog
-    if (event.key === '?') {
+    if (event.key === '?' && a.onShowHelp) {
       event.preventDefault();
-      a.onShowHelp?.();
+      a.onShowHelp();
       return;
     }
 
@@ -100,23 +77,29 @@ export function useKeyboardShortcuts(actions: KeyboardShortcutActions): void {
     if (event.altKey) {
       switch (event.key.toLowerCase()) {
         case 't':
+          if (!a.onEditCategory) return;
           event.preventDefault();
-          a.onEditCategory?.();
+          a.onEditCategory();
           return;
         case 'n':
+          if (!a.onEditNote) return;
           event.preventDefault();
-          a.onEditNote?.();
+          a.onEditNote();
           return;
         case 'e':
+          if (!a.onEditAttributes) return;
           event.preventDefault();
-          a.onEditAttributes?.();
+          a.onEditAttributes();
           return;
         case 'f':
-          event.preventDefault();
           if (event.shiftKey) {
-            a.onRemoveFlag?.();
+            if (!a.onRemoveFlag) return;
+            event.preventDefault();
+            a.onRemoveFlag();
           } else {
-            a.onToggleFlag?.();
+            if (!a.onToggleFlag) return;
+            event.preventDefault();
+            a.onToggleFlag();
           }
           return;
       }

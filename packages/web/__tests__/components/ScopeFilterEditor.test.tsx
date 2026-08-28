@@ -1,12 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  ScopeType,
-  Transaction,
-  TransactionReason,
-  type ScopeFilter,
-} from '@moneyinmotion/core';
+import { ScopeType, Transaction, TransactionReason, type ScopeFilter } from '@moneyinmotion/core';
 import { ScopeFilterEditor } from '../../src/components/editing/ScopeFilterEditor.js';
 
 function createTransaction(amount: number): Transaction {
@@ -26,12 +21,7 @@ describe('ScopeFilterEditor', () => {
   it('preserves the negative flag when building amount-range filters for expenses', async () => {
     const onChange = vi.fn();
 
-    render(
-      <ScopeFilterEditor
-        transaction={createTransaction(-100)}
-        onChange={onChange}
-      />,
-    );
+    render(<ScopeFilterEditor transaction={createTransaction(-100)} onChange={onChange} />);
 
     fireEvent.click(screen.getByLabelText(/All transactions named/i));
     fireEvent.click(screen.getByLabelText(/Only for amount range/i));
@@ -54,12 +44,7 @@ describe('ScopeFilterEditor', () => {
   it('omits the negative flag for positive amount-range filters', async () => {
     const onChange = vi.fn();
 
-    render(
-      <ScopeFilterEditor
-        transaction={createTransaction(100)}
-        onChange={onChange}
-      />,
-    );
+    render(<ScopeFilterEditor transaction={createTransaction(100)} onChange={onChange} />);
 
     fireEvent.click(screen.getByLabelText(/All transactions named/i));
     fireEvent.click(screen.getByLabelText(/Only for amount range/i));

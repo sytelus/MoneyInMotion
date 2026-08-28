@@ -20,7 +20,7 @@ import {
   ArrowLeft,
   Keyboard,
 } from 'lucide-react';
-import { Button } from '../components/ui/button.js';
+import { Button, buttonClassName } from '../components/ui/button.js';
 import { getConfig, getAccounts, type AccountSummary } from '../api/client.js';
 import { cn } from '../lib/utils.js';
 import { KEYBOARD_SHORTCUTS } from '../lib/shortcuts.js';
@@ -172,20 +172,13 @@ export const WelcomePage: React.FC = () => {
   const hasAccounts = accounts.length > 0;
   const accountsWithStatementFiles = accounts.filter((account) => account.hasStatementFiles);
   const hasStatementFiles = accountsWithStatementFiles.length > 0;
-  const hasImportedTransactions = accounts.some(
-    (account) => account.stats.transactionCount > 0,
-  );
+  const hasImportedTransactions = accounts.some((account) => account.stats.transactionCount > 0);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Go back"
-          onClick={() => navigate(-1)}
-        >
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="font-bold text-lg">Getting Started</h1>
@@ -210,7 +203,7 @@ export const WelcomePage: React.FC = () => {
             icon={<FolderOpen className="h-5 w-5" />}
             complete={dataPathConfigured}
           >
-            <p>Choose the multi-user data root and active username.</p>
+            <p>Choose the data root and the username served by this site.</p>
             {dataPath !== null && (
               <p className="text-xs">
                 Current path:{' '}
@@ -222,16 +215,14 @@ export const WelcomePage: React.FC = () => {
             {restartRequired && activeDataPath && activeDataPath !== dataPath && (
               <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
                 The server is still using{' '}
-                <code className="px-1 py-0.5 bg-background rounded">{activeDataPath}</code>.
-                Restart the server for the saved root or username to take effect.
+                <code className="px-1 py-0.5 bg-background rounded">{activeDataPath}</code>. Restart
+                the server for the saved root or username to take effect.
               </p>
             )}
             <div>
-              <Link to="/settings">
-                <Button variant="outline" size="sm">
-                  {dataPathConfigured ? 'Change' : 'Configure'}
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+              <Link to="/settings" className={buttonClassName({ variant: 'outline', size: 'sm' })}>
+                {dataPathConfigured ? 'Change' : 'Configure'}
+                <ChevronRight className="h-4 w-4 ml-1" />
               </Link>
             </div>
           </Step>
@@ -252,11 +243,9 @@ export const WelcomePage: React.FC = () => {
               </p>
             )}
             <div>
-              <Link to="/accounts">
-                <Button variant="outline" size="sm">
-                  {hasAccounts ? 'Manage Accounts' : 'Add Account'}
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+              <Link to="/accounts" className={buttonClassName({ variant: 'outline', size: 'sm' })}>
+                {hasAccounts ? 'Manage Accounts' : 'Add Account'}
+                <ChevronRight className="h-4 w-4 ml-1" />
               </Link>
             </div>
           </Step>
@@ -269,9 +258,9 @@ export const WelcomePage: React.FC = () => {
             complete={hasImportedTransactions}
           >
             <p>
-              From Accounts, choose the local folder containing one subfolder
-              per account. MoneyInMotion uploads it, skips statements already
-              present by content, and builds the snapshot automatically.
+              From Accounts, choose the local folder containing one subfolder per account.
+              MoneyInMotion uploads it, skips statements already present by content, and builds the
+              snapshot automatically.
             </p>
             {accountsLoaded && hasAccounts && (
               <p className="text-xs">
@@ -293,19 +282,24 @@ export const WelcomePage: React.FC = () => {
             )}
 
             <div className="flex flex-wrap items-center gap-2">
-              <Link to="/accounts">
-                <Button variant="outline" size="sm" disabled={!hasAccounts}>
+              {hasAccounts ? (
+                <Link
+                  to="/accounts"
+                  className={buttonClassName({ variant: 'outline', size: 'sm' })}
+                >
+                  <FileText className="h-4 w-4 mr-1.5" />
+                  Choose Statement Folder
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Link>
+              ) : (
+                <Button variant="outline" size="sm" disabled>
                   <FileText className="h-4 w-4 mr-1.5" />
                   Choose Statement Folder
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
-              </Link>
+              )}
               {hasImportedTransactions && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate('/')}
-                >
+                <Button size="sm" variant="outline" onClick={() => navigate('/')}>
                   Start Exploring
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -313,12 +307,10 @@ export const WelcomePage: React.FC = () => {
             </div>
 
             <p className="text-xs">
-              Supported formats: <strong>CSV</strong> (most banks),{' '}
-              <strong>JSON</strong> (Etsy), <strong>IIF</strong> (QuickBooks).
-              Re-importing the same file is safe — duplicates are merged by
-              content hash.
+              Supported formats: <strong>CSV</strong> (most banks), <strong>JSON</strong> (Etsy),{' '}
+              <strong>IIF</strong> (QuickBooks). Re-importing the same file is safe — duplicate
+              content is skipped before rebuilding.
             </p>
-
           </Step>
         </div>
 
@@ -335,9 +327,7 @@ export const WelcomePage: React.FC = () => {
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">
                     Shortcut
                   </th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
-                    Action
-                  </th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Action</th>
                 </tr>
               </thead>
               <tbody>

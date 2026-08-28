@@ -12,6 +12,7 @@ import * as fs from 'node:fs';
 import {
   Transactions,
   Transaction,
+  TransactionEdits,
   migrateLegacyEditTargets,
   type TransactionEditData,
   type AccountInfo,
@@ -48,6 +49,8 @@ export class TransactionCache {
    * cannot interleave and corrupt the merged JSON.
    */
   private savePromise: Promise<void> = Promise.resolve();
+  /** Serializes edit and rebuild mutations to prevent lost updates. */
+  private mutationPromise: Promise<void> = Promise.resolve();
 
   private readonly transactionsStorage = new TransactionsStorage();
   private readonly editsStorage = new TransactionEditsStorage();
@@ -75,18 +78,18 @@ export class TransactionCache {
    * @returns The number of transactions affected.
    */
   async applyEdits(edits: TransactionEditData[]): Promise<{ affectedTransactionsCount: number }> {
-    const txns = await this.getTransactions();
-    let affectedTransactionsCount = 0;
+    return this.enqueueMutation(async () => {
+      const current = await this.getTransactions();
+      const candidate = Transactions.fromData(current.serialize());
+      const batch = new TransactionEdits('web-api');
+      for (const edit of edits) batch.add(edit);
 
-    for (const edit of edits) {
-      const affected = txns.apply(edit, false);
-      affectedTransactionsCount += affected.length;
-    }
+      const affected = candidate.applyEdits(batch, false);
+      await this.saveSnapshot(candidate);
+      this.transactions = candidate;
 
-    // Auto-save after edits (both merged and edits)
-    await this.save();
-
-    return { affectedTransactionsCount };
+      return { affectedTransactionsCount: affected.length };
+    });
   }
 
   /**
@@ -99,7 +102,16 @@ export class TransactionCache {
    *
    */
   async save(): Promise<void> {
-    const next = this.savePromise.then(() => this.saveInternal());
+    if (this.transactions == null) return;
+    return this.saveSnapshot(this.transactions);
+  }
+
+  /** Queue a two-file snapshot write for a specific immutable candidate. */
+  private async saveSnapshot(transactions: Transactions): Promise<void> {
+    const next = this.savePromise.then(() => {
+      this.transactionsStorage.save(this.repo.latestMergedPath, transactions);
+      this.editsStorage.save(this.repo.latestMergedEditsPath, transactions.getClonedEdits());
+    });
     // Swallow errors on the chained promise so that one failed save
     // does not permanently block every subsequent save; the original
     // caller still sees the rejection via `next`.
@@ -107,14 +119,14 @@ export class TransactionCache {
     return next;
   }
 
-  private async saveInternal(): Promise<void> {
-    if (this.transactions == null) {
-      return;
-    }
-
-    this.transactionsStorage.save(this.repo.latestMergedPath, this.transactions);
-    const edits = this.transactions.getClonedEdits();
-    this.editsStorage.save(this.repo.latestMergedEditsPath, edits);
+  /** Run one state-changing operation at a time, and keep the queue usable. */
+  private async enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.mutationPromise.then(operation);
+    this.mutationPromise = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
   }
 
   /**
@@ -126,6 +138,10 @@ export class TransactionCache {
    * edits from the previous snapshot) is replayed before an atomic save.
    */
   async rebuildFromStatements(): Promise<SnapshotBuildResult> {
+    return this.enqueueMutation(() => this.rebuildFromStatementsInternal());
+  }
+
+  private async rebuildFromStatementsInternal(): Promise<SnapshotBuildResult> {
     const previous = await this.getTransactions();
     const previousTransactionCount = previous.allTransactionCount;
     const txns = new Transactions('LatestMerged');
@@ -173,9 +189,10 @@ export class TransactionCache {
     const editMigration = migrateLegacyEditTargets(edits, previous, txns);
     txns.applyEdits(editMigration.edits, true);
 
-    // Swap only after parse, merge, matching, and replay all succeed.
+    // Persist the candidate before swapping it into live memory. A disk error
+    // therefore leaves callers on the last known-good in-memory snapshot.
+    await this.saveSnapshot(txns);
     this.transactions = txns;
-    await this.save();
     const totalTransactions = txns.allTransactionCount;
     return {
       committed: true,
@@ -253,8 +270,9 @@ export class TransactionCache {
       }
       return { transactions: txns, error: null };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`Error parsing statement file ${loc.address}:`, err);
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      const message = rawMessage.split(loc.address).join(loc.portableAddress);
+      console.error(`Error parsing statement "${loc.portableAddress}": ${message}`);
       return { transactions: null, error: message };
     }
   }

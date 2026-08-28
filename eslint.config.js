@@ -16,14 +16,13 @@ const vitestGlobals = {
 
 export default [
   {
-    ignores: [
-      'legacy/**',
-      '**/dist/**',
-      '**/node_modules/**',
-      'coverage/**',
-    ],
+    ignores: ['**/dist/**', '**/node_modules/**', 'coverage/**'],
   },
   js.configs.recommended,
+  {
+    files: ['scripts/**/*.mjs', '*.config.js'],
+    languageOptions: { globals: globals.node },
+  },
   {
     files: ['packages/**/*.{ts,tsx}'],
     languageOptions: {
@@ -60,10 +59,29 @@ export default [
     },
   },
   {
-    files: [
-      'packages/**/__tests__/**/*.{ts,tsx}',
-      'packages/**/*.{test,spec}.{ts,tsx}',
-    ],
+    files: ['packages/core/src/**/*.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'Buffer', message: 'Core must run without Node Buffer polyfills.' },
+        { name: 'process', message: 'Core must not depend on the Node process global.' },
+        { name: 'window', message: 'Core must remain independent of browser windows.' },
+        { name: 'document', message: 'Core must remain independent of the browser DOM.' },
+      ],
+    },
+  },
+  {
+    files: ['packages/web/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'Buffer', message: 'Browser code must not require Node Buffer polyfills.' },
+        { name: 'process', message: 'Use Vite browser environment values, not process.' },
+      ],
+    },
+  },
+  {
+    files: ['packages/**/__tests__/**/*.{ts,tsx}', 'packages/**/*.{test,spec}.{ts,tsx}'],
     languageOptions: {
       globals: vitestGlobals,
     },

@@ -26,7 +26,9 @@ proxy and do not advertise the service as a public multiuser application.
   rebuild, and the browser receives the serialized graph. Very large histories
   are not optimized.
 - Uploads use memory-backed multipart handling, limited to 200 files, 20 MiB per
-  file, 203 parts, and 100 MiB for requests that declare their length.
+  file, 203 parts, and 100 MiB of received file bytes. Declared oversized
+  requests are rejected before decoding, but a malicious chunked request can
+  consume multipart memory before the post-decode aggregate check rejects it.
 - Rebuild is synchronous in the upload HTTP request. There is no durable job,
   cancellation, live progress, or resume after a process restart.
 
@@ -41,6 +43,10 @@ claim.
   replacements may require replaying edits or restoring a backup.
 - Promoted statement files are not rolled back when a later rebuild fails.
   This is deliberate for diagnosis, but there is no one-click batch rollback.
+- Promotion is file-by-file. An infrastructure failure during promotion can
+  leave earlier files promoted even though the HTTP request fails; content
+  deduplication makes a retry safe, and the staging copies remain available for
+  diagnosis.
 - Staging batches have manifests but no retention policy, cleanup UI, quarantine
   release, or administrative download workflow.
 - Timestamped output backups are local to the same storage tree and are not a

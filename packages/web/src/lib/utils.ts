@@ -45,6 +45,7 @@ export function formatCurrency(amount: number): string {
  */
 export function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -73,16 +74,9 @@ export function formatCategoryPath(path: string[] | null | undefined): string {
  * @returns The full month name (e.g. `"January"`).
  */
 export function getMonthName(month: number): string {
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    throw new RangeError('Month must be an integer from 1 through 12.');
+  }
   const date = new Date(2000, month - 1, 1);
   return date.toLocaleDateString('en-US', { month: 'long' });
-}
-
-/**
- * Generate a unique edit ID for TransactionEditData.
- *
- * Uses `crypto.randomUUID()` (available in all modern browsers and Node.js 19+)
- * for cryptographically strong uniqueness.
- */
-export function generateEditId(): string {
-  return crypto.randomUUID();
 }

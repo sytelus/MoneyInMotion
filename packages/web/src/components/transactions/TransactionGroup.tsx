@@ -67,11 +67,7 @@ export const TransactionGroup: React.FC<TransactionGroupProps> = ({
         className="shrink-0 text-muted-foreground"
         title={isExpanded ? 'Click to collapse' : 'Click to expand'}
       >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
+        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </span>
 
       {/* Group name */}

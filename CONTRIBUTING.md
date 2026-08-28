@@ -21,7 +21,7 @@ Never commit or modify real reference financial data. In particular,
 ```bash
 git clone https://github.com/sytelus/MoneyInMotion.git
 cd MoneyInMotion
-./install.sh
+./install.sh --development
 ./run.sh
 ```
 

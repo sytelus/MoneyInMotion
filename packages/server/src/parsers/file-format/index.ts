@@ -23,14 +23,14 @@ import { IifFileParser } from './iif-file-parser.js';
  * @returns A parser instance.
  */
 export function createFileFormatParser(contentType: ContentType): FileFormatParser {
-    switch (contentType) {
-        case ContentType.Csv:
-            return new CsvFileParser();
-        case ContentType.Json:
-            return new JsonFileParser();
-        case ContentType.QuickBooksIif:
-            return new IifFileParser();
-        default:
-            throw new Error(`Unsupported content type: ${contentType}`);
-    }
+  switch (contentType) {
+    case ContentType.Csv:
+      return new CsvFileParser();
+    case ContentType.Json:
+      return new JsonFileParser();
+    case ContentType.QuickBooksIif:
+      return new IifFileParser();
+    default:
+      throw new Error(`Unsupported content type: ${contentType}`);
+  }
 }

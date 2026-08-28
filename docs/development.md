@@ -49,12 +49,13 @@ MIM_DATA_ROOT=/tmp/mim-development MIM_USERNAME=developer ./run.sh
 
 ```bash
 npm run typecheck          # TypeScript project references
-npm run lint               # ESLint across TypeScript and TSX
+npm run lint               # ESLint across application code and repository scripts
 npm test                   # complete Vitest suite, once
 npm run test:watch         # focused test development
 npm run test:coverage      # V8 coverage output
 npm run build              # core, server, then website
-npm run clean              # generated artifacts and dependencies
+npm run smoke:production   # built production server, deep link, restart, data
+npm run clean              # generated package build output only
 ```
 
 Use `npm ci` for CI/deployments and `npm install` when intentionally updating

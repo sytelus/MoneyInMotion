@@ -10,17 +10,12 @@
 
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  AlertCircle,
-  ArrowLeft,
-  CheckCircle2,
-  History,
-  Undo2,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, History, Undo2 } from 'lucide-react';
 import {
   ScopeType,
   Transactions,
   createAuditInfo,
+  createUUID,
   transactionReasonTitleLookup,
   type EditedValues,
   type ScopeFilter,
@@ -30,14 +25,9 @@ import {
 } from '@moneyinmotion/core';
 import { useApplyEdits, useTransactions } from '../api/hooks.js';
 import { Badge } from '../components/ui/badge.js';
-import { Button } from '../components/ui/button.js';
+import { Button, buttonClassName } from '../components/ui/button.js';
 import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog.js';
-import {
-  formatCategoryPath,
-  formatCurrency,
-  formatDate,
-  generateEditId,
-} from '../lib/utils.js';
+import { formatCategoryPath, formatCurrency, formatDate } from '../lib/utils.js';
 
 interface FieldSummary {
   label: string;
@@ -90,9 +80,9 @@ function formatScopeFilter(scopeFilter: ScopeFilter): string {
         .join(', ')}`;
     case ScopeType.AmountRange: {
       const [minRaw, maxRaw, negativeRaw] = scopeFilter.parameters;
-      const min = Number.parseFloat(minRaw ?? '');
-      const max = Number.parseFloat(maxRaw ?? '');
-      if (Number.isNaN(min) || Number.isNaN(max)) {
+      const min = Number(minRaw);
+      const max = Number(maxRaw);
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
         return `Amount range: ${scopeFilter.parameters.join(', ')}`;
       }
 
@@ -165,8 +155,8 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
       label: 'Transaction Reason',
       value: values.transactionReason.isVoided
         ? 'Revert to imported value'
-        : (transactionReasonTitleLookup[String(values.transactionReason.value)]
-          ?? String(values.transactionReason.value)),
+        : (transactionReasonTitleLookup[String(values.transactionReason.value)] ??
+          String(values.transactionReason.value)),
       isVoided: values.transactionReason.isVoided,
     });
   }
@@ -230,9 +220,10 @@ function cloneScopeFilters(scopeFilters: readonly ScopeFilter[]): ScopeFilter[] 
   return scopeFilters.map((scopeFilter) => ({
     ...scopeFilter,
     parameters: [...scopeFilter.parameters],
-    referenceParameters: scopeFilter.referenceParameters != null
-      ? [...scopeFilter.referenceParameters]
-      : scopeFilter.referenceParameters ?? null,
+    referenceParameters:
+      scopeFilter.referenceParameters != null
+        ? [...scopeFilter.referenceParameters]
+        : (scopeFilter.referenceParameters ?? null),
   }));
 }
 
@@ -284,7 +275,7 @@ export const RulesPage: React.FC = () => {
     setActionSuccess(null);
 
     const revertEdit: TransactionEditData = {
-      id: generateEditId(),
+      id: createUUID(),
       auditInfo: createAuditInfo('rules-ui'),
       scopeFilters: cloneScopeFilters(selectedRule.edit.scopeFilters),
       values: selectedRule.revertValues,
@@ -311,12 +302,7 @@ export const RulesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Go back"
-          onClick={() => navigate(-1)}
-        >
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="font-bold text-lg">Rules &amp; History</h1>
@@ -329,9 +315,9 @@ export const RulesPage: React.FC = () => {
             <h2 className="text-base font-semibold">Scoped Edits</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Every category change, note, flag, or attribute fix is stored as a
-            separate edit rule. Reverting from this page appends a new voiding
-            edit and leaves the original history intact.
+            Every category change, note, flag, or attribute fix is stored as a separate edit rule.
+            Reverting from this page appends a new voiding edit and leaves the original history
+            intact.
           </p>
         </section>
 
@@ -347,9 +333,7 @@ export const RulesPage: React.FC = () => {
           </div>
         )}
 
-        {isLoading && (
-          <div className="text-sm text-muted-foreground">Loading rule history...</div>
-        )}
+        {isLoading && <div className="text-sm text-muted-foreground">Loading rule history...</div>}
 
         {error && (
           <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -380,12 +364,12 @@ export const RulesPage: React.FC = () => {
               <section className="rounded-lg border border-dashed border-border p-8 text-center space-y-3">
                 <p className="text-base font-medium">No edit history yet</p>
                 <p className="text-sm text-muted-foreground">
-                  Apply a category, note, flag, or attribute change from the
-                  transaction screen and it will appear here.
+                  Apply a category, note, flag, or attribute change from the transaction screen and
+                  it will appear here.
                 </p>
                 <div>
-                  <Link to="/">
-                    <Button variant="outline">Back to Transactions</Button>
+                  <Link to="/" className={buttonClassName({ variant: 'outline' })}>
+                    Back to Transactions
                   </Link>
                 </div>
               </section>
@@ -404,10 +388,10 @@ export const RulesPage: React.FC = () => {
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline">{rule.fieldSummaries.length || 0} fields</Badge>
-                            <Badge
-                              variant={currentMatchCount > 0 ? 'info' : 'warning'}
-                            >
+                            <Badge variant="outline">
+                              {rule.fieldSummaries.length || 0} fields
+                            </Badge>
+                            <Badge variant={currentMatchCount > 0 ? 'info' : 'warning'}>
                               {currentMatchCount} current match{currentMatchCount === 1 ? '' : 'es'}
                             </Badge>
                             <Badge variant={rule.revertValues ? 'success' : 'secondary'}>

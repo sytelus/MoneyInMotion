@@ -9,10 +9,6 @@ ideas live in [Suggested improvements](docs/legacy_suggested_improvements.md).
 
 ## Near-term reliability and release confidence
 
-- [ ] **Exercise the clean VM install in CI.** Start from a supported Node 24
-      Linux environment, run `./install.sh`, start the compiled server, verify
-      `/api/health` and a React deep link, restart it, and confirm a mounted test
-      data root remains intact.
 - [ ] **Add Playwright end-to-end coverage.** Cover first run, account CRUD,
       directory upload, duplicate and parse-failure reporting, automatic rebuild,
       every correction type, broad rules, reversal, restart, backup, and restore.

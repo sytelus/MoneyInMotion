@@ -10,6 +10,7 @@
 import React, { useState } from 'react';
 import {
   createAuditInfo,
+  createUUID,
   ScopeType,
   createScopeFilter,
   editValue,
@@ -21,7 +22,6 @@ import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { Button } from '../ui/button.js';
 import { Textarea } from '../ui/textarea.js';
 import { useApplyEdits } from '../../api/hooks.js';
-import { generateEditId } from '../../lib/utils.js';
 
 export interface NoteEditorProps {
   /** Whether the dialog is open. */
@@ -36,11 +36,7 @@ export interface NoteEditorProps {
  * Dialog for editing or removing a transaction's note. The scope is always
  * limited to the single transaction (TransactionId).
  */
-export const NoteEditor: React.FC<NoteEditorProps> = ({
-  open,
-  onOpenChange,
-  transaction,
-}) => {
+export const NoteEditor: React.FC<NoteEditorProps> = ({ open, onOpenChange, transaction }) => {
   const [noteText, setNoteText] = useState(transaction.note ?? '');
   const [error, setError] = useState<string | null>(null);
   const applyEdits = useApplyEdits();
@@ -49,7 +45,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     const scopeFilters = [createScopeFilter(ScopeType.TransactionId, [transaction.id])];
 
     const edit: TransactionEditData = {
-      id: generateEditId(),
+      id: createUUID(),
       auditInfo: createAuditInfo('web-ui'),
       scopeFilters,
       values: {
@@ -73,7 +69,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     const scopeFilters = [createScopeFilter(ScopeType.TransactionId, [transaction.id])];
 
     const edit: TransactionEditData = {
-      id: generateEditId(),
+      id: createUUID(),
       auditInfo: createAuditInfo('web-ui'),
       scopeFilters,
       values: {
@@ -95,12 +91,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Edit Note" description={`Note for "${transaction.displayEntityNameNormalized}"`}>
+      <DialogContent
+        title="Edit Note"
+        description={`Note for "${transaction.displayEntityNameNormalized}"`}
+      >
         <div className="space-y-4">
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
           <div className="space-y-1.5">
             <label htmlFor="note-input" className="text-sm font-medium">
@@ -134,10 +131,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!noteText.trim() || applyEdits.isPending}
-            >
+            <Button onClick={handleSave} disabled={!noteText.trim() || applyEdits.isPending}>
               {applyEdits.isPending ? 'Saving...' : 'Save'}
             </Button>
           </div>

@@ -2,10 +2,8 @@
  * Server configuration and username-scoped storage paths.
  *
  * MoneyInMotion deliberately keeps the physical storage contract small and
- * transparent. `dataRoot` can contain multiple username directories, while a
- * running server instance operates on one configured username. Authentication
- * and per-request user switching can be added later without changing the
- * on-disk layout.
+ * transparent. A running server instance serves exactly one configured
+ * username directory beneath `dataRoot`.
  *
  * @module
  */
@@ -15,28 +13,28 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 export interface ServerConfig {
-    /** Port to listen on. Default: 3001. */
-    port: number;
-    /** Parent folder containing one directory per MoneyInMotion user. */
-    dataRoot: string;
-    /** Username whose data is served by this process. */
-    username: string;
-    /** Derived absolute path `<dataRoot>/<username>`. */
-    userDataPath: string;
-    /** Derived statement account tree. */
-    statementsDir: string;
-    /** Derived generated snapshot/edit directory. */
-    mergedDir: string;
-    /** Derived upload staging directory. */
-    stagingDir: string;
+  /** Port to listen on. Default: 3001. */
+  port: number;
+  /** Parent folder containing one directory per MoneyInMotion user. */
+  dataRoot: string;
+  /** Username whose data is served by this process. */
+  username: string;
+  /** Derived absolute path `<dataRoot>/<username>`. */
+  userDataPath: string;
+  /** Derived statement account tree. */
+  statementsDir: string;
+  /** Derived generated snapshot/edit directory. */
+  mergedDir: string;
+  /** Derived upload staging directory. */
+  stagingDir: string;
 }
 
 interface PersistedConfig {
-    port?: number;
-    dataRoot?: string;
-    username?: string;
-    /** Legacy single-user setting retained only for automatic migration. */
-    dataPath?: string;
+  port?: number;
+  dataRoot?: string;
+  username?: string;
+  /** Legacy single-user setting retained only for automatic migration. */
+  dataPath?: string;
 }
 
 const CONFIG_DIR = path.join(os.homedir(), '.moneyinmotion');
@@ -46,76 +44,95 @@ const DEFAULT_PORT = 3001;
 
 /** Restrict usernames to a single safe path segment. */
 export function isValidUsername(username: string): boolean {
-    return /^[a-zA-Z0-9._-]+$/.test(username) && !username.includes('..');
+  return /^[a-zA-Z0-9._-]+$/.test(username) && !username.includes('..');
 }
 
 function ensureDirExists(dirPath: string): void {
-    fs.mkdirSync(dirPath, { recursive: true });
+  fs.mkdirSync(dirPath, { recursive: true });
 }
 
 /** Build all derived paths from the two configurable storage coordinates. */
-export function buildConfig(
-    dataRoot: string,
-    username: string,
-    port: number,
-): ServerConfig {
-    if (!path.isAbsolute(dataRoot)) {
-        throw new Error(`MoneyInMotion data root must be absolute: "${dataRoot}"`);
-    }
-    if (!isValidUsername(username)) {
-        throw new Error(
-            'MoneyInMotion username may contain only letters, numbers, dots, hyphens, and underscores.',
-        );
-    }
+export function buildConfig(dataRoot: string, username: string, port: number): ServerConfig {
+  if (!path.isAbsolute(dataRoot)) {
+    throw new Error(`MoneyInMotion data root must be absolute: "${dataRoot}"`);
+  }
+  if (!isValidUsername(username)) {
+    throw new Error(
+      'MoneyInMotion username may contain only letters, numbers, dots, hyphens, and underscores.',
+    );
+  }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('MoneyInMotion port must be an integer between 1 and 65535.');
+  }
 
-    const userDataPath = path.join(dataRoot, username);
-    return {
-        port,
-        dataRoot: path.normalize(dataRoot),
-        username,
-        userDataPath,
-        statementsDir: path.join(userDataPath, 'Statements'),
-        mergedDir: path.join(userDataPath, 'Merged'),
-        stagingDir: path.join(userDataPath, 'staging'),
-    };
+  const normalizedDataRoot = path.normalize(dataRoot);
+  const userDataPath = path.join(normalizedDataRoot, username);
+  return {
+    port,
+    dataRoot: normalizedDataRoot,
+    username,
+    userDataPath,
+    statementsDir: path.join(userDataPath, 'Statements'),
+    mergedDir: path.join(userDataPath, 'Merged'),
+    stagingDir: path.join(userDataPath, 'staging'),
+  };
 }
 
-function parseConfiguredPort(value: unknown): number | null {
-    const parsed =
-        typeof value === 'number'
-            ? value
-            : typeof value === 'string'
-              ? Number.parseInt(value, 10)
-              : Number.NaN;
+/** Parse an environment or persisted port without accepting partial numbers. */
+export function parseConfiguredPort(value: unknown): number | null {
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value.trim())
+        : Number.NaN;
 
-    return Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535
-        ? parsed
-        : null;
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535 ? parsed : null;
 }
 
 function loadPersistedConfig(): PersistedConfig {
-    if (!fs.existsSync(CONFIG_FILE)) {
-        return {};
+  if (!fs.existsSync(CONFIG_FILE)) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')) as unknown;
+    if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('the root value must be a JSON object');
     }
 
-    try {
-        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')) as PersistedConfig;
-    } catch (err) {
-        const backupPath = `${CONFIG_FILE}.corrupt-${Date.now()}`;
-        try {
-            fs.renameSync(CONFIG_FILE, backupPath);
-            console.error(
-                `Config file at ${CONFIG_FILE} is malformed (${err instanceof Error ? err.message : String(err)}). `
-                + `Moved it to ${backupPath} and falling back to defaults.`,
-            );
-        } catch {
-            console.error(
-                `Config file at ${CONFIG_FILE} is malformed and could not be backed up; `
-                + 'falling back to defaults for this session.',
-            );
-        }
-        return {};
+    const raw = parsed as Record<string, unknown>;
+    const config: PersistedConfig = {};
+    if (raw.port != null) {
+      const port = parseConfiguredPort(raw.port);
+      if (port == null) throw new Error('port must be an integer from 1 to 65535');
+      config.port = port;
     }
+    for (const key of ['dataRoot', 'username', 'dataPath'] as const) {
+      const value = raw[key];
+      if (value == null) continue;
+      if (typeof value !== 'string' || !value.trim()) {
+        throw new Error(`${key} must be a non-empty string`);
+      }
+      config[key] = value;
+    }
+    return config;
+  } catch (err) {
+    const backupPath = `${CONFIG_FILE}.corrupt-${Date.now()}`;
+    try {
+      fs.renameSync(CONFIG_FILE, backupPath);
+      console.error(
+        `MoneyInMotion config is malformed (${err instanceof Error ? err.message : String(err)}). ` +
+          `Moved it to backup "${path.basename(backupPath)}" and falling back to defaults.`,
+      );
+    } catch {
+      console.error(
+        `MoneyInMotion config is malformed and could not be backed up; ` +
+          'falling back to defaults for this session.',
+      );
+    }
+    return {};
+  }
 }
 
 /**
@@ -123,18 +140,19 @@ function loadPersistedConfig(): PersistedConfig {
  * This lets existing deployments keep working without nesting another user
  * directory underneath their former data folder.
  */
-function migrateLegacyDataPath(
-    fileConfig: PersistedConfig,
-): { dataRoot?: string; username?: string } {
-    if (fileConfig.dataRoot || !fileConfig.dataPath) {
-        return {};
-    }
+function migrateLegacyDataPath(fileConfig: PersistedConfig): {
+  dataRoot?: string;
+  username?: string;
+} {
+  if (fileConfig.dataRoot || !fileConfig.dataPath) {
+    return {};
+  }
 
-    const normalized = path.normalize(fileConfig.dataPath);
-    return {
-        dataRoot: path.dirname(normalized),
-        username: path.basename(normalized),
-    };
+  const normalized = path.normalize(fileConfig.dataPath);
+  return {
+    dataRoot: path.dirname(normalized),
+    username: path.basename(normalized),
+  };
 }
 
 /**
@@ -145,66 +163,63 @@ function migrateLegacyDataPath(
  * - `MIM_USERNAME` (preferred) or `MONEYAI_USERNAME`
  * - `MIM_PORT` (preferred) or `MONEYAI_PORT`
  */
-export function loadConfig(): ServerConfig {
-    const fileConfig = loadPersistedConfig();
-    const migrated = migrateLegacyDataPath(fileConfig);
+export function loadConfig(options: { ensureDirectories?: boolean } = {}): ServerConfig {
+  const fileConfig = loadPersistedConfig();
+  const migrated = migrateLegacyDataPath(fileConfig);
 
-    const dataRoot =
-        process.env['MIM_DATA_ROOT']
-        ?? process.env['MONEYAI_DATA_ROOT']
-        ?? fileConfig.dataRoot
-        ?? migrated.dataRoot
-        ?? DEFAULT_DATA_ROOT;
-    const username =
-        process.env['MIM_USERNAME']
-        ?? process.env['MONEYAI_USERNAME']
-        ?? fileConfig.username
-        ?? migrated.username
-        ?? os.userInfo().username;
-    const port =
-        parseConfiguredPort(process.env['MIM_PORT'])
-        ?? parseConfiguredPort(process.env['MONEYAI_PORT'])
-        ?? parseConfiguredPort(fileConfig.port)
-        ?? DEFAULT_PORT;
+  const dataRoot =
+    process.env['MIM_DATA_ROOT'] ??
+    process.env['MONEYAI_DATA_ROOT'] ??
+    fileConfig.dataRoot ??
+    migrated.dataRoot ??
+    DEFAULT_DATA_ROOT;
+  const username =
+    process.env['MIM_USERNAME'] ??
+    process.env['MONEYAI_USERNAME'] ??
+    fileConfig.username ??
+    migrated.username ??
+    os.userInfo().username;
+  const environmentPort = process.env['MIM_PORT'] ?? process.env['MONEYAI_PORT'];
+  const port =
+    environmentPort == null
+      ? (parseConfiguredPort(fileConfig.port) ?? DEFAULT_PORT)
+      : parseConfiguredPort(environmentPort);
+  if (port == null) {
+    throw new Error('MIM_PORT must be an integer between 1 and 65535.');
+  }
 
-    const config = buildConfig(dataRoot, username, port);
+  const config = buildConfig(dataRoot, username, port);
 
-    // Startup is the one place where creating the complete storage skeleton
-    // is desirable; all later services can rely on these directories.
+  if (options.ensureDirectories !== false) {
+    // Startup creates the complete storage skeleton. Read-only config API
+    // requests opt out so viewing a saved path cannot mutate that path.
     ensureDirExists(config.dataRoot);
     ensureDirExists(config.userDataPath);
     ensureDirExists(config.statementsDir);
     ensureDirExists(config.mergedDir);
     ensureDirExists(config.stagingDir);
+  }
 
-    return config;
+  return config;
 }
 
 /** Persist only configurable fields; derived paths are recalculated at load. */
 export function saveConfig(
-    partial: Partial<Pick<ServerConfig, 'dataRoot' | 'username' | 'port'>>,
+  partial: Partial<Pick<ServerConfig, 'dataRoot' | 'username' | 'port'>>,
 ): void {
-    ensureDirExists(CONFIG_DIR);
-    const existing = loadPersistedConfig();
-    const migrated = migrateLegacyDataPath(existing);
-    const persisted: PersistedConfig = {
-        port: partial.port ?? existing.port ?? DEFAULT_PORT,
-        dataRoot:
-            partial.dataRoot
-            ?? existing.dataRoot
-            ?? migrated.dataRoot
-            ?? DEFAULT_DATA_ROOT,
-        username:
-            partial.username
-            ?? existing.username
-            ?? migrated.username
-            ?? os.userInfo().username,
-    };
+  ensureDirExists(CONFIG_DIR);
+  const existing = loadPersistedConfig();
+  const migrated = migrateLegacyDataPath(existing);
+  const persisted: PersistedConfig = {
+    port: partial.port ?? existing.port ?? DEFAULT_PORT,
+    dataRoot: partial.dataRoot ?? existing.dataRoot ?? migrated.dataRoot ?? DEFAULT_DATA_ROOT,
+    username: partial.username ?? existing.username ?? migrated.username ?? os.userInfo().username,
+  };
 
-    // Validate before replacing a known-good file.
-    buildConfig(persisted.dataRoot!, persisted.username!, persisted.port!);
+  // Validate before replacing a known-good file.
+  buildConfig(persisted.dataRoot!, persisted.username!, persisted.port!);
 
-    const tmpPath = `${CONFIG_FILE}.tmp`;
-    fs.writeFileSync(tmpPath, JSON.stringify(persisted, null, 2), 'utf-8');
-    fs.renameSync(tmpPath, CONFIG_FILE);
+  const tmpPath = `${CONFIG_FILE}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(persisted, null, 2), 'utf-8');
+  fs.renameSync(tmpPath, CONFIG_FILE);
 }

@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell.js';
 import { AccountsPage } from './pages/AccountsPage.js';
 import { RulesPage } from './pages/RulesPage.js';
@@ -71,6 +71,7 @@ export const App: React.FC = () => {
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/rules" element={<RulesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>
       </BrowserRouter>

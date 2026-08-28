@@ -35,8 +35,8 @@ const server = app.listen(config.port, () => {
       `API server listening on ${apiUrl} (dev mode — open the Vite web URL printed above, default http://localhost:5173)`,
     );
   }
-  console.log(`Data root: ${config.dataRoot}`);
-  console.log(`Active user data: ${config.userDataPath}`);
+  // Avoid copying server filesystem paths into long-lived service journals.
+  console.log(`Active storage username: ${config.username}`);
 });
 
 // Graceful shutdown

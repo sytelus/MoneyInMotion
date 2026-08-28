@@ -26,6 +26,8 @@ import {
   createScopeFilter,
   editValue,
   createAuditInfo,
+  voidedEditValue,
+  TransactionEditTargetError,
 } from '@moneyinmotion/core';
 
 function createTestConfig(rootDir: string = '/tmp/test-moneyinmotion'): ServerConfig {
@@ -324,6 +326,67 @@ describe('accounts routes', () => {
     expect(nestedFiles.hasStatementFiles).toBe(true);
   });
 
+  it('POST /api/accounts rejects a duplicate logical ID in a nested folder', async () => {
+    const existingDir = writeAccountConfig(tempDir, 'group/existing', {
+      title: 'Existing',
+    });
+    const existingPath = path.join(existingDir, 'AccountConfig.json');
+    const existingConfig = JSON.parse(fs.readFileSync(existingPath, 'utf-8'));
+    existingConfig.accountInfo.id = 'existing';
+    fs.writeFileSync(existingPath, JSON.stringify(existingConfig));
+    const app = createTestApp(
+      createTestConfig(tempDir),
+      createMockCache({
+        allParentChildTransactions: [],
+      }),
+    );
+
+    const res = await request(app)
+      .post('/api/accounts')
+      .send({
+        accountInfo: {
+          id: 'EXISTING',
+          instituteName: 'Bank',
+          title: 'Duplicate',
+          type: 2,
+          requiresParent: false,
+          interAccountNameTags: [],
+        },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toContain('already exists');
+  });
+
+  it('POST /api/accounts derives requiresParent from the account type', async () => {
+    const app = createTestApp(
+      createTestConfig(tempDir),
+      createMockCache({
+        allParentChildTransactions: [],
+      }),
+    );
+
+    const res = await request(app)
+      .post('/api/accounts')
+      .send({
+        accountInfo: {
+          id: 'orders',
+          instituteName: 'Amazon',
+          title: 'Orders',
+          type: 5,
+          requiresParent: false,
+          interAccountNameTags: [],
+        },
+        fileFilters: ['*.json'],
+        scanSubFolders: true,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.config.accountInfo.requiresParent).toBe(true);
+  });
+
   it('PUT /api/accounts/:id updates the account config', async () => {
     const accountDir = writeAccountConfig(tempDir, 'acct-checking', {
       title: 'Old Title',
@@ -363,6 +426,38 @@ describe('accounts routes', () => {
     expect(savedConfig.accountInfo.title).toBe('Updated Title');
     expect(savedConfig.fileFilters).toEqual(['*.csv', '*.iif']);
     expect(savedConfig.scanSubFolders).toBe(false);
+  });
+
+  it('PUT /api/accounts/:id treats request-path IDs case-insensitively', async () => {
+    writeAccountConfig(tempDir, 'acct-checking');
+    const cache = createMockCache({
+      allParentChildTransactions: [
+        {
+          accountId: 'acct-checking',
+          auditInfo: { createDate: '2024-02-01T08:00:00Z' },
+        },
+      ],
+    });
+    const app = createTestApp(createTestConfig(tempDir), cache);
+
+    const res = await request(app)
+      .put('/api/accounts/ACCT-CHECKING')
+      .send({
+        accountInfo: {
+          id: 'acct-checking',
+          instituteName: 'TestBank',
+          title: 'Updated without a rename',
+          type: 1,
+          requiresParent: false,
+          interAccountNameTags: ['TRANSFER'],
+        },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.stats.transactionCount).toBe(1);
+    expect(fs.existsSync(path.join(tempDir, 'Statements', 'acct-checking'))).toBe(true);
   });
 
   it('PUT /api/accounts/:id blocks account-id changes after import', async () => {
@@ -500,6 +595,80 @@ describe('transaction edit routes', () => {
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
+  });
+
+  it('rejects a field value with the wrong runtime type', async () => {
+    const cache = createMockCache();
+    const app = createTestApp(createTestConfig(), cache);
+    const edit = {
+      id: 'edit-bad-amount',
+      auditInfo: createAuditInfo(),
+      scopeFilters: [createScopeFilter(ScopeType.All, [])],
+      values: { amount: { value: '12.34', isVoided: false } },
+      sourceId: 'test',
+    };
+
+    const res = await request(app).post('/api/transaction-edits').send([edit]);
+
+    expect(res.status).toBe(400);
+    expect(cache.applyEdits).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid scope hash and an empty edited-values object', async () => {
+    const cache = createMockCache();
+    const app = createTestApp(createTestConfig(), cache);
+    const scope = createScopeFilter(ScopeType.All, []);
+    const edit = {
+      id: 'edit-invalid-scope',
+      auditInfo: createAuditInfo(),
+      scopeFilters: [{ ...scope, contentHash: '0'.repeat(32) }],
+      values: {},
+      sourceId: 'test',
+    };
+
+    const res = await request(app).post('/api/transaction-edits').send([edit]);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('content hash');
+    expect(res.body.error).toContain('edited field');
+    expect(cache.applyEdits).not.toHaveBeenCalled();
+  });
+
+  it('accepts a correctly shaped voiding edit', async () => {
+    const cache = createMockCache();
+    const app = createTestApp(createTestConfig(), cache);
+    const edit = {
+      id: 'edit-void-note',
+      auditInfo: createAuditInfo(),
+      scopeFilters: [createScopeFilter(ScopeType.TransactionId, ['tx-1'])],
+      values: { note: voidedEditValue<string>() },
+      sourceId: 'test',
+    };
+
+    const res = await request(app).post('/api/transaction-edits').send([edit]);
+
+    expect(res.status).toBe(200);
+    expect(cache.applyEdits).toHaveBeenCalledWith([edit]);
+  });
+
+  it('returns 409 when an exact transaction target is stale', async () => {
+    const cache = createMockCache();
+    (cache.applyEdits as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new TransactionEditTargetError(1, 0),
+    );
+    const app = createTestApp(createTestConfig(), cache);
+    const edit = {
+      id: 'edit-stale',
+      auditInfo: createAuditInfo(),
+      scopeFilters: [createScopeFilter(ScopeType.TransactionId, ['missing'])],
+      values: { note: editValue('note') },
+      sourceId: 'test',
+    };
+
+    const res = await request(app).post('/api/transaction-edits').send([edit]);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toContain('only 0 were found');
   });
 });
 

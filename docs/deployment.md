@@ -79,7 +79,9 @@ sudo chmod 640 /etc/moneyinmotion.env
 
 Environment variables intentionally override values saved through Settings.
 Changing an environment-controlled setting in the website will not override
-the service environment on restart.
+the service environment on restart. Invalid explicit roots, usernames, or
+ports fail startup instead of silently selecting a different data directory or
+listener.
 
 ## Run with systemd
 

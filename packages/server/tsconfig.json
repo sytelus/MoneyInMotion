@@ -6,7 +6,5 @@
   },
   "include": ["src/**/*.ts"],
   "exclude": ["__tests__", "dist"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "references": [{ "path": "../core" }]
 }

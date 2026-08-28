@@ -10,6 +10,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   createAuditInfo,
+  createUUID,
   ScopeType,
   createScopeFilter,
   editValue,
@@ -27,7 +28,6 @@ import { ScopeFilterEditor } from './ScopeFilterEditor.js';
 import { EditConfirmDialog } from './EditConfirmDialog.js';
 import { useApplyEdits } from '../../api/hooks.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
-import { generateEditId } from '../../lib/utils.js';
 
 export interface AttributeEditorProps {
   /** Whether the dialog is open. */
@@ -115,8 +115,8 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
     const values: EditedValues = {};
 
     if (changeType) {
-      const reasonNum = parseInt(reason, 10);
-      if (Number.isNaN(reasonNum)) {
+      const reasonNum = Number(reason);
+      if (!Number.isInteger(reasonNum)) {
         setError('Pick a valid transaction type.');
         return;
       }
@@ -130,8 +130,8 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
       values.entityName = editValue(entityName.trim());
     }
     if (changeAmount) {
-      const parsedAmount = parseFloat(amount);
-      if (Number.isNaN(parsedAmount)) {
+      const parsedAmount = Number(amount.trim());
+      if (!amount.trim() || !Number.isFinite(parsedAmount)) {
         setError('Amount must be a number.');
         return;
       }
@@ -140,9 +140,9 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
     if (changeDate) {
       const parsedDate = new Date(`${transactionDate}T00:00:00.000Z`);
       if (
-        !transactionDate
-        || Number.isNaN(parsedDate.getTime())
-        || parsedDate.toISOString().slice(0, 10) !== transactionDate
+        !transactionDate ||
+        Number.isNaN(parsedDate.getTime()) ||
+        parsedDate.toISOString().slice(0, 10) !== transactionDate
       ) {
         setError('Date must be a valid calendar date.');
         return;
@@ -151,7 +151,7 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
     }
 
     const edit: TransactionEditData = {
-      id: generateEditId(),
+      id: createUUID(),
       auditInfo: createAuditInfo('web-ui'),
       scopeFilters,
       values,
@@ -181,132 +181,134 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Fix Attributes" description={`Edit attributes for "${transaction.displayEntityNameNormalized}"`}>
-        <div className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          title="Fix Attributes"
+          description={`Edit attributes for "${transaction.displayEntityNameNormalized}"`}
+        >
+          <div className="space-y-4">
+            {error && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+            {/* Transaction Type */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={changeType}
+                  onChange={(e) => setChangeType(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span className="font-medium">Change Transaction Type</span>
+              </label>
+              {changeType && (
+                <div className="ml-6">
+                  <Select
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    options={reasonOptions}
+                  />
+                </div>
+              )}
             </div>
-          )}
-          {/* Transaction Type */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={changeType}
-                onChange={(e) => setChangeType(e.target.checked)}
-                className="accent-primary"
-              />
-              <span className="font-medium">Change Transaction Type</span>
-            </label>
-            {changeType && (
-              <div className="ml-6">
-                <Select
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  options={reasonOptions}
+
+            {/* Entity Name */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={changeName}
+                  onChange={(e) => setChangeName(e.target.checked)}
+                  className="accent-primary"
                 />
-              </div>
-            )}
+                <span className="font-medium">Change Entity Name</span>
+              </label>
+              {changeName && (
+                <div className="ml-6">
+                  <Input
+                    value={entityName}
+                    onChange={(e) => setEntityName(e.target.value)}
+                    placeholder="Entity name"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Amount */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={changeAmount}
+                  onChange={(e) => setChangeAmount(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span className="font-medium">Change Amount</span>
+              </label>
+              {changeAmount && (
+                <div className="ml-6">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="Amount"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Transaction date */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={changeDate}
+                  onChange={(e) => setChangeDate(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span className="font-medium">Change Transaction Date</span>
+              </label>
+              {changeDate && (
+                <div className="ml-6">
+                  <Input
+                    type="date"
+                    value={transactionDate}
+                    onChange={(e) => setTransactionDate(e.target.value)}
+                    aria-label="Corrected transaction date"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Scope filter */}
+            <ScopeFilterEditor transaction={transaction} onChange={handleScopeChange} />
           </div>
 
-          {/* Entity Name */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={changeName}
-                onChange={(e) => setChangeName(e.target.checked)}
-                className="accent-primary"
-              />
-              <span className="font-medium">Change Entity Name</span>
-            </label>
-            {changeName && (
-              <div className="ml-6">
-                <Input
-                  value={entityName}
-                  onChange={(e) => setEntityName(e.target.value)}
-                  placeholder="Entity name"
-                />
-              </div>
-            )}
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={applyEdits.isPending}>
+              {applyEdits.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          {/* Amount */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={changeAmount}
-                onChange={(e) => setChangeAmount(e.target.checked)}
-                className="accent-primary"
-              />
-              <span className="font-medium">Change Amount</span>
-            </label>
-            {changeAmount && (
-              <div className="ml-6">
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Amount"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Transaction date */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={changeDate}
-                onChange={(e) => setChangeDate(e.target.checked)}
-                className="accent-primary"
-              />
-              <span className="font-medium">Change Transaction Date</span>
-            </label>
-            {changeDate && (
-              <div className="ml-6">
-                <Input
-                  type="date"
-                  value={transactionDate}
-                  onChange={(e) => setTransactionDate(e.target.value)}
-                  aria-label="Corrected transaction date"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Scope filter */}
-          <ScopeFilterEditor transaction={transaction} onChange={handleScopeChange} />
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={applyEdits.isPending}
-          >
-            {applyEdits.isPending ? 'Saving...' : 'Save'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    {/* Bulk-edit preview shown before applying a scope that matches >1 row */}
-    <EditConfirmDialog
-      open={pendingEdit !== null}
-      onOpenChange={(o) => { if (!o) setPendingEdit(null); }}
-      affectedCount={affectedTxns.length}
-      affectedNames={affectedTxns.map((t) => t.displayEntityNameNormalized)}
-      onConfirm={() => pendingEdit && applyEdit(pendingEdit)}
-      isPending={applyEdits.isPending}
-    />
+      {/* Bulk-edit preview shown before applying a scope that matches >1 row */}
+      <EditConfirmDialog
+        open={pendingEdit !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingEdit(null);
+        }}
+        affectedCount={affectedTxns.length}
+        affectedNames={affectedTxns.map((t) => t.displayEntityNameNormalized)}
+        onConfirm={() => pendingEdit && applyEdit(pendingEdit)}
+        isPending={applyEdits.isPending}
+      />
     </>
   );
 };

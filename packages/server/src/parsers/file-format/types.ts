@@ -10,23 +10,23 @@ export type ParsedRow = Record<string, string>;
 
 /** Interface that all file-format parsers implement. */
 export interface FileFormatParser {
-    parse(content: string, settings?: ParserSettings): ParsedRow[];
+  parse(content: string, settings?: ParserSettings): ParsedRow[];
 }
 
 /** Configuration options for file-format parsers. */
 export interface ParserSettings {
-    /** When true, skip banner/header lines before the real header row. */
-    hasBannerLines?: boolean;
-    /** Column names to mark as ignored (prefixed with "_"). */
-    ignoreColumns?: Set<string>;
+  /** When true, skip banner/header lines before the real header row. */
+  hasBannerLines?: boolean;
+  /** Column names to mark as ignored (prefixed with "_"). */
+  ignoreColumns?: Set<string>;
 }
 
 /**
  * Content type discriminator, matching the C# ContentType enum.
  */
 export enum ContentType {
-    Csv = 'csv',
-    Json = 'json',
-    QuickBooksIif = 'iif',
-    None = 'none',
+  Csv = 'csv',
+  Json = 'json',
+  QuickBooksIif = 'iif',
+  None = 'none',
 }

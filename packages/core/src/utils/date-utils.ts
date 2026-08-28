@@ -21,13 +21,13 @@
  * ```
  */
 export function formatDateUtc(date: Date): string {
-    const y = date.getUTCFullYear().toString().padStart(4, '0');
-    const m = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-    const d = date.getUTCDate().toString().padStart(2, '0');
-    const h = date.getUTCHours().toString().padStart(2, '0');
-    const min = date.getUTCMinutes().toString().padStart(2, '0');
-    const s = date.getUTCSeconds().toString().padStart(2, '0');
-    return `${y}-${m}-${d} ${h}:${min}:${s}Z`;
+  const y = date.getUTCFullYear().toString().padStart(4, '0');
+  const m = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const d = date.getUTCDate().toString().padStart(2, '0');
+  const h = date.getUTCHours().toString().padStart(2, '0');
+  const min = date.getUTCMinutes().toString().padStart(2, '0');
+  const s = date.getUTCSeconds().toString().padStart(2, '0');
+  return `${y}-${m}-${d} ${h}:${min}:${s}Z`;
 }
 
 /**
@@ -55,48 +55,72 @@ export function formatDateUtc(date: Date): string {
  * ```
  */
 export function parseDate(value: string): Date {
-    const trimmed = value.trim();
+  const trimmed = value.trim();
 
-    // Try US-style MM/dd/yyyy (with optional time)
-    const usMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
-    if (usMatch) {
-        const [, month, day, year] = usMatch;
-        const m = parseInt(month!, 10);
-        const d = parseInt(day!, 10);
-        const y = parseInt(year!, 10);
-        // Date.UTC silently wraps out-of-range month/day values
-        // (e.g. 13/32/2024 => Feb 1 2025), so validate bounds explicitly
-        // and then verify the constructed date's components match.
-        if (m < 1 || m > 12 || d < 1 || d > 31) {
-            throw new Error(`Invalid date string: "${value}"`);
-        }
-        const date = new Date(Date.UTC(y, m - 1, d));
-        if (
-            isNaN(date.getTime()) ||
-            date.getUTCMonth() !== m - 1 ||
-            date.getUTCDate() !== d
-        ) {
-            throw new Error(`Invalid date string: "${value}"`);
-        }
-        return date;
+  function invalidDate(): never {
+    throw new Error(`Invalid date string: "${value}"`);
+  }
+
+  function utcDate(year: number, month: number, day: number): Date {
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      return invalidDate();
     }
 
-    // Try yyyy-MM-dd (date only, no time) -> interpret as UTC midnight
-    const isoDateOnly = /^\d{4}-\d{2}-\d{2}$/.exec(trimmed);
-    if (isoDateOnly) {
-        const date = new Date(trimmed + 'T00:00:00Z');
-        if (isNaN(date.getTime())) {
-            throw new Error(`Invalid date string: "${value}"`);
-        }
-        return date;
-    }
-
-    // Fall through to built-in Date parser for ISO 8601 and other formats
-    const date = new Date(trimmed);
-    if (isNaN(date.getTime())) {
-        throw new Error(`Invalid date string: "${value}"`);
+    // `Date.UTC` treats years 0 through 99 as 1900 through 1999. Setting the
+    // full year explicitly preserves the literal input and lets validation
+    // reject only genuinely impossible calendar dates.
+    const date = new Date(0);
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCFullYear(year, month - 1, day);
+    if (
+      Number.isNaN(date.getTime()) ||
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return invalidDate();
     }
     return date;
+  }
+
+  // Date.UTC silently normalizes impossible dates (for example February 30),
+  // so date-only formats share strict component validation.
+  const usMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
+  if (usMatch) {
+    return utcDate(
+      Number.parseInt(usMatch[3]!, 10),
+      Number.parseInt(usMatch[1]!, 10),
+      Number.parseInt(usMatch[2]!, 10),
+    );
+  }
+
+  const isoDateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (isoDateOnly) {
+    return utcDate(
+      Number.parseInt(isoDateOnly[1]!, 10),
+      Number.parseInt(isoDateOnly[2]!, 10),
+      Number.parseInt(isoDateOnly[3]!, 10),
+    );
+  }
+
+  // The built-in timestamp parser normalizes some impossible calendar dates
+  // (for example, 2024-02-30T12:00:00Z). Validate an ISO timestamp's calendar
+  // prefix ourselves before delegating its time and offset parsing.
+  const isoTimestamp = /^(\d{4})-(\d{2})-(\d{2})[T ]/.exec(trimmed);
+  if (isoTimestamp) {
+    utcDate(
+      Number.parseInt(isoTimestamp[1]!, 10),
+      Number.parseInt(isoTimestamp[2]!, 10),
+      Number.parseInt(isoTimestamp[3]!, 10),
+    );
+  }
+
+  // Fall through to the built-in parser for timestamp formats.
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return invalidDate();
+  }
+  return date;
 }
 
 /**
@@ -120,5 +144,5 @@ export function parseDate(value: string): Date {
 const MS_PER_DAY = 86_400_000;
 
 export function daysBetween(a: Date, b: Date): number {
-    return Math.floor(Math.abs(a.getTime() - b.getTime()) / MS_PER_DAY);
+  return Math.floor(Math.abs(a.getTime() - b.getTime()) / MS_PER_DAY);
 }

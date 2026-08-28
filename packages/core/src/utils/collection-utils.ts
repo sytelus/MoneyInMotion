@@ -31,17 +31,17 @@
  * ```
  */
 export function groupBy<T, K>(items: T[], keyFn: (item: T) => K): Map<K, T[]> {
-    const map = new Map<K, T[]>();
-    for (const item of items) {
-        const key = keyFn(item);
-        const group = map.get(key);
-        if (group) {
-            group.push(item);
-        } else {
-            map.set(key, [item]);
-        }
+  const map = new Map<K, T[]>();
+  for (const item of items) {
+    const key = keyFn(item);
+    const group = map.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      map.set(key, [item]);
     }
-    return map;
+  }
+  return map;
 }
 
 /**
@@ -61,11 +61,11 @@ export function groupBy<T, K>(items: T[], keyFn: (item: T) => K): Map<K, T[]> {
  * ```
  */
 export function sumBy<T>(items: T[], valueFn: (item: T) => number): number {
-    let sum = 0;
-    for (const item of items) {
-        sum += valueFn(item);
-    }
-    return sum;
+  let sum = 0;
+  for (const item of items) {
+    sum += valueFn(item);
+  }
+  return sum;
 }
 
 /**
@@ -89,22 +89,22 @@ export function sumBy<T>(items: T[], valueFn: (item: T) => number): number {
  * ```
  */
 export function mostOccurring<T>(items: T[]): T | undefined {
-    if (items.length === 0) {
-        return undefined;
+  if (items.length === 0) {
+    return undefined;
+  }
+
+  const counts = new Map<T, number>();
+  let maxCount = 0;
+  let maxItem: T = items[0]!;
+
+  for (const item of items) {
+    const count = (counts.get(item) ?? 0) + 1;
+    counts.set(item, count);
+    if (count > maxCount) {
+      maxCount = count;
+      maxItem = item;
     }
+  }
 
-    const counts = new Map<T, number>();
-    let maxCount = 0;
-    let maxItem: T = items[0]!;
-
-    for (const item of items) {
-        const count = (counts.get(item) ?? 0) + 1;
-        counts.set(item, count);
-        if (count > maxCount) {
-            maxCount = count;
-            maxItem = item;
-        }
-    }
-
-    return maxItem;
+  return maxItem;
 }

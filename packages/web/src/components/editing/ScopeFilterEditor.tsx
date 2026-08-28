@@ -29,10 +29,7 @@ type PrimaryScopeChoice = 'transactionId' | 'entityNameNormalized' | 'entityName
  * UI for selecting the scope of a transaction edit. Provides radio buttons
  * for the primary scope and optional checkboxes for narrowing filters.
  */
-export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({
-  transaction,
-  onChange,
-}) => {
+export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({ transaction, onChange }) => {
   const [primaryScope, setPrimaryScope] = useState<PrimaryScopeChoice>('transactionId');
   const [includeAccount, setIncludeAccount] = useState(false);
   const [includeReason, setIncludeReason] = useState(false);
@@ -82,9 +79,7 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({
       const max = (absAmount + margin).toFixed(2);
       const amountRangeParameters =
         transaction.correctedAmount < 0 ? [min, max, 'true'] : [min, max];
-      filters.push(
-        createScopeFilter(ScopeType.AmountRange, amountRangeParameters),
-      );
+      filters.push(createScopeFilter(ScopeType.AmountRange, amountRangeParameters));
     }
 
     return filters;
@@ -159,8 +154,7 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({
               onChange={(e) => setIncludeAccount(e.target.checked)}
               className="accent-primary"
             />
-            Only for account{' '}
-            <span className="font-medium">{transaction.accountId}</span>
+            Only for account <span className="font-medium">{transaction.accountId}</span>
           </label>
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">

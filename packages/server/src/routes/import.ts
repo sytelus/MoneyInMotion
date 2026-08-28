@@ -71,10 +71,17 @@ export function createImportRouter(cache: TransactionCache, config: ServerConfig
 
       try {
         const files = (Array.isArray(req.files) ? req.files : []).map((file): FolderUploadFile => ({
-          originalName: file.originalname,
           buffer: file.buffer,
-          size: file.size,
         }));
+        const uploadedBytes = files.reduce((total, file) => total + file.buffer.byteLength, 0);
+        if (uploadedBytes > MAX_FOLDER_REQUEST_BYTES) {
+          res.status(413).json({
+            error:
+              'Folder uploads are limited to 100 MiB per request. Split larger folders into smaller uploads.',
+            status: 413,
+          });
+          return;
+        }
         const relativePaths = parseRelativePaths(req.body?.relativePaths);
         const staging = stageAndPromoteFolder(config, files, relativePaths);
         const rebuild = await cache.rebuildFromStatements();

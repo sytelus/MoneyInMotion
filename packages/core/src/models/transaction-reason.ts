@@ -60,8 +60,7 @@ export const TransactionReason = {
 } as const;
 
 /** The numeric type produced by any single TransactionReason value. */
-export type TransactionReasonValue =
-  (typeof TransactionReason)[keyof typeof TransactionReason];
+export type TransactionReasonValue = (typeof TransactionReason)[keyof typeof TransactionReason];
 
 // ---------------------------------------------------------------------------
 // Compound groups (bit masks)
@@ -99,8 +98,7 @@ export const NetIncoming: number =
 
 /** Mask covering inter-account movements. */
 export const NetInterAccount: number =
-  TransactionReason.InterAccountPayment |
-  TransactionReason.InterAccountTransfer;
+  TransactionReason.InterAccountPayment | TransactionReason.InterAccountTransfer;
 
 // ---------------------------------------------------------------------------
 // Bitwise helpers
@@ -175,25 +173,139 @@ export interface TransactionReasonInfo {
 
 /** Ordered metadata for every primitive TransactionReason value. */
 export const transactionReasonInfo: readonly TransactionReasonInfo[] = [
-  { key: 'Purchase', value: TransactionReason.Purchase, title: 'Purchase', pluralTitle: 'Purchases', category: 'Expense' },
-  { key: 'ExpenseAdjustment', value: TransactionReason.ExpenseAdjustment, title: 'Adjustment (Debit)', pluralTitle: 'Adjustments (Debit)', category: 'Expense' },
-  { key: 'Fee', value: TransactionReason.Fee, title: 'Fee', pluralTitle: 'Fees', category: 'Expense' },
-  { key: 'InterAccountPayment', value: TransactionReason.InterAccountPayment, title: 'Account Payment', pluralTitle: 'Account Payments', category: 'InterAccount' },
-  { key: 'Return', value: TransactionReason.Return, title: 'Return', pluralTitle: 'Returns', category: 'Expense' },
-  { key: 'InterAccountTransfer', value: TransactionReason.InterAccountTransfer, title: 'Transfer', pluralTitle: 'Transfers', category: 'InterAccount' },
-  { key: 'PointsCredit', value: TransactionReason.PointsCredit, title: 'Points', pluralTitle: 'Points', category: 'Income' },
-  { key: 'OtherCredit', value: TransactionReason.OtherCredit, title: 'Other (Credit)', pluralTitle: 'Others (Credit)', category: 'Income' },
-  { key: 'CheckPayment', value: TransactionReason.CheckPayment, title: 'Check', pluralTitle: 'Checks', category: 'Expense' },
-  { key: 'CheckRecieved', value: TransactionReason.CheckRecieved, title: 'Check (Recieved)', pluralTitle: 'Checks (Recieved)', category: 'Income' },
-  { key: 'AtmWithdrawal', value: TransactionReason.AtmWithdrawal, title: 'ATM', pluralTitle: 'ATM', category: 'Expense' },
-  { key: 'Interest', value: TransactionReason.Interest, title: 'Interest', pluralTitle: 'Interest', category: 'Income' },
-  { key: 'LoanPayment', value: TransactionReason.LoanPayment, title: 'Loan', pluralTitle: 'Loans', category: 'Expense' },
-  { key: 'DiscountRecieved', value: TransactionReason.DiscountRecieved, title: 'Discount', pluralTitle: 'Discounts', category: 'Expense' },
-  { key: 'IncomeAdjustment', value: TransactionReason.IncomeAdjustment, title: 'Adjustment (Credit)', pluralTitle: 'Adjustments (Credit)', category: 'Income' },
-  { key: 'MatchAdjustmentCredit', value: TransactionReason.MatchAdjustmentCredit, title: 'Match Adjustment (Credit)', pluralTitle: 'Match Adjustments (Credit)', category: 'Expense' },
-  { key: 'MatchAdjustmentDebit', value: TransactionReason.MatchAdjustmentDebit, title: 'Match Adjustment (Debit)', pluralTitle: 'Match Adjustments (Debit)', category: 'Expense' },
-  { key: 'PaymentRecieved', value: TransactionReason.PaymentRecieved, title: 'Payment Recieved', pluralTitle: 'Payments Recieved', category: 'Income' },
-  { key: 'CashAdvance', value: TransactionReason.CashAdvance, title: 'Cash Advance', pluralTitle: 'Cash Advances', category: 'Expense' },
+  {
+    key: 'Purchase',
+    value: TransactionReason.Purchase,
+    title: 'Purchase',
+    pluralTitle: 'Purchases',
+    category: 'Expense',
+  },
+  {
+    key: 'ExpenseAdjustment',
+    value: TransactionReason.ExpenseAdjustment,
+    title: 'Adjustment (Debit)',
+    pluralTitle: 'Adjustments (Debit)',
+    category: 'Expense',
+  },
+  {
+    key: 'Fee',
+    value: TransactionReason.Fee,
+    title: 'Fee',
+    pluralTitle: 'Fees',
+    category: 'Expense',
+  },
+  {
+    key: 'InterAccountPayment',
+    value: TransactionReason.InterAccountPayment,
+    title: 'Account Payment',
+    pluralTitle: 'Account Payments',
+    category: 'InterAccount',
+  },
+  {
+    key: 'Return',
+    value: TransactionReason.Return,
+    title: 'Return',
+    pluralTitle: 'Returns',
+    category: 'Expense',
+  },
+  {
+    key: 'InterAccountTransfer',
+    value: TransactionReason.InterAccountTransfer,
+    title: 'Transfer',
+    pluralTitle: 'Transfers',
+    category: 'InterAccount',
+  },
+  {
+    key: 'PointsCredit',
+    value: TransactionReason.PointsCredit,
+    title: 'Points',
+    pluralTitle: 'Points',
+    category: 'Income',
+  },
+  {
+    key: 'OtherCredit',
+    value: TransactionReason.OtherCredit,
+    title: 'Other (Credit)',
+    pluralTitle: 'Others (Credit)',
+    category: 'Income',
+  },
+  {
+    key: 'CheckPayment',
+    value: TransactionReason.CheckPayment,
+    title: 'Check',
+    pluralTitle: 'Checks',
+    category: 'Expense',
+  },
+  {
+    key: 'CheckRecieved',
+    value: TransactionReason.CheckRecieved,
+    title: 'Check (Received)',
+    pluralTitle: 'Checks (Received)',
+    category: 'Income',
+  },
+  {
+    key: 'AtmWithdrawal',
+    value: TransactionReason.AtmWithdrawal,
+    title: 'ATM',
+    pluralTitle: 'ATM',
+    category: 'Expense',
+  },
+  {
+    key: 'Interest',
+    value: TransactionReason.Interest,
+    title: 'Interest',
+    pluralTitle: 'Interest',
+    category: 'Income',
+  },
+  {
+    key: 'LoanPayment',
+    value: TransactionReason.LoanPayment,
+    title: 'Loan',
+    pluralTitle: 'Loans',
+    category: 'Expense',
+  },
+  {
+    key: 'DiscountRecieved',
+    value: TransactionReason.DiscountRecieved,
+    title: 'Discount',
+    pluralTitle: 'Discounts',
+    category: 'Expense',
+  },
+  {
+    key: 'IncomeAdjustment',
+    value: TransactionReason.IncomeAdjustment,
+    title: 'Adjustment (Credit)',
+    pluralTitle: 'Adjustments (Credit)',
+    category: 'Income',
+  },
+  {
+    key: 'MatchAdjustmentCredit',
+    value: TransactionReason.MatchAdjustmentCredit,
+    title: 'Match Adjustment (Credit)',
+    pluralTitle: 'Match Adjustments (Credit)',
+    category: 'Expense',
+  },
+  {
+    key: 'MatchAdjustmentDebit',
+    value: TransactionReason.MatchAdjustmentDebit,
+    title: 'Match Adjustment (Debit)',
+    pluralTitle: 'Match Adjustments (Debit)',
+    category: 'Expense',
+  },
+  {
+    key: 'PaymentRecieved',
+    value: TransactionReason.PaymentRecieved,
+    title: 'Payment Received',
+    pluralTitle: 'Payments Received',
+    category: 'Income',
+  },
+  {
+    key: 'CashAdvance',
+    value: TransactionReason.CashAdvance,
+    title: 'Cash Advance',
+    pluralTitle: 'Cash Advances',
+    category: 'Expense',
+  },
 ] as const;
 
 /**
@@ -205,31 +317,22 @@ export const transactionReasonInfo: readonly TransactionReasonInfo[] = [
  * transactionReasonTitleLookup[String(TransactionReason.Fee)] // "Fee"
  * ```
  */
-export const transactionReasonTitleLookup: Readonly<Record<string, string>> =
-  Object.freeze(
-    Object.fromEntries(
-      transactionReasonInfo.map((i) => [String(i.value), i.title]),
-    ),
-  );
+export const transactionReasonTitleLookup: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(transactionReasonInfo.map((i) => [String(i.value), i.title])),
+);
 
 /**
  * Map from numeric TransactionReason value (as string key) to its plural
  * human-readable title.
  */
-export const transactionReasonPluralTitleLookup: Readonly<Record<string, string>> =
-  Object.freeze(
-    Object.fromEntries(
-      transactionReasonInfo.map((i) => [String(i.value), i.pluralTitle]),
-    ),
-  );
+export const transactionReasonPluralTitleLookup: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(transactionReasonInfo.map((i) => [String(i.value), i.pluralTitle])),
+);
 
 /**
  * Map from numeric TransactionReason value (as string key) to its high-level
  * category (`"Expense"`, `"Income"`, or `"InterAccount"`).
  */
-export const transactionReasonCategoryLookup: Readonly<Record<string, string>> =
-  Object.freeze(
-    Object.fromEntries(
-      transactionReasonInfo.map((i) => [String(i.value), i.category]),
-    ),
-  );
+export const transactionReasonCategoryLookup: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(transactionReasonInfo.map((i) => [String(i.value), i.category])),
+);

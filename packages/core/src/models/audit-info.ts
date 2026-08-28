@@ -103,10 +103,7 @@ export function createAuditInfo(createdBy?: string): AuditInfo {
  *                    or {@link FALLBACK_AUDIT_USER} if none.
  * @returns A new `AuditInfo` object (the original is not mutated).
  */
-export function updateAuditInfo(
-  existing: AuditInfo,
-  updatedBy?: string,
-): AuditInfo {
+export function updateAuditInfo(existing: AuditInfo, updatedBy?: string): AuditInfo {
   return {
     createDate: existing.createDate,
     createdBy: existing.createdBy,
