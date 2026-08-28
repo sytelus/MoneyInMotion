@@ -6,7 +6,7 @@ import { SettingsPage } from '../../src/pages/SettingsPage.js';
 
 const getConfigMock = vi.fn();
 const updateConfigMock = vi.fn();
-const useScanStatementsMock = vi.fn();
+const useRebuildSnapshotMock = vi.fn();
 
 vi.mock('../../src/api/client.js', () => ({
   getConfig: (...args: unknown[]) => getConfigMock(...args),
@@ -14,7 +14,7 @@ vi.mock('../../src/api/client.js', () => ({
 }));
 
 vi.mock('../../src/api/hooks.js', () => ({
-  useScanStatements: () => useScanStatementsMock(),
+  useRebuildSnapshot: () => useRebuildSnapshotMock(),
 }));
 
 function renderPage() {
@@ -42,7 +42,7 @@ describe('SettingsPage', () => {
       activeUserDataPath: '/tmp/min_root/alex',
       restartRequired: false,
     });
-    useScanStatementsMock.mockReturnValue({
+    useRebuildSnapshotMock.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
       isSuccess: false,
@@ -120,9 +120,7 @@ describe('SettingsPage', () => {
         dataRoot: '/tmp/min_root-2',
       });
     });
-    expect(
-      await screen.findByText(/Saved data root to the config file/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Saved data root to the config file/i)).toBeInTheDocument();
     // The restart hint should reference only "data directory", not "port".
     expect(
       screen.getByText(/Restart the server for the new data root to take effect/i),

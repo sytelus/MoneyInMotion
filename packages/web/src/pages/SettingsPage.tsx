@@ -9,18 +9,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  AlertCircle,
-  ArrowLeft,
-  Check,
-  Download,
-  FolderOpen,
-  Waypoints,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, Download, FolderOpen, Waypoints } from 'lucide-react';
 import { Button } from '../components/ui/button.js';
 import { Input } from '../components/ui/input.js';
 import { getConfig, updateConfig } from '../api/client.js';
-import { useScanStatements } from '../api/hooks.js';
+import { useRebuildSnapshot } from '../api/hooks.js';
 
 function parsePortInput(portInput: string): number | null {
   if (!/^\d+$/.test(portInput.trim())) {
@@ -56,7 +49,7 @@ export const SettingsPage: React.FC = () => {
   const [savedDimensions, setSavedDimensions] = useState<string>('');
   const [configError, setConfigError] = useState<string | null>(null);
 
-  const scanMutation = useScanStatements();
+  const rebuildMutation = useRebuildSnapshot();
 
   const savedBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -102,9 +95,9 @@ export const SettingsPage: React.FC = () => {
   const hasPortChange = portInput !== originalPortInput;
   const hasChanges = hasRootChange || hasUsernameChange || hasPortChange;
   const pendingRestart =
-    originalDataRoot !== activeDataRoot
-    || originalUsername !== activeUsername
-    || Number(originalPortInput) !== activePort;
+    originalDataRoot !== activeDataRoot ||
+    originalUsername !== activeUsername ||
+    Number(originalPortInput) !== activePort;
 
   const handleSaveConfig = async () => {
     if (!hasChanges) {
@@ -158,19 +151,14 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleScan = () => {
-    scanMutation.mutate(undefined);
+  const handleRebuild = () => {
+    rebuildMutation.mutate(undefined);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Go back"
-          onClick={() => navigate(-1)}
-        >
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="font-bold text-lg">Settings</h1>
@@ -224,8 +212,9 @@ export const SettingsPage: React.FC = () => {
                   placeholder="shitals"
                 />
                 <p className="text-xs text-muted-foreground">
-                  This server instance reads and writes <code>&lt;data-root&gt;/{username || '{username}'}</code>.
-                  Authentication and per-request user switching are intentionally deferred.
+                  This server instance reads and writes{' '}
+                  <code>&lt;data-root&gt;/{username || '{username}'}</code>. Authentication and
+                  per-request user switching are intentionally deferred.
                 </p>
               </div>
 
@@ -264,7 +253,8 @@ export const SettingsPage: React.FC = () => {
                   {isSavingConfig ? 'Updating...' : 'Save Settings'}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Current port: <code className="px-1 py-0.5 bg-muted rounded">{originalPortInput}</code>
+                  Current port:{' '}
+                  <code className="px-1 py-0.5 bg-muted rounded">{originalPortInput}</code>
                 </p>
               </div>
 
@@ -289,10 +279,9 @@ export const SettingsPage: React.FC = () => {
                   <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
                     The server is still using{' '}
                     <code className="px-1 py-0.5 bg-background rounded">{activeUserDataPath}</code>{' '}
-                    (root <code>{activeDataRoot}</code>, user <code>{activeUsername}</code>){' '}
-                    on port{' '}
-                    <code className="px-1 py-0.5 bg-background rounded">{activePort}</code>.
-                    Restart to pick up the saved values.
+                    (root <code>{activeDataRoot}</code>, user <code>{activeUsername}</code>) on port{' '}
+                    <code className="px-1 py-0.5 bg-background rounded">{activePort}</code>. Restart
+                    to pick up the saved values.
                   </p>
                 </div>
               )}
@@ -306,9 +295,11 @@ export const SettingsPage: React.FC = () => {
 
               <div className="rounded-md bg-muted/50 p-4 space-y-3">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Expected directory structure:</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Expected directory structure:
+                  </p>
                   <pre className="text-xs text-muted-foreground font-mono leading-relaxed">
-{`${originalDataRoot || '{dataRoot}'}/
+                    {`${originalDataRoot || '{dataRoot}'}/
 └── ${originalUsername || '{username}'}/
     ├── Statements/          ← Configured account folders
     │   ├── my-checking/
@@ -341,51 +332,56 @@ export const SettingsPage: React.FC = () => {
               Rebuild Snapshot
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Maintenance action: rebuild from every retained statement and replay saved edits. Folder uploads already do this automatically.
+              Maintenance action: rebuild from every retained statement and replay saved edits.
+              Folder uploads already do this automatically.
             </p>
           </div>
 
           <div className="space-y-3">
             <Button
-              onClick={handleScan}
-              disabled={scanMutation.isPending}
+              onClick={handleRebuild}
+              disabled={rebuildMutation.isPending}
               className="w-full sm:w-auto"
             >
               <Download className="h-4 w-4 mr-1.5" />
-              {scanMutation.isPending ? 'Rebuilding...' : 'Rebuild from Statements'}
+              {rebuildMutation.isPending ? 'Rebuilding...' : 'Rebuild from Statements'}
             </Button>
 
-            {scanMutation.isSuccess && scanMutation.data && (
+            {rebuildMutation.isSuccess && rebuildMutation.data && (
               <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm space-y-2 dark:border-emerald-900/40 dark:bg-emerald-900/20">
                 <p className="font-medium text-emerald-900 dark:text-emerald-200">
-                  {scanMutation.data.committed ? 'Rebuild complete' : 'Previous snapshot preserved'}
+                  {rebuildMutation.data.committed
+                    ? 'Rebuild complete'
+                    : 'Previous snapshot preserved'}
                 </p>
                 <p className="text-emerald-900/90 dark:text-emerald-200/90">
-                  {scanMutation.data.committed
-                    ? `${scanMutation.data.totalTransactions} transactions rebuilt across all accounts; ${scanMutation.data.appliedEdits} saved rules replayed.`
+                  {rebuildMutation.data.committed
+                    ? `${rebuildMutation.data.totalTransactions} transactions rebuilt across all accounts; ${rebuildMutation.data.appliedEdits} saved rules replayed.`
                     : 'One or more statements could not be parsed, so MoneyInMotion did not replace the last known-good snapshot.'}
                 </p>
-                {scanMutation.data.migratedEditTargets > 0 && (
+                {rebuildMutation.data.migratedEditTargets > 0 && (
                   <p className="text-xs text-emerald-900/80 dark:text-emerald-200/80">
-                    Migrated {scanMutation.data.migratedEditTargets} legacy exact-ID rule
-                    target{scanMutation.data.migratedEditTargets === 1 ? '' : 's'} to stable rebuilt transactions.
+                    Migrated {rebuildMutation.data.migratedEditTargets} legacy exact-ID rule target
+                    {rebuildMutation.data.migratedEditTargets === 1 ? '' : 's'} to stable rebuilt
+                    transactions.
                   </p>
                 )}
-                {scanMutation.data.unresolvedEditTargets > 0 && (
+                {rebuildMutation.data.unresolvedEditTargets > 0 && (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
-                    {scanMutation.data.unresolvedEditTargets} legacy exact-ID rule target
-                    {scanMutation.data.unresolvedEditTargets === 1 ? '' : 's'} could not
-                    be resolved uniquely. MiM retained them unchanged for review in Rules.
+                    {rebuildMutation.data.unresolvedEditTargets} legacy exact-ID rule target
+                    {rebuildMutation.data.unresolvedEditTargets === 1 ? '' : 's'} could not be
+                    resolved uniquely. MiM retained them unchanged for review in Rules.
                   </div>
                 )}
-                {scanMutation.data.failedFiles?.length > 0 && (
+                {rebuildMutation.data.failedFiles?.length > 0 && (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs space-y-1 dark:border-amber-900/40 dark:bg-amber-900/20">
                     <p className="font-medium text-amber-900 dark:text-amber-200">
-                      {scanMutation.data.failedFiles.length} file
-                      {scanMutation.data.failedFiles.length === 1 ? '' : 's'} could not be parsed:
+                      {rebuildMutation.data.failedFiles.length} file
+                      {rebuildMutation.data.failedFiles.length === 1 ? '' : 's'} could not be
+                      parsed:
                     </p>
                     <ul className="space-y-0.5 text-amber-900/90 dark:text-amber-200/90">
-                      {scanMutation.data.failedFiles.map((f) => (
+                      {rebuildMutation.data.failedFiles.map((f) => (
                         <li key={f.path}>
                           <code>{f.path}</code> — {f.error}
                         </li>
@@ -396,17 +392,16 @@ export const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            {scanMutation.isError && (
+            {rebuildMutation.isError && (
               <div className="flex items-center gap-2 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4" />
-                {scanMutation.error instanceof Error
-                  ? scanMutation.error.message
+                {rebuildMutation.error instanceof Error
+                  ? rebuildMutation.error.message
                   : 'Import failed'}
               </div>
             )}
           </div>
         </section>
-
       </main>
     </div>
   );

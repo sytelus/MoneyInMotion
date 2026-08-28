@@ -66,8 +66,6 @@ describe('transactions-store', () => {
     // Reset the store to its initial state before each test
     useTransactionsStore.setState({
       transactions: null,
-      isLoading: false,
-      error: null,
       selectedYear: null,
       selectedMonth: null,
       selectedTransactionIds: new Set<string>(),
@@ -86,8 +84,6 @@ describe('transactions-store', () => {
 
       const state = useTransactionsStore.getState();
       expect(state.transactions).not.toBeNull();
-      expect(state.error).toBeNull();
-      expect(state.isLoading).toBe(false);
 
       const tx1 = state.transactions!.getTransaction('tx-1');
       expect(tx1).toBeDefined();
@@ -98,15 +94,10 @@ describe('transactions-store', () => {
       expect(tx2!.entityName).toBe('Walmart');
     });
 
-    it('sets error when data is invalid', () => {
-      // Pass null to cause fromData to throw
-      useTransactionsStore.getState().setTransactions(
-        null as unknown as TransactionsData,
-      );
-
-      const state = useTransactionsStore.getState();
-      expect(state.error).toBeTruthy();
-      expect(state.isLoading).toBe(false);
+    it('does not hide invalid server data', () => {
+      expect(() =>
+        useTransactionsStore.getState().setTransactions(null as unknown as TransactionsData),
+      ).toThrow();
     });
   });
 
@@ -202,9 +193,23 @@ describe('transactions-store', () => {
   describe('getFilteredTransactions', () => {
     beforeEach(() => {
       const data = makeTransactionsData([
-        makeTxData({ id: 'tx-march', entityName: 'March Purchase', transactionDate: '2024-03-15T00:00:00Z' }),
-        makeTxData({ id: 'tx-april', entityName: 'April Purchase', transactionDate: '2024-04-10T00:00:00Z', contentHash: 'hash-april' }),
-        makeTxData({ id: 'tx-jan', entityName: 'January Purchase', transactionDate: '2024-01-05T00:00:00Z', contentHash: 'hash-jan' }),
+        makeTxData({
+          id: 'tx-march',
+          entityName: 'March Purchase',
+          transactionDate: '2024-03-15T00:00:00Z',
+        }),
+        makeTxData({
+          id: 'tx-april',
+          entityName: 'April Purchase',
+          transactionDate: '2024-04-10T00:00:00Z',
+          contentHash: 'hash-april',
+        }),
+        makeTxData({
+          id: 'tx-jan',
+          entityName: 'January Purchase',
+          transactionDate: '2024-01-05T00:00:00Z',
+          contentHash: 'hash-jan',
+        }),
       ]);
       useTransactionsStore.getState().setTransactions(data);
     });

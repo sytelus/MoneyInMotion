@@ -92,10 +92,11 @@ nested account directories win.
 
 The server rejects the request before creating a batch if paths are missing,
 duplicated, absolute, empty, contain dot segments, contain NULs, or could escape
-the storage root. Multer accepts at most 500 files, 50 MiB per file, and 512
-multipart parts. Unsupported files and uploaded `AccountConfig.json` files are
-staged but marked rejected in the manifest; account configuration is owned by
-the web editor.
+the storage root. One request accepts at most 200 files, 20 MiB per file, 203
+multipart parts, and 100 MiB when the browser supplies the request length.
+Split a larger folder into multiple selections. Unsupported files and uploaded
+`AccountConfig.json` files are staged but marked rejected in the manifest;
+account configuration is owned by the web editor.
 
 ## Deduplication and promotion
 
@@ -135,15 +136,15 @@ files; normal users do not need a separate scan or save step.
 
 ## Supported source families
 
-| Source | Inputs | Specialized behavior |
-| --- | --- | --- |
-| Generic bank/card | CSV | Header/column discovery and standard debit/credit conversion |
-| American Express | CSV | Amex columns and merchant metadata |
-| Barclaycard | CSV | Banner/header variations |
-| PayPal | CSV or IIF | Activity filtering and payment semantics |
-| Amazon orders | CSV | Order-line synthesis and charge matching |
-| Etsy buyer history | JSON | Receipt and item reconciliation |
-| QuickBooks-compatible export | IIF | Transaction and split parsing |
+| Source                       | Inputs     | Specialized behavior                                         |
+| ---------------------------- | ---------- | ------------------------------------------------------------ |
+| Generic bank/card            | CSV        | Header/column discovery and standard debit/credit conversion |
+| American Express             | CSV        | Amex columns and merchant metadata                           |
+| Barclaycard                  | CSV        | Banner/header variations                                     |
+| PayPal                       | CSV or IIF | Activity filtering and payment semantics                     |
+| Amazon orders                | CSV        | Order-line synthesis and charge matching                     |
+| Etsy buyer history           | JSON       | Receipt and item reconciliation                              |
+| QuickBooks-compatible export | IIF        | Transaction and split parsing                                |
 
 Institution export formats change. Add parser fixtures before modifying a
 parser, and treat a reported parse failure as safer than silently accepting

@@ -1,131 +1,178 @@
 # Production deployment
 
-MoneyInMotion deploys as one Node.js service that serves both the compiled
-website and `/api`. End users visit the resulting URL and install nothing.
+MoneyInMotion is designed to run cheaply on one ordinary Linux VM. Production
+has three moving parts: one Node.js process, one data directory, and an optional
+HTTPS reverse proxy. There is no Docker, database, message queue, object store,
+or cluster to operate.
 
-## Why Docker is included
+```text
+browser ──HTTPS──> reverse proxy (optional on a private network)
+                         │
+                         ▼
+                  Node.js / Express :3001
+                         │
+                         ▼
+              /srv/moneyinmotion/<username>
+```
 
-Docker is optional; MiM can run directly on Node.js as documented below. The
-container exists to make a production release reproducible and portable: it
-pins the Node and base-OS environment, builds the website in an isolated stage,
-copies only runtime artifacts and production dependencies, runs as a non-root
-user, declares a health check, and gives the data root an explicit persistent
-volume boundary. The same image can therefore move between a workstation,
-server, NAS, or container platform without asking each host to reproduce the
-build toolchain manually.
-
-Docker does not put anything on an end user's machine, and it does not provide
-authentication, TLS termination, backups, or multi-replica locking. Those are
-separate operational responsibilities. A direct Node deployment and a container
-deployment execute the same compiled server and website; choose the mechanism
-that fits the server environment.
+The Node process serves both the compiled React website and `/api`, so only one
+application port is needed. Browser users install nothing.
 
 ## Security prerequisite
 
-This revision has no login, session, or authorization layer. Anyone who can
-reach the application can view and change the active user's financial data and
-server configuration. Deploy only on a trusted private network or behind a
-reverse proxy/access gateway that authenticates every route. Use TLS for remote
-access. See [SECURITY.md](../SECURITY.md).
+MiM currently has no login or authorization layer. Anyone who can reach it can
+view and change the configured user's financial data and Settings. Bind it to a
+trusted private network, access it through a private VPN/tunnel, or put an
+authenticating HTTPS reverse proxy in front of it. Do not expose port 3001
+directly to the public Internet.
 
-## Direct Node deployment
+## One-time VM setup
 
-Install Node.js 24, use a non-root service account, and give that account
-read/write permission only to the configured data root and its own
-`~/.moneyinmotion` config directory.
-
-```bash
-git clone https://github.com/sytelus/MoneyInMotion.git
-cd MoneyInMotion
-./install.sh
-
-export MIM_DATA_ROOT=/srv/moneyinmotion
-export MIM_USERNAME=shitals
-export MIM_PORT=3001
-./run.sh prod
-```
-
-Run the final command under systemd, another process supervisor, or an
-equivalent platform service. Termination signals are handled so the filesystem
-watcher and HTTP listener close cleanly. Send traffic to the application only
-after `GET /api/health` returns HTTP 200.
-
-Environment configuration overrides values saved from Settings. If a setting
-appears not to take effect after restart, inspect the service environment first.
-
-## Container deployment
-
-The multi-stage `Dockerfile` builds on Node 24, prunes development dependencies,
-runs as the unprivileged `node` user, exposes port 3001, and includes a health
-check. The image expects the data-root volume at `/data`.
+Install Git and Node.js 24 on a current Linux distribution. The exact Node
+installation command depends on the distribution; verify the result before
+continuing:
 
 ```bash
-MIM_USERNAME=shitals MIM_PORT=3001 docker compose up --build -d
+node --version
+npm --version
+git --version
 ```
 
-The included Compose file uses a named volume. To use an existing server
-directory, replace the volume entry with a bind mount and set appropriate
-ownership, for example:
+Create a dedicated service account and directories. These example paths match
+the included systemd unit:
 
-```yaml
-services:
-  moneyinmotion:
-    volumes:
-      - /srv/moneyinmotion:/data
+```bash
+sudo useradd --system --create-home --shell /usr/sbin/nologin moneyinmotion
+sudo git clone https://github.com/sytelus/MoneyInMotion.git /opt/moneyinmotion
+sudo mkdir -p /srv/moneyinmotion
+sudo chown -R moneyinmotion:moneyinmotion /opt/moneyinmotion /srv/moneyinmotion
 ```
 
-Do not mount the legacy verification source into `/data`; the running service
-is write-capable. Copy data into a dedicated MiM root or upload it through the
-website.
+Install and build as the service user:
 
-## Reverse proxy
+```bash
+sudo -H -u moneyinmotion bash -lc 'cd /opt/moneyinmotion && ./install.sh'
+```
 
-Terminate TLS and authentication at the proxy until native authentication is
-implemented. Proxy the entire origin, including `/api` and static assets, to
-the same MiM process. Preserve request bodies for multipart imports and allow a
-body size larger than the desired upload (the application limit is 50 MiB per
-file and 500 files). Increase upstream timeouts for synchronous full rebuilds.
+The production install performs a reproducible `npm ci`, type-checks and builds
+the site, then removes compilers, tests, and other development-only packages.
+This keeps the running VM smaller while leaving all build instructions in the
+repository. A later `./install.sh` restores build dependencies for an upgrade
+and prunes them again afterward.
 
-Do not configure a CDN or shared cache for API responses containing financial
-data. Add `Cache-Control` policies at the proxy conservatively, and avoid
-logging request bodies, statement filenames, or edit payloads.
+## Configuration
+
+Create `/etc/moneyinmotion.env`:
+
+```text
+MIM_DATA_ROOT=/srv/moneyinmotion
+MIM_USERNAME=shitals
+MIM_PORT=3001
+```
+
+Restrict the file because deployment settings may reveal private paths:
+
+```bash
+sudo chown root:moneyinmotion /etc/moneyinmotion.env
+sudo chmod 640 /etc/moneyinmotion.env
+```
+
+Environment variables intentionally override values saved through Settings.
+Changing an environment-controlled setting in the website will not override
+the service environment on restart.
+
+## Run with systemd
+
+The repository includes [deploy/moneyinmotion.service](../deploy/moneyinmotion.service).
+It assumes:
+
+- repository: `/opt/moneyinmotion`;
+- service user/group: `moneyinmotion`;
+- Node executable available as `node` in `/usr/local/bin` or `/usr/bin`; and
+- environment file: `/etc/moneyinmotion.env`.
+
+If Node is installed elsewhere, or if different directories are chosen, edit
+the unit before installing it. Avoid an interactive version manager for a
+system service; install the selected Node version in a stable system path.
+
+```bash
+sudo cp /opt/moneyinmotion/deploy/moneyinmotion.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now moneyinmotion
+sudo systemctl status moneyinmotion
+curl --fail http://127.0.0.1:3001/api/health
+```
+
+Useful operating commands are deliberately ordinary:
+
+```bash
+sudo systemctl restart moneyinmotion
+sudo systemctl stop moneyinmotion
+sudo journalctl -u moneyinmotion -f
+```
+
+For a temporary foreground run instead of systemd:
+
+```bash
+MIM_DATA_ROOT=/srv/moneyinmotion MIM_USERNAME=shitals ./run.sh prod
+```
+
+## HTTPS and remote access
+
+If the VM is reachable outside a trusted network, place a small reverse proxy
+or access gateway in front of `127.0.0.1:3001`. It must:
+
+- terminate TLS and authenticate every route until MiM has native login;
+- proxy both static paths and `/api` to the same MiM process;
+- permit multipart request bodies up to MiM's 100 MiB request limit (with at
+  most 200 files and 20 MiB per file); and
+- allow a long enough upstream timeout for the synchronous rebuild that follows
+  an upload.
+
+Do not put API responses containing financial data in a shared cache, and avoid
+logging statement filenames, request bodies, or edit payloads.
+
+## Upgrade
+
+Use one writer and stop it during an application upgrade:
+
+```bash
+sudo systemctl stop moneyinmotion
+sudo -H -u moneyinmotion git -C /opt/moneyinmotion pull --ff-only
+sudo -H -u moneyinmotion bash -lc 'cd /opt/moneyinmotion && ./install.sh'
+sudo systemctl start moneyinmotion
+curl --fail http://127.0.0.1:3001/api/health
+```
+
+Before upgrading, back up the active user directory and configuration. CI
+should pass before the revision is deployed. After startup, inspect Accounts,
+the latest month, and Rules.
 
 ## Backup and recovery
 
 Back up the complete active user directory while no import or edit is running.
 At minimum protect:
 
-- `Statements`: source of the generated history;
+- `Statements`: source files needed to regenerate history;
 - `Merged/LatestMergedEdits.json`: corrections and reusable rules;
-- `Merged`: current materialized view and timestamped backups; and
-- `staging`: upload manifests and recovery copies, according to retention policy.
+- `Merged`: the current materialized snapshot and local backups; and
+- `staging`: manifests and recovery copies, according to the chosen retention
+  policy.
 
-Also back up `~/.moneyinmotion/config.json` if Settings rather than environment
-variables controls deployment. Encrypt backups because statements and edits
-contain highly sensitive personal information.
+Also back up `~/.moneyinmotion/config.json` if the deployment does not use
+environment variables. Encrypt backups and store a copy off the VM.
 
-To restore, stop MiM, restore into an explicit dedicated data root, validate
-ownership and paths, start the service, inspect Accounts, then run **Rebuild
-snapshot** in Settings. Keep the old root unchanged until counts and date ranges
-have been checked.
+To restore, stop MiM, restore into a dedicated empty root, verify ownership,
+start the service, inspect Accounts, then choose **Rebuild snapshot** in
+Settings. Keep the old root unchanged until account counts and date ranges have
+been checked.
 
-## Upgrades
+## Operational boundary
 
-1. Back up user data and config.
-2. Pull or deploy the desired revision.
-3. Run `npm ci`, `npm run typecheck`, `npm test`, and `npm run build`, or build a
-   fresh container image.
-4. Restart the one writer instance.
-5. Check `/api/health`, Accounts, latest month, and Rules.
+One Node process is the supported writer. Do not run two MiM services against
+the same data directory. The current filesystem persistence and in-memory cache
+are intentionally simple and do not implement distributed locking.
 
-Avoid rolling two MiM processes against the same filesystem volume. The current
-save serialization is process-local and does not provide a distributed lock.
-
-## Observability
-
-`GET /api/health` is intentionally small and suitable for liveness checks.
-Unexpected server errors and statement parse failures are logged server-side;
-production clients receive a generic message for unhandled failures. The app
-does not yet expose metrics, traces, a background-job queue, or structured audit
-export. Those improvements are tracked in
-[Suggested improvements](legacy_suggested_improvements.md).
+`GET /api/health` is a liveness check. Logs go to standard output, which systemd
+captures in the journal. Metrics, tracing, background jobs, and clustered
+operation are deliberately outside the current single-user design.

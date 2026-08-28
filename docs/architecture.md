@@ -34,10 +34,39 @@ The package dependency direction is deliberate:
   static hosting.
 - `@moneyinmotion/web` is a React single-page application. TanStack Query owns
   server state; Zustand owns ephemeral transaction-navigation state. UI
-  components compose Radix primitives and Tailwind styles.
+  components use native HTML first, with Radix only for accessible dialogs and
+  action menus and Tailwind for styling.
 
 This direction keeps business rules directly testable and avoids importing UI
 or transport concerns into parsers and models.
+
+These three npm workspaces are compile-time boundaries, not three deployed
+services. The browser cannot use Node filesystem APIs, the server must not
+depend on React, and both need the same financial rules. Keeping those actual
+runtime boundaries visible is simpler than a single mixed source tree. In
+production they still produce one website served by one Node process.
+Browser libraries are build-time dependencies and are removed by the production
+installer after Vite emits static assets.
+
+## Simplicity constraints
+
+The architecture is intentionally limited to what the current single-user
+product needs:
+
+- one configured username per process;
+- one Node process and one filesystem data root;
+- direct construction of repositories and services—no dependency-injection
+  framework;
+- JSON files—no database, ORM, migration service, or object store;
+- synchronous imports—no queue, worker, scheduler, or event bus;
+- same-origin browser/API traffic—no CORS layer; and
+- explicit maintenance rebuilds—no background filesystem watcher.
+
+Do not add infrastructure merely because it might help a future multiuser or
+high-scale version. Add it only when a measured requirement cannot be met by
+this model. Path validation, atomic file replacement, deterministic parsing,
+and accessible UI primitives remain because they protect current data and
+users, not because they are extension points.
 
 ## Runtime lifecycle
 
@@ -50,12 +79,13 @@ At startup the server:
 5. Starts the API and, in production, serves `packages/web/dist`.
 
 The cache loads `Merged/LatestMerged.json` lazily. If no snapshot exists, the UI
-receives an empty transaction collection. A watcher invalidates cached state
-when merged files are changed externally while ignoring the server's own saves.
+receives an empty transaction collection. The server is the sole supported
+writer and updates the cache through edits and rebuilds. If an administrator
+changes statement files directly, **Rebuild snapshot** in Settings refreshes it.
 
 Changing data root, username, or port in Settings writes
-`~/.moneyinmotion/config.json`. The current listener, repository, and watcher
-remain attached to their startup configuration; the API explicitly returns
+`~/.moneyinmotion/config.json`. The current listener and repository remain
+attached to their startup configuration; the API explicitly returns
 `restartRequired` until the process restarts.
 
 ## Import and snapshot transaction
@@ -106,9 +136,8 @@ voiding edit; history is not silently erased.
 The present goal is a single-user personal-finance deployment without an
 authentication system or scalability requirement. JSON and source files make
 backup, inspection, migration, and legacy comparison straightforward and keep
-the conversion small enough to audit. Repositories and configuration already
-centralize physical paths, so a database or object-store adapter can be added
-without putting filesystem calls into the UI or domain.
+the system small enough to audit. A database would add installation, backup,
+migration, and recovery work without solving a current requirement.
 
 The tradeoffs are explicit: a single process is the supported writer, snapshot
 and edit files do not share a cross-file transaction, and large histories are
@@ -117,10 +146,10 @@ rebuilt synchronously. These are tracked in
 
 ## Security boundary
 
-Helmet supplies browser security headers, production CORS is same-origin, JSON
-and upload sizes are bounded, request bodies are validated with Zod, and all
-user-influenced paths are checked. Production error responses hide unexpected
-internal details.
+Helmet supplies browser security headers, the site and API share one origin,
+JSON and upload sizes are bounded, request bodies are validated with Zod, and
+all user-influenced paths are checked. Production error responses hide
+unexpected internal details.
 
 Those controls do not replace authentication. Until user identity and
 authorization exist, the trusted network or an authenticating reverse proxy is

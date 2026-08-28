@@ -78,7 +78,7 @@ This is the prerequisite for safe public Internet or shared-household use.
 - Structured privacy-redacted logs, OpenTelemetry traces, metrics, storage/free
   space alarms, and a deep readiness endpoint.
 - Signed releases, software bill of materials, provenance/attestations,
-  container vulnerability scanning, and automated migration smoke tests.
+  dependency scanning, and automated VM migration smoke tests.
 - API versioning and OpenAPI generation if external clients become supported.
 
 ## 8. Administration

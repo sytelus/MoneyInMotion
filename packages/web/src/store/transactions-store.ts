@@ -8,11 +8,7 @@
  */
 
 import { create } from 'zustand';
-import {
-  Transactions,
-  Transaction,
-  type TransactionsData,
-} from '@moneyinmotion/core';
+import { Transactions, Transaction, type TransactionsData } from '@moneyinmotion/core';
 
 /**
  * Shape of the transactions Zustand store.
@@ -20,10 +16,6 @@ import {
 export interface TransactionsState {
   /** The deserialized transactions collection, or `null` before load. */
   transactions: Transactions | null;
-  /** Whether the store is currently loading data. */
-  isLoading: boolean;
-  /** The most recent error message, or `null`. */
-  error: string | null;
 
   /** Currently selected year filter (e.g. `"2024"`), or `null` for all. */
   selectedYear: string | null;
@@ -60,23 +52,13 @@ export interface TransactionsState {
  */
 export const useTransactionsStore = create<TransactionsState>((set, get) => ({
   transactions: null,
-  isLoading: false,
-  error: null,
   selectedYear: null,
   selectedMonth: null,
   selectedTransactionIds: new Set<string>(),
   expandedGroupIds: new Set<string>(),
 
   setTransactions(data: TransactionsData) {
-    try {
-      const txns = Transactions.fromData(data);
-      set({ transactions: txns, isLoading: false, error: null });
-    } catch (err) {
-      set({
-        error: err instanceof Error ? err.message : 'Failed to load transactions',
-        isLoading: false,
-      });
-    }
+    set({ transactions: Transactions.fromData(data) });
   },
 
   selectYearMonth(year: string, month: string) {

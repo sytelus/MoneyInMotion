@@ -96,10 +96,11 @@ and `LatestMergedEdits.json` before returning success.
 
 Multipart fields:
 
-- `files`: repeated file parts, at least one and at most 500;
+- `files`: repeated file parts, at least one and at most 200;
 - `relativePaths`: a JSON string array positional to `files`.
 
-Each file is limited to 50 MiB. The response has two sections:
+Each file is limited to 20 MiB and a declared request to 100 MiB. The response
+has two sections:
 
 ```json
 {
@@ -134,7 +135,7 @@ to one uniquely equivalent rebuilt transaction. `unresolvedEditTargets` counts
 missing or ambiguous parameters preserved unchanged for review; MiM never
 broadens or drops them silently.
 
-### `POST /api/import/scan`
+### `POST /api/import/rebuild`
 
 Runs the same full rebuild over server-side statements without an upload. This
 is a maintenance operation. It returns the `rebuild` object shown above.

@@ -26,7 +26,7 @@ Until an authentication layer is implemented:
 - do not run multiple writer instances against one filesystem root; and
 - encrypt server disks and backups and restrict their retention/access.
 
-Helmet headers, same-origin production CORS, upload bounds, runtime validation,
+Helmet headers, same-origin site/API serving, upload bounds, runtime validation,
 path containment, and generic production error responses are defense in depth;
 they do not establish user identity.
 

@@ -107,15 +107,23 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       </span>
 
       {/* Account */}
-      <span className="hidden text-muted-foreground text-xs truncate max-w-[8rem] xl:block" title={transaction.accountId}>
+      <span
+        className="hidden text-muted-foreground text-xs truncate max-w-[8rem] xl:block"
+        title={transaction.accountId}
+      >
         {accountDisplay}
       </span>
 
       {/* Context menu button - visible on hover or when row is selected */}
-      <div className={cn('opacity-0 group-hover:opacity-100 transition-opacity', isSelected && 'opacity-100')}>
+      <div
+        className={cn(
+          'opacity-0 group-hover:opacity-100 transition-opacity',
+          isSelected && 'opacity-100',
+        )}
+      >
         {hasEditActions ? (
           <TransactionContextMenuButton
-            title="Actions (right-click row for menu)"
+            title="Transaction actions"
             onEditCategory={() => onEditCategory?.(transaction)}
             onEditNote={() => onEditNote?.(transaction)}
             onEditAttributes={() => onEditAttributes?.(transaction)}

@@ -39,14 +39,22 @@ percentage as a substitute for fixtures that represent real provider exports.
 
 ## Last verified baseline
 
-The complete acceptance run on 2026-08-27 produced:
+The complete acceptance run on 2026-08-28 produced:
 
-- 41 passing test files and 499 passing tests;
-- 71.37% statement, 60.47% branch, 66.93% function, and 72.21% line coverage;
+- 41 passing test files and 500 passing tests;
+- 72.32% statement, 60.95% branch, 68.29% function, and 73.19% line coverage;
 - a clean TypeScript build, ESLint run, and optimized Vite production build;
-- zero vulnerabilities reported by `npm audit --audit-level=high`; and
-- a successful production-mode HTTP smoke test with the expected health,
-  static-site fallback, CORS, and security-header behavior.
+- zero vulnerabilities in the most recent completed
+  `npm audit --audit-level=high` run; and
+- successful production-mode HTTP smoke tests with the expected health,
+  static-site fallback, same-origin routing, persisted data after restart, and
+  security-header behavior.
+
+The production smoke test ran after `./install.sh` pruned the compiler, test
+runner, and browser build dependencies. The resulting production
+`node_modules` occupied approximately 13 MiB, compared with approximately
+292 MiB for the complete development installation. The supplied systemd unit
+also passes `systemd-analyze verify`.
 
 Coverage is a directional baseline rather than a release threshold. The most
 important safety paths—staging path validation and deduplication, all-or-nothing
@@ -95,7 +103,7 @@ legacy import metadata. One legacy synthetic matcher source has no physical
 statement by design. Current observed results and their explanation are recorded
 in [Legacy divergences](legacy_divergence.md).
 
-The 2026-08-27 reference run selected 102 physical files for 103 legacy import
+The 2026-08-28 reference run selected 102 physical files for 103 legacy import
 sources (the extra source is synthetic), spanning eight accounts from
 2000-08-09 through 2015-04-08. It replayed all 431 rules. Of 162 exact-ID scope
 parameters, 125 resolved and 37 were already orphaned in the legacy snapshot;

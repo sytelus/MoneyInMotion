@@ -1,8 +1,8 @@
 /**
  * Express application setup.
  *
- * Builds the Express app with JSON body parsing, CORS, route mounting,
- * an error handler, and (in production) static file serving of the
+ * Builds the Express app with security headers, JSON body parsing, route
+ * mounting, an error handler, and (in production) static file serving of the
  * built React app with SPA-fallback routing.
  *
  * @module
@@ -14,7 +14,6 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { ServerConfig } from './config.js';
-import { corsMiddleware } from './middleware/cors.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { FileRepository } from './storage/file-repository.js';
 import { TransactionCache } from './cache/transaction-cache.js';
@@ -32,67 +31,55 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * Create and configure the Express app.
  *
  * @param config - The server configuration.
- * @returns The configured Express app with a `cache` property attached for
- *          shutdown handling (see `app.cache.dispose()` in index.ts).
+ * @returns The configured Express application.
  */
-export function createApp(config: ServerConfig): Express & { cache: TransactionCache } {
-    const app = express() as Express & { cache: TransactionCache };
+export function createApp(config: ServerConfig): Express {
+  const app = express();
 
-    // --- Middleware ---
+  // --- Middleware ---
 
-    // Sensible browser security headers (CSP, frame protection, MIME sniffing
-    // protection, and related defaults). The production UI and API are
-    // intentionally same-origin, so Helmet's default policy is appropriate.
-    app.use(helmet());
+  // Sensible browser security headers (CSP, frame protection, MIME sniffing
+  // protection, and related defaults). The production UI and API are
+  // intentionally same-origin, so Helmet's default policy is appropriate.
+  app.use(helmet());
 
-    // JSON body parser with 50MB limit for large transaction files
-    app.use(express.json({ limit: '50mb' }));
+  // API JSON contains configuration and edit rules, never statement files.
+  app.use(express.json({ limit: '2mb' }));
 
-    // CORS
-    app.use(corsMiddleware);
+  // --- Dependencies ---
 
-    // --- Dependencies ---
+  // One server process owns one username-scoped directory.
+  const repo = new FileRepository(config.userDataPath);
+  const cache = new TransactionCache(repo);
 
-    // A server process serves one username-scoped directory. Future
-    // authentication can construct one repository/cache pair per user.
-    const repo = new FileRepository(config.userDataPath);
-    const cache = new TransactionCache(config, repo);
-    app.cache = cache;
+  // --- Routes ---
 
-    // Config accessor passed to routes that need server config. The reference
-    // is stable for the lifetime of the Express app -- PUT /api/config
-    // persists to disk but does not update this in-memory copy, which means
-    // data-path changes only take effect after a server restart.
-    const getConfig = () => config;
+  app.use('/api/health', createHealthRouter());
+  app.use('/api/config', createConfigRouter(config));
+  app.use('/api/accounts', createAccountsRouter(config, cache));
+  app.use('/api/transactions', createTransactionsRouter(cache));
+  app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
+  app.use('/api/import', createImportRouter(cache, config));
 
-    // --- Routes ---
+  // --- Static files (production) ---
 
-    app.use('/api/health', createHealthRouter());
-    app.use('/api/config', createConfigRouter(getConfig));
-    app.use('/api/accounts', createAccountsRouter(getConfig, cache));
-    app.use('/api/transactions', createTransactionsRouter(cache));
-    app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
-    app.use('/api/import', createImportRouter(cache, getConfig));
-
-    // --- Static files (production) ---
-
-    if (process.env['NODE_ENV'] === 'production') {
-        const webDistPath = path.resolve(__dirname, '..', '..', 'web', 'dist');
-        if (fs.existsSync(webDistPath)) {
-            app.use(express.static(webDistPath));
-            // SPA fallback: serve index.html for any GET request that didn't
-            // match an API route or a static asset. Express 5 requires a
-            // named wildcard (`*splat`) rather than the bare `*` accepted
-            // by Express 4 -- a RegExp works in both versions.
-            app.get(/.*/, (_req, res) => {
-                res.sendFile(path.join(webDistPath, 'index.html'));
-            });
-        }
+  if (process.env['NODE_ENV'] === 'production') {
+    const webDistPath = path.resolve(__dirname, '..', '..', 'web', 'dist');
+    if (fs.existsSync(webDistPath)) {
+      app.use(express.static(webDistPath));
+      // SPA fallback: serve index.html for any GET request that didn't
+      // match an API route or a static asset. Express 5 requires a
+      // named wildcard (`*splat`) rather than the bare `*` accepted
+      // by Express 4 -- a RegExp works in both versions.
+      app.get(/.*/, (_req, res) => {
+        res.sendFile(path.join(webDistPath, 'index.html'));
+      });
     }
+  }
 
-    // --- Error handler (must be last) ---
+  // --- Error handler (must be last) ---
 
-    app.use(errorHandler);
+  app.use(errorHandler);
 
-    return app;
+  return app;
 }

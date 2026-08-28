@@ -1,6 +1,5 @@
 /**
- * Main transaction list component using @tanstack/react-table for column
- * definitions and a virtualized display for performance.
+ * Main transaction list component.
  *
  * Transactions are grouped by the NetAggregator (Income/Expenses/Transfers)
  * and rendered with expandable group headers.
@@ -9,13 +8,6 @@
  */
 
 import React, { useMemo, useCallback, useEffect, useRef } from 'react';
-import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  type ColumnDef,
-} from '@tanstack/react-table';
 import { NetAggregator, TransactionAggregator, type Transaction } from '@moneyinmotion/core';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { TransactionRow } from './TransactionRow.js';
@@ -94,34 +86,7 @@ function flattenAggregator(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Column definitions (for @tanstack/react-table metadata)
-// ---------------------------------------------------------------------------
-
-const columnHelper = createColumnHelper<Transaction>();
-
-const columns: ColumnDef<Transaction, unknown>[] = [
-  columnHelper.accessor('displayEntityNameNormalized', {
-    header: 'Entity Name',
-    cell: (info) => info.getValue(),
-  }) as ColumnDef<Transaction, unknown>,
-  columnHelper.accessor('correctedAmount', {
-    header: 'Amount',
-    cell: (info) => info.getValue(),
-  }) as ColumnDef<Transaction, unknown>,
-  columnHelper.accessor('correctedTransactionReason', {
-    header: 'Type',
-    cell: (info) => info.getValue(),
-  }) as ColumnDef<Transaction, unknown>,
-  columnHelper.accessor('correctedTransactionDate', {
-    header: 'Date',
-    cell: (info) => info.getValue(),
-  }) as ColumnDef<Transaction, unknown>,
-  columnHelper.accessor('accountId', {
-    header: 'Account',
-    cell: (info) => info.getValue(),
-  }) as ColumnDef<Transaction, unknown>,
-];
+const columnHeaders = ['Entity name', 'Amount', 'Type', 'Date', 'Account'] as const;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -129,8 +94,7 @@ const columns: ColumnDef<Transaction, unknown>[] = [
 
 /**
  * The main transaction list. Groups transactions using `NetAggregator` and
- * renders them as an expandable, keyboard-navigable list with virtual
- * scrolling behavior.
+ * renders them as an expandable, keyboard-navigable list.
  */
 export const TransactionList: React.FC<TransactionListProps> = ({
   onEditCategory,
@@ -145,7 +109,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const selectTransaction = useTransactionsStore((s) => s.selectTransaction);
   const toggleGroupExpand = useTransactionsStore((s) => s.toggleGroupExpand);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const hasAutoExpanded = useRef(false);
 
   // Build the aggregator and flatten into rows
@@ -164,36 +127,17 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     return rows;
   }, [filteredTxns, expandedGroupIds]);
 
-  // Set up the react-table instance (used mainly for column metadata)
-  const txData = useMemo(
-    () =>
-      flatRows
-        .filter((r): r is TransactionRowData => r.type === 'transaction')
-        .map((r) => r.transaction),
-    [flatRows],
-  );
-
-  const table = useReactTable({
-    data: txData,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
 
       e.preventDefault();
-      const txRows = flatRows.filter(
-        (r): r is TransactionRowData => r.type === 'transaction',
-      );
+      const txRows = flatRows.filter((r): r is TransactionRowData => r.type === 'transaction');
       if (txRows.length === 0) return;
 
       const currentId = [...selectedIds][0];
-      const currentIndex = txRows.findIndex(
-        (r) => r.transaction.id === currentId,
-      );
+      const currentIndex = txRows.findIndex((r) => r.transaction.id === currentId);
 
       let nextIndex: number;
       if (e.key === 'ArrowDown') {
@@ -232,7 +176,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   return (
     <div
-      ref={containerRef}
       className="h-full overflow-y-auto focus:outline-none"
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -241,31 +184,23 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     >
       {/* Column headers */}
       <div className="sticky top-0 z-10 bg-background border-b-2 border-border">
-        {table.getHeaderGroups().map((headerGroup) => (
-          <div
-            key={headerGroup.id}
-            className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]"
-          >
-            {headerGroup.headers.map((header, index) => (
-              <div
-                key={header.id}
-                className={
-                  index === 2 || index === 4
-                    ? 'hidden xl:block'
-                    : index === 3
-                      ? 'hidden sm:block'
-                      : undefined
-                }
-              >
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(header.column.columnDef.header, header.getContext())}
-              </div>
-            ))}
-            {/* Extra column for context menu button */}
-            <div />
-          </div>
-        ))}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
+          {columnHeaders.map((header, index) => (
+            <div
+              key={header}
+              className={
+                index === 2 || index === 4
+                  ? 'hidden xl:block'
+                  : index === 3
+                    ? 'hidden sm:block'
+                    : undefined
+              }
+            >
+              {header}
+            </div>
+          ))}
+          <div aria-hidden="true" />
+        </div>
       </div>
 
       {/* Rows */}

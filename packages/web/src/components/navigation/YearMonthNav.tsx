@@ -1,7 +1,7 @@
 /**
  * Year/month tree navigator for filtering transactions by time period.
  *
- * Displays an accordion of years, each expandable to show its months.
+ * Displays native disclosure sections for years and their months.
  * Clicking a month filters the transaction list. Ported from the legacy
  * `txNavigationView.js`.
  *
@@ -9,7 +9,6 @@
  */
 
 import React, { useMemo } from 'react';
-import * as Accordion from '@radix-ui/react-accordion';
 import { ChevronDown } from 'lucide-react';
 import { cn, getMonthName } from '../../lib/utils.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
@@ -67,7 +66,7 @@ function buildYearMonthTree(
 }
 
 /**
- * Sidebar navigator that presents an accordion of years, each containing
+ * Sidebar navigator that presents expandable years, each containing
  * clickable month entries to filter the transaction list.
  */
 export const YearMonthNav: React.FC = () => {
@@ -92,50 +91,39 @@ export const YearMonthNav: React.FC = () => {
 
   return (
     <nav aria-label="Year and month navigation" className="py-2">
-      <Accordion.Root
-        type="multiple"
-        defaultValue={yearMonthTree.length > 0 ? [yearMonthTree[0]!.yearString] : []}
-      >
-        {yearMonthTree.map((yearEntry) => (
-          <Accordion.Item key={yearEntry.yearString} value={yearEntry.yearString}>
-            <Accordion.Header asChild>
-              <Accordion.Trigger
-                className={cn(
-                  'flex w-full items-center justify-between px-4 py-2 text-sm font-semibold hover:bg-accent transition-colors group',
-                  selectedYear === yearEntry.yearString && 'text-primary',
-                )}
-              >
-                <span>{yearEntry.yearString}</span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </Accordion.Trigger>
-            </Accordion.Header>
-            <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-              <ul className="pl-4 py-1">
-                {yearEntry.months.map((monthEntry) => {
-                  const isActive =
-                    selectedYear === yearEntry.yearString &&
-                    selectedMonth === monthEntry.monthString;
-                  return (
-                    <li key={monthEntry.monthString}>
-                      <button
-                        className={cn(
-                          'w-full text-left px-4 py-1.5 text-sm rounded-md transition-colors hover:bg-accent',
-                          isActive && 'bg-accent font-medium text-accent-foreground',
-                        )}
-                        onClick={() =>
-                          selectYearMonth(yearEntry.yearString, monthEntry.monthString)
-                        }
-                      >
-                        {monthEntry.monthName}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Accordion.Content>
-          </Accordion.Item>
-        ))}
-      </Accordion.Root>
+      {yearMonthTree.map((yearEntry) => (
+        <details key={yearEntry.yearString} className="group/year">
+          <summary
+            className={cn(
+              'flex w-full cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-semibold hover:bg-accent transition-colors',
+              selectedYear === yearEntry.yearString && 'text-primary',
+            )}
+          >
+            <span>{yearEntry.yearString}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open/year:rotate-180" />
+          </summary>
+          <ul className="pl-4 py-1">
+            {yearEntry.months.map((monthEntry) => {
+              const isActive =
+                selectedYear === yearEntry.yearString && selectedMonth === monthEntry.monthString;
+              return (
+                <li key={monthEntry.monthString}>
+                  <button
+                    type="button"
+                    className={cn(
+                      'w-full text-left px-4 py-1.5 text-sm rounded-md transition-colors hover:bg-accent',
+                      isActive && 'bg-accent font-medium text-accent-foreground',
+                    )}
+                    onClick={() => selectYearMonth(yearEntry.yearString, monthEntry.monthString)}
+                  >
+                    {monthEntry.monthName}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      ))}
     </nav>
   );
 };

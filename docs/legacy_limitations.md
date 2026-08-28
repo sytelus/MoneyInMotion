@@ -25,8 +25,8 @@ proxy and do not advertise the service as a public multiuser application.
 - The transaction graph is held in memory, all statements are reparsed during a
   rebuild, and the browser receives the serialized graph. Very large histories
   are not optimized.
-- Uploads use memory-backed multipart handling, limited to 500 files, 50 MiB per
-  file, and 512 parts.
+- Uploads use memory-backed multipart handling, limited to 200 files, 20 MiB per
+  file, 203 parts, and 100 MiB for requests that declare their length.
 - Rebuild is synchronous in the upload HTTP request. There is no durable job,
   cancellation, live progress, or resume after a process restart.
 
@@ -97,5 +97,5 @@ test; use the provided selection script.
   statement, snapshot, backup, or free-space threshold.
 - Logging is process output rather than structured, privacy-redacted telemetry.
   Metrics, tracing, alerting, and administrator audit export are absent.
-- Settings changes require restart; the service does not hot-swap its listener,
-  watcher, or repository.
+- Settings changes require restart; the service does not hot-swap its listener
+  or repository.

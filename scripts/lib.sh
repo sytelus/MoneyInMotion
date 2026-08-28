@@ -57,6 +57,13 @@ ensure_deps_installed() {
     fi
 }
 
+# -- Guard: commands that compile/test need development dependencies ----------
+ensure_development_deps_installed() {
+    if [ ! -x node_modules/.bin/tsc ] || [ ! -x node_modules/.bin/vite ]; then
+        fail "development dependencies are not installed. Run ./install.sh --development."
+    fi
+}
+
 # -- Build @moneyinmotion/core if its dist is missing or out of date ---------
 #
 # The server imports `@moneyinmotion/core` via Node's module resolver, which

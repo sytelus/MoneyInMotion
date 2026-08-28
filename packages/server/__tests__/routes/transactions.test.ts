@@ -21,615 +21,579 @@ import type { TransactionCache } from '../../src/cache/transaction-cache.js';
 import * as configModule from '../../src/config.js';
 import type { ServerConfig } from '../../src/config.js';
 import {
-    Transactions,
-    ScopeType,
-    createScopeFilter,
-    editValue,
-    createAuditInfo,
+  Transactions,
+  ScopeType,
+  createScopeFilter,
+  editValue,
+  createAuditInfo,
 } from '@moneyinmotion/core';
 
 function createTestConfig(rootDir: string = '/tmp/test-moneyinmotion'): ServerConfig {
-    return {
-        port: 3001,
-        dataRoot: path.dirname(rootDir),
-        username: path.basename(rootDir),
-        userDataPath: rootDir,
-        statementsDir: path.join(rootDir, 'Statements'),
-        mergedDir: path.join(rootDir, 'Merged'),
-        stagingDir: path.join(rootDir, 'staging'),
-    };
+  return {
+    port: 3001,
+    dataRoot: path.dirname(rootDir),
+    username: path.basename(rootDir),
+    userDataPath: rootDir,
+    statementsDir: path.join(rootDir, 'Statements'),
+    mergedDir: path.join(rootDir, 'Merged'),
+    stagingDir: path.join(rootDir, 'staging'),
+  };
 }
 
-function createMockCache(
-    transactions: unknown = new Transactions('test'),
-): TransactionCache {
-    return {
-        getTransactions: vi.fn().mockResolvedValue(transactions),
-        invalidate: vi.fn(),
-        applyEdits: vi.fn().mockResolvedValue({ affectedTransactionsCount: 0 }),
-        save: vi.fn().mockResolvedValue(undefined),
-        rebuildFromStatements: vi.fn().mockResolvedValue({
-            committed: true,
-            previousTransactionCount: 0,
-            newTransactions: 0,
-            totalTransactions: 0,
-            importedFiles: [],
-            failedFiles: [],
-            appliedEdits: 0,
-            migratedEditTargets: 0,
-            unresolvedEditTargets: 0,
-        }),
-        dispose: vi.fn(),
-    } as unknown as TransactionCache;
+function createMockCache(transactions: unknown = new Transactions('test')): TransactionCache {
+  return {
+    getTransactions: vi.fn().mockResolvedValue(transactions),
+    applyEdits: vi.fn().mockResolvedValue({ affectedTransactionsCount: 0 }),
+    save: vi.fn().mockResolvedValue(undefined),
+    rebuildFromStatements: vi.fn().mockResolvedValue({
+      committed: true,
+      previousTransactionCount: 0,
+      newTransactions: 0,
+      totalTransactions: 0,
+      importedFiles: [],
+      failedFiles: [],
+      appliedEdits: 0,
+      migratedEditTargets: 0,
+      unresolvedEditTargets: 0,
+    }),
+  } as unknown as TransactionCache;
 }
 
-function createTestApp(
-    config: ServerConfig,
-    cache: TransactionCache,
-): express.Express {
-    const app = express();
-    app.use(express.json());
-    app.use('/api/health', createHealthRouter());
-    app.use('/api/config', createConfigRouter(() => config));
-    app.use('/api/accounts', createAccountsRouter(() => config, cache));
-    app.use('/api/transactions', createTransactionsRouter(cache));
-    app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
-    app.use('/api/import', createImportRouter(cache, () => config));
-    return app;
+function createTestApp(config: ServerConfig, cache: TransactionCache): express.Express {
+  const app = express();
+  app.use(express.json());
+  app.use('/api/health', createHealthRouter());
+  app.use('/api/config', createConfigRouter(config));
+  app.use('/api/accounts', createAccountsRouter(config, cache));
+  app.use('/api/transactions', createTransactionsRouter(cache));
+  app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
+  app.use('/api/import', createImportRouter(cache, config));
+  return app;
 }
 
 interface AccountSummaryResponse {
-    config: {
-        accountInfo: {
-            id: string;
-        };
+  config: {
+    accountInfo: {
+      id: string;
     };
-    stats: {
-        transactionCount: number;
-        lastImportedAt: string | null;
-    };
-    hasStatementFiles: boolean;
-    relativeDirectory: string;
+  };
+  stats: {
+    transactionCount: number;
+    lastImportedAt: string | null;
+  };
+  hasStatementFiles: boolean;
+  relativeDirectory: string;
 }
 
 function writeAccountConfig(
-    rootDir: string,
-    accountId: string,
-    overrides?: Partial<{
-        instituteName: string;
-        title: string;
-        type: number;
-        requiresParent: boolean;
-        interAccountNameTags: string[];
-        fileFilters: string[];
-        scanSubFolders: boolean;
-    }>,
+  rootDir: string,
+  accountId: string,
+  overrides?: Partial<{
+    instituteName: string;
+    title: string;
+    type: number;
+    requiresParent: boolean;
+    interAccountNameTags: string[];
+    fileFilters: string[];
+    scanSubFolders: boolean;
+  }>,
 ): string {
-    const accountDir = path.join(rootDir, 'Statements', accountId);
-    fs.mkdirSync(accountDir, { recursive: true });
-    fs.writeFileSync(
-        path.join(accountDir, 'AccountConfig.json'),
-        JSON.stringify(
-            {
-                accountInfo: {
-                    id: accountId,
-                    instituteName: overrides?.instituteName ?? 'TestBank',
-                    title: overrides?.title ?? 'Test Account',
-                    type: overrides?.type ?? 1,
-                    requiresParent: overrides?.requiresParent ?? false,
-                    interAccountNameTags: overrides?.interAccountNameTags ?? ['TRANSFER'],
-                },
-                fileFilters: overrides?.fileFilters ?? ['*.csv'],
-                scanSubFolders: overrides?.scanSubFolders ?? true,
-            },
-            null,
-            2,
-        ),
-        'utf-8',
-    );
-    return accountDir;
+  const accountDir = path.join(rootDir, 'Statements', accountId);
+  fs.mkdirSync(accountDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(accountDir, 'AccountConfig.json'),
+    JSON.stringify(
+      {
+        accountInfo: {
+          id: accountId,
+          instituteName: overrides?.instituteName ?? 'TestBank',
+          title: overrides?.title ?? 'Test Account',
+          type: overrides?.type ?? 1,
+          requiresParent: overrides?.requiresParent ?? false,
+          interAccountNameTags: overrides?.interAccountNameTags ?? ['TRANSFER'],
+        },
+        fileFilters: overrides?.fileFilters ?? ['*.csv'],
+        scanSubFolders: overrides?.scanSubFolders ?? true,
+      },
+      null,
+      2,
+    ),
+    'utf-8',
+  );
+  return accountDir;
 }
 
 describe('config routes', () => {
-    beforeEach(() => {
-        vi.restoreAllMocks();
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('GET /api/config returns saved + active configuration with restart flag', async () => {
+    const config = createTestConfig();
+    const cache = createMockCache();
+    const app = createTestApp(config, cache);
+
+    // Stub loadConfig (the "saved" source) so the test does not depend
+    // on the host machine's ~/.moneyinmotion/config.json.
+    vi.spyOn(configModule, 'loadConfig').mockReturnValue(config);
+
+    const res = await request(app).get('/api/config');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      port: config.port,
+      dataRoot: config.dataRoot,
+      username: config.username,
+      userDataPath: config.userDataPath,
+      statementsDir: config.statementsDir,
+      mergedDir: config.mergedDir,
+      stagingDir: config.stagingDir,
+      activePort: config.port,
+      activeDataRoot: config.dataRoot,
+      activeUsername: config.username,
+      activeUserDataPath: config.userDataPath,
+      restartRequired: false,
     });
+  });
 
-    it('GET /api/config returns saved + active configuration with restart flag', async () => {
-        const config = createTestConfig();
-        const cache = createMockCache();
-        const app = createTestApp(config, cache);
+  it('GET /api/config flags restartRequired when saved differs from active', async () => {
+    const active = createTestConfig('/tmp/active-mim');
+    const cache = createMockCache();
+    const app = createTestApp(active, cache);
 
-        // Stub loadConfig (the "saved" source) so the test does not depend
-        // on the host machine's ~/.moneyinmotion/config.json.
-        vi.spyOn(configModule, 'loadConfig').mockReturnValue(config);
+    // Saved config on disk is different from the active in-memory copy.
+    vi.spyOn(configModule, 'loadConfig').mockReturnValue(createTestConfig('/tmp/saved-mim'));
 
-        const res = await request(app).get('/api/config');
+    const res = await request(app).get('/api/config');
 
-        expect(res.status).toBe(200);
-        expect(res.body).toEqual({
-            port: config.port,
-            dataRoot: config.dataRoot,
-            username: config.username,
-            userDataPath: config.userDataPath,
-            statementsDir: config.statementsDir,
-            mergedDir: config.mergedDir,
-            stagingDir: config.stagingDir,
-            activePort: config.port,
-            activeDataRoot: config.dataRoot,
-            activeUsername: config.username,
-            activeUserDataPath: config.userDataPath,
-            restartRequired: false,
-        });
+    expect(res.status).toBe(200);
+    expect(res.body.userDataPath).toBe('/tmp/saved-mim');
+    expect(res.body.activeUserDataPath).toBe('/tmp/active-mim');
+    expect(res.body.restartRequired).toBe(true);
+  });
+
+  it('PUT /api/config persists dataRoot, username, and port', async () => {
+    const config = createTestConfig();
+    const cache = createMockCache();
+    const app = createTestApp(config, cache);
+    const saveConfigSpy = vi.spyOn(configModule, 'saveConfig').mockImplementation(() => undefined);
+    vi.spyOn(configModule, 'loadConfig').mockReturnValue(createTestConfig('/tmp/new-root/alex'));
+
+    const res = await request(app)
+      .put('/api/config')
+      .send({
+        dataRoot: '/tmp/new-root',
+        username: 'alex',
+        port: 4010,
+      })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(200);
+    expect(saveConfigSpy).toHaveBeenCalledWith({
+      dataRoot: '/tmp/new-root',
+      username: 'alex',
+      port: 4010,
     });
+    expect(res.body.userDataPath).toBe('/tmp/new-root/alex');
+    expect(res.body.activeUserDataPath).toBe(config.userDataPath);
+    expect(res.body.restartRequired).toBe(true);
+  });
 
-    it('GET /api/config flags restartRequired when saved differs from active', async () => {
-        const active = createTestConfig('/tmp/active-mim');
-        const cache = createMockCache();
-        const app = createTestApp(active, cache);
+  it('PUT /api/config returns 400 for invalid port', async () => {
+    const config = createTestConfig();
+    const cache = createMockCache();
+    const app = createTestApp(config, cache);
 
-        // Saved config on disk is different from the active in-memory copy.
-        vi.spyOn(configModule, 'loadConfig').mockReturnValue(
-            createTestConfig('/tmp/saved-mim'),
-        );
+    const res = await request(app)
+      .put('/api/config')
+      .send({
+        dataRoot: '/tmp/new-moneyinmotion',
+        port: 70000,
+      })
+      .set('Content-Type', 'application/json');
 
-        const res = await request(app).get('/api/config');
-
-        expect(res.status).toBe(200);
-        expect(res.body.userDataPath).toBe('/tmp/saved-mim');
-        expect(res.body.activeUserDataPath).toBe('/tmp/active-mim');
-        expect(res.body.restartRequired).toBe(true);
-    });
-
-    it('PUT /api/config persists dataRoot, username, and port', async () => {
-        const config = createTestConfig();
-        const cache = createMockCache();
-        const app = createTestApp(config, cache);
-        const saveConfigSpy = vi
-            .spyOn(configModule, 'saveConfig')
-            .mockImplementation(() => undefined);
-        vi
-            .spyOn(configModule, 'loadConfig')
-            .mockReturnValue(createTestConfig('/tmp/new-root/alex'));
-
-        const res = await request(app)
-            .put('/api/config')
-            .send({
-                dataRoot: '/tmp/new-root',
-                username: 'alex',
-                port: 4010,
-            })
-            .set('Content-Type', 'application/json');
-
-        expect(res.status).toBe(200);
-        expect(saveConfigSpy).toHaveBeenCalledWith({
-            dataRoot: '/tmp/new-root',
-            username: 'alex',
-            port: 4010,
-        });
-        expect(res.body.userDataPath).toBe('/tmp/new-root/alex');
-        expect(res.body.activeUserDataPath).toBe(config.userDataPath);
-        expect(res.body.restartRequired).toBe(true);
-    });
-
-    it('PUT /api/config returns 400 for invalid port', async () => {
-        const config = createTestConfig();
-        const cache = createMockCache();
-        const app = createTestApp(config, cache);
-
-        const res = await request(app)
-            .put('/api/config')
-            .send({
-                dataRoot: '/tmp/new-moneyinmotion',
-                port: 70000,
-            })
-            .set('Content-Type', 'application/json');
-
-        expect(res.status).toBe(400);
-        expect(res.body).toHaveProperty('error');
-    });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
 });
 
 describe('health routes', () => {
-    it('GET /api/health returns a liveness payload', async () => {
-        const config = createTestConfig();
-        const cache = createMockCache();
-        const app = createTestApp(config, cache);
+  it('GET /api/health returns a liveness payload', async () => {
+    const config = createTestConfig();
+    const cache = createMockCache();
+    const app = createTestApp(config, cache);
 
-        const res = await request(app).get('/api/health');
+    const res = await request(app).get('/api/health');
 
-        expect(res.status).toBe(200);
-        expect(res.body.status).toBe('ok');
-        expect(typeof res.body.environment).toBe('string');
-        expect(typeof res.body.timestamp).toBe('string');
-        expect(typeof res.body.uptimeSeconds).toBe('number');
-    });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(typeof res.body.environment).toBe('string');
+    expect(typeof res.body.timestamp).toBe('string');
+    expect(typeof res.body.uptimeSeconds).toBe('number');
+  });
 });
 
 describe('accounts routes', () => {
-    let tempDir: string;
+  let tempDir: string;
 
-    beforeEach(() => {
-        vi.restoreAllMocks();
-        tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moneyinmotion-routes-'));
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moneyinmotion-routes-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('GET /api/accounts returns stats and statement-file presence', async () => {
+    writeAccountConfig(tempDir, 'acct-checking', {
+      title: 'Checking',
+      interAccountNameTags: ['AMEX'],
     });
-
-    afterEach(() => {
-        fs.rmSync(tempDir, { recursive: true, force: true });
+    const creditDir = writeAccountConfig(tempDir, 'acct-credit', {
+      title: 'Credit Card',
+      interAccountNameTags: ['CHASE'],
     });
+    fs.writeFileSync(path.join(creditDir, 'statement.csv'), 'Date,Amount\n', 'utf-8');
 
-    it('GET /api/accounts returns stats and statement-file presence', async () => {
-        writeAccountConfig(tempDir, 'acct-checking', {
-            title: 'Checking',
-            interAccountNameTags: ['AMEX'],
-        });
-        const creditDir = writeAccountConfig(tempDir, 'acct-credit', {
-            title: 'Credit Card',
-            interAccountNameTags: ['CHASE'],
-        });
-        fs.writeFileSync(path.join(creditDir, 'statement.csv'), 'Date,Amount\n', 'utf-8');
-
-        const cache = createMockCache({
-            allParentChildTransactions: [
-                {
-                    accountId: 'acct-checking',
-                    auditInfo: { createDate: '2024-01-01T08:00:00Z' },
-                },
-                {
-                    accountId: 'acct-checking',
-                    auditInfo: { createDate: '2024-02-01T08:00:00Z' },
-                },
-                {
-                    accountId: 'acct-credit',
-                    auditInfo: { createDate: '2024-03-01T08:00:00Z' },
-                },
-            ],
-        });
-        const config = createTestConfig(tempDir);
-        const app = createTestApp(config, cache);
-
-        const res = await request(app).get('/api/accounts');
-
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveLength(2);
-
-        const body = res.body as AccountSummaryResponse[];
-        const checking = body.find(
-            (item) => item.config.accountInfo.id === 'acct-checking',
-        );
-        expect(checking.stats.transactionCount).toBe(2);
-        expect(checking.stats.lastImportedAt).toBe('2024-02-01T08:00:00Z');
-        expect(checking.hasStatementFiles).toBe(false);
-
-        const credit = body.find(
-            (item) => item.config.accountInfo.id === 'acct-credit',
-        );
-        expect(credit.stats.transactionCount).toBe(1);
-        expect(credit.hasStatementFiles).toBe(true);
+    const cache = createMockCache({
+      allParentChildTransactions: [
+        {
+          accountId: 'acct-checking',
+          auditInfo: { createDate: '2024-01-01T08:00:00Z' },
+        },
+        {
+          accountId: 'acct-checking',
+          auditInfo: { createDate: '2024-02-01T08:00:00Z' },
+        },
+        {
+          accountId: 'acct-credit',
+          auditInfo: { createDate: '2024-03-01T08:00:00Z' },
+        },
+      ],
     });
+    const config = createTestConfig(tempDir);
+    const app = createTestApp(config, cache);
 
-    it('GET /api/accounts ignores empty nested folders but counts nested statement files', async () => {
-        const emptyNestedDir = writeAccountConfig(tempDir, 'acct-empty-nested', {
-            title: 'Empty Nested',
-            scanSubFolders: true,
-        });
-        fs.mkdirSync(path.join(emptyNestedDir, '2024', 'Q1'), { recursive: true });
+    const res = await request(app).get('/api/accounts');
 
-        const nestedFileDir = writeAccountConfig(tempDir, 'acct-nested-files', {
-            title: 'Nested Files',
-            scanSubFolders: true,
-        });
-        const nestedStatementDir = path.join(nestedFileDir, '2024');
-        fs.mkdirSync(nestedStatementDir, { recursive: true });
-        fs.writeFileSync(
-            path.join(nestedStatementDir, 'statement.csv'),
-            'Date,Amount\n',
-            'utf-8',
-        );
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
 
-        const cache = createMockCache({
-            allParentChildTransactions: [],
-        });
-        const config = createTestConfig(tempDir);
-        const app = createTestApp(config, cache);
+    const body = res.body as AccountSummaryResponse[];
+    const checking = body.find((item) => item.config.accountInfo.id === 'acct-checking');
+    expect(checking.stats.transactionCount).toBe(2);
+    expect(checking.stats.lastImportedAt).toBe('2024-02-01T08:00:00Z');
+    expect(checking.hasStatementFiles).toBe(false);
 
-        const res = await request(app).get('/api/accounts');
+    const credit = body.find((item) => item.config.accountInfo.id === 'acct-credit');
+    expect(credit.stats.transactionCount).toBe(1);
+    expect(credit.hasStatementFiles).toBe(true);
+  });
 
-        expect(res.status).toBe(200);
-
-        const body = res.body as AccountSummaryResponse[];
-        const emptyNested = body.find(
-            (item) => item.config.accountInfo.id === 'acct-empty-nested',
-        );
-        const nestedFiles = body.find(
-            (item) => item.config.accountInfo.id === 'acct-nested-files',
-        );
-
-        expect(emptyNested.hasStatementFiles).toBe(false);
-        expect(nestedFiles.hasStatementFiles).toBe(true);
+  it('GET /api/accounts ignores empty nested folders but counts nested statement files', async () => {
+    const emptyNestedDir = writeAccountConfig(tempDir, 'acct-empty-nested', {
+      title: 'Empty Nested',
+      scanSubFolders: true,
     });
+    fs.mkdirSync(path.join(emptyNestedDir, '2024', 'Q1'), { recursive: true });
 
-    it('PUT /api/accounts/:id updates the account config', async () => {
-        const accountDir = writeAccountConfig(tempDir, 'acct-checking', {
-            title: 'Old Title',
-            interAccountNameTags: ['OLD'],
-            scanSubFolders: true,
-        });
-        const cache = createMockCache({
-            allParentChildTransactions: [],
-        });
-        const config = createTestConfig(tempDir);
-        const app = createTestApp(config, cache);
-
-        const res = await request(app)
-            .put('/api/accounts/acct-checking')
-            .send({
-                accountInfo: {
-                    id: 'acct-checking',
-                    instituteName: 'PayPal',
-                    title: 'Updated Title',
-                    type: 6,
-                    requiresParent: false,
-                    interAccountNameTags: ['PAYPAL', 'TRANSFER'],
-                },
-                fileFilters: ['*.csv', '*.iif'],
-                scanSubFolders: false,
-            })
-            .set('Content-Type', 'application/json');
-
-        expect(res.status).toBe(200);
-        expect(res.body.config.accountInfo.title).toBe('Updated Title');
-        expect(res.body.config.accountInfo.interAccountNameTags).toEqual([
-            'PAYPAL',
-            'TRANSFER',
-        ]);
-        expect(res.body.config.scanSubFolders).toBe(false);
-
-        const savedConfig = JSON.parse(
-            fs.readFileSync(path.join(accountDir, 'AccountConfig.json'), 'utf-8'),
-        );
-        expect(savedConfig.accountInfo.title).toBe('Updated Title');
-        expect(savedConfig.fileFilters).toEqual(['*.csv', '*.iif']);
-        expect(savedConfig.scanSubFolders).toBe(false);
+    const nestedFileDir = writeAccountConfig(tempDir, 'acct-nested-files', {
+      title: 'Nested Files',
+      scanSubFolders: true,
     });
+    const nestedStatementDir = path.join(nestedFileDir, '2024');
+    fs.mkdirSync(nestedStatementDir, { recursive: true });
+    fs.writeFileSync(path.join(nestedStatementDir, 'statement.csv'), 'Date,Amount\n', 'utf-8');
 
-    it('PUT /api/accounts/:id blocks account-id changes after import', async () => {
-        writeAccountConfig(tempDir, 'acct-checking');
-        const cache = createMockCache({
-            allParentChildTransactions: [
-                {
-                    accountId: 'acct-checking',
-                    auditInfo: { createDate: '2024-02-01T08:00:00Z' },
-                },
-            ],
-        });
-        const config = createTestConfig(tempDir);
-        const app = createTestApp(config, cache);
-
-        const res = await request(app)
-            .put('/api/accounts/acct-checking')
-            .send({
-                accountInfo: {
-                    id: 'acct-checking-renamed',
-                    instituteName: 'TestBank',
-                    title: 'Checking',
-                    type: 1,
-                    requiresParent: false,
-                    interAccountNameTags: ['TRANSFER'],
-                },
-                fileFilters: ['*.csv'],
-                scanSubFolders: true,
-            })
-            .set('Content-Type', 'application/json');
-
-        expect(res.status).toBe(400);
-        expect(res.body.error).toContain('cannot be changed');
+    const cache = createMockCache({
+      allParentChildTransactions: [],
     });
+    const config = createTestConfig(tempDir);
+    const app = createTestApp(config, cache);
 
-    it('DELETE /api/accounts/:id removes only AccountConfig.json and keeps statements', async () => {
-        const accountDir = writeAccountConfig(tempDir, 'acct-checking');
-        const statementPath = path.join(accountDir, 'statement.csv');
-        fs.writeFileSync(statementPath, 'Date,Amount\n', 'utf-8');
-        const cache = createMockCache({
-            allParentChildTransactions: [],
-        });
-        const config = createTestConfig(tempDir);
-        const app = createTestApp(config, cache);
+    const res = await request(app).get('/api/accounts');
 
-        const res = await request(app).delete('/api/accounts/acct-checking');
+    expect(res.status).toBe(200);
 
-        expect(res.status).toBe(200);
-        expect(res.body).toEqual({
-            deletedId: 'acct-checking',
-            removedDirectory: false,
-            keptStatementFiles: true,
-        });
-        expect(fs.existsSync(path.join(accountDir, 'AccountConfig.json'))).toBe(false);
-        expect(fs.existsSync(statementPath)).toBe(true);
+    const body = res.body as AccountSummaryResponse[];
+    const emptyNested = body.find((item) => item.config.accountInfo.id === 'acct-empty-nested');
+    const nestedFiles = body.find((item) => item.config.accountInfo.id === 'acct-nested-files');
+
+    expect(emptyNested.hasStatementFiles).toBe(false);
+    expect(nestedFiles.hasStatementFiles).toBe(true);
+  });
+
+  it('PUT /api/accounts/:id updates the account config', async () => {
+    const accountDir = writeAccountConfig(tempDir, 'acct-checking', {
+      title: 'Old Title',
+      interAccountNameTags: ['OLD'],
+      scanSubFolders: true,
     });
+    const cache = createMockCache({
+      allParentChildTransactions: [],
+    });
+    const config = createTestConfig(tempDir);
+    const app = createTestApp(config, cache);
+
+    const res = await request(app)
+      .put('/api/accounts/acct-checking')
+      .send({
+        accountInfo: {
+          id: 'acct-checking',
+          instituteName: 'PayPal',
+          title: 'Updated Title',
+          type: 6,
+          requiresParent: false,
+          interAccountNameTags: ['PAYPAL', 'TRANSFER'],
+        },
+        fileFilters: ['*.csv', '*.iif'],
+        scanSubFolders: false,
+      })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.accountInfo.title).toBe('Updated Title');
+    expect(res.body.config.accountInfo.interAccountNameTags).toEqual(['PAYPAL', 'TRANSFER']);
+    expect(res.body.config.scanSubFolders).toBe(false);
+
+    const savedConfig = JSON.parse(
+      fs.readFileSync(path.join(accountDir, 'AccountConfig.json'), 'utf-8'),
+    );
+    expect(savedConfig.accountInfo.title).toBe('Updated Title');
+    expect(savedConfig.fileFilters).toEqual(['*.csv', '*.iif']);
+    expect(savedConfig.scanSubFolders).toBe(false);
+  });
+
+  it('PUT /api/accounts/:id blocks account-id changes after import', async () => {
+    writeAccountConfig(tempDir, 'acct-checking');
+    const cache = createMockCache({
+      allParentChildTransactions: [
+        {
+          accountId: 'acct-checking',
+          auditInfo: { createDate: '2024-02-01T08:00:00Z' },
+        },
+      ],
+    });
+    const config = createTestConfig(tempDir);
+    const app = createTestApp(config, cache);
+
+    const res = await request(app)
+      .put('/api/accounts/acct-checking')
+      .send({
+        accountInfo: {
+          id: 'acct-checking-renamed',
+          instituteName: 'TestBank',
+          title: 'Checking',
+          type: 1,
+          requiresParent: false,
+          interAccountNameTags: ['TRANSFER'],
+        },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      })
+      .set('Content-Type', 'application/json');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('cannot be changed');
+  });
+
+  it('DELETE /api/accounts/:id removes only AccountConfig.json and keeps statements', async () => {
+    const accountDir = writeAccountConfig(tempDir, 'acct-checking');
+    const statementPath = path.join(accountDir, 'statement.csv');
+    fs.writeFileSync(statementPath, 'Date,Amount\n', 'utf-8');
+    const cache = createMockCache({
+      allParentChildTransactions: [],
+    });
+    const config = createTestConfig(tempDir);
+    const app = createTestApp(config, cache);
+
+    const res = await request(app).delete('/api/accounts/acct-checking');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      deletedId: 'acct-checking',
+      removedDirectory: false,
+      keptStatementFiles: true,
+    });
+    expect(fs.existsSync(path.join(accountDir, 'AccountConfig.json'))).toBe(false);
+    expect(fs.existsSync(statementPath)).toBe(true);
+  });
 });
 
 describe('transactions routes', () => {
-    beforeEach(() => {
-        vi.restoreAllMocks();
-    });
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
 
-    it('GET /api/transactions returns serialized Transactions JSON', async () => {
-        const txns = new Transactions('test-collection');
-        const cache = createMockCache(txns);
-        const config = createTestConfig();
-        const app = createTestApp(config, cache);
+  it('GET /api/transactions returns serialized Transactions JSON', async () => {
+    const txns = new Transactions('test-collection');
+    const cache = createMockCache(txns);
+    const config = createTestConfig();
+    const app = createTestApp(config, cache);
 
-        const res = await request(app).get('/api/transactions');
+    const res = await request(app).get('/api/transactions');
 
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('name', 'test-collection');
-        expect(res.body).toHaveProperty('topItems');
-        expect(res.body).toHaveProperty('accountInfos');
-        expect(res.body).toHaveProperty('importInfos');
-        expect(res.body).toHaveProperty('edits');
-    });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('name', 'test-collection');
+    expect(res.body).toHaveProperty('topItems');
+    expect(res.body).toHaveProperty('accountInfos');
+    expect(res.body).toHaveProperty('importInfos');
+    expect(res.body).toHaveProperty('edits');
+  });
 
-    it('GET /api/transactions calls cache.getTransactions()', async () => {
-        const cache = createMockCache();
-        const config = createTestConfig();
-        const app = createTestApp(config, cache);
+  it('GET /api/transactions calls cache.getTransactions()', async () => {
+    const cache = createMockCache();
+    const config = createTestConfig();
+    const app = createTestApp(config, cache);
 
-        await request(app).get('/api/transactions');
+    await request(app).get('/api/transactions');
 
-        expect(cache.getTransactions).toHaveBeenCalledOnce();
-    });
+    expect(cache.getTransactions).toHaveBeenCalledOnce();
+  });
 });
 
 describe('transaction edit routes', () => {
-    beforeEach(() => {
-        vi.restoreAllMocks();
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('POST /api/transaction-edits applies edits and returns affectedTransactionsCount', async () => {
+    const cache = createMockCache();
+    (cache.applyEdits as ReturnType<typeof vi.fn>).mockResolvedValue({
+      affectedTransactionsCount: 5,
     });
+    const config = createTestConfig();
+    const app = createTestApp(config, cache);
 
-    it('POST /api/transaction-edits applies edits and returns affectedTransactionsCount', async () => {
-        const cache = createMockCache();
-        (cache.applyEdits as ReturnType<typeof vi.fn>).mockResolvedValue({
-            affectedTransactionsCount: 5,
-        });
-        const config = createTestConfig();
-        const app = createTestApp(config, cache);
+    const edits = [
+      {
+        id: 'edit-1',
+        auditInfo: createAuditInfo(),
+        scopeFilters: [createScopeFilter(ScopeType.TransactionId, ['tx-1'])],
+        values: {
+          note: editValue('test note'),
+        },
+        sourceId: 'test',
+      },
+    ];
 
-        const edits = [
-            {
-                id: 'edit-1',
-                auditInfo: createAuditInfo(),
-                scopeFilters: [
-                    createScopeFilter(ScopeType.TransactionId, ['tx-1']),
-                ],
-                values: {
-                    note: editValue('test note'),
-                },
-                sourceId: 'test',
-            },
-        ];
+    const res = await request(app)
+      .post('/api/transaction-edits')
+      .send(edits)
+      .set('Content-Type', 'application/json');
 
-        const res = await request(app)
-            .post('/api/transaction-edits')
-            .send(edits)
-            .set('Content-Type', 'application/json');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ affectedTransactionsCount: 5 });
+    expect(cache.applyEdits).toHaveBeenCalledOnce();
+  });
 
-        expect(res.status).toBe(200);
-        expect(res.body).toEqual({ affectedTransactionsCount: 5 });
-        expect(cache.applyEdits).toHaveBeenCalledOnce();
-    });
+  it('POST /api/transaction-edits returns 400 for invalid body', async () => {
+    const cache = createMockCache();
+    const config = createTestConfig();
+    const app = createTestApp(config, cache);
 
-    it('POST /api/transaction-edits returns 400 for invalid body', async () => {
-        const cache = createMockCache();
-        const config = createTestConfig();
-        const app = createTestApp(config, cache);
+    const res = await request(app)
+      .post('/api/transaction-edits')
+      .send({ invalid: true })
+      .set('Content-Type', 'application/json');
 
-        const res = await request(app)
-            .post('/api/transaction-edits')
-            .send({ invalid: true })
-            .set('Content-Type', 'application/json');
-
-        expect(res.status).toBe(400);
-        expect(res.body).toHaveProperty('error');
-    });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
 });
 
 describe('import routes', () => {
-    beforeEach(() => {
-        vi.restoreAllMocks();
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('POST /api/import/rebuild returns import stats including failedFiles', async () => {
+    const cache = createMockCache();
+    (cache.rebuildFromStatements as ReturnType<typeof vi.fn>).mockResolvedValue({
+      committed: false,
+      previousTransactionCount: 39,
+      newTransactions: 3,
+      totalTransactions: 42,
+      importedFiles: ['MyBank/ok.csv'],
+      failedFiles: [{ path: 'MyBank/bad.csv', error: 'boom' }],
+      appliedEdits: 4,
+      migratedEditTargets: 2,
+      unresolvedEditTargets: 1,
     });
+    const config = createTestConfig();
+    const app = createTestApp(config, cache);
 
-    it('POST /api/import/scan returns import stats including failedFiles', async () => {
-        const cache = createMockCache();
-        (cache.rebuildFromStatements as ReturnType<typeof vi.fn>).mockResolvedValue({
-            committed: false,
-            previousTransactionCount: 39,
-            newTransactions: 3,
-            totalTransactions: 42,
-            importedFiles: ['MyBank/ok.csv'],
-            failedFiles: [{ path: 'MyBank/bad.csv', error: 'boom' }],
-            appliedEdits: 4,
-            migratedEditTargets: 2,
-            unresolvedEditTargets: 1,
-        });
-        const config = createTestConfig();
-        const app = createTestApp(config, cache);
+    const res = await request(app).post('/api/import/rebuild');
 
-        const res = await request(app).post('/api/import/scan');
-
-        expect(res.status).toBe(200);
-        expect(res.body).toEqual({
-            committed: false,
-            previousTransactionCount: 39,
-            newTransactions: 3,
-            totalTransactions: 42,
-            importedFiles: ['MyBank/ok.csv'],
-            failedFiles: [{ path: 'MyBank/bad.csv', error: 'boom' }],
-            appliedEdits: 4,
-            migratedEditTargets: 2,
-            unresolvedEditTargets: 1,
-        });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      committed: false,
+      previousTransactionCount: 39,
+      newTransactions: 3,
+      totalTransactions: 42,
+      importedFiles: ['MyBank/ok.csv'],
+      failedFiles: [{ path: 'MyBank/bad.csv', error: 'boom' }],
+      appliedEdits: 4,
+      migratedEditTargets: 2,
+      unresolvedEditTargets: 1,
     });
+  });
 
-    it('POST /api/import/folder stages, promotes, and triggers a rebuild', async () => {
-        const tempDir = fs.mkdtempSync(
-            path.join(os.tmpdir(), 'moneyinmotion-folder-route-'),
+  it('rejects a declared folder request larger than the VM-safe limit', async () => {
+    const app = createTestApp(createTestConfig(), createMockCache());
+
+    const res = await request(app)
+      .post('/api/import/folder')
+      .set('Content-Length', String(101 * 1024 * 1024));
+
+    expect(res.status).toBe(413);
+    expect(res.body.error).toContain('100 MiB');
+  });
+
+  it('POST /api/import/folder stages, promotes, and triggers a rebuild', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moneyinmotion-folder-route-'));
+    try {
+      writeAccountConfig(tempDir, 'acct-checking');
+      fs.mkdirSync(path.join(tempDir, 'staging'), { recursive: true });
+      fs.mkdirSync(path.join(tempDir, 'Merged'), { recursive: true });
+      const cache = createMockCache();
+      const rebuildResult = {
+        committed: true,
+        previousTransactionCount: 0,
+        newTransactions: 1,
+        totalTransactions: 1,
+        importedFiles: ['acct-checking/statement.csv'],
+        failedFiles: [],
+        appliedEdits: 0,
+        migratedEditTargets: 0,
+        unresolvedEditTargets: 0,
+      };
+      (cache.rebuildFromStatements as ReturnType<typeof vi.fn>).mockResolvedValue(rebuildResult);
+      const app = createTestApp(createTestConfig(tempDir), cache);
+
+      const res = await request(app)
+        .post('/api/import/folder')
+        .field('relativePaths', JSON.stringify(['exports/acct-checking/statement.csv']))
+        .attach(
+          'files',
+          Buffer.from('Date,Description,Amount\n01/01/2024,Example,-10\n'),
+          'statement.csv',
         );
-        try {
-            writeAccountConfig(tempDir, 'acct-checking');
-            fs.mkdirSync(path.join(tempDir, 'staging'), { recursive: true });
-            fs.mkdirSync(path.join(tempDir, 'Merged'), { recursive: true });
-            const cache = createMockCache();
-            const rebuildResult = {
-                committed: true,
-                previousTransactionCount: 0,
-                newTransactions: 1,
-                totalTransactions: 1,
-                importedFiles: ['acct-checking/statement.csv'],
-                failedFiles: [],
-                appliedEdits: 0,
-                migratedEditTargets: 0,
-                unresolvedEditTargets: 0,
-            };
-            (
-                cache.rebuildFromStatements as ReturnType<typeof vi.fn>
-            ).mockResolvedValue(rebuildResult);
-            const app = createTestApp(createTestConfig(tempDir), cache);
 
-            const res = await request(app)
-                .post('/api/import/folder')
-                .field(
-                    'relativePaths',
-                    JSON.stringify(['exports/acct-checking/statement.csv']),
-                )
-                .attach(
-                    'files',
-                    Buffer.from(
-                        'Date,Description,Amount\n01/01/2024,Example,-10\n',
-                    ),
-                    'statement.csv',
-                );
-
-            expect(res.status).toBe(201);
-            expect(res.body.staging).toMatchObject({
-                promotedCount: 1,
-                duplicateCount: 0,
-                rejectedCount: 0,
-            });
-            expect(res.body.rebuild).toEqual(rebuildResult);
-            expect(cache.rebuildFromStatements).toHaveBeenCalledOnce();
-            expect(
-                fs.existsSync(
-                    path.join(
-                        tempDir,
-                        'Statements',
-                        'acct-checking',
-                        'statement.csv',
-                    ),
-                ),
-            ).toBe(true);
-        } finally {
-            fs.rmSync(tempDir, { recursive: true, force: true });
-        }
-    });
-
+      expect(res.status).toBe(201);
+      expect(res.body.staging).toMatchObject({
+        promotedCount: 1,
+        duplicateCount: 0,
+        rejectedCount: 0,
+      });
+      expect(res.body.rebuild).toEqual(rebuildResult);
+      expect(cache.rebuildFromStatements).toHaveBeenCalledOnce();
+      expect(
+        fs.existsSync(path.join(tempDir, 'Statements', 'acct-checking', 'statement.csv')),
+      ).toBe(true);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

@@ -10,14 +10,16 @@ history but are deliberately absent from the working tree.
   uploads, staging, deduplication, and snapshot creation.
 - [Transaction edits and rules](transaction-edits.md) explains non-destructive
   corrections, rule scopes, persistence, and reversal.
-- [Production deployment](deployment.md) covers Node and container deployment,
-  TLS, access controls, volumes, health checks, and backups.
+- [Production deployment](deployment.md) covers a direct Node/systemd VM,
+  access controls, health checks, upgrades, and backups.
 - [HTTP API](api.md) is the integration reference.
 
 ## Engineering
 
 - [Architecture](architecture.md) explains package boundaries, data flow,
   lifecycle guarantees, and design decisions.
+- [Simplicity review](simplicity-review.md) records what infrastructure and
+  dependencies were removed, what remains, and why.
 - [Development](development.md) contains setup, commands, coding conventions,
   and common change paths.
 - [Testing and legacy verification](testing-and-verification.md) documents the

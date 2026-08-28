@@ -6,10 +6,10 @@ reconciles related transactions, and presents one editable financial history.
 The person using MiM needs only a browser: source files, snapshots, rules, and
 all processing live on the web server.
 
-The current release intentionally serves one configured user at a time. Its
-on-disk layout already supports multiple username folders, but authentication
-and per-request user selection are future work. Do not expose an unprotected
-instance to the public Internet; see [Security](SECURITY.md).
+The current release intentionally serves one configured user at a time. The
+username folder is part of the existing data layout, not a multi-tenant service.
+Do not expose an unprotected instance to the public Internet; see
+[Security](SECURITY.md).
 
 ## What the website does
 
@@ -53,6 +53,7 @@ website take effect after a restart.
 For development with API and UI hot reload:
 
 ```bash
+./install.sh --development
 ./run.sh
 # website: http://localhost:5173
 # API:     http://localhost:3001
@@ -84,6 +85,7 @@ packages/server/  Express API, parsers, filesystem repositories, staging,
                   snapshot lifecycle, and production static-file hosting
 packages/web/     React single-page website and accessible component UI
 scripts/          Build helpers and read-only legacy verification
+deploy/           One small systemd service definition for a Linux VM
 docs/             Architecture, operations, user behavior, and migration notes
 ```
 
@@ -92,38 +94,38 @@ React application and `/api` from one origin.
 
 ## Technology
 
-- TypeScript 5.7 across all packages
-- React 19, React Router 7, TanStack Query/Table, Zustand, Radix UI, Lucide,
+- TypeScript 5 across all packages
+- React 19, React Router 7, TanStack Query, Zustand, Radix UI, Lucide,
   and Tailwind CSS for the browser application
-- Express 5, Zod 4, Multer, Chokidar, and Helmet for the server
+- Express 5, Zod 4, Multer, Papa Parse, and Helmet for the server
 - Vite 8 for the web build and Vitest 4 with Testing Library for tests
 - Node.js 24 as the supported server and CI runtime
 
 ## Commands
 
-| Command                                          | Purpose                                                           |
-| ------------------------------------------------ | ----------------------------------------------------------------- |
-| `./install.sh`                                   | Reproducible dependency install, type check, and production build |
-| `./run.sh`                                       | Development API and website with hot reload                       |
-| `./build.sh`                                     | Type check, lint, and build every package                         |
-| `./build.sh test`                                | Build, then run the full test suite                               |
-| `./run.sh prod`                                  | Serve the built website and API on `MIM_PORT`                     |
-| `npm test`                                       | Run all unit, integration, route, storage, parser, and UI tests   |
-| `npm run test:coverage`                          | Run tests and generate a coverage report                          |
-| `npm run verify:legacy -- /absolute/legacy/root` | Read-only compatibility report using an isolated temporary copy   |
-| `npm run clean`                                  | Remove generated build, coverage, and dependency artifacts        |
+| Command                                          | Purpose                                                         |
+| ------------------------------------------------ | --------------------------------------------------------------- |
+| `./install.sh`                                   | Build a VM release and prune development-only packages          |
+| `./install.sh --development`                     | Install the compiler, test, lint, and hot-reload toolchain      |
+| `./run.sh`                                       | Development API and website with hot reload                     |
+| `./build.sh`                                     | Type check, lint, and build every package                       |
+| `./build.sh test`                                | Build, then run the full test suite                             |
+| `./run.sh prod`                                  | Serve the built website and API on `MIM_PORT`                   |
+| `npm test`                                       | Run all unit, integration, route, storage, parser, and UI tests |
+| `npm run test:coverage`                          | Run tests and generate a coverage report                        |
+| `npm run verify:legacy -- /absolute/legacy/root` | Read-only compatibility report using an isolated temporary copy |
+| `npm run clean`                                  | Remove generated build, coverage, and dependency artifacts      |
 
 ## Configuration
 
 Environment variables override `~/.moneyinmotion/config.json`, which overrides
 defaults.
 
-| Setting                    | Preferred environment variable | Default                   |
-| -------------------------- | ------------------------------ | ------------------------- |
-| Data-root directory        | `MIM_DATA_ROOT`                | `~/min_root`              |
-| Active username            | `MIM_USERNAME`                 | OS username               |
-| HTTP port                  | `MIM_PORT`                     | `3001`                    |
-| Development CORS allowlist | `CORS_ALLOWED_ORIGINS`         | local development origins |
+| Setting             | Preferred environment variable | Default      |
+| ------------------- | ------------------------------ | ------------ |
+| Data-root directory | `MIM_DATA_ROOT`                | `~/min_root` |
+| Active username     | `MIM_USERNAME`                 | OS username  |
+| HTTP port           | `MIM_PORT`                     | `3001`       |
 
 The older `MONEYAI_*` variable names and single-user `dataPath` config are read
 for migration compatibility. New deployments should use the `MIM_*` names.
@@ -132,6 +134,7 @@ for migration compatibility. New deployments should use the `MIM_*` names.
 
 - [Documentation index](docs/README.md)
 - [Architecture](docs/architecture.md)
+- [Architecture and infrastructure simplicity review](docs/simplicity-review.md)
 - [Data and imports](docs/data-and-imports.md)
 - [Transaction edits and rules](docs/transaction-edits.md)
 - [Development](docs/development.md)

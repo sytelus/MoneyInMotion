@@ -15,6 +15,7 @@ source "$(dirname "$0")/scripts/lib.sh"
 ensure_project_root
 ensure_node_version
 ensure_deps_installed
+ensure_development_deps_installed
 
 # Force a clean rebuild by clearing all incremental build state. Composite
 # tsc won't re-emit when its buildinfo says everything is current, even if

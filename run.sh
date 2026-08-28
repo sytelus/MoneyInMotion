@@ -20,6 +20,7 @@ MODE="${1:-dev}"
 
 case "$MODE" in
     dev)
+        ensure_development_deps_installed
         ensure_core_built
 
         info "Starting development mode..."
@@ -43,7 +44,7 @@ case "$MODE" in
         echo -e "  ${C_BOLD}Open this URL in your browser:${C_NC}  http://localhost:${MIM_PORT:-3001}"
         echo ""
 
-        exec npm run start -w packages/server --silent
+        exec node packages/server/dist/index.js
         ;;
 
     *)

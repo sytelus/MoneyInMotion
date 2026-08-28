@@ -16,16 +16,6 @@ import { cn } from '../../lib/utils.js';
  */
 export const Dialog = DialogPrimitive.Root;
 
-/**
- * Trigger element that opens the dialog when clicked.
- */
-export const DialogTrigger = DialogPrimitive.Trigger;
-
-/**
- * Close element that closes the dialog when clicked.
- */
-export const DialogClose = DialogPrimitive.Close;
-
 export interface DialogContentProps {
   /** Dialog title displayed in the header. */
   title: string;
@@ -93,11 +83,7 @@ export interface DialogFooterProps {
  * Footer area for dialog action buttons, right-aligned with gap spacing.
  */
 export const DialogFooter: React.FC<DialogFooterProps> = ({ children, className }) => {
-  return (
-    <div className={cn('flex justify-end gap-2 mt-6', className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn('flex justify-end gap-2 mt-6', className)}>{children}</div>;
 };
 
 DialogFooter.displayName = 'DialogFooter';

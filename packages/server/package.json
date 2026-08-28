@@ -6,14 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@moneyinmotion/core": "*",
-    "chokidar": "^5.0.0",
-    "cors": "^2.8.5",
     "express": "^5.0.1",
     "helmet": "^8.3.0",
     "multer": "^2.1.1",
@@ -21,14 +17,11 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/multer": "^2.1.0",
     "@types/papaparse": "^5.3.15",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.0.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.3",
-    "vitest": "^4.1.11"
+    "tsx": "^4.19.2"
   }
 }

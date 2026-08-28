@@ -90,7 +90,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const message = await readApiErrorMessage(response);
-    throw new Error(`API ${options?.method ?? 'GET'} ${path} failed (${response.status}): ${message}`);
+    throw new Error(
+      `API ${options?.method ?? 'GET'} ${path} failed (${response.status}): ${message}`,
+    );
   }
 
   return response.json() as Promise<T>;
@@ -196,18 +198,13 @@ export async function updateAccount(
  *
  * Raw statement files are intentionally preserved server-side.
  */
-export async function deleteAccount(
-  accountId: string,
-): Promise<DeleteAccountResponse> {
-  return request<DeleteAccountResponse>(
-    `/accounts/${encodeURIComponent(accountId)}`,
-    {
-      method: 'DELETE',
-    },
-  );
+export async function deleteAccount(accountId: string): Promise<DeleteAccountResponse> {
+  return request<DeleteAccountResponse>(`/accounts/${encodeURIComponent(accountId)}`, {
+    method: 'DELETE',
+  });
 }
 
-export interface ScanStatementsResponse {
+export interface SnapshotBuildResponse {
   committed: boolean;
   previousTransactionCount: number;
   newTransactions: number;
@@ -249,7 +246,7 @@ export interface FolderImportResponse {
     rejectedCount: number;
     files: StagedFileResult[];
   };
-  rebuild: ScanStatementsResponse;
+  rebuild: SnapshotBuildResponse;
 }
 
 /**
@@ -260,10 +257,7 @@ export async function uploadStatementFolder(
   items: FolderUploadItem[],
 ): Promise<FolderImportResponse> {
   const formData = new FormData();
-  formData.append(
-    'relativePaths',
-    JSON.stringify(items.map((item) => item.relativePath)),
-  );
+  formData.append('relativePaths', JSON.stringify(items.map((item) => item.relativePath)));
   for (const item of items) {
     formData.append('files', item.file, item.file.name);
   }
@@ -271,10 +265,10 @@ export async function uploadStatementFolder(
 }
 
 /**
- * Trigger a scan of statement files for new transactions.
+ * Rebuild the complete snapshot from the server's statement files.
  */
-export async function scanStatements(): Promise<ScanStatementsResponse> {
-  return request<ScanStatementsResponse>('/import/scan', {
+export async function rebuildSnapshot(): Promise<SnapshotBuildResponse> {
+  return request<SnapshotBuildResponse>('/import/rebuild', {
     method: 'POST',
   });
 }

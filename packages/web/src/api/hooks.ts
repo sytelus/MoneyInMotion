@@ -13,7 +13,7 @@ import {
   fetchTransactions,
   getAccounts,
   applyEdits,
-  scanStatements,
+  rebuildSnapshot,
   uploadStatementFolder,
 } from './client.js';
 import type { FolderUploadItem } from './client.js';
@@ -61,14 +61,14 @@ export function useApplyEdits() {
 }
 
 /**
- * Mutation hook to trigger a statement scan. Invalidates both transactions
- * and accounts caches on success.
+ * Rebuild the snapshot from server-side statements, then refresh transactions
+ * and account statistics.
  */
-export function useScanStatements() {
+export function useRebuildSnapshot() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: scanStatements,
+    mutationFn: rebuildSnapshot,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts });

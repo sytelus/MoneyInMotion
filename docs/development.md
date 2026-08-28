@@ -2,21 +2,22 @@
 
 ## Prerequisites and first build
 
-Use Node.js 24 or newer, npm, and Git. `.nvmrc`, the package engine, CI, and
-container images intentionally agree on Node 24.
+Use Node.js 24 or newer, npm, and Git. `.nvmrc`, the package engine, CI, and the
+VM deployment instructions intentionally agree on Node 24.
 
 ```bash
 nvm use                    # when nvm is installed
-./install.sh               # npm ci, type check, production build
+./install.sh --development # npm ci, type check, production build
 ./run.sh                   # API :3001, Vite site :5173
 ```
 
-`./install.sh` is for the machine hosting or developing MiM. People visiting a
-deployed website require only a supported browser.
+The `--development` option keeps compilers, tests, and hot-reload tools.
+`./install.sh` without it prepares a production VM and prunes those packages.
+People visiting a deployed website require only a supported browser.
 
-Copy `.env.example` into the environment management mechanism used by your
-shell, service manager, or container orchestrator. The scripts do not source an
-`.env` file implicitly. Environment values intentionally win over Settings.
+Copy `.env.example` into the environment management mechanism used by your shell
+or service manager. The scripts do not source an `.env` file implicitly.
+Environment values intentionally win over Settings.
 
 ## Development and production modes
 
@@ -30,10 +31,10 @@ fast source-level tooling out of the smaller, safer runtime served to users.
 | Primary purpose        | Implement and debug changes                      | Serve browser users reliably                                  |
 | Website server         | Vite on port 5173 with hot-module reload         | Express on `MIM_PORT`, default 3001                           |
 | API server             | Express on port 3001; Vite proxies `/api`        | Same Express process and origin as the website                |
-| Code form              | TypeScript/TSX transformed on demand             | Precompiled server and optimized, split browser assets        |
+| Code form              | TypeScript/TSX transformed on demand             | Precompiled server and optimized browser assets               |
 | Build required first   | Core is built automatically when needed          | Yes; run `./build.sh` or `./install.sh`                       |
 | Browser caching/assets | Developer-oriented source maps and rapid refresh | Hashed, minified production assets                            |
-| CORS default           | Permissive for local development tools           | Same-origin unless explicitly allowlisted                     |
+| HTTP layout            | Vite proxy keeps browser requests same-origin    | Site and API are inherently same-origin                       |
 | Unexpected API errors  | Detailed message returned for diagnosis          | Internal details hidden from the browser and retained in logs |
 | Runtime dependencies   | Includes compilers, tests, and development tools | Can be pruned to production dependencies                      |
 
@@ -116,9 +117,9 @@ must evolve together.
 ### Change the storage layout
 
 Treat this as a migration. Update `ServerConfig`, repositories, the Settings
-contract, container volumes, backup instructions, fixtures, and the read-only
-legacy verifier. Support existing config/data or provide a separately tested
-migration tool; never silently move user files at startup.
+contract, systemd/environment examples, backup instructions, fixtures, and the
+read-only legacy verifier. Support existing config/data or provide a separately
+tested migration tool; never silently move user files at startup.
 
 ## Test data safety
 
