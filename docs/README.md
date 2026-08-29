@@ -9,7 +9,7 @@ history but are deliberately absent from the working tree.
 - [Data and imports](data-and-imports.md) describes account folders, browser
   uploads, staging, deduplication, and snapshot creation.
 - [Transaction edits and rules](transaction-edits.md) explains non-destructive
-  corrections, rule scopes, persistence, and reversal.
+  corrections, rule scopes, persistence, and field resets.
 - [Production deployment](deployment.md) covers a direct Node/systemd VM,
   access controls, health checks, upgrades, and backups.
 - [HTTP API](api.md) is the integration reference.

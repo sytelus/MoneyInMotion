@@ -32,7 +32,6 @@ describe('TransactionsStorage', () => {
   it('writes atomically via a temp file then rename', () => {
     const storage = new TransactionsStorage();
     const filePath = path.join(tempDir, 'LatestMerged.json');
-    const tmpPath = `${filePath}.tmp`;
 
     // Pre-seed existing content so we can detect mid-write corruption.
     fs.writeFileSync(
@@ -42,8 +41,8 @@ describe('TransactionsStorage', () => {
 
     storage.save(filePath, new Transactions('fresh'));
 
-    // The temp file should be gone after rename completes.
-    expect(fs.existsSync(tmpPath)).toBe(false);
+    // The uniquely named temporary file should be gone after rename completes.
+    expect(fs.readdirSync(tempDir).filter((name) => name.endsWith('.tmp'))).toEqual([]);
     expect(fs.existsSync(filePath)).toBe(true);
 
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -73,6 +72,23 @@ describe('TransactionsStorage', () => {
     fs.writeFileSync(filePath, 'null');
 
     expect(() => storage.load(filePath)).toThrow(/snapshot root/);
+  });
+
+  it('rejects malformed edits embedded in an otherwise valid snapshot', () => {
+    const storage = new TransactionsStorage();
+    const filePath = path.join(tempDir, 'bad-edit.json');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({
+        name: 'test',
+        topItems: {},
+        accountInfos: {},
+        importInfos: {},
+        edits: [{ id: 42 }],
+      }),
+    );
+
+    expect(() => storage.load(filePath)).toThrow(/snapshot edits\[0\] is invalid/i);
   });
 
   it('exists() reflects filesystem state', () => {

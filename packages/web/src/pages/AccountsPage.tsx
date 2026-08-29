@@ -20,7 +20,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { AccountType, type AccountConfig } from '@moneyinmotion/core';
+import { AccountType, validateAccountConfigSupport, type AccountConfig } from '@moneyinmotion/core';
 import { Button } from '../components/ui/button.js';
 import { Badge } from '../components/ui/badge.js';
 import { Input } from '../components/ui/input.js';
@@ -191,21 +191,30 @@ const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
       setError('Account ID and title are required.');
       return;
     }
+    if (!instituteName.trim()) {
+      setError('Institution is required.');
+      return;
+    }
+
+    const config = buildAccountConfig({
+      accountId,
+      title,
+      instituteName,
+      accountType,
+      fileFilters,
+      interAccountNameTags,
+      scanSubFolders,
+    });
+    const supportError = validateAccountConfigSupport(config);
+    if (supportError) {
+      setError(supportError);
+      return;
+    }
 
     setIsSaving(true);
     setError(null);
 
     try {
-      const config = buildAccountConfig({
-        accountId,
-        title,
-        instituteName,
-        accountType,
-        fileFilters,
-        interAccountNameTags,
-        scanSubFolders,
-      });
-
       const saved =
         mode === 'create'
           ? await createAccount(config)

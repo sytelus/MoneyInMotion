@@ -70,15 +70,20 @@ export class PayPalParser extends StatementParserBase {
     const timeZoneAbbreviation = attrs['time zone'] ?? '';
     let timeZoneHoursString = '';
     if (!isNullOrWhitespace(timeZoneAbbreviation)) {
-      timeZoneHoursString = timezoneOffsets[timeZoneAbbreviation.trim()] ?? '';
+      const normalizedTimeZone = timeZoneAbbreviation.trim().toUpperCase();
+      timeZoneHoursString = timezoneOffsets[normalizedTimeZone] ?? '';
+      if (!timeZoneHoursString) {
+        throw new Error(`Unsupported PayPal time zone: "${timeZoneAbbreviation}"`);
+      }
     }
     const timeString = attrs['time'] ?? '';
 
     const dateTimeString = `${dateString} ${timeString} ${timeZoneHoursString}`.trim();
     const parsed = new Date(dateTimeString);
-    if (!isNaN(parsed.getTime())) {
-      importedValues.transactionDate = parsed.toISOString();
+    if (isNaN(parsed.getTime())) {
+      throw new Error(`Cannot parse PayPal transaction date: "${dateTimeString}"`);
     }
+    importedValues.transactionDate = parsed.toISOString();
 
     // Entity name from memo + name
     const memo = attrs['memo'] ?? '';

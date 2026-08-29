@@ -348,13 +348,36 @@ export const SettingsPage: React.FC = () => {
             </Button>
 
             {rebuildMutation.isSuccess && rebuildMutation.data && (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm space-y-2 dark:border-emerald-900/40 dark:bg-emerald-900/20">
-                <p className="font-medium text-emerald-900 dark:text-emerald-200">
+              <div
+                className={`rounded-md border p-4 text-sm space-y-2 ${
+                  rebuildMutation.data.committed
+                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20'
+                    : 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20'
+                }`}
+              >
+                <p
+                  className={`flex items-center gap-2 font-medium ${
+                    rebuildMutation.data.committed
+                      ? 'text-emerald-900 dark:text-emerald-200'
+                      : 'text-amber-900 dark:text-amber-200'
+                  }`}
+                >
+                  {rebuildMutation.data.committed ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
                   {rebuildMutation.data.committed
                     ? 'Rebuild complete'
                     : 'Previous snapshot preserved'}
                 </p>
-                <p className="text-emerald-900/90 dark:text-emerald-200/90">
+                <p
+                  className={
+                    rebuildMutation.data.committed
+                      ? 'text-emerald-900/90 dark:text-emerald-200/90'
+                      : 'text-amber-900/90 dark:text-amber-200/90'
+                  }
+                >
                   {rebuildMutation.data.committed
                     ? `${rebuildMutation.data.totalTransactions} transactions rebuilt across all accounts; ${rebuildMutation.data.appliedEdits} saved rules replayed.`
                     : 'One or more statements could not be parsed, so MoneyInMotion did not replace the last known-good snapshot.'}

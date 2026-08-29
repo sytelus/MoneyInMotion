@@ -89,6 +89,33 @@ export function validateScopeFilter(type: ScopeType, params: readonly string[]):
       `and no more than ${max} but it has ${params.length}`
     );
   }
+
+  if (params.some((parameter) => !parameter.trim())) {
+    return 'Scope parameters cannot be empty or whitespace.';
+  }
+  if (
+    type === ScopeType.TransactionReason &&
+    params.some((parameter) => !/^\d+$/.test(parameter) || !Number.isSafeInteger(Number(parameter)))
+  ) {
+    return 'Transaction-reason parameters must be non-negative integers.';
+  }
+  if (type === ScopeType.AmountRange) {
+    const minimum = Number(params[0]);
+    const maximum = Number(params[1]);
+    if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) {
+      return 'Amount-range bounds must be finite numbers.';
+    }
+    if (minimum < 0 || maximum < 0) {
+      return 'Amount-range bounds must be non-negative magnitudes.';
+    }
+    if (minimum > maximum) {
+      return 'Amount-range minimum cannot exceed its maximum.';
+    }
+    const direction = params[2]?.toLowerCase();
+    if (direction != null && direction !== 'true' && direction !== 'false') {
+      return 'Amount-range direction must be "true" or "false".';
+    }
+  }
   return '';
 }
 

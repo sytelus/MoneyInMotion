@@ -33,10 +33,11 @@ dependency-free production smoke test.
   cache load/replay/save, side-effect-free edit and rebuild failures,
   all-or-nothing rebuild behavior, folder path safety, persisted JSON shape
   validation, staging manifests, content deduplication, collision naming, and
-  strict HTTP routes.
+  strict HTTP routes. Persistence tests also cover shared atomic replacement
+  and cleanup after a failed rename.
 - Web tests cover API failures and payloads, navigation state, account CRUD,
   folder upload interaction, Settings restart semantics, Welcome workflow,
-  scope editing, amount/date/reason/name correction, Rules history/revert, and
+  scope editing, amount/date/reason/name correction, Rules history/reset, and
   keyboard-driven application behavior.
 
 Use `npm run test:coverage` to find unexercised branches, but do not treat a
@@ -46,8 +47,8 @@ percentage as a substitute for fixtures that represent real provider exports.
 
 The complete acceptance run on 2026-08-28 produced:
 
-- 47 passing test files and 546 passing tests;
-- 73.72% statement, 62.45% branch, 69.87% function, and 74.58% line coverage;
+- 51 passing test files and 613 passing tests;
+- 76.96% statement, 66.90% branch, 73.05% function, and 78.00% line coverage;
 - a clean TypeScript build, ESLint run, and optimized Vite production build;
 - zero vulnerabilities in the most recent completed
   `npm audit --audit-level=high` run; and
@@ -58,7 +59,7 @@ The complete acceptance run on 2026-08-28 produced:
 The production smoke test ran after `./install.sh` pruned the compiler, test
 runner, and browser build dependencies. The resulting production
 `node_modules` occupied approximately 13 MiB, compared with approximately
-292 MiB for the complete development installation. The supplied systemd unit
+286 MiB for the complete development installation. The supplied systemd unit
 also passes `systemd-analyze verify`.
 
 Coverage is a directional baseline rather than a release threshold. The most
@@ -113,11 +114,13 @@ sources (the extra source is synthetic), spanning eight accounts from
 2000-08-09 through 2015-04-08. It replayed all 431 rules. Of 162 exact-ID scope
 parameters, 125 resolved and 37 were already orphaned in the legacy snapshot;
 the rebuilt snapshot retained precisely the same 125/37 split after migrating
-107 changed target occurrences. It persisted 5,256 top-level and 8,069 all-node
+107 changed target occurrences. It persisted 5,260 top-level and 8,071 all-node
 transactions with zero top-level count, all-node count, or effective-amount
 change on reload. The documented difference from the legacy materialization is
-31 deduplicated top-level rows totaling $509.65 and one additional relationship
-graph-node difference; it is not missing source coverage or persistence loss.
+31 deduplicated top-level rows totaling $509.65, offset in the top-level view by
+four Amazon orders totaling -$46.35 that one-to-one matching no longer attaches
+to already-used parents. The resulting delta is -27 top-level and -30 all-node
+transactions; it is not missing source coverage or persistence loss.
 
 ## Adding a regression
 

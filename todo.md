@@ -11,7 +11,8 @@ ideas live in [Suggested improvements](docs/legacy_suggested_improvements.md).
 
 - [ ] **Add Playwright end-to-end coverage.** Cover first run, account CRUD,
       directory upload, duplicate and parse-failure reporting, automatic rebuild,
-      every correction type, broad rules, reversal, restart, backup, and restore.
+      every correction type, broad rules, exact-target field reset, restart,
+      backup, and restore.
 - [ ] **Test backup and recovery as an operation.** Restore encrypted off-VM
       backups into an empty root and automatically compare account IDs, date range,
       rule counts, and snapshot persistence before accepting the restore.

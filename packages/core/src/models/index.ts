@@ -37,7 +37,12 @@ export { LineItemType } from './line-item-type.js';
 
 export { AccountType, type AccountInfo } from './account-info.js';
 
-export { type AccountConfig } from './account-config.js';
+export {
+  type AccountConfig,
+  SUPPORTED_ACCOUNT_TYPES,
+  isSupportedAccountType,
+  validateAccountConfigSupport,
+} from './account-config.js';
 
 export {
   ScopeType,

@@ -49,6 +49,7 @@ export const TransactionGroup: React.FC<TransactionGroupProps> = ({
   return (
     <div
       role="row"
+      aria-expanded={isExpanded}
       className={cn(
         'flex items-center gap-2 px-3 py-2 cursor-pointer select-none border-b border-border hover:bg-accent/50 transition-colors',
         isTopLevel && 'bg-muted font-semibold',
@@ -62,36 +63,36 @@ export const TransactionGroup: React.FC<TransactionGroupProps> = ({
       }}
       tabIndex={0}
     >
-      {/* Expand/collapse chevron */}
-      <span
-        className="shrink-0 text-muted-foreground"
-        title={isExpanded ? 'Click to collapse' : 'Click to expand'}
-      >
-        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-      </span>
-
-      {/* Group name */}
-      <span className={cn('truncate', isTopLevel ? 'text-base' : 'text-sm')}>
-        {aggregator.name.replace(/^(NAM_|CAT_)/, '')}
-      </span>
-
-      {/* Transaction count badge */}
-      <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-        {aggregator.count}
-      </span>
-
-      {/* Spacer */}
-      <span className="flex-1" />
-
-      {/* Reason breakdown (hidden on small screens) */}
-      {reasonSummary && (
-        <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[16rem]">
-          {reasonSummary}
+      <div role="gridcell" aria-colspan={6} className="flex w-full items-center gap-2">
+        {/* Expand/collapse chevron */}
+        <span
+          className="shrink-0 text-muted-foreground"
+          title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+        >
+          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </span>
-      )}
 
-      {/* Sum amount */}
-      <AmountDisplay amount={aggregator.sum} className="text-sm" />
+        {/* Group name */}
+        <span className={cn('truncate', isTopLevel ? 'text-base' : 'text-sm')}>
+          {aggregator.name.replace(/^(NAM_|CAT_)/, '')}
+        </span>
+
+        {/* Transaction count badge */}
+        <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          {aggregator.count}
+        </span>
+
+        <span className="flex-1" />
+
+        {/* Reason breakdown (hidden on small screens) */}
+        {reasonSummary && (
+          <span className="hidden md:inline text-xs text-muted-foreground truncate max-w-[16rem]">
+            {reasonSummary}
+          </span>
+        )}
+
+        <AmountDisplay amount={aggregator.sum} className="text-sm" />
+      </div>
     </div>
   );
 };

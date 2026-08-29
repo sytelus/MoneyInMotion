@@ -128,17 +128,18 @@ describe('IifFileParser', () => {
     expect(rows).toHaveLength(0);
   });
 
-  it('ignores TRNS data rows that appear before the header definition', () => {
+  it('rejects TRNS data rows that appear before the header definition', () => {
     const content = [
       'TRNS\t01/15/2024\tOrphan\t-10.00',
       '!TRNS\tdate\tname\tamount',
       'TRNS\t01/16/2024\tStarbucks\t-5.50',
     ].join('\n');
 
-    const rows = parser.parse(content);
+    expect(() => parser.parse(content)).toThrow(/before its !TRNS header/i);
+  });
 
-    // The first TRNS row has no header defined yet, so columns is undefined and it is skipped
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toHaveProperty('name', 'Starbucks');
+  it('rejects TRNS rows with more fields than their declared header', () => {
+    const content = ['!TRNS\tdate\tamount', 'TRNS\t01/15/2024\t-5.00\textra'].join('\n');
+    expect(() => parser.parse(content)).toThrow(/row has 3 fields but its header has 2/i);
   });
 });

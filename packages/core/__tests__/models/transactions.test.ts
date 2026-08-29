@@ -144,6 +144,42 @@ describe('Transactions construction and addNew', () => {
     expect([...txns.topLevelTransactions]).toHaveLength(2);
   });
 
+  it('rejects a transaction ID collision instead of overwriting existing data', () => {
+    const txns = new Transactions('test');
+    const acct = makeAccountInfo();
+    const imp = makeImportInfo();
+    const original = makeTransaction();
+    const collidingData = original.toData();
+    collidingData.contentHash = 'different-content-hash';
+    const colliding = Transaction.fromData(collidingData);
+    txns.addNew(original, acct, imp, false);
+
+    expect(() => txns.addNew(colliding, acct, imp, true)).toThrow(/ID already exists/i);
+    expect(txns.topLevelTransactionCount).toBe(1);
+    expect(txns.getTransaction(original.id)?.contentHash).toBe(original.contentHash);
+  });
+
+  it('rejects account and import metadata that do not describe the transaction', () => {
+    const tx = makeTransaction();
+
+    expect(() =>
+      new Transactions('test').addNew(
+        tx,
+        makeAccountInfo({ id: 'wrong-account' }),
+        makeImportInfo(),
+        true,
+      ),
+    ).toThrow(/does not match AccountInfo/i);
+    expect(() =>
+      new Transactions('test').addNew(
+        tx,
+        makeAccountInfo(),
+        makeImportInfo({ id: 'wrong-import' }),
+        true,
+      ),
+    ).toThrow(/does not match ImportInfo/i);
+  });
+
   it('should retrieve account and import info', () => {
     const txns = new Transactions('test');
     const acct = makeAccountInfo();
@@ -209,10 +245,12 @@ describe('Transactions.merge', () => {
     const imp2 = makeImportInfo({ id: 'import-002', contentHash: 'importhash002' });
 
     const tx1 = makeTransaction();
-    const tx2 = makeTransaction({
-      amount: -50,
-      entityName: 'COSTCO STORE 999',
-      transactionDate: '2024-03-20',
+    const tx2 = Transaction.create('import-002', 'acct-amex', false, {
+      ...makeImportedValues({
+        amount: -50,
+        entityName: 'COSTCO STORE 999',
+        transactionDate: '2024-03-20',
+      }),
     });
 
     txns1.addNew(tx1, acct, imp1, false);
@@ -473,7 +511,6 @@ describe('Transactions.filterTransaction', () => {
     const baseTx = makeTransaction();
     const txData = baseTx.toData();
     txData.entityNameNormalized = '';
-    txData.entityName = '';
     const emptyTokenTx = Transaction.fromData(txData);
 
     const filter = createScopeFilter(ScopeType.EntityNameAnyTokens, ['anything']);
@@ -626,6 +663,24 @@ describe('deserializeDictionary', () => {
     expect(deserializeDictionary(null)).toEqual({});
     expect(deserializeDictionary(undefined)).toEqual({});
   });
+
+  it('rejects malformed or duplicate legacy dictionary entries', () => {
+    expect(() => deserializeDictionary([{ Key: 'missing-value' }])).toThrow(/malformed/i);
+    expect(() =>
+      deserializeDictionary([
+        { Key: 'duplicate', Value: 1 },
+        { Key: 'duplicate', Value: 2 },
+      ]),
+    ).toThrow(/duplicate legacy dictionary key/i);
+    expect(() => deserializeDictionary('not-a-dictionary')).toThrow(/dictionary value/i);
+  });
+
+  it('treats prototype-shaped legacy keys as inert dictionary data', () => {
+    const result = deserializeDictionary<string>([{ Key: '__proto__', Value: 'safe' }]);
+
+    expect(Object.getPrototypeOf(result)).toBeNull();
+    expect(result['__proto__']).toBe('safe');
+  });
 });
 
 describe('Transactions.fromData', () => {
@@ -677,6 +732,7 @@ describe('Transactions.fromData', () => {
       amount: -5,
       lineNumber: 2,
     }).toData();
+    child.parentId = parent.id;
     parent.children = [
       {
         Key: child.id,
@@ -737,6 +793,43 @@ describe('Transactions.fromData', () => {
     expect(restored.getTransaction(child.id)?.providerAttributes).toEqual({
       'legacy field': 'legacy value',
     });
+  });
+
+  it('rejects misleading dictionary keys and coerced metadata types', () => {
+    const mismatchedKeyData = makePopulatedTransactions().txns.serialize();
+    const transaction = Object.values(mismatchedKeyData.topItems)[0]!;
+    mismatchedKeyData.topItems = { 'wrong-transaction-key': transaction };
+    expect(() => Transactions.fromData(mismatchedKeyData)).toThrow(
+      /does not match transaction ID/i,
+    );
+
+    const coercedTypeData = makePopulatedTransactions().txns.serialize();
+    const account = coercedTypeData.accountInfos['acct-amex']!;
+    coercedTypeData.accountInfos['acct-amex'] = {
+      ...account,
+      requiresParent: 'false' as unknown as boolean,
+    };
+    expect(() => Transactions.fromData(coercedTypeData)).toThrow(
+      /requiresParent must be a boolean/i,
+    );
+  });
+
+  it('rejects duplicate transaction IDs anywhere in a hierarchy', () => {
+    const { txns, tx1 } = makePopulatedTransactions();
+    const data = txns.serialize();
+    const duplicate = tx1.toData();
+    duplicate.parentId = tx1.id;
+    data.topItems[tx1.id]!.children = { [duplicate.id]: duplicate };
+
+    expect(() => Transactions.fromData(data)).toThrow(/Duplicate transaction ID in hierarchy/i);
+  });
+
+  it('rejects a top-level transaction that claims to have a parent', () => {
+    const { txns, tx1 } = makePopulatedTransactions();
+    const data = txns.serialize();
+    data.topItems[tx1.id]!.parentId = 'missing-parent';
+
+    expect(() => Transactions.fromData(data)).toThrow(/Top-level transaction.*cannot reference/i);
   });
 
   it('should round-trip serialize and deserialize', () => {
@@ -882,6 +975,33 @@ describe('Inter-account transfer matching', () => {
     expect(tx1.relatedTransferId).toBeNull();
     expect(tx2.relatedTransferId).toBeNull();
   });
+
+  it('does not try to match a transaction again after it was paired earlier in the pass', () => {
+    const txns = new Transactions('test');
+    const imp = makeImportInfo();
+    const accounts = ['one', 'two', 'three'].map((suffix) =>
+      makeAccountInfo({
+        id: `acct-${suffix}`,
+        instituteName: suffix,
+        interAccountNameTags: [],
+      }),
+    );
+    const amounts = [-100, 100, -100];
+    const transactions = accounts.map((account, index) =>
+      Transaction.create('import-001', account.id, false, {
+        amount: amounts[index]!,
+        transactionDate: '2024-03-15',
+        entityName: `Transfer ${index}`,
+        transactionReason: TransactionReason.InterAccountTransfer,
+      }),
+    );
+    transactions.forEach((tx, index) => txns.addNew(tx, accounts[index]!, imp, true));
+
+    expect(() => txns.matchInterAccountTransfer(() => true, undefined, 3, false)).not.toThrow();
+    expect(transactions[0]!.relatedTransferId).toBe(transactions[1]!.id);
+    expect(transactions[1]!.relatedTransferId).toBe(transactions[0]!.id);
+    expect(transactions[2]!.relatedTransferId).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -909,6 +1029,56 @@ describe('Transactions.relateParentChild', () => {
     // Parent has the child
     expect(parent.children).toBeTruthy();
     expect(parent.children![child.id]).toBeTruthy();
+  });
+
+  it('rejects self and ancestor cycles without mutating the collection', () => {
+    const txns = new Transactions('test');
+    const acct = makeAccountInfo();
+    const imp = makeImportInfo();
+    const ancestor = makeTransaction({ entityName: 'ANCESTOR' });
+    const descendant = makeTransaction({ entityName: 'DESCENDANT', lineNumber: 2 });
+
+    txns.addNew(ancestor, acct, imp, false);
+    txns.addNew(descendant, acct, imp, true);
+
+    expect(() => txns.relateParentChild(ancestor.id, ancestor.id)).toThrow(/create a cycle/i);
+    txns.relateParentChild(ancestor.id, descendant.id);
+    expect(() => txns.relateParentChild(descendant.id, ancestor.id)).toThrow(/create a cycle/i);
+
+    expect(txns.topLevelTransactionCount).toBe(1);
+    expect(ancestor.parentId).toBeNull();
+    expect(descendant.parentId).toBe(ancestor.id);
+  });
+
+  it('automatically refreshes completeness after amount edits', () => {
+    const txns = new Transactions('test');
+    const acct = makeAccountInfo();
+    const imp = makeImportInfo();
+    const parent = makeTransaction({ amount: -10, entityName: 'PARENT' });
+    const child = makeTransaction({ amount: -10, entityName: 'CHILD', lineNumber: 2 });
+
+    txns.addNew(parent, acct, imp, false);
+    txns.addNew(child, acct, imp, true);
+    txns.relateParentChild(parent.id, child.id);
+    expect(parent.completeParent().isComplete).toBe(true);
+
+    txns.apply(
+      makeEdit({
+        id: 'edit-child-amount',
+        scopeFilters: [createScopeFilter(ScopeType.TransactionId, [child.id])],
+        values: { amount: editValue(-8) },
+      }),
+    );
+    expect(parent.hasMissingChild).toBe(true);
+
+    txns.apply(
+      makeEdit({
+        id: 'edit-parent-amount',
+        scopeFilters: [createScopeFilter(ScopeType.TransactionId, [parent.id])],
+        values: { amount: editValue(-8) },
+      }),
+    );
+    expect(parent.hasMissingChild).toBe(false);
   });
 });
 

@@ -19,6 +19,9 @@ does not accidentally change financial meaning.
   number and provider reference—not the already-derived content hash.
 - Account, import, children, and provider-attribute maps decode both native
   objects and legacy C# key/value-array dictionary representations.
+- Dictionary keys must agree with the IDs of their values, referenced account
+  and import metadata must exist, and transaction IDs must be unique across the
+  whole parent/child graph. Invalid runtime field types are rejected at load.
 
 ## Sign and reason semantics
 
@@ -65,13 +68,15 @@ silently normalize a scope that claims exact matching.
 Order-history accounts set `requiresParent`. Their line items are not ordinary
 top-level cash flow; they are matched beneath card or payment transactions.
 Amazon and Etsy matchers use order identifiers where supplied, configured
-merchant tags, amount, and date proximity. More than one exact eligible parent
-is treated as ambiguous rather than attached arbitrarily.
+merchant tags, amount, and date proximity. A financial transaction may parent
+only one order candidate during a matching pass. More than one exact eligible
+parent is treated as ambiguous rather than attached arbitrarily, and a parent
+or child already participating in a relationship is not reused.
 
 For non-line-item order matches, the fallback tolerates an amount difference of
 at most one currency unit and a date difference of at most two days, rejects
-parents that already have children, and scores amount difference before date
-distance.
+parents that already have children, and ranks amount difference before date
+distance with transaction ID as the deterministic final tie-breaker.
 
 Incomplete matched parents may receive synthetic discount, shipping, tax, or
 rounding-adjustment children. The residual is tolerable only when it is below
@@ -80,15 +85,16 @@ absolute currency units. Synthetic imports have stable source IDs.
 
 Generic matching also recognizes candidate inter-account movements through
 account tags, opposing signs/compatible amounts, and date proximity. Transfers
-belong in their own net group rather than inflating income and expense.
+belong in their own net group rather than inflating income and expense. Each
+transaction can participate in at most one transfer pair.
 
 ## Aggregation and presentation
 
 - Transactions are grouped into income, expenses, and inter-account movements,
   followed by reason, normalized entity, category, and transaction rows as the
   configured aggregator requests.
-- Every group counts transactions and accumulates effective positive, negative,
-  net, marked, account, reason, note, and category statistics.
+- Every displayed group counts transactions, accumulates its effective net
+  amount, and counts effective transaction reasons for its summary label.
 - Group ordering is deterministic: semantic top-level order is explicit and
   lower groups use stable totals/names.
 - Parent/child display preserves hierarchy; top-level counts and all-node counts
@@ -103,6 +109,10 @@ as an intersection; multiple parameter values within a filter form the allowed
 set for that dimension. Later edits win per changed field. A null/absent field
 means no change, while a present voided field reverts that field to its imported
 state. See [Transaction edits and rules](transaction-edits.md).
+
+The Rules page determines a historic rule's affected transactions from their
+recorded applied-edit IDs where available. A reset targets those exact IDs in
+bounded batches rather than reusing the original broad filter.
 
 ## Failure policy
 

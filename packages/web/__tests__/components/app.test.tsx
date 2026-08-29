@@ -8,9 +8,9 @@ import { describe, it, expect } from 'vitest';
 import { App } from '../../src/App.js';
 
 describe('App', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', async () => {
     render(<App />);
     // The header should contain the app title
-    expect(screen.getByText('MoneyInMotion')).toBeInTheDocument();
+    expect(await screen.findByText('MoneyInMotion')).toBeInTheDocument();
   });
 });

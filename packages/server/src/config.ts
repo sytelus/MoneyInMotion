@@ -10,6 +10,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { writeTextFileAtomically } from './storage/atomic-file.js';
 import * as os from 'node:os';
 
 export interface ServerConfig {
@@ -219,7 +220,5 @@ export function saveConfig(
   // Validate before replacing a known-good file.
   buildConfig(persisted.dataRoot!, persisted.username!, persisted.port!);
 
-  const tmpPath = `${CONFIG_FILE}.tmp`;
-  fs.writeFileSync(tmpPath, JSON.stringify(persisted, null, 2), 'utf-8');
-  fs.renameSync(tmpPath, CONFIG_FILE);
+  writeTextFileAtomically(CONFIG_FILE, JSON.stringify(persisted, null, 2));
 }

@@ -92,6 +92,11 @@ export class GenericOrderMatcher implements ParentChildMatch {
     }
 
     const results: Array<{ child: Transaction; parent: Transaction }> = [];
+    // Financial statement charges are one-to-one with order records. Reserve
+    // a selected charge while building the result set because relationships
+    // are not actually mutated until this method returns. Line-item parents
+    // are deliberately not reserved: one order can contain many line items.
+    const reservedNonLineitemParentIds = new Set<string>();
 
     for (const child of children) {
       if (child.lineItemType !== LineItemType.None) {
@@ -108,18 +113,28 @@ export class GenericOrderMatcher implements ParentChildMatch {
       } else {
         // Non-line-item: find parent by amount+date key, or fuzzy match
         const exactKey = getNonLineItemKey(child);
-        let parents = nonLineitemParents.get(exactKey) ?? null;
+        let parents = (nonLineitemParents.get(exactKey) ?? []).filter(
+          (parent) =>
+            !reservedNonLineitemParentIds.has(parent.id) &&
+            (parent.children == null || Object.keys(parent.children).length === 0),
+        );
 
-        if (parents == null || parents.length === 0) {
+        if (parents.length === 0) {
           // Fuzzy match: amount +/- 1, date +/- 2 days.
-          // Score by amount_delta * (days_delta + 1) so that smaller
-          // amount differences dominate and, within ties, closer
-          // dates win.
+          // Rank lexicographically by amount difference and then date
+          // difference. Multiplying the two deltas made every exact-amount
+          // candidate score zero, regardless of how far apart its date was.
           const childDate = parseDate(child.transactionDate);
-          const fuzzyMatches: Array<{ tx: Transaction; score: number }> = [];
+          const fuzzyMatches: Array<{
+            tx: Transaction;
+            amountDelta: number;
+            daysDelta: number;
+          }> = [];
 
           for (const txArray of nonLineitemParents.values()) {
             for (const tx of txArray) {
+              if (reservedNonLineitemParentIds.has(tx.id)) continue;
+
               const amountDelta = Math.abs(tx.amount - child.amount);
               const daysDelta = daysBetween(parseDate(tx.transactionDate), childDate);
               const hasChildren = tx.children != null && Object.keys(tx.children).length > 0;
@@ -127,18 +142,26 @@ export class GenericOrderMatcher implements ParentChildMatch {
               if (amountDelta <= 1 && daysDelta <= 2 && !hasChildren) {
                 fuzzyMatches.push({
                   tx,
-                  score: amountDelta * (daysDelta + 1),
+                  amountDelta,
+                  daysDelta,
                 });
               }
             }
           }
 
-          fuzzyMatches.sort((a, b) => a.score - b.score);
+          fuzzyMatches.sort(
+            (a, b) =>
+              a.amountDelta - b.amountDelta ||
+              a.daysDelta - b.daysDelta ||
+              a.tx.id.localeCompare(b.tx.id),
+          );
           parents = fuzzyMatches.map((m) => m.tx);
         }
 
         if (parents.length > 0) {
-          results.push({ child, parent: parents[0]! });
+          const parent = parents[0]!;
+          reservedNonLineitemParentIds.add(parent.id);
+          results.push({ child, parent });
         }
       }
     }

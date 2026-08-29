@@ -107,7 +107,9 @@ directory selection → manifest validation → stage and promote → full rebui
 Every received file is copied to a unique staging batch before classification.
 Paths are normalized and constrained beneath the batch, account mapping uses
 configured relative account directories, and identical content is detected per
-account with SHA-256. New content is promoted using exclusive creation; name
+account with SHA-256. A nested path is rejected when that account is configured
+not to scan subfolders, preventing the upload flow from promoting a source the
+rebuild cannot see. New content is promoted using exclusive creation; name
 collisions receive a numbered suffix instead of overwriting a file.
 
 The rebuild constructs a new `Transactions` object off to the side, discovers
@@ -127,12 +129,17 @@ Imported transaction facts are immutable. A `TransactionEditData` records:
 - the source identifier for the change.
 
 An edit request is completely validated and preflighted before application.
+Persisted snapshots, transaction graphs, edit aggregates, metadata maps, and
+account configs are validated again when read from disk; malformed durable data
+fails visibly instead of being coerced or partially loaded.
 The server derives a candidate from the active graph, applies the full batch,
 persists the materialized snapshot plus the independent edit aggregate, and
 only then swaps the candidate into live memory. Rebuilding from statements
 replays the edit aggregate, so corrected
-behavior is reproducible without modifying source exports. Reversal appends a
-voiding edit; history is not silently erased.
+behavior is reproducible without modifying source exports. A field reset
+appends a voiding edit targeted to the transaction IDs known to have received
+the selected rule; history is not silently erased and future transactions are
+not accidentally captured by the reset.
 
 ## Why filesystem storage remains appropriate
 

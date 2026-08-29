@@ -19,6 +19,8 @@ export class CsvFileParser implements FileFormatParser {
    * @returns An array of parsed rows, each mapping column names to values.
    */
   parse(content: string, settings?: ParserSettings): ParsedRow[] {
+    if (content.trim().length === 0) return [];
+
     const hasBannerLines = settings?.hasBannerLines ?? false;
     const ignoreColumns = settings?.ignoreColumns;
 
@@ -27,6 +29,13 @@ export class CsvFileParser implements FileFormatParser {
       header: false,
       skipEmptyLines: true,
     });
+
+    if (parsed.errors.length > 0) {
+      const error = parsed.errors[0]!;
+      throw new Error(
+        `CSV parsing failed${error.row == null ? '' : ` on row ${error.row + 1}`}: ${error.message}`,
+      );
+    }
 
     const rawRows = parsed.data;
     if (rawRows.length === 0) return [];
@@ -59,6 +68,10 @@ export class CsvFileParser implements FileFormatParser {
       // First qualifying row becomes the header
       if (headerColumns === null) {
         headerColumns = this.transformHeaderColumnNames(trimmedColumns, ignoreColumns);
+        const namedColumns = headerColumns.filter((column) => column.length > 0);
+        if (new Set(namedColumns).size !== namedColumns.length) {
+          throw new Error('CSV header contains duplicate column names.');
+        }
         // The header row itself is not a data row
         continue;
       }

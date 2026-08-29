@@ -3,7 +3,7 @@
  *
  * Lists persisted transaction edits, shows the scope and current matches for
  * each rule, and lets the user append a non-destructive "voiding" edit that
- * reverts affected fields back to their imported values.
+ * resets affected fields back to their imported values.
  *
  * @module
  */
@@ -15,6 +15,7 @@ import {
   ScopeType,
   Transactions,
   createAuditInfo,
+  createScopeFilter,
   createUUID,
   transactionReasonTitleLookup,
   type EditedValues,
@@ -40,8 +41,10 @@ interface RuleHistoryItem {
   affectedTransactions: Transaction[];
   fieldSummaries: FieldSummary[];
   scopeSummary: string;
-  revertValues: EditedValues | null;
+  resetValues: EditedValues | null;
 }
+
+const MAX_TRANSACTION_IDS_PER_SCOPE = 1_000;
 
 function formatDateTimeUtc(value: string | null | undefined): string {
   if (!value) {
@@ -116,7 +119,7 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
     fields.push({
       label: 'Category',
       value: values.categoryPath.isVoided
-        ? 'Revert to imported value'
+        ? 'Reset to imported value'
         : formatCategoryPath(values.categoryPath.value),
       isVoided: values.categoryPath.isVoided,
     });
@@ -125,7 +128,7 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
   if (values.note != null) {
     fields.push({
       label: 'Note',
-      value: values.note.isVoided ? 'Revert to imported value' : values.note.value,
+      value: values.note.isVoided ? 'Reset to imported value' : values.note.value,
       isVoided: values.note.isVoided,
     });
   }
@@ -134,7 +137,7 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
     fields.push({
       label: 'Flag',
       value: values.isFlagged.isVoided
-        ? 'Revert to imported value'
+        ? 'Reset to imported value'
         : values.isFlagged.value
           ? 'Flagged'
           : 'Not flagged',
@@ -145,7 +148,7 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
   if (values.entityName != null) {
     fields.push({
       label: 'Entity Name',
-      value: values.entityName.isVoided ? 'Revert to imported value' : values.entityName.value,
+      value: values.entityName.isVoided ? 'Reset to imported value' : values.entityName.value,
       isVoided: values.entityName.isVoided,
     });
   }
@@ -154,7 +157,7 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
     fields.push({
       label: 'Transaction Reason',
       value: values.transactionReason.isVoided
-        ? 'Revert to imported value'
+        ? 'Reset to imported value'
         : (transactionReasonTitleLookup[String(values.transactionReason.value)] ??
           String(values.transactionReason.value)),
       isVoided: values.transactionReason.isVoided,
@@ -165,7 +168,7 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
     fields.push({
       label: 'Amount',
       value: values.amount.isVoided
-        ? 'Revert to imported value'
+        ? 'Reset to imported value'
         : formatCurrency(values.amount.value),
       isVoided: values.amount.isVoided,
     });
@@ -175,7 +178,7 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
     fields.push({
       label: 'Transaction Date',
       value: values.transactionDate.isVoided
-        ? 'Revert to imported value'
+        ? 'Reset to imported value'
         : formatDate(values.transactionDate.value),
       isVoided: values.transactionDate.isVoided,
     });
@@ -184,47 +187,36 @@ function summarizeFields(values: EditedValues | null): FieldSummary[] {
   return fields;
 }
 
-function buildRevertValues(values: EditedValues | null): EditedValues | null {
+function buildResetValues(values: EditedValues | null): EditedValues | null {
   if (!values) {
     return null;
   }
 
-  const revertValues: EditedValues = {};
+  const resetValues: EditedValues = {};
 
   if (values.transactionReason != null && !values.transactionReason.isVoided) {
-    revertValues.transactionReason = voidedEditValue<number>();
+    resetValues.transactionReason = voidedEditValue<number>();
   }
   if (values.transactionDate != null && !values.transactionDate.isVoided) {
-    revertValues.transactionDate = voidedEditValue<string>();
+    resetValues.transactionDate = voidedEditValue<string>();
   }
   if (values.amount != null && !values.amount.isVoided) {
-    revertValues.amount = voidedEditValue<number>();
+    resetValues.amount = voidedEditValue<number>();
   }
   if (values.entityName != null && !values.entityName.isVoided) {
-    revertValues.entityName = voidedEditValue<string>();
+    resetValues.entityName = voidedEditValue<string>();
   }
   if (values.isFlagged != null && !values.isFlagged.isVoided) {
-    revertValues.isFlagged = voidedEditValue<boolean>();
+    resetValues.isFlagged = voidedEditValue<boolean>();
   }
   if (values.note != null && !values.note.isVoided) {
-    revertValues.note = voidedEditValue<string>();
+    resetValues.note = voidedEditValue<string>();
   }
   if (values.categoryPath != null && !values.categoryPath.isVoided) {
-    revertValues.categoryPath = voidedEditValue<string[]>();
+    resetValues.categoryPath = voidedEditValue<string[]>();
   }
 
-  return Object.keys(revertValues).length > 0 ? revertValues : null;
-}
-
-function cloneScopeFilters(scopeFilters: readonly ScopeFilter[]): ScopeFilter[] {
-  return scopeFilters.map((scopeFilter) => ({
-    ...scopeFilter,
-    parameters: [...scopeFilter.parameters],
-    referenceParameters:
-      scopeFilter.referenceParameters != null
-        ? [...scopeFilter.referenceParameters]
-        : (scopeFilter.referenceParameters ?? null),
-  }));
+  return Object.keys(resetValues).length > 0 ? resetValues : null;
 }
 
 function buildSampleLabel(transaction: Transaction): string {
@@ -232,7 +224,7 @@ function buildSampleLabel(transaction: Transaction): string {
 }
 
 /**
- * Rule history page used to inspect edit rules and append revert edits.
+ * Rule history page used to inspect edit rules and append reset edits.
  */
 export const RulesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -250,13 +242,22 @@ export const RulesPage: React.FC = () => {
     const transactions = Transactions.fromData(data);
 
     return [...transactions.getClonedEdits()]
-      .map((edit) => ({
-        edit,
-        affectedTransactions: transactions.filterTransactions(edit),
-        fieldSummaries: summarizeFields(edit.values),
-        scopeSummary: summarizeScope(edit.scopeFilters),
-        revertValues: buildRevertValues(edit.values),
-      }))
+      .map((edit) => {
+        // Applied edit IDs are the durable record of which transactions the
+        // rule actually changed. Re-evaluating a reason/amount scope against
+        // today's corrected values can make a rule stop matching itself.
+        const recordedMatches = [...transactions.allParentChildTransactions].filter((tx) =>
+          tx.appliedEditIdsDescending?.includes(edit.id),
+        );
+        return {
+          edit,
+          affectedTransactions:
+            recordedMatches.length > 0 ? recordedMatches : transactions.filterTransactions(edit),
+          fieldSummaries: summarizeFields(edit.values),
+          scopeSummary: summarizeScope(edit.scopeFilters),
+          resetValues: buildResetValues(edit.values),
+        };
+      })
       .sort((left, right) => {
         const leftTime = Date.parse(left.edit.auditInfo.createDate);
         const rightTime = Date.parse(right.edit.auditInfo.createDate);
@@ -264,36 +265,43 @@ export const RulesPage: React.FC = () => {
       });
   }, [data]);
 
-  const revertableRules = rules.filter((rule) => rule.revertValues != null);
+  const resettableRules = rules.filter((rule) => rule.resetValues != null);
 
-  const handleConfirmRevert = () => {
-    if (!selectedRule?.revertValues) {
+  const handleConfirmReset = () => {
+    if (!selectedRule?.resetValues) {
       return;
     }
 
     setActionError(null);
     setActionSuccess(null);
 
-    const revertEdit: TransactionEditData = {
-      id: createUUID(),
-      auditInfo: createAuditInfo('rules-ui'),
-      scopeFilters: cloneScopeFilters(selectedRule.edit.scopeFilters),
-      values: selectedRule.revertValues,
-      sourceId: 'rules-ui',
-    };
+    const affectedIds = selectedRule.affectedTransactions.map((transaction) => transaction.id);
+    const resetEdits: TransactionEditData[] = [];
+    for (let index = 0; index < affectedIds.length; index += MAX_TRANSACTION_IDS_PER_SCOPE) {
+      const ids = affectedIds.slice(index, index + MAX_TRANSACTION_IDS_PER_SCOPE);
+      resetEdits.push({
+        id: createUUID(),
+        auditInfo: createAuditInfo('rules-ui'),
+        // Pin the reset to the transactions that actually received the rule.
+        // Reusing a broad scope could reset unrelated future transactions.
+        scopeFilters: [createScopeFilter(ScopeType.TransactionId, ids)],
+        values: selectedRule.resetValues,
+        sourceId: 'rules-ui',
+      });
+    }
 
-    applyEdits.mutate([revertEdit], {
+    applyEdits.mutate(resetEdits, {
       onSuccess: (result) => {
         setSelectedRule(null);
         setActionSuccess(
-          `Reverted rule for ${result.affectedTransactionsCount} transaction${result.affectedTransactionsCount === 1 ? '' : 's'}.`,
+          `Reset fields for ${result.affectedTransactionsCount} transaction${result.affectedTransactionsCount === 1 ? '' : 's'}.`,
         );
       },
       onError: (mutationError) => {
         setActionError(
           mutationError instanceof Error
             ? mutationError.message
-            : 'Failed to revert the selected rule.',
+            : 'Failed to reset the selected rule fields.',
         );
       },
     });
@@ -316,7 +324,7 @@ export const RulesPage: React.FC = () => {
           </div>
           <p className="text-sm text-muted-foreground">
             Every category change, note, flag, or attribute fix is stored as a separate edit rule.
-            Reverting from this page appends a new voiding edit and leaves the original history
+            Resetting from this page appends a new voiding edit and leaves the original history
             intact.
           </p>
         </section>
@@ -349,8 +357,8 @@ export const RulesPage: React.FC = () => {
                 <p className="mt-1 text-2xl font-semibold">{rules.length}</p>
               </div>
               <div className="rounded-lg border border-border p-4">
-                <p className="text-sm text-muted-foreground">Revertable rules</p>
-                <p className="mt-1 text-2xl font-semibold">{revertableRules.length}</p>
+                <p className="text-sm text-muted-foreground">Resettable rules</p>
+                <p className="mt-1 text-2xl font-semibold">{resettableRules.length}</p>
               </div>
               <div className="rounded-lg border border-border p-4">
                 <p className="text-sm text-muted-foreground">Current matches</p>
@@ -378,7 +386,7 @@ export const RulesPage: React.FC = () => {
                 {rules.map((rule) => {
                   const currentMatchCount = rule.affectedTransactions.length;
                   const sampleTransactions = rule.affectedTransactions.slice(0, 5);
-                  const canRevert = rule.revertValues != null && currentMatchCount > 0;
+                  const canReset = rule.resetValues != null && currentMatchCount > 0;
 
                   return (
                     <article
@@ -394,8 +402,8 @@ export const RulesPage: React.FC = () => {
                             <Badge variant={currentMatchCount > 0 ? 'info' : 'warning'}>
                               {currentMatchCount} current match{currentMatchCount === 1 ? '' : 'es'}
                             </Badge>
-                            <Badge variant={rule.revertValues ? 'success' : 'secondary'}>
-                              {rule.revertValues ? 'Revertable' : 'Audit Only'}
+                            <Badge variant={rule.resetValues ? 'success' : 'secondary'}>
+                              {rule.resetValues ? 'Resettable' : 'Audit Only'}
                             </Badge>
                           </div>
                           <div>
@@ -412,10 +420,10 @@ export const RulesPage: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedRule(rule)}
-                          disabled={!canRevert || applyEdits.isPending}
+                          disabled={!canReset || applyEdits.isPending}
                         >
                           <Undo2 className="h-4 w-4 mr-1.5" />
-                          Revert to Imported Values
+                          Reset These Fields
                         </Button>
                       </div>
 
@@ -494,14 +502,14 @@ export const RulesPage: React.FC = () => {
         }}
       >
         <DialogContent
-          title="Revert Edit Rule"
-          description="This creates a new voiding edit that restores affected fields to their imported values."
+          title="Reset Fields to Imported Values"
+          description="This appends a new edit that resets these fields for the transactions that received the selected rule."
         >
           <div className="space-y-4">
             {selectedRule && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  This revert will target{' '}
+                  This reset will target{' '}
                   <span className="font-semibold text-foreground">
                     {selectedRule.affectedTransactions.length}
                   </span>{' '}
@@ -514,18 +522,19 @@ export const RulesPage: React.FC = () => {
                       .filter((summary) => !summary.isVoided)
                       .map((summary) => (
                         <li
-                          key={`revert-${summary.label}`}
+                          key={`reset-${summary.label}`}
                           className="flex items-center justify-between px-3 py-2 text-sm"
                         >
                           <span className="font-medium">{summary.label}</span>
-                          <span className="text-muted-foreground">Revert to imported value</span>
+                          <span className="text-muted-foreground">Reset to imported value</span>
                         </li>
                       ))}
                   </ul>
                 </div>
 
                 <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-                  Original edit ID: <code>{selectedRule.edit.id}</code>
+                  Later edits to the same fields are also overridden by this reset. Original edit
+                  ID: <code>{selectedRule.edit.id}</code>
                 </div>
               </>
             )}
@@ -536,15 +545,15 @@ export const RulesPage: React.FC = () => {
               Cancel
             </Button>
             <Button
-              onClick={handleConfirmRevert}
-              disabled={selectedRule?.revertValues == null || applyEdits.isPending}
+              onClick={handleConfirmReset}
+              disabled={selectedRule?.resetValues == null || applyEdits.isPending}
             >
               {applyEdits.isPending ? (
-                'Reverting...'
+                'Resetting...'
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                  Revert Rule
+                  Reset Fields
                 </>
               )}
             </Button>

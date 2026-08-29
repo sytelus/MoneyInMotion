@@ -57,19 +57,25 @@ Returns recursively discovered account configs with transaction count, most
 recent imported audit date, statement-file presence, and the relative directory
 expected in browser uploads.
 
+If any discovered `AccountConfig.json` is malformed or unsupported, discovery
+returns 422 with its path instead of returning an incomplete account list.
+
 ### `POST /api/accounts`
 
 Creates an account directory and canonical `AccountConfig.json`. The JSON body
 is an `AccountConfig` with `accountInfo`, `fileFilters`, and `scanSubFolders`.
 Account types are restricted to the supported financial and order-history
-types. File filters support `*`, `*.extension`, or one exact filename. Returns
-409 if a directory or recursively discovered account already has the logical
-ID; ID comparison is case-insensitive.
+types. Order-history configuration is currently restricted to Amazon or Etsy
+and requires at least one parent-charge match tag. File filters support `*`,
+`*.extension`, or one exact filename. Returns 409 if a directory or recursively
+discovered account already has the logical ID; ID comparison is
+case-insensitive.
 
 ### `PUT /api/accounts/:id`
 
 Updates a config atomically. The account ID may change only before statement
-files and transactions exist. A safe rename moves the account directory.
+files and transactions exist. A safe rename moves the account directory; if
+the subsequent config replacement fails, the directory rename is rolled back.
 
 ### `DELETE /api/accounts/:id`
 
@@ -109,8 +115,9 @@ Multipart fields:
 - `files`: repeated file parts, at least one and at most 200;
 - `relativePaths`: a JSON string array positional to `files`.
 
-Each file is limited to 20 MiB and a declared request to 100 MiB. The response
-has two sections:
+Each file is limited to 20 MiB and the request to 100 MiB; size-limit failures
+return 413. Files below a nested account path are staged but rejected when that
+account has disabled subfolder scanning. The response has two sections:
 
 ```json
 {

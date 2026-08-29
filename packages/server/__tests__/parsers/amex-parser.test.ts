@@ -81,4 +81,11 @@ describe('AmexParser', () => {
 
     expect(values[0]!.transactionReason).toBe(TransactionReason.Purchase);
   });
+
+  it('rejects malformed quoting and unexpected extra fields', () => {
+    expect(() => new AmexParser('"unterminated,-5.00\n')).toThrow(/Amex CSV parsing failed/i);
+    expect(
+      () => new AmexParser('01/15/2024,Reference: ABC123,-45.99,STORE,Shopping,unexpected\n'),
+    ).toThrow(/four or five fields/i);
+  });
 });

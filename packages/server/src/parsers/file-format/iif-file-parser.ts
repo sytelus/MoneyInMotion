@@ -46,9 +46,16 @@ export class IifFileParser implements FileFormatParser {
       if (sectionTag !== 'TRNS') continue;
 
       const columns = sectionHeaders['TRNS'];
-      if (!columns) continue;
+      if (!columns) {
+        throw new Error('IIF TRNS data appeared before its !TRNS header.');
+      }
 
       const dataFields = fields.slice(1);
+      if (dataFields.length > columns.length) {
+        throw new Error(
+          `IIF TRNS row has ${dataFields.length} fields but its header has ${columns.length}.`,
+        );
+      }
       const row: ParsedRow = {};
 
       for (let i = 0; i < columns.length && i < dataFields.length; i++) {

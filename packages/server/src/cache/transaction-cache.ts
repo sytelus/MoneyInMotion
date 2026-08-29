@@ -18,6 +18,7 @@ import {
   type AccountInfo,
 } from '@moneyinmotion/core';
 import { FileRepository } from '../storage/file-repository.js';
+import { InvalidAccountConfigError } from '../storage/account-config-repository.js';
 import { TransactionsStorage } from '../storage/transactions-storage.js';
 import { TransactionEditsStorage } from '../storage/transaction-edits-storage.js';
 import { getStatementParser } from '../parsers/statement/index.js';
@@ -145,9 +146,29 @@ export class TransactionCache {
     const previous = await this.getTransactions();
     const previousTransactionCount = previous.allTransactionCount;
     const txns = new Transactions('LatestMerged');
-    const statementLocations = this.repo
-      .getStatementLocations()
-      .sort((left, right) => left.portableAddress.localeCompare(right.portableAddress));
+    let statementLocations;
+    try {
+      statementLocations = this.repo
+        .getStatementLocations()
+        .sort((left, right) => left.portableAddress.localeCompare(right.portableAddress));
+    } catch (err) {
+      return {
+        committed: false,
+        previousTransactionCount,
+        newTransactions: 0,
+        totalTransactions: previousTransactionCount,
+        importedFiles: [],
+        failedFiles: [
+          {
+            path: err instanceof InvalidAccountConfigError ? err.portablePath : 'Statements',
+            error: err instanceof Error ? err.message : String(err),
+          },
+        ],
+        appliedEdits: 0,
+        migratedEditTargets: 0,
+        unresolvedEditTargets: 0,
+      };
+    }
     const importedFiles: string[] = [];
     const failedFiles: Array<{ path: string; error: string }> = [];
 

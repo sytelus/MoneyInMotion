@@ -111,16 +111,76 @@ export interface TransactionData {
 function normalizeDictionary<T>(value: unknown): Record<string, T> | null {
   if (value == null) return null;
   if (Array.isArray(value)) {
-    const normalized: Record<string, T> = {};
-    for (const entry of value) {
-      if (entry != null && typeof entry === 'object' && 'Key' in entry && 'Value' in entry) {
-        const pair = entry as { Key: string; Value: T };
-        normalized[pair.Key] = pair.Value;
+    const normalized = Object.create(null) as Record<string, T>;
+    for (const [index, entry] of value.entries()) {
+      if (
+        entry == null ||
+        typeof entry !== 'object' ||
+        !('Key' in entry) ||
+        !('Value' in entry) ||
+        typeof entry.Key !== 'string' ||
+        entry.Key.length === 0
+      ) {
+        throw new Error(`Malformed legacy dictionary entry at index ${index}`);
       }
+      if (Object.hasOwn(normalized, entry.Key)) {
+        throw new Error(`Duplicate legacy dictionary key: ${entry.Key}`);
+      }
+      normalized[entry.Key] = entry.Value as T;
     }
     return normalized;
   }
-  return typeof value === 'object' ? (value as Record<string, T>) : null;
+  if (typeof value !== 'object') {
+    throw new Error('Dictionary value must be an object, an array of Key/Value pairs, or null');
+  }
+  return Object.assign(Object.create(null) as Record<string, T>, value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Validate the runtime shape of values embedded in a persisted transaction. */
+function validateMergedEdit(value: unknown, errors: string[]): void {
+  if (value == null) return;
+  if (!isRecord(value)) {
+    errors.push('MergedEdit must be an object or null.');
+    return;
+  }
+
+  const validators: Readonly<Record<string, (candidate: unknown) => boolean>> = {
+    transactionReason: (candidate) => Number.isInteger(candidate),
+    transactionDate: (candidate) => {
+      if (typeof candidate !== 'string') return false;
+      try {
+        parseDate(candidate);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    amount: (candidate) => typeof candidate === 'number' && Number.isFinite(candidate),
+    entityName: (candidate) => typeof candidate === 'string',
+    isFlagged: (candidate) => typeof candidate === 'boolean',
+    note: (candidate) => typeof candidate === 'string',
+    categoryPath: (candidate) =>
+      Array.isArray(candidate) && candidate.every((part) => typeof part === 'string'),
+  };
+
+  for (const [field, editValue] of Object.entries(value)) {
+    if (editValue == null) continue;
+    const validateValue = validators[field];
+    if (validateValue == null || !isRecord(editValue) || typeof editValue.isVoided !== 'boolean') {
+      errors.push(`MergedEdit.${field} is invalid.`);
+      continue;
+    }
+    if (editValue.isVoided) {
+      if (editValue.value !== null)
+        errors.push(`MergedEdit.${field}.value must be null when voided.`);
+    } else if (!validateValue(editValue.value)) {
+      errors.push(`MergedEdit.${field}.value is invalid.`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -337,23 +397,41 @@ export class Transaction {
    * (e.g. loaded from LatestMerged.json).
    */
   static fromData(data: TransactionData): Transaction {
+    if (!isRecord(data)) {
+      throw new Error('Transaction data must be an object.');
+    }
     const providerAttributes = normalizeDictionary<string>(data.providerAttributes);
     const rawChildren = normalizeDictionary<TransactionData>(data.children);
     const children: Record<string, TransactionData> | null =
       rawChildren == null
         ? null
         : Object.fromEntries(
-            Object.entries(rawChildren).map(([id, child]) => [
-              id,
-              Transaction.fromData(child).toData(),
-            ]),
+            Object.entries(rawChildren).map(([id, child]) => {
+              if (!isRecord(child)) {
+                throw new Error(`Child transaction "${id}" must be an object`);
+              }
+              const normalizedChild = Transaction.fromData(child).toData();
+              if (normalizedChild.id !== id) {
+                throw new Error(
+                  `Child transaction dictionary key "${id}" does not match transaction ID "${normalizedChild.id}"`,
+                );
+              }
+              if (normalizedChild.parentId !== data.id) {
+                throw new Error(
+                  `Child transaction "${id}" references parent "${normalizedChild.parentId ?? ''}" instead of "${String(data.id)}"`,
+                );
+              }
+              return [id, normalizedChild];
+            }),
           );
 
-    return new Transaction({
+    const transaction = new Transaction({
       ...data,
       providerAttributes,
       children,
     });
+    transaction.validate();
+    return transaction;
   }
 
   /**
@@ -526,15 +604,114 @@ export class Transaction {
   private validate(): void {
     const errors: string[] = [];
 
-    if (this.data.importId == null) {
+    if (!Number.isFinite(this.data.amount)) {
+      errors.push('Amount must be a finite number.');
+    }
+    if (!Number.isInteger(this.data.transactionReason)) {
+      errors.push('TransactionReason must be an integer.');
+    }
+    if (typeof this.data.id !== 'string' || !this.data.id) {
+      errors.push('Id must have value.');
+    }
+    if (typeof this.data.contentHash !== 'string' || !this.data.contentHash) {
+      errors.push('ContentHash must have value.');
+    }
+    if (typeof this.data.importId !== 'string' || !this.data.importId) {
       errors.push('ImportId must have value.');
     }
-    if (!this.data.accountId) {
+    if (typeof this.data.accountId !== 'string' || !this.data.accountId) {
       errors.push('AccountId must have value.');
     }
-    if (!this.data.entityName) {
+    if (typeof this.data.entityName !== 'string' || !this.data.entityName) {
       errors.push('EntityName must have value.');
     }
+    try {
+      parseDate(this.data.transactionDate);
+    } catch {
+      errors.push('TransactionDate must be a valid date.');
+    }
+    if (this.data.postedDate != null) {
+      try {
+        parseDate(this.data.postedDate);
+      } catch {
+        errors.push('PostedDate must be a valid date when provided.');
+      }
+    }
+    if (!isRecord(this.data.auditInfo)) {
+      errors.push('AuditInfo must be an object.');
+    } else {
+      try {
+        parseDate(this.data.auditInfo.createDate);
+      } catch {
+        errors.push('AuditInfo.createDate must be a valid date.');
+      }
+      if (typeof this.data.auditInfo.createdBy !== 'string' || !this.data.auditInfo.createdBy) {
+        errors.push('AuditInfo.createdBy must have value.');
+      }
+      if (this.data.auditInfo.updateDate != null) {
+        try {
+          parseDate(this.data.auditInfo.updateDate);
+        } catch {
+          errors.push('AuditInfo.updateDate must be a valid date when provided.');
+        }
+      }
+      if (
+        this.data.auditInfo.updatedBy != null &&
+        (typeof this.data.auditInfo.updatedBy !== 'string' || !this.data.auditInfo.updatedBy)
+      ) {
+        errors.push('AuditInfo.updatedBy must be a non-empty string when provided.');
+      }
+    }
+    if (this.data.lineNumber != null && !Number.isInteger(this.data.lineNumber)) {
+      errors.push('LineNumber must be an integer when provided.');
+    }
+    if (
+      this.data.lineItemType != null &&
+      (!Number.isInteger(this.data.lineItemType) || !(this.data.lineItemType in LineItemType))
+    ) {
+      errors.push('LineItemType must be a known integer value.');
+    }
+    if (this.data.requiresParent != null && typeof this.data.requiresParent !== 'boolean') {
+      errors.push('RequiresParent must be a boolean when provided.');
+    }
+    if (this.data.hasMissingChild != null && typeof this.data.hasMissingChild !== 'boolean') {
+      errors.push('HasMissingChild must be a boolean when provided.');
+    }
+    if (
+      this.data.appliedEditIdsDescending != null &&
+      (!Array.isArray(this.data.appliedEditIdsDescending) ||
+        this.data.appliedEditIdsDescending.some((id) => typeof id !== 'string' || !id))
+    ) {
+      errors.push('AppliedEditIdsDescending must contain only non-empty strings.');
+    }
+    const optionalStrings: ReadonlyArray<[label: string, value: unknown]> = [
+      ['EntityId', this.data.entityId],
+      ['EntityNameNormalized', this.data.entityNameNormalized],
+      ['InstituteReference', this.data.instituteReference],
+      ['ProviderCategoryName', this.data.providerCategoryName],
+      ['PhoneNumber', this.data.phoneNumber],
+      ['Address', this.data.address],
+      ['SubAccountName', this.data.subAccountName],
+      ['AccountNumber', this.data.accountNumber],
+      ['CheckReference', this.data.checkReference],
+      ['ParentChildMatchFilter', this.data.parentChildMatchFilter],
+      ['ParentId', this.data.parentId],
+      ['CombinedFromId', this.data.combinedFromId],
+      ['CombinedToId', this.data.combinedToId],
+      ['RelatedTransferId', this.data.relatedTransferId],
+    ];
+    for (const [label, value] of optionalStrings) {
+      if (value != null && typeof value !== 'string') {
+        errors.push(`${label} must be a string when provided.`);
+      }
+    }
+    if (
+      this.data.providerAttributes != null &&
+      Object.values(this.data.providerAttributes).some((value) => typeof value !== 'string')
+    ) {
+      errors.push('ProviderAttributes values must be strings.');
+    }
+    validateMergedEdit(this.data.mergedEdit, errors);
 
     // Amount sign must match reason direction.
     // Note: Purchase (value 0) is excluded automatically because
@@ -705,9 +882,18 @@ export class Transaction {
 
   /**
    * Add a child transaction to this parent.
-   * Throws if the child already has a parent.
+   * Throws if the child already has a parent or the link would introduce a
+   * cycle. Cyclic graphs cannot be serialized and would make recursive
+   * aggregation non-terminating, so the invariant is enforced here at the
+   * lowest public mutation boundary.
    */
   addChild(child: Transaction): void {
+    if (child.id === this.id || child.hasDescendant(this.id)) {
+      throw new Error(
+        `Cannot add child transaction ${child.id} to parent ${this.id} because the relationship would create a cycle`,
+      );
+    }
+
     if (child.data.parentId != null) {
       throw new Error(
         `Cannot add child transaction ${child.id} to parent ${this.id} because it already has other parent ${child.data.parentId}`,
@@ -730,20 +916,40 @@ export class Transaction {
     this.completeUpdate();
   }
 
+  /** Return whether this transaction's descendant graph contains `id`. */
+  private hasDescendant(id: string): boolean {
+    const pending = Object.values(this.data.children ?? {});
+    const visited = new Set<string>();
+
+    while (pending.length > 0) {
+      const descendant = pending.pop()!;
+      if (descendant.id === id) return true;
+      if (visited.has(descendant.id)) continue;
+
+      visited.add(descendant.id);
+      pending.push(...Object.values(descendant.children ?? {}));
+    }
+
+    return false;
+  }
+
   /**
    * Mark the parent as complete and compute the missing child amount.
    *
-   * Uses a half-cent epsilon when checking whether the remainder is zero —
-   * plain `!== 0` would spuriously flag parents as incomplete because of
-   * floating-point rounding in the child-amount sum.
+   * Uses effective (edited) amounts and a half-cent epsilon when checking
+   * whether the remainder is zero. Using raw imported amounts here would
+   * leave reconciliation state stale after a user corrects an amount.
    *
    * @returns An object with `isComplete` (true when amounts balance) and
    *          `missingChildAmount` (the unmatched remainder).
    */
   completeParent(): { isComplete: boolean; missingChildAmount: number } {
     const childrenValues = this.data.children ? Object.values(this.data.children) : [];
-    const childSum = childrenValues.reduce((sum, c) => sum + c.amount, 0);
-    const missingChildAmount = this.data.amount - childSum;
+    const childSum = childrenValues.reduce(
+      (sum, child) => sum + Transaction.fromNormalizedDataReference(child).correctedAmount,
+      0,
+    );
+    const missingChildAmount = this.correctedAmount - childSum;
     this.data.hasMissingChild = Math.abs(missingChildAmount) >= 0.005;
 
     this.completeUpdate();
@@ -795,7 +1001,7 @@ export class Transaction {
    * "better" (longer or more specific) value for each field.
    */
   combineAttributes(other: Transaction): void {
-    if (this.data.combinedFromId != null && other.data.combinedToId != null) {
+    if (this.data.combinedFromId != null || other.data.combinedToId != null) {
       throw new Error(
         `Attempt to combine transaction again. Current ID ${this.id}, CombinedFromId ${this.data.combinedFromId}, other ID ${other.id}`,
       );

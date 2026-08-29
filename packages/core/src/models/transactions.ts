@@ -57,21 +57,34 @@ export function deserializeDictionary<T>(data: unknown): Record<string, T> {
 
   // C# legacy format: array of {Key, Value}
   if (Array.isArray(data)) {
-    const result: Record<string, T> = {};
-    for (const item of data) {
-      if (item != null && typeof item === 'object' && 'Key' in item && 'Value' in item) {
-        result[(item as { Key: string; Value: T }).Key] = (item as { Key: string; Value: T }).Value;
+    // A null prototype makes even special keys such as "__proto__" ordinary
+    // data and prevents legacy dictionary input from mutating object state.
+    const result = Object.create(null) as Record<string, T>;
+    for (const [index, item] of data.entries()) {
+      if (
+        item == null ||
+        typeof item !== 'object' ||
+        !('Key' in item) ||
+        !('Value' in item) ||
+        typeof item.Key !== 'string' ||
+        item.Key.length === 0
+      ) {
+        throw new Error(`Malformed legacy dictionary entry at index ${index}`);
       }
+      if (Object.hasOwn(result, item.Key)) {
+        throw new Error(`Duplicate legacy dictionary key: ${item.Key}`);
+      }
+      result[item.Key] = item.Value as T;
     }
     return result;
   }
 
   // Normal object format
   if (typeof data === 'object') {
-    return data as Record<string, T>;
+    return Object.assign(Object.create(null) as Record<string, T>, data);
   }
 
-  return {};
+  throw new Error('Dictionary value must be an object, an array of Key/Value pairs, or null');
 }
 
 // ---------------------------------------------------------------------------
@@ -98,44 +111,85 @@ export interface TransactionsData {
 
 type UnknownRecord = Record<string, unknown>;
 
-function asRecord(value: unknown): UnknownRecord {
-  return value != null && typeof value === 'object' ? (value as UnknownRecord) : {};
+function asRecord(value: unknown, label: string): UnknownRecord {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  return value as UnknownRecord;
+}
+
+function requiredString(value: unknown, label: string): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+  return value;
+}
+
+function optionalString(value: unknown, label: string): string | null {
+  if (value == null) return null;
+  if (typeof value !== 'string') throw new Error(`${label} must be a string or null`);
+  return value;
 }
 
 /** Decode both current camelCase and historical PascalCase account metadata. */
 function normalizeAccountInfo(value: unknown): AccountInfo {
-  const raw = asRecord(value);
+  const raw = asRecord(value, 'AccountInfo');
+  const type = raw.type ?? raw.Type;
+  const requiresParent = raw.requiresParent ?? raw.RequiresParent;
+  const tags = raw.interAccountNameTags ?? raw.InterAccountNameTags;
+  const validAccountTypes = new Set<number>([
+    AccountType.CreditCard,
+    AccountType.BankChecking,
+    AccountType.BankSavings,
+    AccountType.OrderHistory,
+    AccountType.EPayment,
+  ]);
+
+  if (typeof type !== 'number' || !validAccountTypes.has(type)) {
+    throw new Error(`AccountInfo.type is not a supported AccountType: ${String(type)}`);
+  }
+  if (typeof requiresParent !== 'boolean') {
+    throw new Error('AccountInfo.requiresParent must be a boolean');
+  }
+  if (tags != null && (!Array.isArray(tags) || tags.some((tag) => typeof tag !== 'string'))) {
+    throw new Error('AccountInfo.interAccountNameTags must be an array of strings or null');
+  }
+
   return {
-    id: String(raw.id ?? raw.Id ?? ''),
-    instituteName: String(raw.instituteName ?? raw.InstituteName ?? ''),
-    title: raw.title == null && raw.Title == null ? null : String(raw.title ?? raw.Title),
-    type: Number(raw.type ?? raw.Type ?? 0) as AccountType,
-    requiresParent: Boolean(raw.requiresParent ?? raw.RequiresParent ?? false),
-    interAccountNameTags: Array.isArray(raw.interAccountNameTags ?? raw.InterAccountNameTags)
-      ? ((raw.interAccountNameTags ?? raw.InterAccountNameTags) as string[])
-      : null,
+    id: requiredString(raw.id ?? raw.Id, 'AccountInfo.id'),
+    instituteName: requiredString(
+      raw.instituteName ?? raw.InstituteName,
+      'AccountInfo.instituteName',
+    ),
+    title: optionalString(raw.title ?? raw.Title, 'AccountInfo.title'),
+    type,
+    requiresParent,
+    interAccountNameTags: tags == null ? null : [...(tags as string[])],
   };
 }
 
 /** Decode both current camelCase and historical PascalCase import metadata. */
 function normalizeImportInfo(value: unknown): ImportInfo {
-  const raw = asRecord(value);
+  const raw = asRecord(value, 'ImportInfo');
   const updateDate = raw.updateDate ?? raw.UpdateDate;
   const createDate = raw.createDate ?? raw.CreateDate;
   const format = raw.format ?? raw.Format;
   const result: ImportInfo = {
-    id: String(raw.id ?? raw.Id ?? ''),
-    portableAddress: String(raw.portableAddress ?? raw.PortableAddress ?? ''),
-    contentHash: String(raw.contentHash ?? raw.ContentHash ?? ''),
+    id: requiredString(raw.id ?? raw.Id, 'ImportInfo.id'),
+    portableAddress: requiredString(
+      raw.portableAddress ?? raw.PortableAddress,
+      'ImportInfo.portableAddress',
+    ),
+    contentHash: requiredString(raw.contentHash ?? raw.ContentHash, 'ImportInfo.contentHash'),
   };
   if (updateDate != null) {
-    Object.assign(result, { updateDate: String(updateDate) });
+    Object.assign(result, { updateDate: optionalString(updateDate, 'ImportInfo.updateDate') });
   }
   if (createDate != null) {
-    Object.assign(result, { createDate: String(createDate) });
+    Object.assign(result, { createDate: optionalString(createDate, 'ImportInfo.createDate') });
   }
   if (format != null) {
-    Object.assign(result, { format: String(format) });
+    Object.assign(result, { format: optionalString(format, 'ImportInfo.format') });
   }
   return result;
 }
@@ -156,14 +210,24 @@ function normalizeEmbeddedEdits(
  */
 function flattenTransactions(transactions: Iterable<Transaction>): Transaction[] {
   const result: Transaction[] = [];
-  for (const tx of transactions) {
+  const seenIds = new Set<string>();
+
+  const visit = (tx: Transaction): void => {
+    if (seenIds.has(tx.id)) {
+      throw new Error(`Duplicate transaction ID in hierarchy: ${tx.id}`);
+    }
+    seenIds.add(tx.id);
     result.push(tx);
     if (tx.children) {
       const childTxs = Object.values(tx.children).map((childData) =>
         Transaction.fromNormalizedDataReference(childData),
       );
-      result.push(...flattenTransactions(childTxs));
+      childTxs.forEach(visit);
     }
+  };
+
+  for (const tx of transactions) {
+    visit(tx);
   }
   return result;
 }
@@ -212,6 +276,9 @@ export class Transactions {
    * normal `Record<string, T>` for dictionary fields.
    */
   static fromData(data: TransactionsData): Transactions {
+    if (typeof data.name !== 'string' || data.name.trim().length === 0) {
+      throw new Error('Transactions name must be a non-empty string');
+    }
     const txns = new Transactions(data.name);
 
     // Deserialize dictionaries (handle legacy format)
@@ -221,21 +288,47 @@ export class Transactions {
 
     // Populate account and import infos first (needed by transactions)
     for (const [key, value] of Object.entries(accountInfosRaw)) {
-      txns.accountInfos.set(key, normalizeAccountInfo(value));
+      const normalized = normalizeAccountInfo(value);
+      if (normalized.id !== key) {
+        throw new Error(
+          `AccountInfo dictionary key "${key}" does not match metadata ID "${normalized.id}"`,
+        );
+      }
+      txns.accountInfos.set(key, normalized);
     }
     for (const [key, value] of Object.entries(importInfosRaw)) {
-      txns.importInfos.set(key, normalizeImportInfo(value));
+      const normalized = normalizeImportInfo(value);
+      if (normalized.id !== key) {
+        throw new Error(
+          `ImportInfo dictionary key "${key}" does not match metadata ID "${normalized.id}"`,
+        );
+      }
+      txns.importInfos.set(key, normalized);
     }
 
     // Rehydrate top-level transactions
     for (const [key, txData] of Object.entries(topItemsRaw)) {
       const tx = Transaction.fromData(txData);
+      if (tx.id !== key) {
+        throw new Error(
+          `Transaction dictionary key "${key}" does not match transaction ID "${tx.id}"`,
+        );
+      }
+      if (tx.parentId != null) {
+        throw new Error(`Top-level transaction ${tx.id} cannot reference parent ${tx.parentId}`);
+      }
       txns.topItemsById.set(key, tx);
     }
 
     // Build allItemsById and uniqueContentHashes from flattened transactions
     const allFlat = flattenTransactions(txns.topItemsById.values());
     for (const tx of allFlat) {
+      if (!txns.accountInfos.has(tx.accountId)) {
+        throw new Error(`AccountInfo not found for transaction ${tx.id}: ${tx.accountId}`);
+      }
+      if (!txns.importInfos.has(tx.importId)) {
+        throw new Error(`ImportInfo not found for transaction ${tx.id}: ${tx.importId}`);
+      }
       txns.allItemsById.set(tx.id, tx);
       const existing = txns.uniqueContentHashes.get(tx.contentHash) ?? [];
       existing.push(tx.id);
@@ -343,9 +436,22 @@ export class Transactions {
       return false;
     }
 
-    this.topItemsById.set(tx.id, tx);
+    if (tx.accountId !== accountInfo.id) {
+      throw new Error(
+        `Transaction account ID "${tx.accountId}" does not match AccountInfo ID "${accountInfo.id}"`,
+      );
+    }
+    if (tx.importId !== importInfo.id) {
+      throw new Error(
+        `Transaction import ID "${tx.importId}" does not match ImportInfo ID "${importInfo.id}"`,
+      );
+    }
 
     const flattened = flattenTransactions([tx]);
+    this.assertTransactionIdsAvailable(flattened);
+
+    this.topItemsById.set(tx.id, tx);
+
     for (const flatTx of flattened) {
       this.allItemsById.set(flatTx.id, flatTx);
     }
@@ -423,11 +529,12 @@ export class Transactions {
       }
     }
 
+    const allParentChildNewItems = flattenTransactions(newItems);
+    this.assertTransactionIdsAvailable(allParentChildNewItems);
+
     for (const newTx of newItems) {
       this.topItemsById.set(newTx.id, newTx);
     }
-
-    const allParentChildNewItems = flattenTransactions(newItems);
     for (const tx of allParentChildNewItems) {
       this.allItemsById.set(tx.id, tx);
     }
@@ -502,6 +609,11 @@ export class Transactions {
     const toleranceMs = dayTolerance * MS_PER_DAY;
 
     for (const unmatchedTx of unmatchedTransfers) {
+      // The candidate list was captured before matching began. A transaction
+      // paired earlier in this loop is no longer unmatched and must not be
+      // considered again as the left-hand side of another relationship.
+      if (unmatchedTx.relatedTransferId != null) continue;
+
       const searchAmount = unmatchedTx.amount * -1;
       const unmatchedDate = parseDate(unmatchedTx.transactionDate);
       const searchDateMin = unmatchedDate.getTime() - toleranceMs;
@@ -560,7 +672,7 @@ export class Transactions {
     const childrenByMatcher = new Map<ParentChildMatch, Transaction[]>();
 
     for (const tx of this.topLevelTransactions) {
-      if (!tx.requiresParent) continue;
+      if (!tx.requiresParent || tx.parentId != null) continue;
 
       const matcher = this.getParentChildMatcher(tx);
       const arr = childrenByMatcher.get(matcher) ?? [];
@@ -816,6 +928,33 @@ export class Transactions {
     for (const tx of filtered) {
       tx.applyEdit(edit);
     }
+
+    if (edit.values?.amount != null) {
+      this.refreshEditedParentCompleteness(filtered);
+    }
+  }
+
+  /**
+   * Recalculate parent/child completeness after effective amounts change.
+   * Edits are applied to the entire scope first so a rule that updates a
+   * parent and its children observes one consistent final state.
+   */
+  private refreshEditedParentCompleteness(editedTransactions: Transaction[]): void {
+    const parents = new Map<string, Transaction>();
+
+    for (const tx of editedTransactions) {
+      if (tx.children != null && Object.keys(tx.children).length > 0) {
+        parents.set(tx.id, tx);
+      }
+      if (tx.parentId != null) {
+        const parent = this.allItemsById.get(tx.parentId);
+        if (parent != null) parents.set(parent.id, parent);
+      }
+    }
+
+    for (const parent of parents.values()) {
+      parent.completeParent();
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -922,6 +1061,15 @@ export class Transactions {
       const existing = this.uniqueContentHashes.get(tx.contentHash) ?? [];
       existing.push(tx.id);
       this.uniqueContentHashes.set(tx.contentHash, existing);
+    }
+  }
+
+  /** Reject additions that would silently overwrite an indexed transaction. */
+  private assertTransactionIdsAvailable(transactions: Transaction[]): void {
+    for (const tx of transactions) {
+      if (this.allItemsById.has(tx.id)) {
+        throw new Error(`Transaction ID already exists in collection: ${tx.id}`);
+      }
     }
   }
 

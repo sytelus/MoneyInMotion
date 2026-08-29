@@ -129,6 +129,17 @@ describe('Transaction.create', () => {
 // ---------------------------------------------------------------------------
 
 describe('Transaction validation', () => {
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'should reject a non-finite amount (%s)',
+    (amount) => {
+      expect(() => makeTransaction({ amount })).toThrow(/finite number/i);
+    },
+  );
+
+  it('should reject a non-integer transaction reason', () => {
+    expect(() => makeTransaction({ transactionReason: 1.5 })).toThrow(/must be an integer/i);
+  });
+
   it('should throw when positive amount has outgoing reason (non-Purchase)', () => {
     expect(() => {
       makeTransaction({
@@ -393,6 +404,82 @@ describe('Transaction.fromData', () => {
     expect(restored.entityNameNormalized).toBe(tx.entityNameNormalized);
     expect(restored.contentHash).toBe(tx.contentHash);
   });
+
+  it('rejects malformed legacy dictionaries instead of silently dropping entries', () => {
+    const data = makeTransaction().toData();
+    data.providerAttributes = [{ Key: '', Value: 'value' }] as unknown as Record<string, string>;
+
+    expect(() => Transaction.fromData(data)).toThrow(/malformed legacy dictionary/i);
+  });
+
+  it('rejects invalid persisted transaction and posted dates', () => {
+    const invalidTransactionDate = makeTransaction().toData();
+    invalidTransactionDate.transactionDate = '2024-02-30';
+    expect(() => Transaction.fromData(invalidTransactionDate)).toThrow(/TransactionDate/i);
+
+    const invalidPostedDate = makeTransaction().toData();
+    invalidPostedDate.postedDate = 'not-a-date';
+    expect(() => Transaction.fromData(invalidPostedDate)).toThrow(/PostedDate/i);
+  });
+
+  it.each([
+    ['amount', '12.50', /finite number/i],
+    ['requiresParent', 'false', /RequiresParent/i],
+    ['lineNumber', 1.5, /LineNumber/i],
+    ['lineItemType', 99, /LineItemType/i],
+    ['appliedEditIdsDescending', [''], /AppliedEditIdsDescending/i],
+    ['providerAttributes', { valid: 42 }, /ProviderAttributes/i],
+    ['auditInfo', { createDate: 'not-a-date', createdBy: '' }, /AuditInfo/i],
+  ])('rejects an invalid persisted %s field', (field, value, message) => {
+    const data = makeTransaction().toData() as unknown as Record<string, unknown>;
+    data[field as string] = value;
+
+    expect(() => Transaction.fromData(data as never)).toThrow(message as RegExp);
+  });
+
+  it('rejects malformed embedded edits before their values reach calculations or rendering', () => {
+    const data = makeTransaction().toData();
+    data.mergedEdit = {
+      amount: { value: '12.50', isVoided: false },
+    } as never;
+
+    expect(() => Transaction.fromData(data)).toThrow(/MergedEdit\.amount\.value/i);
+  });
+
+  it('rejects non-object child transaction entries', () => {
+    const data = makeTransaction().toData();
+    data.children = { broken: null } as never;
+
+    expect(() => Transaction.fromData(data)).toThrow(
+      /Child transaction "broken" must be an object/i,
+    );
+  });
+
+  it('rejects a child whose parent reference disagrees with its containing graph', () => {
+    const parent = makeTransaction({ entityName: 'Parent' });
+    const child = makeTransaction({ entityName: 'Child', lineNumber: 2 });
+    parent.addChild(child);
+    const data = parent.toData();
+    data.children![child.id]!.parentId = 'different-parent';
+
+    expect(() => Transaction.fromData(data)).toThrow(/references parent "different-parent"/i);
+  });
+});
+
+describe('Transaction.combineAttributes', () => {
+  it('rejects reuse when either side has already participated in a combination', () => {
+    const destination = makeTransaction({ entityName: 'Destination' });
+    const firstSource = makeTransaction({ entityName: 'First Source', lineNumber: 2 });
+    const secondSource = makeTransaction({ entityName: 'Second Source', lineNumber: 3 });
+    destination.combineAttributes(firstSource);
+
+    expect(() => destination.combineAttributes(secondSource)).toThrow(/combine transaction again/i);
+
+    const otherDestination = makeTransaction({ entityName: 'Other Destination', lineNumber: 4 });
+    expect(() => otherDestination.combineAttributes(firstSource)).toThrow(
+      /combine transaction again/i,
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -437,5 +524,42 @@ describe('Transaction.completeParent', () => {
     expect(result.isComplete).toBe(false);
     expect(result.missingChildAmount).toBeCloseTo(-4, 5);
     expect(parent.hasMissingChild).toBe(true);
+  });
+
+  it('uses edited amounts when checking whether children reconcile', () => {
+    const parent = makeTransaction({ amount: -10 });
+    const child = makeTransaction({ amount: -10, entityName: 'Child' });
+    parent.addChild(child);
+    expect(parent.completeParent().isComplete).toBe(true);
+
+    child.applyEdit(
+      makeEdit({
+        values: { amount: editValue(-8) },
+      }),
+    );
+
+    expect(parent.completeParent()).toMatchObject({
+      isComplete: false,
+      missingChildAmount: -2,
+    });
+  });
+});
+
+describe('Transaction.addChild', () => {
+  it('rejects a self-referencing child relationship', () => {
+    const tx = makeTransaction();
+    expect(() => tx.addChild(tx)).toThrow(/create a cycle/i);
+    expect(tx.children).toBeNull();
+    expect(tx.parentId).toBeNull();
+  });
+
+  it('rejects a relationship that would create an ancestor cycle', () => {
+    const ancestor = makeTransaction({ entityName: 'Ancestor' });
+    const descendant = makeTransaction({ entityName: 'Descendant', lineNumber: 2 });
+    ancestor.addChild(descendant);
+
+    expect(() => descendant.addChild(ancestor)).toThrow(/create a cycle/i);
+    expect(ancestor.parentId).toBeNull();
+    expect(descendant.parentId).toBe(ancestor.id);
   });
 });

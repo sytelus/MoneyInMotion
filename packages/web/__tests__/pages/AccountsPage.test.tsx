@@ -161,6 +161,31 @@ describe('AccountsPage', () => {
     expect(refetchMock).toHaveBeenCalled();
   });
 
+  it('explains unsupported order-history settings before sending them', async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Add Account/i }));
+    fireEvent.change(screen.getByLabelText('Account ID'), { target: { value: 'orders' } });
+    fireEvent.change(screen.getByLabelText('Account Title'), { target: { value: 'Orders' } });
+    fireEvent.click(screen.getByLabelText('Order History'));
+    fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    expect(
+      screen.getByText('Order History accounts currently support only Amazon and Etsy.'),
+    ).toBeInTheDocument();
+    expect(createAccountMock).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Institution'), { target: { value: 'Amazon' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    expect(
+      screen.getByText(
+        'Order History accounts require at least one match tag for financial-charge matching.',
+      ),
+    ).toBeInTheDocument();
+    expect(createAccountMock).not.toHaveBeenCalled();
+  });
+
   it('confirms deletion and calls the delete API', async () => {
     const refetchMock = vi.fn().mockResolvedValue(undefined);
     useAccountsMock.mockReturnValue({

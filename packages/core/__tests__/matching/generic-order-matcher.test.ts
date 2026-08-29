@@ -240,6 +240,69 @@ describe('GenericOrderMatcher.getParents — non-line items', () => {
     expect(results[0]!.parent.id).toBe(ccParent.id);
   });
 
+  it('prefers the closer date when fuzzy candidates have the same amount', () => {
+    const orderAcct = makeOrderAccount();
+    const ccAcct = makeCreditCardAccount();
+    const imp = makeImportInfo();
+    const txns = new Transactions('test');
+    const fartherParent = makeTransaction('acct-chase', 'import-001', {
+      amount: -55,
+      entityName: 'AMAZON FARTHER',
+      transactionDate: '2024-03-17',
+    });
+    const closerParent = makeTransaction('acct-chase', 'import-001', {
+      amount: -55,
+      entityName: 'AMAZON CLOSER',
+      transactionDate: '2024-03-16',
+    });
+    const child = makeTransaction('acct-amazon', 'import-001', {
+      amount: -55,
+      entityName: 'Amazon Order',
+      transactionDate: '2024-03-15',
+      requiresParent: true,
+    });
+    txns.addNew(fartherParent, ccAcct, imp, false);
+    txns.addNew(closerParent, ccAcct, imp, true);
+    txns.addNew(child, orderAcct, imp, true);
+
+    const matcher = new GenericOrderMatcher(orderAcct, 'shipping', 'tax', 'discount');
+    expect(matcher.getParents([child], txns)[0]?.parent.id).toBe(closerParent.id);
+  });
+
+  it('reserves financial parents so two orders cannot select the same charge', () => {
+    const orderAcct = makeOrderAccount();
+    const ccAcct = makeCreditCardAccount();
+    const imp = makeImportInfo();
+    const txns = new Transactions('test');
+    const parents = [1, 2].map((lineNumber) =>
+      makeTransaction('acct-chase', 'import-001', {
+        amount: -55,
+        entityName: 'AMAZON CHARGE',
+        transactionDate: '2024-03-15',
+        lineNumber,
+      }),
+    );
+    const children = [3, 4].map((lineNumber) =>
+      makeTransaction('acct-amazon', 'import-001', {
+        amount: -55,
+        entityName: 'Amazon Order',
+        transactionDate: '2024-03-15',
+        lineNumber,
+        requiresParent: true,
+      }),
+    );
+    parents.forEach((parent) => txns.addNew(parent, ccAcct, imp, true));
+    children.forEach((child) => txns.addNew(child, orderAcct, imp, true));
+
+    const matcher = new GenericOrderMatcher(orderAcct, 'shipping', 'tax', 'discount');
+    const results = matcher.getParents(children, txns);
+
+    expect(results).toHaveLength(2);
+    expect(new Set(results.map(({ parent }) => parent.id))).toEqual(
+      new Set(parents.map(({ id }) => id)),
+    );
+  });
+
   it('should not match when amount difference exceeds 1', () => {
     const orderAcct = makeOrderAccount();
     const ccAcct = makeCreditCardAccount();

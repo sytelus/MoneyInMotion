@@ -9,7 +9,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { TransactionEdits } from '@moneyinmotion/core';
-import type { TransactionEditData } from '@moneyinmotion/core';
+import { parsePersistedTransactionEdits } from '../validation/transaction-edit-schema.js';
+import { writeTextFileAtomically } from './atomic-file.js';
 
 export class TransactionEditsStorage {
   /**
@@ -45,7 +46,11 @@ export class TransactionEditsStorage {
           (data.name as string | undefined) ??
           'LatestMerged.json',
       );
-      for (const edit of (data.edits ?? []) as TransactionEditData[]) {
+      const persistedEdits = parsePersistedTransactionEdits(
+        data.edits ?? [],
+        'edit aggregate edits',
+      );
+      for (const edit of persistedEdits) {
         edits.add(edit);
       }
       return edits;
@@ -85,9 +90,7 @@ export class TransactionEditsStorage {
 
     // Atomic write: temp file + rename (see TransactionsStorage.save).
     const serializedData = JSON.stringify(edits.serialize(), null, 2);
-    const tmpPath = `${filePath}.tmp`;
-    fs.writeFileSync(tmpPath, serializedData, 'utf-8');
-    fs.renameSync(tmpPath, filePath);
+    writeTextFileAtomically(filePath, serializedData);
   }
 
   /**

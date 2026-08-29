@@ -100,6 +100,16 @@ describe('CsvFileParser', () => {
     );
   });
 
+  it('rejects malformed quoting reported by the CSV parser', () => {
+    expect(() => parser.parse('Name,Amount\n"unterminated,-5.00\n')).toThrow(/CSV parsing failed/i);
+  });
+
+  it('rejects duplicate header names that would overwrite financial fields', () => {
+    expect(() => parser.parse('Name,Amount,Amount\nShop,-5.00,-6.00\n')).toThrow(
+      /duplicate column names/i,
+    );
+  });
+
   it('returns empty array for empty content', () => {
     const rows = parser.parse('');
     expect(rows).toHaveLength(0);

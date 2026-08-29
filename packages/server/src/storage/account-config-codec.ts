@@ -8,22 +8,14 @@
  * @module
  */
 
-import { AccountType, type AccountConfig, type AccountInfo } from '@moneyinmotion/core';
+import {
+  isSupportedAccountType,
+  validateAccountConfigSupport,
+  type AccountConfig,
+  type AccountInfo,
+} from '@moneyinmotion/core';
 
 type JsonObject = Record<string, unknown>;
-
-/** Account kinds implemented by the current parser and matching pipeline. */
-export const SUPPORTED_ACCOUNT_TYPES: readonly AccountType[] = [
-  AccountType.CreditCard,
-  AccountType.BankChecking,
-  AccountType.BankSavings,
-  AccountType.OrderHistory,
-  AccountType.EPayment,
-];
-
-export function isSupportedAccountType(value: number): value is AccountType {
-  return SUPPORTED_ACCOUNT_TYPES.includes(value as AccountType);
-}
 
 function asObject(value: unknown, label: string): JsonObject {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) {
@@ -94,7 +86,7 @@ export function decodeAccountConfig(value: unknown): AccountConfig {
   };
   const filters = stringArray(pick(root, 'fileFilters', 'FileFilters'), ['*.csv']);
 
-  return {
+  const config: AccountConfig = {
     accountInfo,
     fileFilters: filters.length > 0 ? filters : ['*.csv'],
     scanSubFolders: optionalBoolean(
@@ -103,6 +95,9 @@ export function decodeAccountConfig(value: unknown): AccountConfig {
       'AccountConfig.scanSubFolders',
     ),
   };
+  const supportError = validateAccountConfigSupport(config);
+  if (supportError) throw new Error(supportError);
+  return config;
 }
 
 /** Serialize in the canonical web representation. */

@@ -303,6 +303,38 @@ describe('PayPalParser', () => {
       expect(values).toHaveLength(1);
       expect(values[0]!.transactionDate).toBeTruthy();
     });
+
+    it('rejects unknown time zones and invalid dates', () => {
+      const unknownZone = buildPayPalCsv([
+        {
+          date: '06/15/2024',
+          time: '08:00:00',
+          'time zone': 'XYZ',
+          name: 'TestVendor',
+          type: 'Payment Sent',
+          status: 'Completed',
+          amount: '-10.00',
+        },
+      ]);
+      expect(() =>
+        new PayPalParser(unknownZone, ContentType.Csv).getTransactionImportedValues(),
+      ).toThrow(/Unsupported PayPal time zone/i);
+
+      const invalidDate = buildPayPalCsv([
+        {
+          date: 'not-a-date',
+          time: '08:00:00',
+          'time zone': 'PST',
+          name: 'TestVendor',
+          type: 'Payment Sent',
+          status: 'Completed',
+          amount: '-10.00',
+        },
+      ]);
+      expect(() =>
+        new PayPalParser(invalidDate, ContentType.Csv).getTransactionImportedValues(),
+      ).toThrow(/Cannot parse PayPal transaction date/i);
+    });
   });
 
   describe('custom content hash generation', () => {

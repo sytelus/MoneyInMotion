@@ -17,6 +17,7 @@ import { createHealthRouter } from '../../src/routes/health.js';
 import { createTransactionsRouter } from '../../src/routes/transactions.js';
 import { createTransactionEditsRouter } from '../../src/routes/transaction-edits.js';
 import { createImportRouter } from '../../src/routes/import.js';
+import { errorHandler } from '../../src/middleware/error-handler.js';
 import type { TransactionCache } from '../../src/cache/transaction-cache.js';
 import * as configModule from '../../src/config.js';
 import type { ServerConfig } from '../../src/config.js';
@@ -70,6 +71,7 @@ function createTestApp(config: ServerConfig, cache: TransactionCache): express.E
   app.use('/api/transactions', createTransactionsRouter(cache));
   app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
   app.use('/api/import', createImportRouter(cache, config));
+  app.use(errorHandler);
   return app;
 }
 
@@ -326,6 +328,24 @@ describe('accounts routes', () => {
     expect(nestedFiles.hasStatementFiles).toBe(true);
   });
 
+  it('GET /api/accounts reports a corrupt config instead of returning a partial list', async () => {
+    writeAccountConfig(tempDir, 'valid-account');
+    const corruptDir = path.join(tempDir, 'Statements', 'corrupt-account');
+    fs.mkdirSync(corruptDir, { recursive: true });
+    fs.writeFileSync(path.join(corruptDir, 'AccountConfig.json'), '{broken json', 'utf-8');
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const app = createTestApp(
+      createTestConfig(tempDir),
+      createMockCache({ allParentChildTransactions: [] }),
+    );
+
+    const res = await request(app).get('/api/accounts');
+
+    expect(res.status).toBe(422);
+    expect(res.body).toMatchObject({ status: 422 });
+    expect(res.body.error).toContain('corrupt-account/AccountConfig.json');
+  });
+
   it('POST /api/accounts rejects a duplicate logical ID in a nested folder', async () => {
     const existingDir = writeAccountConfig(tempDir, 'group/existing', {
       title: 'Existing',
@@ -377,7 +397,7 @@ describe('accounts routes', () => {
           title: 'Orders',
           type: 5,
           requiresParent: false,
-          interAccountNameTags: [],
+          interAccountNameTags: ['AMAZON'],
         },
         fileFilters: ['*.json'],
         scanSubFolders: true,
@@ -385,6 +405,42 @@ describe('accounts routes', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.config.accountInfo.requiresParent).toBe(true);
+  });
+
+  it('POST /api/accounts rejects unsupported order-history configurations', async () => {
+    const app = createTestApp(
+      createTestConfig(tempDir),
+      createMockCache({ allParentChildTransactions: [] }),
+    );
+    const baseConfig = {
+      accountInfo: {
+        id: 'orders',
+        instituteName: 'Generic',
+        title: 'Orders',
+        type: 5,
+        requiresParent: true,
+        interAccountNameTags: ['SHOP'],
+      },
+      fileFilters: ['*.csv'],
+      scanSubFolders: true,
+    };
+
+    const unsupported = await request(app).post('/api/accounts').send(baseConfig);
+    expect(unsupported.status).toBe(400);
+    expect(unsupported.body.error).toContain('Amazon and Etsy');
+
+    const missingTags = await request(app)
+      .post('/api/accounts')
+      .send({
+        ...baseConfig,
+        accountInfo: {
+          ...baseConfig.accountInfo,
+          instituteName: 'Amazon',
+          interAccountNameTags: [],
+        },
+      });
+    expect(missingTags.status).toBe(400);
+    expect(missingTags.body.error).toContain('match tag');
   });
 
   it('PUT /api/accounts/:id updates the account config', async () => {
@@ -458,6 +514,39 @@ describe('accounts routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.stats.transactionCount).toBe(1);
     expect(fs.existsSync(path.join(tempDir, 'Statements', 'acct-checking'))).toBe(true);
+  });
+
+  it('PUT /api/accounts/:id renames an empty account directory and its stored identity', async () => {
+    writeAccountConfig(tempDir, 'temporary-account');
+    const app = createTestApp(
+      createTestConfig(tempDir),
+      createMockCache({ allParentChildTransactions: [] }),
+    );
+
+    const res = await request(app)
+      .put('/api/accounts/temporary-account')
+      .send({
+        accountInfo: {
+          id: 'renamed-account',
+          instituteName: 'TestBank',
+          title: 'Renamed Account',
+          type: 1,
+          requiresParent: false,
+          interAccountNameTags: ['TRANSFER'],
+        },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      });
+
+    expect(res.status).toBe(200);
+    expect(fs.existsSync(path.join(tempDir, 'Statements', 'temporary-account'))).toBe(false);
+    const renamedConfig = JSON.parse(
+      fs.readFileSync(
+        path.join(tempDir, 'Statements', 'renamed-account', 'AccountConfig.json'),
+        'utf-8',
+      ),
+    );
+    expect(renamedConfig.accountInfo.id).toBe('renamed-account');
   });
 
   it('PUT /api/accounts/:id blocks account-id changes after import', async () => {
@@ -631,6 +720,34 @@ describe('transaction edit routes', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('content hash');
     expect(res.body.error).toContain('edited field');
+    expect(cache.applyEdits).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [ScopeType.EntityName, ['   '], 'cannot be empty'],
+    [ScopeType.TransactionReason, ['not-a-reason'], 'non-negative integers'],
+    [ScopeType.AmountRange, ['-10', '20'], 'non-negative magnitudes'],
+  ])('rejects invalid parameters for scope type %s', async (type, parameters, message) => {
+    const cache = createMockCache();
+    const app = createTestApp(createTestConfig(), cache);
+    const validParameters =
+      type === ScopeType.AmountRange
+        ? ['10', '20']
+        : type === ScopeType.TransactionReason
+          ? ['0']
+          : ['valid'];
+    const edit = {
+      id: `edit-invalid-parameters-${type}`,
+      auditInfo: createAuditInfo(),
+      scopeFilters: [{ ...createScopeFilter(type, validParameters), parameters }],
+      values: { note: editValue('note') },
+      sourceId: 'test',
+    };
+
+    const res = await request(app).post('/api/transaction-edits').send([edit]);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain(message);
     expect(cache.applyEdits).not.toHaveBeenCalled();
   });
 

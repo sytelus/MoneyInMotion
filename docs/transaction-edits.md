@@ -73,15 +73,25 @@ semantically equivalent transaction, the rule is retargeted and saved in its
 ordinary JSON form. A missing or ambiguous target is retained unchanged and
 reported, never expanded or deleted. Later rebuilds need no hidden alias table.
 
-## Rule history and reversal
+## Rule history and field reset
 
 The Rules page lists persisted rules with their scope, changed values, audit
-metadata, and current match count. Reverting does not delete or rewrite
-history. It appends a new edit whose selected values are marked void, restoring
-the imported value for matching transactions while retaining an audit trail.
+metadata, and affected-transaction count. Where the snapshot contains applied
+edit IDs, that durable record is used instead of re-evaluating the old filter
+against values the rule itself may have changed.
+
+Resetting does not delete or rewrite history. It appends a new edit whose
+selected values are marked void, restoring the imported value for the exact
+transactions recorded as receiving the selected rule. IDs are split into
+bounded request scopes when necessary. The original broad filter is not reused,
+so an old reset cannot unexpectedly capture transactions imported in the
+future.
 
 Rule order matters: edits are applied chronologically and later applicable
-values supersede earlier ones. A field omitted from a later rule leaves the
+values supersede earlier ones. Consequently, reset means “restore these fields
+to imported values now,” not “remove only this historic rule”: it also overrides
+any later corrections to the same fields on those transactions. The confirmation
+dialog states this explicitly. A field omitted from a later rule leaves the
 previous correction untouched.
 
 ## Maintainer invariants

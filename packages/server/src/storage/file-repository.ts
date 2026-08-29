@@ -12,7 +12,11 @@ import * as path from 'node:path';
 import type { AccountConfig } from '@moneyinmotion/core';
 import { FileLocation } from './file-location.js';
 import { decodeAccountConfig } from './account-config-codec.js';
-import { ACCOUNT_CONFIG_FILE_NAME, matchesFileFilters } from './account-config-repository.js';
+import {
+  ACCOUNT_CONFIG_FILE_NAME,
+  InvalidAccountConfigError,
+  matchesFileFilters,
+} from './account-config-repository.js';
 
 const DEFAULT_RELATIVE_IMPORT_FOLDER = 'Statements';
 const DEFAULT_RELATIVE_MERGED_FOLDER = 'Merged';
@@ -74,11 +78,9 @@ export class FileRepository {
         const configJson = fs.readFileSync(accountConfigPath, 'utf-8');
         accountConfig = decodeAccountConfig(JSON.parse(configJson));
       } catch (err) {
-        // A broken child config must not silently inherit its parent's
-        // account identity; doing so imports files into the wrong
-        // account. Continue walking so a deeper valid config can heal
-        // the tree.
-        accountConfig = null;
+        // A broken child config must neither inherit its parent's account
+        // identity nor disappear from a rebuild. Abort discovery so callers
+        // can keep the previous known-good snapshot and surface the problem.
         const portableConfigPath = path
           .relative(this.importFolderPath, accountConfigPath)
           .split(path.sep)
@@ -86,7 +88,7 @@ export class FileRepository {
         const message = (err instanceof Error ? err.message : String(err))
           .split(accountConfigPath)
           .join(portableConfigPath);
-        console.warn(`Skipping corrupted AccountConfig "${portableConfigPath}": ${message}`);
+        throw new InvalidAccountConfigError(portableConfigPath, message, err);
       }
     }
 

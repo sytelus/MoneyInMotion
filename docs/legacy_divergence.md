@@ -85,24 +85,34 @@ Amount, date, reason, entity, category, note, and flag corrections are available
 in the website. Effective corrected amount and reason drive aggregation,
 summary, net grouping, display, and later rule scopes. A date correction changes
 period placement. Raw imported fields stay immutable, rules persist to
-`LatestMergedEdits.json`, and Rules provides audited reversal.
+`LatestMergedEdits.json`, and Rules provides an audited field reset targeted to
+the transaction IDs recorded as receiving the selected rule.
 
 Justification: presenting a corrected number while calculating from a raw one
-would be internally inconsistent. The legacy edit file remains the persistence
-contract, but the UI now exposes all meaningful editable fields coherently.
+would be internally inconsistent. Exact-target reset preserves history without
+reapplying a broad historic scope to unrelated future imports. The UI also
+states that a reset overrides later changes to the same fields; it is not
+misrepresented as removal of one isolated rule.
 
 ## Cross-platform and strict parsing fixes
 
 Statement filters match extensions case-insensitively so `*.csv` also accepts
-legacy `.CSV` exports on Linux. Ambiguous extra CSV fields now fail the rebuild
-instead of being truncated. A narrow compatibility recovery handles legacy
-rows whose unquoted final negative amount contains a thousands separator (for
-example, two trailing columns that mathematically form one amount).
+legacy `.CSV` exports on Linux. CSV decoder errors, duplicate headers, and
+ambiguous extra fields now fail the rebuild instead of being ignored or
+truncated. JSON array members must be objects, IIF data cannot precede its
+header or contain extra fields, Amex rows must have their documented width, and
+PayPal rejects unknown time zones and invalid timestamps. A narrow compatibility
+recovery handles legacy rows whose unquoted final negative amount contains a
+thousands separator (for example, two trailing columns that mathematically form
+one amount).
 
 Numeric fields no longer accept a valid prefix followed by junk, date-only
 values reject impossible calendar dates, Etsy timestamps must be complete
 integers, and account-config booleans are not truthy-coerced from strings.
-Corrupt nested account configs no longer inherit their parent's identity.
+Corrupt or unsupported nested account configs no longer inherit their parent's
+identity or disappear from the account list. Persisted transaction/edit graphs
+are validated for field types, dates, hashes, dictionary keys, unique IDs, and
+metadata references before they enter calculations or rendering.
 Date-only statement fields are stored at UTC midnight so IDs and month
 placement do not depend on the server's timezone. Upgrade migration compares
 the calendar date as a conservative fallback after exact timestamp identity,
@@ -112,6 +122,24 @@ Justification: filesystem case should not change imported history, while silent
 column loss, partial numeric parsing, normalized impossible dates, or importing
 under the wrong account are unsafe. The recovery is constrained to a
 recognizable numeric case found in the supplied reference data.
+
+## One-to-one relationship matching and graph integrity
+
+The modern matcher reserves both participants as relationships are selected. A
+financial charge cannot parent multiple independent orders, a child already
+attached to a parent cannot be attached again, and one transaction cannot be
+paired with multiple inter-account transfers. Equal-amount fuzzy candidates
+are ranked by date distance instead of collapsing to an arbitrary tie, and the
+transaction ID is the final deterministic tie-breaker. Parent completeness uses
+effective edited values and is refreshed when an amount rule changes a member.
+The model also rejects relationship cycles, dictionary key/ID disagreement,
+metadata gaps, and ID collisions before mutation.
+
+Justification: the legacy selection strategy and the first TypeScript port
+could reuse a candidate captured in an earlier unmatched list or flatten all
+date scores when the amount difference was zero. That produced order-dependent
+graphs and could double-assign cash flow. One-to-one ownership and explicit
+graph invariants are required even when they change an old materialization.
 
 ## Verified duplicate and relationship differences
 
@@ -125,29 +153,34 @@ in the legacy snapshot and 37 were already orphaned there. MiM safely migrates
 resolves the same 125 while preserving the same 37 unresolved parameters.
 
 The legacy snapshot has 5,287 top-level and 8,101 total graph nodes. The
-persisted modern rebuild has 5,256 top-level and 8,069 total nodes, with no
+persisted modern rebuild has 5,260 top-level and 8,071 total nodes, with no
 count or amount change after save/reload. The remaining deltas are therefore
--31 top-level and -32 all-node transactions—not a serialization loss.
+-27 top-level and -30 all-node transactions—not a serialization loss.
 
-The 31 top-level rows are semantically repeated transactions retained from
+Thirty-one top-level rows are semantically repeated transactions retained from
 overlapping exports in the old materialized snapshot: 29 Chase rows totaling
 \-$397.19, one Barclay row at -$5.46, and one Etsy order/receipt at -$107.00.
 Modern canonical parsing and content merging retain one financial occurrence,
-so the top-level total is $509.65 less negative. Amazon, Amex, checking,
-savings, and PayPal top-level counts and totals match exactly.
+removing $509.65 of duplicate cash flow. Corrected one-to-one relationship
+matching also leaves four Amazon order rows totaling -$46.35 at top level
+instead of reusing already-consumed charge parents. The net top-level delta is
+therefore -27 rows and a $463.30 increase in cash flow (a less-negative total).
+Amex, checking, savings, and PayPal top-level counts and totals match exactly.
 
-The all-node effective amount delta is $658.72 because child nodes are not an
-independent cash-flow total. Amazon has two fewer child graph nodes and a
-$256.07 all-node delta while its top-level count and total are exact. Etsy has
-one fewer top-level node but the same all-node count and amount after
-relationship synthesis. The top-level $509.65 is the relevant cash-flow
-divergence; summing parents and children together double-counts purchases.
+The all-node effective amount delta is $658.40 because child nodes are not an
+independent cash-flow total. Amazon has two fewer graph nodes and a $256.07
+all-node delta; Chase has 27 fewer graph nodes and a $396.87 delta; Barclay has
+one fewer row and a $5.46 delta. Etsy has one fewer top-level node but the same
+all-node count and amount after relationship synthesis. The top-level $463.30
+is the relevant cash-flow divergence; summing parents and children together
+double-counts purchases.
 
-During verification, MiM also corrected three porting bugs rather than
-documenting them as acceptable differences: microscopic binary-float adjustment
-children are rounded to currency precision, the MD5/transaction-ID algorithm
-now follows the actual C# hex and content-field contract, and parent/child
-objects retain live references so child rules survive persistence.
+During verification, MiM corrected porting defects rather than documenting them
+as acceptable differences: microscopic binary-float adjustment children are
+rounded to currency precision, the MD5/transaction-ID algorithm follows the
+actual C# hex and content-field contract, parent/child objects retain live
+references so child rules survive persistence, relationship candidates are
+one-to-one, and edited amounts drive parent completeness.
 
 Justification: duplicate financial rows should not be reintroduced merely to
 match an obsolete snapshot total. The compatibility boundary is complete

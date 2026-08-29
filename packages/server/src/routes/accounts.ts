@@ -13,10 +13,15 @@ import { Router } from 'express';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
-import { AccountType, type AccountConfig } from '@moneyinmotion/core';
+import {
+  AccountType,
+  isSupportedAccountType,
+  validateAccountConfigSupport,
+  type AccountConfig,
+} from '@moneyinmotion/core';
 import type { TransactionCache } from '../cache/transaction-cache.js';
 import type { ServerConfig } from '../config.js';
-import { encodeAccountConfig, isSupportedAccountType } from '../storage/account-config-codec.js';
+import { encodeAccountConfig } from '../storage/account-config-codec.js';
 import {
   ACCOUNT_CONFIG_FILE_NAME,
   accountDirectoryHasStatements,
@@ -24,6 +29,7 @@ import {
   findAccountById,
   type DiscoveredAccountConfig,
 } from '../storage/account-config-repository.js';
+import { writeTextFileAtomically } from '../storage/atomic-file.js';
 
 interface AccountStats {
   transactionCount: number;
@@ -112,9 +118,7 @@ function normalizeAccountConfig(accountConfig: AccountConfig): AccountConfig {
 
 /** Atomically replace an AccountConfig so readers never see partial JSON. */
 function writeAccountConfig(configPath: string, config: AccountConfig): void {
-  const tmpPath = `${configPath}.tmp`;
-  fs.writeFileSync(tmpPath, encodeAccountConfig(config), 'utf-8');
-  fs.renameSync(tmpPath, configPath);
+  writeTextFileAtomically(configPath, encodeAccountConfig(config));
 }
 
 function buildEmptyStats(): AccountStats {
@@ -192,6 +196,11 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
       }
 
       const accountConfig = normalizeAccountConfig(result.data as AccountConfig);
+      const supportError = validateAccountConfigSupport(accountConfig);
+      if (supportError) {
+        res.status(400).json({ error: supportError, status: 400 });
+        return;
+      }
 
       // Validate account ID to prevent path traversal
       const accountId = accountConfig.accountInfo.id;
@@ -269,6 +278,11 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
       }
 
       const updatedConfig = normalizeAccountConfig(result.data as AccountConfig);
+      const supportError = validateAccountConfigSupport(updatedConfig);
+      if (supportError) {
+        res.status(400).json({ error: supportError, status: 400 });
+        return;
+      }
       const nextId = updatedConfig.accountInfo.id;
 
       if (!isValidAccountId(nextId)) {
@@ -313,6 +327,7 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
       const accountIdChanged = storedCurrentId !== nextId;
 
       let accountDir = currentAccount.accountDir;
+      let originalAccountDir: string | null = null;
       if (accountIdChanged) {
         if (currentStats.transactionCount > 0) {
           res.status(400).json({
@@ -342,11 +357,30 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         }
 
         fs.renameSync(currentAccount.accountDir, targetDir);
+        originalAccountDir = currentAccount.accountDir;
         accountDir = targetDir;
       }
 
       const configPath = path.join(accountDir, ACCOUNT_CONFIG_FILE_NAME);
-      writeAccountConfig(configPath, updatedConfig);
+      try {
+        writeAccountConfig(configPath, updatedConfig);
+      } catch (writeError) {
+        // A rename and config replacement form one logical update. Restore the
+        // original folder if the atomic config write fails so its existing
+        // AccountConfig still agrees with its directory identity.
+        if (originalAccountDir != null) {
+          try {
+            fs.renameSync(accountDir, originalAccountDir);
+          } catch (rollbackError) {
+            throw new AggregateError(
+              [writeError, rollbackError],
+              'Account config write failed and the directory rename could not be rolled back.',
+              { cause: rollbackError },
+            );
+          }
+        }
+        throw writeError;
+      }
 
       res.json({
         config: updatedConfig,

@@ -17,6 +17,11 @@ ensure_node_version
 ensure_deps_installed
 ensure_development_deps_installed
 
+case "${1:-}" in
+    ""|test) ;;
+    *) fail "usage: ./build.sh [test]" ;;
+esac
+
 # Force a clean rebuild by clearing all incremental build state. Composite
 # tsc won't re-emit when its buildinfo says everything is current, even if
 # the dist/ directory is gone.

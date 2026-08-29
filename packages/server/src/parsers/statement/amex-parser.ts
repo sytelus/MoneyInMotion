@@ -30,16 +30,30 @@ export class AmexParser extends StatementParserBase {
    * have no header row -- the first row is data.
    */
   private parseAmexCsv(content: string): ParsedRow[] {
+    if (content.trim().length === 0) return [];
+
     const parsed = Papa.parse<string[]>(content, {
       header: false,
       skipEmptyLines: true,
     });
+
+    if (parsed.errors.length > 0) {
+      const error = parsed.errors[0]!;
+      throw new Error(
+        `Amex CSV parsing failed${error.row == null ? '' : ` on row ${error.row + 1}`}: ${error.message}`,
+      );
+    }
 
     const results: ParsedRow[] = [];
 
     for (const columns of parsed.data) {
       if (columns.length === 0 || (columns.length === 1 && columns[0]!.trim() === '')) {
         continue;
+      }
+      if (columns.length < 4 || columns.length > AMEX_COLUMNS.length) {
+        throw new Error(
+          `Amex CSV row must contain four or five fields but contains ${columns.length}.`,
+        );
       }
 
       const row: ParsedRow = {};

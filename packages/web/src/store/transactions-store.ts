@@ -58,11 +58,16 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
   expandedGroupIds: new Set<string>(),
 
   setTransactions(data: TransactionsData) {
-    // A rebuild can replace transaction identities. Clear view state tied to
-    // the previous snapshot so invisible stale selections cannot drive edits.
+    const transactions = Transactions.fromData(data);
+    // Preserve the user's context across ordinary edit refetches while
+    // dropping identities that disappeared in a rebuild. Group expansion is
+    // recalculated because category/name edits can change the group tree.
+    const selectedTransactionIds = new Set(
+      [...get().selectedTransactionIds].filter((id) => transactions.getTransaction(id) != null),
+    );
     set({
-      transactions: Transactions.fromData(data),
-      selectedTransactionIds: new Set<string>(),
+      transactions,
+      selectedTransactionIds,
       expandedGroupIds: new Set<string>(),
     });
   },

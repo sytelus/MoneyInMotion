@@ -33,18 +33,20 @@ export class JsonFileParser implements FileFormatParser {
     const items = parsed;
     const results: ParsedRow[] = [];
 
-    for (const item of items) {
-      if (item != null && typeof item === 'object' && !Array.isArray(item)) {
-        const row: ParsedRow = {};
-        for (const [key, value] of Object.entries(item as Record<string, unknown>)) {
-          let propertyName = key;
-          if (ignoreColumns && ignoreColumns.has(propertyName)) {
-            propertyName = `_${propertyName}`;
-          }
-          row[propertyName] = this.transformPropertyValue(propertyName, value);
-        }
-        results.push(row);
+    for (const [index, item] of items.entries()) {
+      if (item == null || typeof item !== 'object' || Array.isArray(item)) {
+        throw new Error(`JSON statement item at index ${index} must be an object.`);
       }
+
+      const row: ParsedRow = {};
+      for (const [key, value] of Object.entries(item as Record<string, unknown>)) {
+        let propertyName = key;
+        if (ignoreColumns && ignoreColumns.has(propertyName)) {
+          propertyName = `_${propertyName}`;
+        }
+        row[propertyName] = this.transformPropertyValue(propertyName, value);
+      }
+      results.push(row);
     }
 
     return results;

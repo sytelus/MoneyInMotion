@@ -13,6 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import type { ServerConfig } from '../config.js';
+import { writeTextFileAtomically } from '../storage/atomic-file.js';
 import {
   ACCOUNT_CONFIG_FILE_NAME,
   discoverAccountConfigs,
@@ -157,9 +158,8 @@ function listStatementHashes(account: DiscoveredAccountConfig): Map<string, stri
   return hashes;
 }
 
-function uniqueDestination(filePath: string, digest: string): string {
+function uniqueDestination(filePath: string): string {
   if (!fs.existsSync(filePath)) return filePath;
-  if (sha256File(filePath) === digest) return filePath;
 
   const parsed = path.parse(filePath);
   let counter = 1;
@@ -248,6 +248,17 @@ export function stageAndPromoteFolder(
         `Upload path does not name a file below account "${account.config.accountInfo.id}".`,
       );
     }
+    if (!account.config.scanSubFolders && tailParts.length > 1) {
+      results.push({
+        ...baseResult,
+        accountId: account.config.accountInfo.id,
+        status: 'rejected',
+        destinationPath: null,
+        duplicateOf: null,
+        message: 'This account is configured not to scan statement subfolders.',
+      });
+      continue;
+    }
     const isAccountConfig = fileName.toLowerCase() === ACCOUNT_CONFIG_FILE_NAME.toLowerCase();
     if (isAccountConfig || !matchesFileFilters(fileName, account.config.fileFilters)) {
       results.push({
@@ -278,7 +289,7 @@ export function stageAndPromoteFolder(
     }
 
     const requestedDestination = safeJoin(account.accountDir, tailParts.join('/'));
-    const destination = uniqueDestination(requestedDestination, digest);
+    const destination = uniqueDestination(requestedDestination);
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, file.buffer, { flag: 'wx' });
     const destinationRelative = portable(path.relative(config.statementsDir, destination));
@@ -302,8 +313,7 @@ export function stageAndPromoteFolder(
     sourceFileCount: files.length,
     files: results,
   };
-  fs.writeFileSync(`${manifestPath}.tmp`, JSON.stringify(manifest, null, 2), 'utf-8');
-  fs.renameSync(`${manifestPath}.tmp`, manifestPath);
+  writeTextFileAtomically(manifestPath, JSON.stringify(manifest, null, 2));
 
   return {
     batchId,

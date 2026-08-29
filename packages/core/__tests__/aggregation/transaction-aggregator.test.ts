@@ -39,8 +39,6 @@ describe('TransactionAggregator', () => {
 
     expect(agg.count).toBe(3);
     expect(agg.sum).toBe(-60);
-    expect(agg.positiveSum).toBe(20);
-    expect(agg.negativeSum).toBe(80); // abs of negative amounts
   });
 
   it('should aggregate corrected amount and reason values', () => {
@@ -60,7 +58,6 @@ describe('TransactionAggregator', () => {
     aggregator.add(transaction);
 
     expect(aggregator.sum).toBe(-15);
-    expect(aggregator.negativeSum).toBe(15);
     expect(aggregator.transactionReasonCounter.getSorted()).toEqual([
       { key: TransactionReason.Fee, count: 1 },
     ]);
@@ -200,89 +197,6 @@ describe('TransactionAggregator', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Finalize
-  // -----------------------------------------------------------------------
-
-  describe('finalize', () => {
-    it('should set visibility flags on all nodes', () => {
-      const root = new TransactionAggregator({
-        name: 'root',
-        subAggregateFn: (parent, _tx) => {
-          const key = 'group';
-          return parent.getOrCreateSub(
-            key,
-            (p) => new TransactionAggregator({ name: key, parent: p }),
-          );
-        },
-      });
-
-      root.add(makeTx({ amount: -10, entityName: 'X' }));
-      root.finalize();
-
-      // Root (depth 0) should be visible.
-      expect(root.isVisible).toBe(true);
-
-      // Child at depth 1 should also be visible (top-level).
-      const child = root.getSubAggregators()[0];
-      expect(child).toBeDefined();
-      expect(child.isVisible).toBe(true);
-    });
-
-    it('should propagate finalize to all sub-aggregators', () => {
-      const root = new TransactionAggregator({
-        name: 'root',
-        subAggregateFn: (parent, _tx) => {
-          return parent.getOrCreateSub('child', (p) => {
-            return new TransactionAggregator({
-              name: 'child',
-              parent: p,
-              subAggregateFn: (innerParent) => {
-                return innerParent.getOrCreateSub(
-                  'grandchild',
-                  (gp) => new TransactionAggregator({ name: 'grandchild', parent: gp }),
-                );
-              },
-            });
-          });
-        },
-      });
-
-      root.add(makeTx({ amount: -10, entityName: 'A' }));
-      root.finalize();
-
-      const child = root.getSubAggregators()[0];
-      const grandchild = child.getSubAggregators()[0];
-
-      // All nodes should have been visited by finalize.
-      expect(grandchild).toBeDefined();
-      expect(grandchild.count).toBe(1);
-    });
-  });
-
-  // -----------------------------------------------------------------------
-  // getAllTransactions (recursive)
-  // -----------------------------------------------------------------------
-
-  describe('getAllTransactions', () => {
-    it('should recursively collect all leaf transactions', () => {
-      const root = new TransactionAggregator({
-        name: 'root',
-        subAggregateFn: (parent, tx) => {
-          const name = tx.displayEntityNameNormalized;
-          return parent.getOrCreateSub(name, (p) => new TransactionAggregator({ name, parent: p }));
-        },
-      });
-
-      root.add(makeTx({ amount: -10, entityName: 'A' }));
-      root.add(makeTx({ amount: -20, entityName: 'B' }));
-      root.add(makeTx({ amount: -30, entityName: 'A' }));
-
-      const all = root.getAllTransactions();
-      expect(all).toHaveLength(3);
-    });
-  });
-
-  // -----------------------------------------------------------------------
   // Key counters
   // -----------------------------------------------------------------------
 
@@ -300,16 +214,6 @@ describe('TransactionAggregator', () => {
 
       expect(agg.transactionReasonCounter.keyCount).toBe(2);
       expect(agg.transactionReasonCounter.getTop()?.key).toBe(TransactionReason.Purchase);
-    });
-
-    it('should track account IDs', () => {
-      const agg = new TransactionAggregator({ name: 'root' });
-
-      agg.add(makeTx({ amount: -10, entityName: 'A' }));
-      agg.add(makeTx({ amount: -20, entityName: 'B' }));
-
-      expect(agg.accountCounter.keyCount).toBe(1);
-      expect(agg.accountCounter.getTop()?.key).toBe('acct-amex');
     });
   });
 

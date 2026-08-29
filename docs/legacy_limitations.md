@@ -40,7 +40,9 @@ claim.
 - Individual JSON replacements are atomic, and process-local saves are
   serialized, but `LatestMerged.json` and `LatestMergedEdits.json` are two files
   rather than one cross-file transaction. A process or disk failure between
-  replacements may require replaying edits or restoring a backup.
+  replacements may require replaying edits or restoring a backup. The shared
+  atomic-file helper protects each file from partial text and cleans up failed
+  temporary writes, but cannot make two renames one transaction.
 - Promoted statement files are not rolled back when a later rebuild fails.
   This is deliberate for diagnosis, but there is no one-click batch rollback.
 - Promotion is file-by-file. An infrastructure failure during promotion can
@@ -68,12 +70,13 @@ claim.
 
 The supplied snapshot and modern same-generation rebuild agree on account/date
 coverage, all 431 edit rules, and all 125 exact-ID targets that still resolved
-in the legacy snapshot, but not every graph node. The verified delta is -31
-top-level and -32 all-node transactions. Top-level differences are 29 repeated
-Chase rows, one Barclay row, and one Etsy receipt/order represented in
-overlapping exports; content deduplication removes $509.65 of legacy duplicate
-cash-flow entries. Amazon child synthesis accounts for the remaining all-node
-and non-top-level total difference. See
+in the legacy snapshot, but not every graph node. The verified delta is -27
+top-level and -30 all-node transactions. Content deduplication removes 29
+repeated Chase rows, one Barclay row, and one Etsy receipt/order totaling
+$509.65. Corrected one-to-one matching leaves four Amazon order rows totaling
+-$46.35 at top level rather than reusing financial parents, producing a net
+$463.30 top-level amount delta. Relationship synthesis accounts for the
+remaining all-node difference. See
 [Legacy divergences](legacy_divergence.md).
 
 Thirty-seven exact-ID target parameters were already orphaned in the saved

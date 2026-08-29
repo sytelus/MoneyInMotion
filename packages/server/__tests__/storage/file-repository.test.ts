@@ -184,7 +184,7 @@ describe('FileRepository', () => {
     expect(locations.map((location) => path.basename(location.address))).toEqual(['statement.csv']);
   });
 
-  it('does not import a child directory under an inherited config when its own config is corrupt', () => {
+  it('fails discovery rather than silently omitting a corrupt child config', () => {
     const parentDir = path.join(tempDir, 'Statements', 'Parent');
     const childDir = path.join(parentDir, 'Child');
     fs.mkdirSync(childDir, { recursive: true });
@@ -204,7 +204,9 @@ describe('FileRepository', () => {
     fs.writeFileSync(path.join(childDir, 'AccountConfig.json'), '{bad json');
     fs.writeFileSync(path.join(childDir, 'child.csv'), 'Date,Amount\n');
 
-    expect(new FileRepository(tempDir).getStatementLocations()).toHaveLength(0);
+    expect(() => new FileRepository(tempDir).getStatementLocations()).toThrow(
+      /Invalid account config "Parent\/Child\/AccountConfig.json"/i,
+    );
   });
 
   it('scans subdirectories recursively', () => {

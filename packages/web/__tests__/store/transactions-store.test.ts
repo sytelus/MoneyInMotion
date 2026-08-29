@@ -100,17 +100,17 @@ describe('transactions-store', () => {
       ).toThrow();
     });
 
-    it('clears selection and expansion state tied to the previous snapshot', () => {
+    it('preserves valid selections but removes stale selections and expansion state', () => {
       useTransactionsStore.setState({
-        selectedTransactionIds: new Set(['old-tx']),
+        selectedTransactionIds: new Set(['kept-tx', 'old-tx']),
         expandedGroupIds: new Set(['old-group']),
       });
 
       useTransactionsStore
         .getState()
-        .setTransactions(makeTransactionsData([makeTxData({ id: 'new-tx' })]));
+        .setTransactions(makeTransactionsData([makeTxData({ id: 'kept-tx' })]));
 
-      expect(useTransactionsStore.getState().selectedTransactionIds.size).toBe(0);
+      expect(useTransactionsStore.getState().selectedTransactionIds).toEqual(new Set(['kept-tx']));
       expect(useTransactionsStore.getState().expandedGroupIds.size).toBe(0);
     });
   });

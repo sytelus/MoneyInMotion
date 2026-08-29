@@ -79,7 +79,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       }}
     >
       {/* Entity name + indicators */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div role="gridcell" className="flex items-center gap-2 min-w-0">
         <span className="truncate">{transaction.displayEntityNameNormalized}</span>
         {transaction.isUserFlagged && (
           <span title="Flagged for review" className="shrink-0 inline-flex">
@@ -94,20 +94,26 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       </div>
 
       {/* Amount */}
-      <AmountDisplay amount={transaction.correctedAmount} />
+      <div role="gridcell">
+        <AmountDisplay amount={transaction.correctedAmount} />
+      </div>
 
       {/* Transaction type badge */}
-      <span className="hidden xl:inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground whitespace-nowrap">
+      <span
+        role="gridcell"
+        className="hidden xl:inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground whitespace-nowrap"
+      >
         {reasonTitle}
       </span>
 
       {/* Date */}
-      <span className="hidden text-muted-foreground whitespace-nowrap sm:block">
+      <span role="gridcell" className="hidden text-muted-foreground whitespace-nowrap sm:block">
         {formatDate(transaction.correctedTransactionDate)}
       </span>
 
       {/* Account */}
       <span
+        role="gridcell"
         className="hidden text-muted-foreground text-xs truncate max-w-[8rem] xl:block"
         title={transaction.accountId}
       >
@@ -116,6 +122,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
 
       {/* Context menu button - visible on hover or when row is selected */}
       <div
+        role="gridcell"
         className={cn(
           'opacity-0 group-hover:opacity-100 transition-opacity',
           isSelected && 'opacity-100',

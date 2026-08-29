@@ -62,9 +62,15 @@ export function createImportRouter(cache: TransactionCache, config: ServerConfig
 
     folderUpload.array('files')(req, res, async (uploadError) => {
       if (uploadError) {
-        res.status(400).json({
+        const isSizeLimit =
+          uploadError instanceof multer.MulterError &&
+          ['LIMIT_FILE_SIZE', 'LIMIT_FILE_COUNT', 'LIMIT_PART_COUNT', 'LIMIT_FIELD_VALUE'].includes(
+            uploadError.code,
+          );
+        const status = isSizeLimit ? 413 : 400;
+        res.status(status).json({
           error: uploadError.message,
-          status: 400,
+          status,
         });
         return;
       }

@@ -11,6 +11,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Transactions } from '@moneyinmotion/core';
 import type { TransactionsData } from '@moneyinmotion/core';
+import { parsePersistedTransactionEdits } from '../validation/transaction-edit-schema.js';
+import { writeTextFileAtomically } from './atomic-file.js';
 
 export class TransactionsStorage {
   /**
@@ -36,6 +38,14 @@ export class TransactionsStorage {
           throw new Error(`snapshot ${key} must be an object or legacy dictionary array`);
         }
       }
+      if (data.edits != null) {
+        const embeddedEdits = Array.isArray(data.edits)
+          ? data.edits
+          : data.edits != null && typeof data.edits === 'object' && 'edits' in data.edits
+            ? data.edits.edits
+            : null;
+        parsePersistedTransactionEdits(embeddedEdits, 'snapshot edits');
+      }
       return Transactions.fromData(data as TransactionsData);
     } catch (err) {
       throw new Error(
@@ -59,9 +69,7 @@ export class TransactionsStorage {
   save(filePath: string, transactions: Transactions): void {
     const data = transactions.serialize();
     const serializedData = JSON.stringify(data, null, 2);
-    const tmpPath = `${filePath}.tmp`;
-    fs.writeFileSync(tmpPath, serializedData, 'utf-8');
-    fs.renameSync(tmpPath, filePath);
+    writeTextFileAtomically(filePath, serializedData);
   }
 
   /**

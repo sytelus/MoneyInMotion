@@ -28,7 +28,7 @@ import { TransactionSummary } from '../transactions/TransactionSummary.js';
 import { CategoryEditor } from '../editing/CategoryEditor.js';
 import { NoteEditor } from '../editing/NoteEditor.js';
 import { AttributeEditor } from '../editing/AttributeEditor.js';
-import { CalendarRange, PanelRight, Sparkles } from 'lucide-react';
+import { AlertCircle, CalendarRange, PanelRight, Sparkles, X } from 'lucide-react';
 import { buttonClassName } from '../ui/button.js';
 import { useTransactions, useApplyEdits } from '../../api/hooks.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
@@ -53,6 +53,7 @@ export const AppShell: React.FC = () => {
 
   const [activeDialog, setActiveDialog] = useState<EditDialog>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [quickEditError, setQuickEditError] = useState<string | null>(null);
 
   // Push server data into the Zustand store when it arrives
   useEffect(() => {
@@ -100,7 +101,12 @@ export const AppShell: React.FC = () => {
         sourceId: 'web-ui',
       };
 
-      applyEdits.mutate([edit]);
+      setQuickEditError(null);
+      applyEdits.mutate([edit], {
+        onError: (error) => {
+          setQuickEditError(error instanceof Error ? error.message : 'Failed to update the flag.');
+        },
+      });
     },
     [selectedTransaction, applyEdits],
   );
@@ -121,7 +127,12 @@ export const AppShell: React.FC = () => {
         sourceId: 'web-ui',
       };
 
-      applyEdits.mutate([edit]);
+      setQuickEditError(null);
+      applyEdits.mutate([edit], {
+        onError: (error) => {
+          setQuickEditError(error instanceof Error ? error.message : 'Failed to remove the flag.');
+        },
+      });
     },
     [selectedTransaction, applyEdits],
   );
@@ -161,6 +172,24 @@ export const AppShell: React.FC = () => {
   return (
     <div className="flex flex-col h-screen">
       <Header />
+
+      {quickEditError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{quickEditError}</span>
+          <button
+            type="button"
+            onClick={() => setQuickEditError(null)}
+            className="rounded p-1 hover:bg-destructive/10"
+            aria-label="Dismiss flag update error"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Loading / error states */}
       {isLoading && (

@@ -25,7 +25,8 @@ Do not expose an unprotected instance to the public Internet; see
 - Corrects amount, date, reason, merchant/payee, category, note, and flag fields.
   A correction can target selected transactions or become a reusable rule.
 - Preserves imported values. User intent is stored separately in
-  `LatestMergedEdits.json`, with an audit record and reversible rule history.
+  `LatestMergedEdits.json`, with an append-only audit history and explicit
+  field-reset actions.
 
 ## Quick start
 

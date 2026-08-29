@@ -7,13 +7,14 @@
  *   - **Transfers** -- transactions where `isInterAccount(reason)`
  *   - **Unmatched** -- transactions that require a parent but have none
  *
- * Within each header group, transactions are sub-grouped first by
- * normalised entity name and then (if present) by category path.
+ * Within each header group, categorized transactions are sub-grouped by
+ * their first category segment and then normalized entity name. Transactions
+ * without a category are grouped directly by normalized entity name.
  *
  * @module
  */
 
-import { Transaction, type TransactionData } from '../models/transaction.js';
+import { Transaction } from '../models/transaction.js';
 import { isIncoming, isInterAccount } from '../models/transaction-reason.js';
 import { TransactionAggregator } from './transaction-aggregator.js';
 
@@ -39,10 +40,9 @@ export interface NetAggregatorOptions {
  * If the transaction has a non-empty `categoryPath`, a further nested
  * sub-aggregator is created for the first path segment.
  */
-function entityNameSubAggregator(
+function categoryOrNameSubAggregator(
   parentAggregator: TransactionAggregator,
   tx: Transaction,
-  _parents: Transaction[],
 ): TransactionAggregator | undefined {
   // --- Category grouping (if a category path exists) ---------------------
   const categoryPath = tx.categoryPath;
@@ -61,7 +61,7 @@ function entityNameSubAggregator(
   }
 
   // --- Name grouping -----------------------------------------------------
-  return nameSubAggregator(parentAggregator, tx, _parents);
+  return nameSubAggregator(parentAggregator, tx);
 }
 
 /**
@@ -71,7 +71,6 @@ function entityNameSubAggregator(
 function nameSubAggregator(
   parentAggregator: TransactionAggregator,
   tx: Transaction,
-  _parents: Transaction[],
 ): TransactionAggregator | undefined {
   const entityName = tx.displayEntityNameNormalized ?? tx.entityName;
   const aggName = 'NAM_' + entityName;
@@ -94,7 +93,7 @@ function makeIncomeAgg(parent: TransactionAggregator): TransactionAggregator {
   const agg = new TransactionAggregator({
     name: 'Income',
     parent,
-    subAggregateFn: entityNameSubAggregator,
+    subAggregateFn: categoryOrNameSubAggregator,
   });
   agg.sortOrder = 0;
   return agg;
@@ -104,7 +103,7 @@ function makeExpenseAgg(parent: TransactionAggregator): TransactionAggregator {
   const agg = new TransactionAggregator({
     name: 'Expenses',
     parent,
-    subAggregateFn: entityNameSubAggregator,
+    subAggregateFn: categoryOrNameSubAggregator,
   });
   agg.sortOrder = 1;
   return agg;
@@ -114,7 +113,7 @@ function makeTransfersAgg(parent: TransactionAggregator): TransactionAggregator 
   const agg = new TransactionAggregator({
     name: 'Transfers',
     parent,
-    subAggregateFn: entityNameSubAggregator,
+    subAggregateFn: categoryOrNameSubAggregator,
   });
   agg.sortOrder = 3;
   return agg;
@@ -124,7 +123,7 @@ function makeUnmatchedAgg(parent: TransactionAggregator): TransactionAggregator 
   const agg = new TransactionAggregator({
     name: 'Unmatched',
     parent,
-    subAggregateFn: entityNameSubAggregator,
+    subAggregateFn: categoryOrNameSubAggregator,
   });
   agg.sortOrder = 4;
   return agg;
@@ -141,7 +140,6 @@ function makeUnmatchedAgg(parent: TransactionAggregator): TransactionAggregator 
 function headerSubAggregator(
   parentAggregator: TransactionAggregator,
   tx: Transaction,
-  _parents: Transaction[],
 ): TransactionAggregator | undefined {
   // Unmatched: requires a parent but doesn't have one.
   if (tx.requiresParent && !tx.parentId) {
@@ -168,7 +166,6 @@ function headerSubAggregator(
 function flatSubAggregator(
   parentAggregator: TransactionAggregator,
   _tx: Transaction,
-  _parents: Transaction[],
 ): TransactionAggregator | undefined {
   return parentAggregator.getOrCreateSub(
     'flatAggregator',
@@ -189,23 +186,15 @@ function flatSubAggregator(
  * Walk down a transaction's child hierarchy. When a leaf (no children or
  * has a missing child) is reached, invoke the callback.
  */
-function traverseChildren(
-  tx: Transaction,
-  parents: Transaction[],
-  onLeaf: (tx: Transaction, parents: Transaction[]) => void,
-): void {
+function traverseChildren(tx: Transaction, onLeaf: (tx: Transaction) => void): void {
   const children = tx.children;
-  const hasChildren = children != null && Object.keys(children).length > 0;
-
-  if (!hasChildren || tx.hasMissingChild) {
-    onLeaf(tx, parents);
+  if (children == null || Object.keys(children).length === 0 || tx.hasMissingChild) {
+    onLeaf(tx);
   } else {
-    parents.push(tx);
-    for (const childData of Object.values(children!)) {
-      const childTx = Transaction.fromData(childData as TransactionData);
-      traverseChildren(childTx, parents, onLeaf);
+    for (const childData of Object.values(children)) {
+      const childTx = Transaction.fromData(childData);
+      traverseChildren(childTx, onLeaf);
     }
-    parents.pop();
   }
 }
 
@@ -238,12 +227,10 @@ export class NetAggregator {
     });
 
     for (const tx of transactions) {
-      traverseChildren(tx, [], (leafTx, parents) => {
-        this.aggregator.add(leafTx, parents);
+      traverseChildren(tx, (leafTx) => {
+        this.aggregator.add(leafTx);
       });
     }
-
-    this.aggregator.finalize();
 
     // Compute net income.
     if (enableGrouping) {

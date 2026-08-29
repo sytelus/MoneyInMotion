@@ -192,11 +192,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       aria-label="Transaction list"
     >
       {/* Column headers */}
-      <div className="sticky top-0 z-10 bg-background border-b-2 border-border">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]">
+      <div role="rowgroup" className="sticky top-0 z-10 bg-background border-b-2 border-border">
+        <div
+          role="row"
+          className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]"
+        >
           {columnHeaders.map((header, index) => (
             <div
               key={header}
+              role="columnheader"
               className={
                 index === 2 || index === 4
                   ? 'hidden xl:block'
@@ -208,7 +212,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               {header}
             </div>
           ))}
-          <div aria-hidden="true" />
+          <div role="columnheader" aria-label="Actions" />
         </div>
       </div>
 

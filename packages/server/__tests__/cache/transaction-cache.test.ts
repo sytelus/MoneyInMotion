@@ -80,18 +80,39 @@ describe('TransactionCache', () => {
         scanSubFolders: false,
       }),
     );
-    // Empty CSV — the generic parser should fail to extract any columns.
-    fs.writeFileSync(path.join(statementsDir, 'bad.csv'), '');
+    fs.writeFileSync(path.join(statementsDir, 'bad.csv'), 'Date,Description,Amount\n"unterminated');
 
     const repo = new FileRepository(tempDir);
     const cache = new TransactionCache(repo);
 
     const result = await cache.rebuildFromStatements();
-    // Regardless of whether the parser produces 0 rows or throws, the
-    // response shape must always include failedFiles so the UI can
-    // report it.
-    expect(Array.isArray(result.failedFiles)).toBe(true);
-    expect(result.importedFiles.length + result.failedFiles.length).toBeGreaterThanOrEqual(0);
+    expect(result.committed).toBe(false);
+    expect(result.failedFiles).toHaveLength(1);
+    expect(result.failedFiles[0]).toMatchObject({ path: 'MyBank/bad.csv' });
+    expect(result.failedFiles[0]!.error).toMatch(/CSV parsing failed/i);
+  });
+
+  it('keeps the previous snapshot when statement discovery finds a corrupt account config', async () => {
+    const accountDir = path.join(tempDir, 'Statements', 'MyBank');
+    fs.mkdirSync(accountDir, { recursive: true });
+    fs.writeFileSync(path.join(accountDir, 'AccountConfig.json'), '{bad json');
+    fs.writeFileSync(path.join(accountDir, 'statement.csv'), 'Date,Description,Amount\n');
+    const cache = new TransactionCache(new FileRepository(tempDir));
+
+    const result = await cache.rebuildFromStatements();
+
+    expect(result).toMatchObject({
+      committed: false,
+      previousTransactionCount: 0,
+      totalTransactions: 0,
+      failedFiles: [
+        {
+          path: 'MyBank/AccountConfig.json',
+        },
+      ],
+    });
+    expect(result.failedFiles[0]!.error).toMatch(/Invalid account config/i);
+    expect(fs.existsSync(path.join(tempDir, 'Merged', 'LatestMerged.json'))).toBe(false);
   });
 
   it('commits a complete rebuild and preserves it when a later file fails', async () => {

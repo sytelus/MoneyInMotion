@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { TransactionEdits } from '@moneyinmotion/core';
+import {
+  ScopeType,
+  TransactionEdits,
+  createAuditInfo,
+  createScopeFilter,
+  editValue,
+} from '@moneyinmotion/core';
 import { TransactionEditsStorage } from '../../src/storage/transaction-edits-storage.js';
 
 describe('TransactionEditsStorage', () => {
@@ -35,6 +41,32 @@ describe('TransactionEditsStorage', () => {
 
     fs.writeFileSync(filePath, '[]');
     expect(() => storage.load(filePath)).toThrow('edit aggregate root');
+  });
+
+  it('validates every persisted edit while accepting legacy base64 scope hashes', () => {
+    const legacyScope = {
+      ...createScopeFilter(ScopeType.All, []),
+      contentHash: 'QjoA4VlkAWavNQgVyBr6TA==',
+    };
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({
+        sourceId: 'legacy',
+        edits: [
+          {
+            id: 'legacy-edit',
+            auditInfo: createAuditInfo(),
+            scopeFilters: [legacyScope],
+            values: { note: editValue('legacy note') },
+            sourceId: 'legacy',
+          },
+        ],
+      }),
+    );
+    expect(storage.load(filePath).count).toBe(1);
+
+    fs.writeFileSync(filePath, JSON.stringify({ sourceId: 'bad', edits: [{ id: 42 }] }));
+    expect(() => storage.load(filePath)).toThrow(/edits\[0\] is invalid/i);
   });
 
   it('keeps distinct backups when consecutive saves share a timestamp', () => {

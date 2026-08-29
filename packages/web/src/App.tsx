@@ -7,14 +7,28 @@
  * @module
  */
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
-import { AppShell } from './components/layout/AppShell.js';
-import { AccountsPage } from './pages/AccountsPage.js';
-import { RulesPage } from './pages/RulesPage.js';
-import { SettingsPage } from './pages/SettingsPage.js';
-import { WelcomePage } from './pages/WelcomePage.js';
+
+// Route-level splitting keeps account/settings/rule management code out of
+// the initial transaction-screen download. Named exports are adapted to the
+// default shape expected by React.lazy without adding wrapper modules.
+const AppShell = lazy(() =>
+  import('./components/layout/AppShell.js').then((module) => ({ default: module.AppShell })),
+);
+const AccountsPage = lazy(() =>
+  import('./pages/AccountsPage.js').then((module) => ({ default: module.AccountsPage })),
+);
+const RulesPage = lazy(() =>
+  import('./pages/RulesPage.js').then((module) => ({ default: module.RulesPage })),
+);
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage.js').then((module) => ({ default: module.SettingsPage })),
+);
+const WelcomePage = lazy(() =>
+  import('./pages/WelcomePage.js').then((module) => ({ default: module.WelcomePage })),
+);
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -65,14 +79,22 @@ export const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ErrorBoundary>
-          <Routes>
-            <Route path="/" element={<AppShell />} />
-            <Route path="/welcome" element={<WelcomePage />} />
-            <Route path="/accounts" element={<AccountsPage />} />
-            <Route path="/rules" element={<RulesPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+                Loading MoneyInMotion…
+              </div>
+            }
+          >
+            <Routes>
+              <Route path="/" element={<AppShell />} />
+              <Route path="/welcome" element={<WelcomePage />} />
+              <Route path="/accounts" element={<AccountsPage />} />
+              <Route path="/rules" element={<RulesPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>

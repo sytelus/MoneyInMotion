@@ -26,7 +26,8 @@ const IMPORT_INFO_ID = 'CreatedBy.GenericTxParentChildMatcher';
  */
 export function isMissingAmountTolerable(parent: Transaction, missingChildAmount: number): boolean {
   return (
-    Math.abs(missingChildAmount) < Math.round(Math.abs(parent.amount) * 0.02 * 100) / 100 ||
+    Math.abs(missingChildAmount) <
+      Math.round(Math.abs(parent.correctedAmount) * 0.02 * 100) / 100 ||
     Math.abs(missingChildAmount) < 0.5
   );
 }

@@ -14,6 +14,20 @@ import { decodeAccountConfig } from './account-config-codec.js';
 
 export const ACCOUNT_CONFIG_FILE_NAME = 'AccountConfig.json';
 
+/** A discovered AccountConfig cannot be trusted or safely ignored. */
+export class InvalidAccountConfigError extends Error {
+  readonly status = 422;
+
+  constructor(
+    readonly portablePath: string,
+    message: string,
+    cause?: unknown,
+  ) {
+    super(`Invalid account config "${portablePath}": ${message}`, { cause });
+    this.name = 'InvalidAccountConfigError';
+  }
+}
+
 export interface DiscoveredAccountConfig {
   config: AccountConfig;
   configPath: string;
@@ -44,7 +58,7 @@ export function discoverAccountConfigs(
       const message = (err instanceof Error ? err.message : String(err))
         .split(configPath)
         .join(portableConfigPath);
-      console.warn(`Skipping invalid account config "${portableConfigPath}": ${message}`);
+      throw new InvalidAccountConfigError(portableConfigPath, message, err);
     }
   }
 

@@ -4,7 +4,21 @@
  * @module
  */
 
-import type { AccountInfo } from './account-info.js';
+import { AccountType, type AccountInfo } from './account-info.js';
+
+/** Account kinds implemented by the current parser and matching pipeline. */
+export const SUPPORTED_ACCOUNT_TYPES: readonly AccountType[] = [
+  AccountType.CreditCard,
+  AccountType.BankChecking,
+  AccountType.BankSavings,
+  AccountType.OrderHistory,
+  AccountType.EPayment,
+];
+
+/** Narrow a persisted numeric value to an account type MiM can process. */
+export function isSupportedAccountType(value: number): value is AccountType {
+  return SUPPORTED_ACCOUNT_TYPES.includes(value as AccountType);
+}
 
 /**
  * Configuration for importing statement files for a specific account.
@@ -33,4 +47,18 @@ export interface AccountConfig {
    * Defaults to `true` in the legacy C# code.
    */
   readonly scanSubFolders: boolean;
+}
+
+/** Return why a structurally valid account is unsupported, or `null`. */
+export function validateAccountConfigSupport(config: AccountConfig): string | null {
+  if (config.accountInfo.type !== AccountType.OrderHistory) return null;
+
+  const institution = config.accountInfo.instituteName.replace(/[^a-z0-9]+/gi, '').toLowerCase();
+  if (institution !== 'amazon' && institution !== 'etsy') {
+    return 'Order History accounts currently support only Amazon and Etsy.';
+  }
+  if (!(config.accountInfo.interAccountNameTags ?? []).some((tag) => tag.trim().length > 0)) {
+    return 'Order History accounts require at least one match tag for financial-charge matching.';
+  }
+  return null;
 }

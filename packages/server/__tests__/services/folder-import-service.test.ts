@@ -16,7 +16,7 @@ describe('stageAndPromoteFolder', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  function arrangeAccount(): ReturnType<typeof buildConfig> {
+  function arrangeAccount(scanSubFolders = true): ReturnType<typeof buildConfig> {
     const config = buildConfig(tempDir, 'alex', 3001);
     fs.mkdirSync(config.statementsDir, { recursive: true });
     fs.mkdirSync(config.mergedDir, { recursive: true });
@@ -36,7 +36,7 @@ describe('stageAndPromoteFolder', () => {
           InterAccountNameTags: ['amex'],
         },
         fileFilters: ['*.csv'],
-        scanSubFolders: true,
+        scanSubFolders,
       }),
     );
     return config;
@@ -108,5 +108,27 @@ describe('stageAndPromoteFolder', () => {
       stageAndPromoteFolder(config, [{ buffer: Buffer.from('x') }], ['upload/../escape.csv']),
     ).toThrow(/Unsafe upload path/);
     expect(fs.readdirSync(config.stagingDir)).toHaveLength(0);
+  });
+
+  it('stages but does not promote nested files an account is configured not to scan', () => {
+    const config = arrangeAccount(false);
+
+    const result = stageAndPromoteFolder(
+      config,
+      [{ buffer: Buffer.from('Date,Description,Amount\n01/01/2024,A,-1\n') }],
+      ['upload/Amex/2024/statement.csv'],
+    );
+
+    expect(result).toMatchObject({ promotedCount: 0, rejectedCount: 1 });
+    expect(result.files[0]?.message).toContain('not to scan statement subfolders');
+    expect(fs.existsSync(path.join(config.statementsDir, 'Amex', '2024', 'statement.csv'))).toBe(
+      false,
+    );
+    const manifestPath = path.join(config.userDataPath, result.manifestPath);
+    expect(
+      fs.existsSync(
+        path.join(path.dirname(manifestPath), 'files', 'Amex', '2024', 'statement.csv'),
+      ),
+    ).toBe(true);
   });
 });

@@ -48,9 +48,11 @@ and the legacy Pascal-case inner `AccountInfo`. Account IDs permit letters,
 numbers, dots, underscores, and hyphens only. Once files or transactions exist,
 the ID is locked because it participates in stable transaction identity.
 Order-history account types always require a financial parent; the server
-derives that invariant rather than trusting a contradictory browser value. A
-corrupt nested config is reported and never inherits the parent account's
-identity, preventing its files from being assigned to the wrong account.
+derives that invariant rather than trusting a contradictory browser value.
+Only Amazon and Etsy order-history parsers are currently implemented, and such
+accounts require at least one parent-charge match tag. A corrupt or unsupported
+nested config is reported and never inherits the parent account's identity,
+preventing its files from being assigned to the wrong account.
 
 Deleting an account through the website removes its config only. The directory
 is removed only when it is empty; raw statements are never recursively deleted.
@@ -71,9 +73,10 @@ remove old batches through an administrator-controlled process after backups.
 
 `LatestMerged.json` is a replaceable materialized view: it can be regenerated
 from `Statements` plus saved edits. `LatestMergedEdits.json` is durable user
-intent and should receive the strongest backup treatment. Storage creates
-timestamped backups before replacing an existing output and uses temporary-file
-rename so readers do not observe partially written JSON.
+intent and should receive the strongest backup treatment. The edit aggregate
+receives timestamped backups before replacement. Both JSON files, account
+configs, staging manifests, and persisted Settings use a shared atomic
+temporary-file/rename helper so readers do not observe partially written text.
 
 ## Browser directory upload
 
@@ -102,7 +105,9 @@ The server also checks the received file bytes after multipart decoding, so a
 missing or dishonest length header cannot bypass the aggregate limit. Split a
 larger folder into multiple selections. Unsupported files and uploaded
 `AccountConfig.json` files are staged but marked rejected in the manifest;
-account configuration is owned by the web editor.
+account configuration is owned by the web editor. Nested files are likewise
+staged but rejected when their account has disabled subfolder scanning, because
+promoting an input that the rebuild deliberately ignores would be misleading.
 
 ## Deduplication and promotion
 
@@ -134,7 +139,8 @@ If a file cannot parse, promoted source files and the staging manifest remain
 for diagnosis, but the last known-good financial snapshot is not replaced by a
 partial result. Fix or remove the bad server-side input and use **Rebuild
 snapshot** in Settings, or upload a corrected export. The response identifies
-every failed source path.
+every failed source path. Invalid account configuration is reported through the
+same failed-build result and also preserves the last known-good snapshot.
 
 The maintenance rebuild endpoint runs the same algorithm without uploading
 anything. It is useful after an administrator restores or changes server-side

@@ -47,4 +47,31 @@ describe('decodeAccountConfig', () => {
       }),
     ).toThrow('unsupported');
   });
+
+  it('rejects order-history configurations the matcher cannot process', () => {
+    expect(() =>
+      decodeAccountConfig({
+        ...validConfig(),
+        accountInfo: {
+          ...validConfig().accountInfo,
+          type: AccountType.OrderHistory,
+          requiresParent: true,
+          interAccountNameTags: ['SHOP'],
+        },
+      }),
+    ).toThrow(/Amazon and Etsy/);
+
+    expect(() =>
+      decodeAccountConfig({
+        ...validConfig(),
+        accountInfo: {
+          ...validConfig().accountInfo,
+          instituteName: 'Amazon',
+          type: AccountType.OrderHistory,
+          requiresParent: true,
+          interAccountNameTags: [],
+        },
+      }),
+    ).toThrow(/match tag/);
+  });
 });

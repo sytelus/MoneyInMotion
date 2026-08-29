@@ -3,9 +3,8 @@
  * `TransactionAggregator.js`.
  *
  * A `TransactionAggregator` represents a single node in a tree of grouped
- * transactions. Each node maintains running sums, key-counters for various
- * properties, and an ordered list of child sub-aggregators and leaf
- * transactions.
+ * transactions. Each node maintains the totals and reason counts rendered by
+ * the website, plus an ordered list of child groups and leaf transactions.
  *
  * @module
  */
@@ -28,15 +27,14 @@ export interface AggregatorOptions {
   parent?: TransactionAggregator;
 
   /**
-   * Given the current aggregator, a transaction, and its parent chain,
-   * return the child sub-aggregator that should receive the transaction --
+   * Given the current aggregator and a transaction, return the child
+   * sub-aggregator that should receive the transaction --
    * or `undefined` to stop recursion and store the transaction as a leaf
    * row in the current aggregator.
    */
   subAggregateFn?: (
     parent: TransactionAggregator,
     tx: Transaction,
-    parents: Transaction[],
   ) => TransactionAggregator | undefined;
 
   /**
@@ -66,30 +64,19 @@ export class TransactionAggregator {
 
   // -- running totals -----------------------------------------------------
   count: number = 0;
-  positiveSum: number = 0;
-  negativeSum: number = 0;
   sum: number = 0;
-  markedSum: number = 0;
-  markedTxCount: number = 0;
 
   // -- tree metadata ------------------------------------------------------
   depth: number;
   isOptional: boolean;
-  isChildrenVisible: boolean = false;
-  isVisible: boolean = true;
 
-  // -- key counters -------------------------------------------------------
-  flagCounter: KeyCounter<string>;
-  noteCounter: KeyCounter<string>;
+  // -- reason summary -----------------------------------------------------
   transactionReasonCounter: KeyCounter<number>;
-  accountCounter: KeyCounter<string>;
-  categoryCounter: KeyCounter<string>;
 
   // -- internal state -----------------------------------------------------
   private subAggregators: Map<string, TransactionAggregator> = new Map();
   private rows: Transaction[] = [];
   private subAggregateFn?: AggregatorOptions['subAggregateFn'];
-  private parent?: TransactionAggregator;
 
   /**
    * Arbitrary numeric field used for custom sort ordering of top-level
@@ -103,23 +90,13 @@ export class TransactionAggregator {
 
   constructor(options: AggregatorOptions) {
     this.name = options.name;
-    this.parent = options.parent;
     this.subAggregateFn = options.subAggregateFn;
     this.isOptional = options.isOptional ?? false;
     this.depth = options.parent ? options.parent.depth + 1 : 0;
     this.groupId =
       options.groupId ?? (options.parent ? options.parent.groupId : '') + '.' + options.name;
 
-    // Initialise key counters.  The flag counter maps boolean-ish values
-    // to string keys so they can be tallied uniformly.
-    this.flagCounter = new KeyCounter<string>((key) => {
-      if (key === undefined) return undefined;
-      return key;
-    });
-    this.noteCounter = new KeyCounter<string>((key) => (key === undefined ? undefined : key));
     this.transactionReasonCounter = new KeyCounter<number>((key) => key);
-    this.accountCounter = new KeyCounter<string>((key) => (key === undefined ? undefined : key));
-    this.categoryCounter = new KeyCounter<string>((key) => (key === undefined ? undefined : key));
   }
 
   // -----------------------------------------------------------------------
@@ -133,100 +110,26 @@ export class TransactionAggregator {
    * a child aggregator the transaction is delegated there. Otherwise the
    * transaction is stored as a leaf row in this node.
    *
-   * @param tx      - The transaction to add.
-   * @param parents - The ancestor transaction chain (for parent/child
-   *                  hierarchies).
+   * @param tx - The transaction to add.
    */
-  add(tx: Transaction, parents: Transaction[] = []): void {
-    // Update running totals.
-    if (tx.correctedAmount > 0) {
-      this.positiveSum += tx.correctedAmount;
-    } else {
-      this.negativeSum += Math.abs(tx.correctedAmount);
-    }
+  add(tx: Transaction): void {
+    // Only effective edited values participate in displayed summaries.
     this.sum += tx.correctedAmount;
     this.count++;
 
-    // Track marked transactions.
-    if (tx.isUserFlagged) {
-      this.markedTxCount++;
-      this.markedSum += tx.correctedAmount;
-    }
-
-    // Update key counters.
-    this.flagCounter.add(tx.isUserFlagged != null ? String(tx.isUserFlagged) : undefined);
-    this.noteCounter.add(tx.note ?? undefined);
     this.transactionReasonCounter.add(tx.correctedTransactionReason);
-    this.accountCounter.add(tx.accountId);
-    this.categoryCounter.add(tx.categoryPath.length > 0 ? tx.categoryPath.join('/') : undefined);
 
     // Delegate to a sub-aggregator if the function returns one.
     if (this.subAggregateFn) {
-      const child = this.subAggregateFn(this, tx, parents);
+      const child = this.subAggregateFn(this, tx);
       if (child) {
-        child.add(tx, parents);
+        child.add(tx);
         return;
       }
     }
 
     // Leaf: store the transaction directly.
     this.rows.push(tx);
-  }
-
-  // -----------------------------------------------------------------------
-  // Visibility
-  // -----------------------------------------------------------------------
-
-  /** Toggle children visibility and refresh recursively. */
-  setChildrenVisible(visible: boolean): void {
-    this.isChildrenVisible = visible;
-    this.refreshVisibility(true);
-  }
-
-  /**
-   * Recompute visibility flags for this node (and optionally its
-   * descendants).
-   */
-  refreshVisibility(recursive: boolean = false): void {
-    const isTopLevel = this.depth <= 1;
-
-    this.isVisible =
-      isTopLevel ||
-      (this.parent != null &&
-        this.parent.isVisible &&
-        this.parent.isChildrenVisible &&
-        !this.isOptional);
-
-    if (
-      !this.isChildrenVisible &&
-      (isTopLevel || this.isOptional || this.subAggregators.size > 0)
-    ) {
-      this.isChildrenVisible = true;
-    }
-
-    if (recursive) {
-      for (const child of this.subAggregators.values()) {
-        child.refreshVisibility(true);
-      }
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Finalize
-  // -----------------------------------------------------------------------
-
-  /**
-   * Mark this aggregator (and all descendants) as finalized.
-   *
-   * This triggers a visibility refresh so that all nodes have correct
-   * display state.
-   */
-  finalize(): void {
-    this.refreshVisibility();
-
-    for (const child of this.subAggregators.values()) {
-      child.finalize();
-    }
   }
 
   // -----------------------------------------------------------------------
@@ -275,17 +178,5 @@ export class TransactionAggregator {
       if (a.correctedTransactionDate < b.correctedTransactionDate) return 1;
       return 0;
     });
-  }
-
-  /**
-   * Recursively collect all transactions (leaf rows from this node and
-   * every descendant).
-   */
-  getAllTransactions(): Transaction[] {
-    let all = [...this.rows];
-    for (const sub of this.subAggregators.values()) {
-      all = all.concat(sub.getAllTransactions());
-    }
-    return all;
   }
 }

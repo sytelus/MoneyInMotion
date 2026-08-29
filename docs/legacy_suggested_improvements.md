@@ -72,7 +72,7 @@ This is the prerequisite for safe public Internet or shared-household use.
 ## 7. Engineering and operations
 
 - Playwright end-to-end tests covering new user, account, upload, failure,
-  correction, rule reversal, restart, backup, and restore journeys.
+  correction, rule reset, restart, backup, and restore journeys.
 - Property/fuzz testing for parsers, path manifests, serializers, and scope
   composition.
 - Structured privacy-redacted logs, OpenTelemetry traces, metrics, storage/free

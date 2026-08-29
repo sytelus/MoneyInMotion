@@ -39,6 +39,7 @@ function makeTransactionsData(): TransactionsData {
           updateDate: null,
           updatedBy: null,
         },
+        appliedEditIdsDescending: ['edit-1'],
       },
     },
     accountInfos: {
@@ -103,7 +104,7 @@ describe('RulesPage', () => {
     vi.clearAllMocks();
   });
 
-  it('renders persisted rules and creates a new voiding edit on revert', async () => {
+  it('renders persisted rules and creates an exact-ID reset edit', async () => {
     const mutateMock = vi.fn((_edits, options) => {
       options?.onSuccess?.({ affectedTransactionsCount: 1 }, undefined, undefined);
     });
@@ -125,10 +126,10 @@ describe('RulesPage', () => {
     expect(screen.getByText('Shopping > Online')).toBeInTheDocument();
     expect(screen.getByText(/Amazon \(-\$25\.12 on Feb 1, 2024\)/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Revert to Imported Values/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Reset These Fields/i }));
 
-    expect(await screen.findByText('Revert Edit Rule')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Revert Rule/i }));
+    expect(await screen.findByText('Reset Fields to Imported Values')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Reset Fields/i }));
 
     await waitFor(() => {
       expect(mutateMock).toHaveBeenCalledWith(
@@ -140,8 +141,8 @@ describe('RulesPage', () => {
             }),
             scopeFilters: [
               expect.objectContaining({
-                type: ScopeType.EntityNameNormalized,
-                parameters: ['Amazon'],
+                type: ScopeType.TransactionId,
+                parameters: ['txn-1'],
               }),
             ],
             values: expect.objectContaining({
@@ -155,7 +156,7 @@ describe('RulesPage', () => {
       );
     });
 
-    expect(await screen.findByText(/Reverted rule for 1 transaction/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Reset fields for 1 transaction/i)).toBeInTheDocument();
   });
 
   it('disables revert when an edit is already a voiding rule', async () => {
@@ -186,6 +187,6 @@ describe('RulesPage', () => {
     renderPage();
 
     expect(await screen.findByText('Audit Only')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Revert to Imported Values/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Reset These Fields/i })).toBeDisabled();
   });
 });

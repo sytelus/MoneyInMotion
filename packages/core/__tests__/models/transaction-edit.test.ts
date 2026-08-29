@@ -130,6 +130,19 @@ describe('createScopeFilter', () => {
     expect(filter.contentHash).toHaveLength(32);
     expect(filter.contentHash).toMatch(/^[0-9a-f]+$/);
   });
+
+  it.each([
+    [ScopeType.EntityName, ['  '], /empty or whitespace/i],
+    [ScopeType.TransactionReason, ['reason'], /non-negative integers/i],
+    [ScopeType.AmountRange, ['ten', '20'], /finite numbers/i],
+    [ScopeType.AmountRange, ['-10', '20'], /non-negative magnitudes/i],
+    [ScopeType.AmountRange, ['20', '10'], /minimum cannot exceed/i],
+    [ScopeType.AmountRange, ['10', '20', 'sometimes'], /true.*false/i],
+  ])('rejects invalid parameters for scope type %s', (type, parameters, message) => {
+    expect(() => createScopeFilter(type as ScopeType, parameters as string[])).toThrow(
+      message as RegExp,
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

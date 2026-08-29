@@ -40,7 +40,7 @@ describe('JsonFileParser', () => {
     expect(() => parser.parse('{bad json')).toThrow(/Failed to parse JSON content/);
   });
 
-  it('skips non-object items in the array', () => {
+  it('rejects non-object items instead of silently dropping statement rows', () => {
     const content = JSON.stringify([
       { Name: 'Valid' },
       'string item',
@@ -50,11 +50,7 @@ describe('JsonFileParser', () => {
       { Name: 'Also Valid' },
     ]);
 
-    const rows = parser.parse(content);
-
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toEqual({ Name: 'Valid' });
-    expect(rows[1]).toEqual({ Name: 'Also Valid' });
+    expect(() => parser.parse(content)).toThrow(/item at index 1 must be an object/i);
   });
 
   it('respects ignoreColumns setting', () => {

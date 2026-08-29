@@ -21,8 +21,9 @@ container. systemd starts and restarts the process on a Linux VM.
 
 The verified production installer builds from the lockfile and then prunes the
 toolchain and browser build dependencies. In the review environment this reduced
-`node_modules` from about 292 MiB during development to 13 MiB at runtime. The
-compiled browser JavaScript is about 158 KiB compressed. These figures are
+`node_modules` from about 286 MiB during development to 13 MiB at runtime. The
+largest compiled browser JavaScript chunk is about 82 KiB compressed;
+management screens are separate on-demand route chunks. These figures are
 measurements, not hard resource guarantees.
 
 ## Removed complexity
@@ -36,11 +37,11 @@ measurements, not hard resource guarantees.
 | Radix Accordion                                             | Native `<details>`/`<summary>` provides the year disclosure behavior.                                                           |
 | Unused Radix Select, Popover, and Tooltip packages          | No application code imported them.                                                                                              |
 | Class Variance Authority                                    | Two components had small fixed style maps that are easier to read directly.                                                     |
-| Hand-maintained Vite vendor chunk rules                     | One compressed bundle is small enough for this application and removes build tuning with no measured benefit.                   |
+| Hand-maintained Vite vendor chunk rules                     | Native route-level imports let Vite split screens automatically without a fragile vendor map.                                   |
 | Per-package Vitest configs and test scripts                 | The repository has one authoritative root test command and configuration.                                                       |
 | Legacy `scanAndImport` alias and `/import/scan` terminology | The operation is a complete snapshot rebuild; one name is easier to understand.                                                 |
 | Config getter callbacks                                     | Runtime configuration is immutable until restart and can be passed directly.                                                    |
-| Duplicate/unused transaction context menu and store state   | The wrapper and loading/error fields had no consumers.                                                                          |
+| Duplicate/unused UI state and aggregator bookkeeping        | Unused context wrappers, store fields, visibility state, counters, and recursive collectors had no production consumers.        |
 | Frontend libraries in the VM runtime                        | Vite has already compiled them into static assets, so the production installer now prunes them.                                 |
 
 The upload and JSON limits were also reduced to fit a small VM: 2 MiB for API
