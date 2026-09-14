@@ -191,7 +191,7 @@ export const SettingsPage: React.FC = () => {
                     setDataRoot(e.target.value);
                     setSavedDimensions('');
                   }}
-                  placeholder="/home/you/min_root"
+                  placeholder="/home/you/mim_root"
                 />
                 <p className="text-xs text-muted-foreground">
                   This parent folder contains one subfolder per MoneyInMotion username.

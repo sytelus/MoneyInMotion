@@ -62,26 +62,26 @@ and prunes them again afterward.
 
 ## Configuration
 
-Create `/etc/moneyinmotion.env`:
-
-```text
-MIM_DATA_ROOT=/srv/moneyinmotion
-MIM_USERNAME=shitals
-MIM_PORT=3001
-```
-
-Restrict the file because deployment settings may reveal private paths:
+Create the service user's single configuration file:
 
 ```bash
-sudo chown root:moneyinmotion /etc/moneyinmotion.env
-sudo chmod 640 /etc/moneyinmotion.env
+sudo -H -u moneyinmotion mkdir -p /home/moneyinmotion/.moneyinmotion
+sudo -H -u moneyinmotion editor /home/moneyinmotion/.moneyinmotion/config.json
 ```
 
-Environment variables intentionally override values saved through Settings.
-Changing an environment-controlled setting in the website will not override
-the service environment on restart. Invalid explicit roots, usernames, or
-ports fail startup instead of silently selecting a different data directory or
-listener.
+```json
+{
+  "dataRoot": "/srv/moneyinmotion",
+  "username": "shitals",
+  "port": 3001
+}
+```
+
+`~/.moneyinmotion/config.json` is the only application configuration source and
+can also be viewed and updated through the website's Settings page. Invalid
+roots, usernames, or ports fail startup rather than silently selecting a
+different directory or listener. File or website changes take effect after a
+server restart.
 
 ## Run with systemd
 
@@ -91,7 +91,7 @@ It assumes:
 - repository: `/opt/moneyinmotion`;
 - service user/group: `moneyinmotion`;
 - Node executable available as `node` in `/usr/local/bin` or `/usr/bin`; and
-- environment file: `/etc/moneyinmotion.env`.
+- configuration file: `/home/moneyinmotion/.moneyinmotion/config.json`.
 
 If Node is installed elsewhere, or if different directories are chosen, edit
 the unit before installing it. Avoid an interactive version manager for a
@@ -116,7 +116,7 @@ sudo journalctl -u moneyinmotion -f
 For a temporary foreground run instead of systemd:
 
 ```bash
-MIM_DATA_ROOT=/srv/moneyinmotion MIM_USERNAME=shitals ./run.sh prod
+./run.sh
 ```
 
 ## HTTPS and remote access
@@ -161,8 +161,8 @@ At minimum protect:
 - `staging`: manifests and recovery copies, according to the chosen retention
   policy.
 
-Also back up `~/.moneyinmotion/config.json` if the deployment does not use
-environment variables. Encrypt backups and store a copy off the VM.
+Also back up `~/.moneyinmotion/config.json`. Encrypt backups and store a copy off
+the VM.
 
 To restore, stop MiM, restore into a dedicated empty root, verify ownership,
 start the service, inspect Accounts, then choose **Rebuild snapshot** in

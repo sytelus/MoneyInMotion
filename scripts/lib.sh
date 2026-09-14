@@ -95,3 +95,44 @@ ensure_core_built() {
     ok "core built."
     echo ""
 }
+
+# -- Ensure the complete production build exists and reflects source inputs --
+ensure_production_built() {
+    local build_marker=packages/web/dist/index.html
+    local artifacts_missing=false
+    local build_stale=false
+
+    if [ ! -f packages/core/dist/index.js ] \
+        || [ ! -f packages/server/dist/index.js ] \
+        || [ ! -f "$build_marker" ]; then
+        artifacts_missing=true
+    elif [ -n "$(find \
+        package.json package-lock.json tsconfig.json \
+        packages/core/package.json packages/core/tsconfig.json packages/core/src \
+        packages/server/package.json packages/server/tsconfig.json packages/server/src \
+        packages/web/package.json packages/web/tsconfig.json packages/web/vite.config.ts packages/web/src \
+        -type f -newer "$build_marker" 2>/dev/null | head -1)" ]; then
+        build_stale=true
+    fi
+
+    if [ "$artifacts_missing" = false ] && [ "$build_stale" = false ]; then
+        return 0
+    fi
+
+    if [ -x node_modules/.bin/tsc ] && [ -x node_modules/.bin/vite ]; then
+        if [ "$artifacts_missing" = true ]; then
+            info "Production build is missing; building it now..."
+        else
+            info "Production source is newer than the build; rebuilding now..."
+        fi
+        ./build.sh
+        return 0
+    fi
+
+    if [ "$artifacts_missing" = true ]; then
+        fail "production build artifacts are missing and build tools are not installed. Run ./install.sh."
+    fi
+
+    warn "Production source is newer than the installed build, but build tools were pruned."
+    warn "Run ./install.sh before relying on this instance; starting the existing build now."
+}

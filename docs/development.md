@@ -8,16 +8,17 @@ VM deployment instructions intentionally agree on Node 24.
 ```bash
 nvm use                    # when nvm is installed
 ./install.sh --development # npm ci, type check, production build
-./run.sh                   # API :3001, Vite site :5173
+./run.sh dev               # API :3001, Vite site :5173
 ```
 
 The `--development` option keeps compilers, tests, and hot-reload tools.
 `./install.sh` without it prepares a production VM and prunes those packages.
 People visiting a deployed website require only a supported browser.
 
-Copy `.env.example` into the environment management mechanism used by your shell
-or service manager. The scripts do not source an `.env` file implicitly.
-Environment values intentionally win over Settings.
+Application configuration lives only in `~/.moneyinmotion/config.json` and is
+editable from Settings. The app creates the file on first start. Use a separate
+OS account or temporarily replace that file with an isolated configuration for
+development; restore it before starting the production instance.
 
 ## Development and production modes
 
@@ -26,24 +27,22 @@ separate financial models. Both use the same core domain package, Express API,
 parsers, filesystem layout, snapshots, and edit rules. The distinction keeps
 fast source-level tooling out of the smaller, safer runtime served to users.
 
-| Concern                | Development (`./run.sh`)                         | Production (`./run.sh prod`)                                  |
+| Concern                | Development (`./run.sh dev`)                     | Production (`./run.sh`, the default)                          |
 | ---------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
 | Primary purpose        | Implement and debug changes                      | Serve browser users reliably                                  |
-| Website server         | Vite on port 5173 with hot-module reload         | Express on `MIM_PORT`, default 3001                           |
+| Website server         | Vite on port 5173 with hot-module reload         | Express on the port in `config.json`, default 3001            |
 | API server             | Express on port 3001; Vite proxies `/api`        | Same Express process and origin as the website                |
 | Code form              | TypeScript/TSX transformed on demand             | Precompiled server and optimized browser assets               |
-| Build required first   | Core is built automatically when needed          | Yes; run `./build.sh` or `./install.sh`                       |
+| Build required first   | Core is built automatically when needed          | `run.sh` rebuilds stale output when build tools are installed |
 | Browser caching/assets | Developer-oriented source maps and rapid refresh | Hashed, minified production assets                            |
 | HTTP layout            | Vite proxy keeps browser requests same-origin    | Site and API are inherently same-origin                       |
 | Unexpected API errors  | Detailed message returned for diagnosis          | Internal details hidden from the browser and retained in logs |
 | Runtime dependencies   | Includes compilers, tests, and development tools | Can be pruned to production dependencies                      |
 
 Because both modes can write real statement and edit files, developers should
-use a dedicated test root instead of the production root, for example:
-
-```bash
-MIM_DATA_ROOT=/tmp/mim-development MIM_USERNAME=developer ./run.sh
-```
+use a dedicated test root instead of the production root. Set `dataRoot` and
+`username` to isolated values in `~/.moneyinmotion/config.json`, restart, and
+restore the production values before running the production instance again.
 
 ## Workspace commands
 
@@ -135,4 +134,4 @@ The C# solution, checked-in package binaries, local web host, and other legacy
 runtime files were removed from the current tree after the TypeScript behavior
 was established. Git history is the archive. Do not reintroduce generated
 `dist`, `coverage`, `.tsbuildinfo`, `node_modules`, private finance data, or a
-local `min_root` into commits.
+local `mim_root` into commits.

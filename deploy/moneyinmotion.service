@@ -9,7 +9,6 @@ Group=moneyinmotion
 WorkingDirectory=/opt/moneyinmotion
 Environment=NODE_ENV=production
 Environment=PATH=/usr/local/bin:/usr/bin
-EnvironmentFile=-/etc/moneyinmotion.env
 ExecStart=/usr/bin/env node packages/server/dist/index.js
 Restart=on-failure
 RestartSec=5

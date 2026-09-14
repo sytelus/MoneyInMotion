@@ -3,8 +3,8 @@
 # MoneyInMotion — Run Script
 #
 # Usage:
-#   ./run.sh         Start development mode (Vite + API server)
-#   ./run.sh prod    Start the production server (requires ./build.sh first)
+#   ./run.sh         Start the production server (default; builds if needed)
+#   ./run.sh dev     Start development mode (Vite + API server)
 # ============================================================================
 
 set -euo pipefail
@@ -16,7 +16,7 @@ ensure_project_root
 ensure_node_version
 ensure_deps_installed
 
-MODE="${1:-dev}"
+MODE="${1:-prod}"
 
 case "$MODE" in
     dev)
@@ -32,22 +32,18 @@ case "$MODE" in
         ;;
 
     prod)
-        if [ ! -f packages/core/dist/index.js ] \
-            || [ ! -f packages/server/dist/index.js ] \
-            || [ ! -f packages/web/dist/index.html ]; then
-            fail "production build artifacts are missing. Run ./build.sh first."
-        fi
+        ensure_production_built
 
         export NODE_ENV=production
 
         info "Starting production server..."
-        echo -e "  ${C_BOLD}Open this URL in your browser:${C_NC}  http://localhost:${MIM_PORT:-3001}"
+        echo -e "  ${C_BOLD}Open the URL printed by the server (configured in ~/.moneyinmotion/config.json).${C_NC}"
         echo ""
 
         exec node packages/server/dist/index.js
         ;;
 
     *)
-        fail "usage: ./run.sh [prod]"
+        fail "usage: ./run.sh [prod|dev]"
         ;;
 esac

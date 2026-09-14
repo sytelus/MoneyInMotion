@@ -29,7 +29,8 @@ dependency-free production smoke test.
   merge/void semantics, date and string helpers, merchant normalization,
   parent-child and generic matching, key counters, net totals, and aggregation.
 - Server tests cover each source parser, CSV ambiguity/recovery, parser
-  selection, recursive/case-insensitive file discovery, legacy snapshot codecs,
+  selection, top-level account discovery, recursive/case-insensitive statement
+  scanning, legacy snapshot codecs,
   cache load/replay/save, side-effect-free edit and rebuild failures,
   all-or-nothing rebuild behavior, folder path safety, persisted JSON shape
   validation, staging manifests, content deduplication, collision naming, and
@@ -47,7 +48,7 @@ percentage as a substitute for fixtures that represent real provider exports.
 
 The complete acceptance run on 2026-08-28 produced:
 
-- 51 passing test files and 613 passing tests;
+- 51 passing test files and 617 passing tests;
 - 76.96% statement, 66.90% branch, 73.05% function, and 78.00% line coverage;
 - a clean TypeScript build, ESLint run, and optimized Vite production build;
 - zero vulnerabilities in the most recent completed

@@ -184,7 +184,7 @@ describe('FileRepository', () => {
     expect(locations.map((location) => path.basename(location.address))).toEqual(['statement.csv']);
   });
 
-  it('fails discovery rather than silently omitting a corrupt child config', () => {
+  it('ignores nested AccountConfig files and keeps using the top-level account', () => {
     const parentDir = path.join(tempDir, 'Statements', 'Parent');
     const childDir = path.join(parentDir, 'Child');
     fs.mkdirSync(childDir, { recursive: true });
@@ -204,9 +204,11 @@ describe('FileRepository', () => {
     fs.writeFileSync(path.join(childDir, 'AccountConfig.json'), '{bad json');
     fs.writeFileSync(path.join(childDir, 'child.csv'), 'Date,Amount\n');
 
-    expect(() => new FileRepository(tempDir).getStatementLocations()).toThrow(
-      /Invalid account config "Parent\/Child\/AccountConfig.json"/i,
-    );
+    const locations = new FileRepository(tempDir).getStatementLocations();
+
+    expect(locations).toHaveLength(1);
+    expect(locations[0]?.portableAddress).toBe('Parent/Child/child.csv');
+    expect(locations[0]?.accountConfig?.accountInfo.id).toBe('parent');
   });
 
   it('scans subdirectories recursively', () => {

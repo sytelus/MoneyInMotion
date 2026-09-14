@@ -72,7 +72,7 @@ users, not because they are extension points.
 
 At startup the server:
 
-1. Resolves environment, persisted configuration, and defaults.
+1. Loads `~/.moneyinmotion/config.json`, creating explicit defaults on first start.
 2. Validates the absolute data root and safe single-segment username.
 3. Creates `Statements`, `staging`, and `Merged` beneath the active user path.
 4. Constructs one `FileRepository` and one `TransactionCache` for that user.
@@ -106,11 +106,12 @@ directory selection → manifest validation → stage and promote → full rebui
 
 Every received file is copied to a unique staging batch before classification.
 Paths are normalized and constrained beneath the batch, account mapping uses
-configured relative account directories, and identical content is detected per
-account with SHA-256. A nested path is rejected when that account is configured
-not to scan subfolders, preventing the upload flow from promoting a source the
-rebuild cannot see. New content is promoted using exclusive creation; name
-collisions receive a numbered suffix instead of overwriting a file.
+the configured top-level account directories, and identical content is detected
+per account with SHA-256. A statement subdirectory is rejected when that account
+is configured not to scan subfolders, preventing the upload flow from promoting
+a source the rebuild cannot see. New content is promoted using exclusive
+creation; name collisions receive a numbered suffix instead of overwriting a
+file.
 
 The rebuild constructs a new `Transactions` object off to the side, discovers
 statement inputs in deterministic order, parses all of them, runs parent-child

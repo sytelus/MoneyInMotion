@@ -50,16 +50,16 @@ describe('WelcomePage', () => {
     vi.clearAllMocks();
     getConfigMock.mockResolvedValue({
       port: 3001,
-      dataRoot: '/tmp/min_root',
+      dataRoot: '/tmp/mim_root',
       username: 'alex',
-      userDataPath: '/tmp/min_root/alex',
-      statementsDir: '/tmp/min_root/alex/Statements',
-      mergedDir: '/tmp/min_root/alex/Merged',
-      stagingDir: '/tmp/min_root/alex/staging',
+      userDataPath: '/tmp/mim_root/alex',
+      statementsDir: '/tmp/mim_root/alex/Statements',
+      mergedDir: '/tmp/mim_root/alex/Merged',
+      stagingDir: '/tmp/mim_root/alex/staging',
       activePort: 3001,
-      activeDataRoot: '/tmp/min_root',
+      activeDataRoot: '/tmp/mim_root',
       activeUsername: 'alex',
-      activeUserDataPath: '/tmp/min_root/alex',
+      activeUserDataPath: '/tmp/mim_root/alex',
       restartRequired: false,
     });
   });

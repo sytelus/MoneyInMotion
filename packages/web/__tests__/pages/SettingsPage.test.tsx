@@ -30,16 +30,16 @@ describe('SettingsPage', () => {
     vi.clearAllMocks();
     getConfigMock.mockResolvedValue({
       port: 3001,
-      dataRoot: '/tmp/min_root',
+      dataRoot: '/tmp/mim_root',
       username: 'alex',
-      userDataPath: '/tmp/min_root/alex',
+      userDataPath: '/tmp/mim_root/alex',
       statementsDir: '/tmp/mim-data/Statements',
       mergedDir: '/tmp/mim-data/Merged',
       stagingDir: '/tmp/mim-data/staging',
       activePort: 3001,
-      activeDataRoot: '/tmp/min_root',
+      activeDataRoot: '/tmp/mim_root',
       activeUsername: 'alex',
-      activeUserDataPath: '/tmp/min_root/alex',
+      activeUserDataPath: '/tmp/mim_root/alex',
       restartRequired: false,
     });
     useRebuildSnapshotMock.mockReturnValue({
@@ -55,16 +55,16 @@ describe('SettingsPage', () => {
   it('loads and saves the data root, username, and port', async () => {
     updateConfigMock.mockResolvedValue({
       port: 4010,
-      dataRoot: '/tmp/min_root-2',
+      dataRoot: '/tmp/mim_root-2',
       username: 'sam',
-      userDataPath: '/tmp/min_root-2/sam',
-      statementsDir: '/tmp/min_root-2/sam/Statements',
-      mergedDir: '/tmp/min_root-2/sam/Merged',
-      stagingDir: '/tmp/min_root-2/sam/staging',
+      userDataPath: '/tmp/mim_root-2/sam',
+      statementsDir: '/tmp/mim_root-2/sam/Statements',
+      mergedDir: '/tmp/mim_root-2/sam/Merged',
+      stagingDir: '/tmp/mim_root-2/sam/staging',
       activePort: 3001,
-      activeDataRoot: '/tmp/min_root',
+      activeDataRoot: '/tmp/mim_root',
       activeUsername: 'alex',
-      activeUserDataPath: '/tmp/min_root/alex',
+      activeUserDataPath: '/tmp/mim_root/alex',
       restartRequired: true,
     });
 
@@ -74,14 +74,14 @@ describe('SettingsPage', () => {
     const usernameInput = screen.getByLabelText('Active Username');
     const portInput = screen.getByLabelText('Server Port');
 
-    fireEvent.change(dataRootInput, { target: { value: '/tmp/min_root-2' } });
+    fireEvent.change(dataRootInput, { target: { value: '/tmp/mim_root-2' } });
     fireEvent.change(usernameInput, { target: { value: 'sam' } });
     fireEvent.change(portInput, { target: { value: '4010' } });
     fireEvent.click(screen.getByRole('button', { name: /Save Settings/i }));
 
     await waitFor(() => {
       expect(updateConfigMock).toHaveBeenCalledWith({
-        dataRoot: '/tmp/min_root-2',
+        dataRoot: '/tmp/mim_root-2',
         username: 'sam',
         port: 4010,
       });
@@ -95,29 +95,29 @@ describe('SettingsPage', () => {
   it('only sends dataRoot when the username and port are unchanged', async () => {
     updateConfigMock.mockResolvedValue({
       port: 3001,
-      dataRoot: '/tmp/min_root-2',
+      dataRoot: '/tmp/mim_root-2',
       username: 'alex',
-      userDataPath: '/tmp/min_root-2/alex',
-      statementsDir: '/tmp/min_root-2/alex/Statements',
-      mergedDir: '/tmp/min_root-2/alex/Merged',
-      stagingDir: '/tmp/min_root-2/alex/staging',
+      userDataPath: '/tmp/mim_root-2/alex',
+      statementsDir: '/tmp/mim_root-2/alex/Statements',
+      mergedDir: '/tmp/mim_root-2/alex/Merged',
+      stagingDir: '/tmp/mim_root-2/alex/staging',
       activePort: 3001,
-      activeDataRoot: '/tmp/min_root',
+      activeDataRoot: '/tmp/mim_root',
       activeUsername: 'alex',
-      activeUserDataPath: '/tmp/min_root/alex',
+      activeUserDataPath: '/tmp/mim_root/alex',
       restartRequired: true,
     });
 
     renderPage();
 
     fireEvent.change(await screen.findByLabelText('Data Root'), {
-      target: { value: '/tmp/min_root-2' },
+      target: { value: '/tmp/mim_root-2' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Save Settings/i }));
 
     await waitFor(() => {
       expect(updateConfigMock).toHaveBeenCalledWith({
-        dataRoot: '/tmp/min_root-2',
+        dataRoot: '/tmp/mim_root-2',
       });
     });
     expect(await screen.findByText(/Saved data root to the config file/i)).toBeInTheDocument();

@@ -22,8 +22,11 @@ if (!fs.existsSync(serverEntry) || !fs.existsSync(webEntry)) {
 }
 
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-production-smoke-'));
+const temporaryHome = path.join(temporaryRoot, 'home');
 const username = 'smoke-user';
 let activeChild = null;
+
+fs.mkdirSync(path.join(temporaryHome, '.moneyinmotion'), { recursive: true });
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -56,15 +59,18 @@ async function stopServer(child) {
 }
 
 async function startServer(port) {
+  fs.writeFileSync(
+    path.join(temporaryHome, '.moneyinmotion', 'config.json'),
+    JSON.stringify({ dataRoot: temporaryRoot, username, port }, null, 2),
+    'utf-8',
+  );
   const output = [];
   const child = spawn(process.execPath, [serverEntry], {
     cwd: repositoryRoot,
     env: {
       ...process.env,
       NODE_ENV: 'production',
-      MIM_DATA_ROOT: temporaryRoot,
-      MIM_USERNAME: username,
-      MIM_PORT: String(port),
+      HOME: temporaryHome,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

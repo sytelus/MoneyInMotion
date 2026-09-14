@@ -30,8 +30,9 @@ nothing and provides the expected folder names.
 ## Username-scoped storage root
 
 Data now lives beneath configurable `<data-root>/<username>`, defaulting to
-`~/min_root/<OS username>`. The legacy single `dataPath` setting is translated
-on read, and older `MONEYAI_*` environment aliases are accepted.
+`~/mim_root/<OS username>`. The legacy single `dataPath` setting is translated
+once inside `~/.moneyinmotion/config.json`; environment overrides are no longer
+accepted, leaving the file and Settings page as one source of truth.
 
 Justification: this preserves the requested and existing username-folder data
 layout without adding authentication or tenancy infrastructure. A running
@@ -67,8 +68,9 @@ dangerously wrong totals. Explicit failure is safer than silent omission.
 
 ## Account configuration is managed by the server
 
-The Accounts website lists recursive `AccountConfig.json` folders and supports
-create, edit, and conservative delete. Uploaded `AccountConfig.json` files are
+The Accounts website lists top-level `Statements/<account>/AccountConfig.json`
+folders and supports create, edit, and conservative delete. Uploaded
+`AccountConfig.json` files are
 staged but rejected; the account editor is authoritative. Canonical writes use
 camel case while legacy Pascal-case account-info input remains readable.
 
@@ -109,8 +111,9 @@ one amount).
 Numeric fields no longer accept a valid prefix followed by junk, date-only
 values reject impossible calendar dates, Etsy timestamps must be complete
 integers, and account-config booleans are not truthy-coerced from strings.
-Corrupt or unsupported nested account configs no longer inherit their parent's
-identity or disappear from the account list. Persisted transaction/edit graphs
+Account configs are recognized only at `Statements/<account>/AccountConfig.json`.
+Statement subdirectories may still be scanned, but nested configs are ignored
+instead of defining or overriding accounts. Persisted transaction/edit graphs
 are validated for field types, dates, hashes, dictionary keys, unique IDs, and
 metadata references before they enter calculations or rendering.
 Date-only statement fields are stored at UTC midnight so IDs and month

@@ -120,7 +120,7 @@ function findAccountForPath(
   accounts: DiscoveredAccountConfig[],
 ): DiscoveredAccountConfig | null {
   const lower = relativePath.toLowerCase();
-  // Prefer the most specific account directory in case configs are nested.
+  // Account configs are top-level; prefix matching also permits statement subfolders.
   return (
     [...accounts]
       .sort((left, right) => right.relativeDirectory.length - left.relativeDirectory.length)
@@ -196,6 +196,17 @@ export function stageAndPromoteFolder(
     );
   }
   const accountRelativePaths = stripPickerRoot(normalizedPaths, accounts);
+  const unmatchedPaths = accountRelativePaths.filter(
+    (relativePath) => findAccountForPath(relativePath, accounts) == null,
+  );
+  if (unmatchedPaths.length > 0) {
+    const expected = accounts.map((account) => account.relativeDirectory).sort();
+    throw new FolderUploadValidationError(
+      `No configured account folder matches: ${unmatchedPaths.map((item) => `"${item}"`).join(', ')}. ` +
+        `Expected account folders: ${expected.length > 0 ? expected.join(', ') : '(none configured)'}. ` +
+        'Fix the selected folder names and try again; no files were staged or imported.',
+    );
+  }
   const batchId = createBatchId();
   const batchDir = path.join(config.stagingDir, batchId);
   const stagedFilesDir = path.join(batchDir, 'files');

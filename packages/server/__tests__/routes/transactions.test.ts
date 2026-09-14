@@ -346,7 +346,7 @@ describe('accounts routes', () => {
     expect(res.body.error).toContain('corrupt-account/AccountConfig.json');
   });
 
-  it('POST /api/accounts rejects a duplicate logical ID in a nested folder', async () => {
+  it('POST /api/accounts ignores non-top-level AccountConfig files', async () => {
     const existingDir = writeAccountConfig(tempDir, 'group/existing', {
       title: 'Existing',
     });
@@ -376,8 +376,11 @@ describe('accounts routes', () => {
         scanSubFolders: true,
       });
 
-    expect(res.status).toBe(409);
-    expect(res.body.error).toContain('already exists');
+    expect(res.status).toBe(201);
+    expect(res.body.config.accountInfo.id).toBe('EXISTING');
+    expect(fs.existsSync(path.join(tempDir, 'Statements', 'EXISTING', 'AccountConfig.json'))).toBe(
+      true,
+    );
   });
 
   it('POST /api/accounts derives requiresParent from the account type', async () => {

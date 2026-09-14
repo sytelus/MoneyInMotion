@@ -245,4 +245,32 @@ describe('AccountsPage', () => {
     ]);
     expect(screen.getByText(/1 file ready from exports/i)).toBeInTheDocument();
   });
+
+  it('blocks misspelled account folders before any upload starts', async () => {
+    const mutate = vi.fn();
+    useUploadStatementFolderMock.mockReturnValue({
+      mutate,
+      reset: vi.fn(),
+      isPending: false,
+      data: null,
+      isError: false,
+      error: null,
+    });
+
+    renderPage();
+
+    const input = await screen.findByLabelText(/Choose statement folder/i);
+    const file = new File(['Date,Amount\n'], 'statement.csv', { type: 'text/csv' });
+    Object.defineProperty(file, 'webkitRelativePath', {
+      value: 'exports/acct-cheking/statement.csv',
+    });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(screen.getByText(/Fix the selected folder names before uploading/i)).toBeInTheDocument();
+    expect(screen.getByText(/acct-cheking\/statement.csv/i)).toBeInTheDocument();
+    expect(screen.getByText(/No files have been uploaded/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Upload & build snapshot/i })).toBeDisabled();
+    expect(mutate).not.toHaveBeenCalled();
+  });
 });

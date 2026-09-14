@@ -42,13 +42,14 @@ fi
 echo ""
 echo -e "${C_BOLD}MoneyInMotion server installation is ready.${C_NC}"
 echo ""
-echo "  Production:  ./run.sh prod            (http://localhost:3001)"
+echo "  Production:  ./run.sh                 (http://localhost:3001)"
 if [ "$install_mode" = "--development" ]; then
-    echo "  Development: ./run.sh                 (http://localhost:5173)"
+    echo "  Development: ./run.sh dev             (http://localhost:5173)"
     echo "  Tests:       npm test"
 else
     echo "  Development: ./install.sh --development"
 fi
-echo "  Data root:   ~/min_root/<username>     (configurable in Settings)"
+echo "  Config:      ~/.moneyinmotion/config.json"
+echo "  Data root:   ~/mim_root/<username>     (configurable in Settings)"
 echo ""
 echo "Remote browser users only need the production URL; no local software is required."

@@ -1,8 +1,8 @@
 /**
  * File repository, ported from C# FileRepository.
  *
- * Scans the Statements directory for AccountConfig.json files and
- * lists statement files matching configured file filters.
+ * Loads one AccountConfig.json from each top-level account folder and lists
+ * matching statement files, optionally recursing within that account.
  *
  * @module
  */
@@ -11,10 +11,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AccountConfig } from '@moneyinmotion/core';
 import { FileLocation } from './file-location.js';
-import { decodeAccountConfig } from './account-config-codec.js';
 import {
   ACCOUNT_CONFIG_FILE_NAME,
-  InvalidAccountConfigError,
+  discoverAccountConfigs,
   matchesFileFilters,
 } from './account-config-repository.js';
 
@@ -44,91 +43,50 @@ export class FileRepository {
     return path.join(this.mergedFolderPath, DEFAULT_TRANSACTION_EDITS_FILE_NAME);
   }
 
-  /**
-   * Scan the Statements directory tree for statement file locations.
-   *
-   * Recursively walks from `startPath` (default: import folder),
-   * loading AccountConfig.json when found, and yielding FileLocation
-   * objects for each matching statement file.
-   *
-   * @param startPath           - The directory to start scanning from.
-   * @param parentAccountConfig - The parent account config (inherited).
-   * @returns An array of FileLocation objects for matching files.
-   */
-  getStatementLocations(
-    startPath?: string,
-    parentAccountConfig?: AccountConfig | null,
-    portableRootPath?: string,
-  ): FileLocation[] {
-    const dirPath = startPath ?? this.importFolderPath;
-    const rootPath = portableRootPath ?? dirPath;
-
-    if (!fs.existsSync(dirPath)) {
-      return [];
-    }
-
+  private scanAccountDirectory(dirPath: string, accountConfig: AccountConfig): FileLocation[] {
     const results: FileLocation[] = [];
-
-    // Try to load AccountConfig.json from this directory
-    const accountConfigPath = path.join(dirPath, ACCOUNT_CONFIG_FILE_NAME);
-    let accountConfig: AccountConfig | null = parentAccountConfig ?? null;
-
-    if (fs.existsSync(accountConfigPath)) {
-      try {
-        const configJson = fs.readFileSync(accountConfigPath, 'utf-8');
-        accountConfig = decodeAccountConfig(JSON.parse(configJson));
-      } catch (err) {
-        // A broken child config must neither inherit its parent's account
-        // identity nor disappear from a rebuild. Abort discovery so callers
-        // can keep the previous known-good snapshot and surface the problem.
-        const portableConfigPath = path
-          .relative(this.importFolderPath, accountConfigPath)
-          .split(path.sep)
-          .join('/');
-        const message = (err instanceof Error ? err.message : String(err))
-          .split(accountConfigPath)
-          .join(portableConfigPath);
-        throw new InvalidAccountConfigError(portableConfigPath, message, err);
-      }
-    }
-
     const entries = fs
       .readdirSync(dirPath, { withFileTypes: true })
       .sort((left, right) => left.name.localeCompare(right.name));
 
-    // If we have a config, enumerate matching files
-    if (accountConfig) {
-      for (const entry of entries) {
-        if (
-          !entry.isFile() ||
-          entry.name === ACCOUNT_CONFIG_FILE_NAME ||
-          !matchesFileFilters(entry.name, accountConfig.fileFilters)
-        ) {
-          continue;
-        }
-
-        const fullPath = path.join(dirPath, entry.name);
-        const relativePath = path.relative(rootPath, fullPath);
-        results.push(
-          new FileLocation(rootPath, relativePath, {
-            accountConfig,
-            isImportInfo: true,
-          }),
-        );
+    for (const entry of entries) {
+      if (
+        !entry.isFile() ||
+        entry.name === ACCOUNT_CONFIG_FILE_NAME ||
+        !matchesFileFilters(entry.name, accountConfig.fileFilters)
+      ) {
+        continue;
       }
+
+      const fullPath = path.join(dirPath, entry.name);
+      const relativePath = path.relative(this.importFolderPath, fullPath);
+      results.push(
+        new FileLocation(this.importFolderPath, relativePath, {
+          accountConfig,
+          isImportInfo: true,
+        }),
+      );
     }
 
-    // Recurse into subdirectories if configured or no config
-    if (!accountConfig || accountConfig.scanSubFolders) {
+    if (accountConfig.scanSubFolders) {
       for (const entry of entries) {
         if (entry.isDirectory()) {
-          const fullPath = path.join(dirPath, entry.name);
-          results.push(...this.getStatementLocations(fullPath, accountConfig, rootPath));
+          results.push(...this.scanAccountDirectory(path.join(dirPath, entry.name), accountConfig));
         }
       }
     }
-
     return results;
+  }
+
+  /**
+   * Scan statements for top-level accounts. Each account config must be at
+   * `Statements/<account>/AccountConfig.json`; statement subfolders may still
+   * be scanned recursively according to that account's `scanSubFolders` flag.
+   */
+  getStatementLocations(): FileLocation[] {
+    return discoverAccountConfigs(this.importFolderPath).flatMap((account) =>
+      this.scanAccountDirectory(account.accountDir, account.config),
+    );
   }
 
   /**

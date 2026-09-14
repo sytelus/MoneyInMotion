@@ -26,9 +26,48 @@ interface StatementFolderUploadProps {
   accounts: AccountSummary[];
 }
 
+interface FolderPreflight {
+  selectedFolders: string[];
+  unmatchedPaths: string[];
+}
+
 function relativePathFor(file: File): string {
   const candidate = file.webkitRelativePath || file.name;
   return candidate.replaceAll('\\', '/');
+}
+
+function preflightFolder(items: FolderUploadItem[], accounts: AccountSummary[]): FolderPreflight {
+  const paths = items.map((item) => item.relativePath.replaceAll('\\', '/'));
+  const splitPaths = paths.map((item) => item.split('/'));
+  const first = splitPaths[0]?.[0];
+  const accountDirectories = accounts.map((account) => account.relativeDirectory);
+  const firstIsAccount = accountDirectories.some(
+    (directory) => directory.split('/')[0]?.toLowerCase() === first?.toLowerCase(),
+  );
+  const hasSharedPickerRoot =
+    first != null &&
+    !firstIsAccount &&
+    splitPaths.every((parts) => parts[0]?.toLowerCase() === first.toLowerCase());
+  const accountPaths = hasSharedPickerRoot
+    ? splitPaths.map((parts) => parts.slice(1).join('/'))
+    : paths;
+  const sortedAccounts = [...accountDirectories].sort((left, right) => right.length - left.length);
+  const selectedFolders = new Set<string>();
+  const unmatchedPaths: string[] = [];
+
+  for (const filePath of accountPaths) {
+    const lowerPath = filePath.toLowerCase();
+    const match = sortedAccounts.find((directory) =>
+      lowerPath.startsWith(`${directory.toLowerCase()}/`),
+    );
+    if (match) selectedFolders.add(match);
+    else unmatchedPaths.push(filePath);
+  }
+
+  return {
+    selectedFolders: [...selectedFolders].sort(),
+    unmatchedPaths: [...new Set(unmatchedPaths)].sort(),
+  };
 }
 
 export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ accounts }) => {
@@ -37,15 +76,8 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
   const upload = useUploadStatementFolder();
 
   const selectedRoot = useMemo(() => items[0]?.relativePath.split('/')[0] ?? null, [items]);
-  const selectedAccountFolders = useMemo(() => {
-    const folders = new Set<string>();
-    for (const item of items) {
-      const parts = item.relativePath.split('/');
-      const accountFolder = parts.length > 2 ? parts[1] : parts[0];
-      if (accountFolder) folders.add(accountFolder);
-    }
-    return [...folders].sort();
-  }, [items]);
+  const folderPreflight = useMemo(() => preflightFolder(items, accounts), [items, accounts]);
+  const folderNamesValid = items.length > 0 && folderPreflight.unmatchedPaths.length === 0;
 
   const handleFolderSelected = (fileList: FileList | null) => {
     upload.reset();
@@ -96,7 +128,7 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
                 type="button"
                 size="lg"
                 variant="outline"
-                disabled={upload.isPending}
+                disabled={upload.isPending || !folderNamesValid}
                 onClick={() => upload.mutate(items)}
               >
                 {upload.isPending ? (
@@ -125,10 +157,26 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
                 {items.length} file{items.length === 1 ? '' : 's'} ready
                 {selectedRoot ? ` from ${selectedRoot}` : ''}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Detected folders: {selectedAccountFolders.join(', ') || 'none'}. Nothing is sent
-                until you choose “Upload & build snapshot.”
-              </p>
+              {folderNamesValid ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Matched account folders: {folderPreflight.selectedFolders.join(', ')}. Nothing is
+                  sent until you choose “Upload & build snapshot.”
+                </p>
+              ) : (
+                <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive">
+                  <p className="font-semibold">Fix the selected folder names before uploading.</p>
+                  <p className="mt-1 text-xs">
+                    These paths do not match a configured account folder:{' '}
+                    {folderPreflight.unmatchedPaths.join(', ')}
+                  </p>
+                  <p className="mt-1 text-xs">
+                    Expected:{' '}
+                    {accounts.map((account) => account.relativeDirectory).join(', ') ||
+                      'add an account first'}
+                    . No files have been uploaded.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -212,6 +260,52 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
               Start another upload
             </Button>
           </div>
+
+          <div
+            className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4"
+            aria-label="Import statistics"
+          >
+            <div className="rounded-lg border border-current/15 bg-background/40 p-3">
+              <p className="text-2xl font-bold">{result.staging.files.length}</p>
+              <p className="text-xs opacity-75">Files processed</p>
+            </div>
+            <div className="rounded-lg border border-current/15 bg-background/40 p-3">
+              <p className="text-2xl font-bold">{result.staging.promotedCount}</p>
+              <p className="text-xs opacity-75">New files</p>
+            </div>
+            <div className="rounded-lg border border-current/15 bg-background/40 p-3">
+              <p className="text-2xl font-bold">{result.staging.duplicateCount}</p>
+              <p className="text-xs opacity-75">Duplicates</p>
+            </div>
+            <div className="rounded-lg border border-current/15 bg-background/40 p-3">
+              <p className="text-2xl font-bold">{result.staging.rejectedCount}</p>
+              <p className="text-xs opacity-75">Rejected</p>
+            </div>
+          </div>
+
+          <details className="mt-3 rounded-lg border border-current/15 bg-background/40 p-3 text-xs">
+            <summary className="cursor-pointer font-semibold">Review every file result</summary>
+            <ul className="mt-2 space-y-2">
+              {result.staging.files.map((file) => (
+                <li key={file.relativePath}>
+                  <span className="font-semibold uppercase">{file.status}</span>{' '}
+                  <code>{file.relativePath}</code> — {file.message}
+                  {file.destinationPath && (
+                    <>
+                      {' '}
+                      Destination: <code>{file.destinationPath}</code>.
+                    </>
+                  )}
+                  {file.duplicateOf && (
+                    <>
+                      {' '}
+                      Existing file: <code>{file.duplicateOf}</code>.
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
 
           {(result.staging.rejectedCount > 0 ||
             rebuildFailed ||

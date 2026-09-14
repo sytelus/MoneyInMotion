@@ -22,7 +22,7 @@ Never commit or modify real reference financial data. In particular,
 git clone https://github.com/sytelus/MoneyInMotion.git
 cd MoneyInMotion
 ./install.sh --development
-./run.sh
+./run.sh dev
 ```
 
 Node.js 24 or newer is required. Use npm workspaces and keep

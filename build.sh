@@ -51,6 +51,6 @@ echo -e "${C_BOLD}============================================================${
 echo -e "${C_BOLD}  Build complete!${C_NC}"
 echo -e "${C_BOLD}============================================================${C_NC}"
 echo ""
-echo -e "  ${C_BOLD}Start in production mode:${C_NC}  ./run.sh prod"
-echo -e "  ${C_BOLD}Start in development mode:${C_NC} ./run.sh"
+echo -e "  ${C_BOLD}Start in production mode:${C_NC}  ./run.sh"
+echo -e "  ${C_BOLD}Start in development mode:${C_NC} ./run.sh dev"
 echo ""

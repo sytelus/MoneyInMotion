@@ -48,10 +48,9 @@ silently normalize a scope that claims exact matching.
 
 ## Account discovery and parsing
 
-- `AccountConfig.json` starts or overrides an account context in the recursive
-  Statements tree.
-- A configured account may scan nested folders; a disabled setting stops
-  inherited traversal beneath that directory.
+- `Statements/<account>/AccountConfig.json` defines one top-level account.
+- A configured account may scan statement subfolders; a disabled setting stops
+  traversal beneath that account directory. Nested config files are ignored.
 - File filters are case-insensitive to preserve Windows-created data behavior
   on Linux servers.
 - Institution name, account type, and content type choose the parser. Unknown

@@ -2,11 +2,12 @@
 
 ## Storage contract
 
-`MIM_DATA_ROOT` is the parent of username folders. The default is `~/min_root`;
-the active username defaults to the server operating-system user.
+The `dataRoot` value in `~/.moneyinmotion/config.json` is the parent of username
+folders. The default is `~/mim_root`; the active username defaults to the server
+operating-system user.
 
 ```text
-~/min_root/
+~/mim_root/
 └── shitals/
     ├── Statements/
     │   ├── amex/
@@ -31,10 +32,10 @@ and do not install MiM.
 
 ### Statements
 
-Every directory containing `AccountConfig.json` is an account. Discovery is
-recursive and deterministic, so nested organizational folders are allowed. The
-directory path relative to `Statements` is the upload identity shown in the
-Accounts screen. An account config contains:
+Each immediate child directory containing `AccountConfig.json` is an account:
+`Statements/<account>/AccountConfig.json`. Account discovery does not search
+deeper directories for additional configs. The top-level account folder is the
+upload identity shown in the Accounts screen. An account config contains:
 
 - stable account ID;
 - display title and institution/parser name;
@@ -50,9 +51,9 @@ the ID is locked because it participates in stable transaction identity.
 Order-history account types always require a financial parent; the server
 derives that invariant rather than trusting a contradictory browser value.
 Only Amazon and Etsy order-history parsers are currently implemented, and such
-accounts require at least one parent-charge match tag. A corrupt or unsupported
-nested config is reported and never inherits the parent account's identity,
-preventing its files from being assigned to the wrong account.
+accounts require at least one parent-charge match tag. Subdirectories inside an
+account may contain statement files but do not define another account; any
+`AccountConfig.json` below the account root is ignored.
 
 Deleting an account through the website removes its config only. The directory
 is removed only when it is empty; raw statements are never recursively deleted.
@@ -94,8 +95,13 @@ MyStatements/
 
 If every path shares `MyStatements` and that is not an account directory, the
 server removes that first component. It then matches `amex` and `amazon`
-case-insensitively to configured relative account directories. More-specific
-nested account directories win.
+case-insensitively to configured top-level account directories.
+
+Before upload, the website checks every selected relative path against the
+configured account directories. An unknown or misspelled folder disables the
+upload action and names the paths to fix, so no file bytes are sent. The server
+repeats this check before creating a staging batch or promoting any file, making
+the operation all-or-nothing with respect to account-folder recognition.
 
 The server rejects the request before creating a batch if paths are missing,
 duplicated, absolute, empty, contain dot segments, contain NULs, or could escape

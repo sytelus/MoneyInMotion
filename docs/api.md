@@ -53,9 +53,9 @@ does not rebind a running repository or listener.
 
 ### `GET /api/accounts`
 
-Returns recursively discovered account configs with transaction count, most
-recent imported audit date, statement-file presence, and the relative directory
-expected in browser uploads.
+Returns account configs found exactly at `Statements/<account>/AccountConfig.json`,
+with transaction count, most recent imported audit date, statement-file
+presence, and the top-level directory expected in browser uploads.
 
 If any discovered `AccountConfig.json` is malformed or unsupported, discovery
 returns 422 with its path instead of returning an incomplete account list.
@@ -67,8 +67,8 @@ is an `AccountConfig` with `accountInfo`, `fileFilters`, and `scanSubFolders`.
 Account types are restricted to the supported financial and order-history
 types. Order-history configuration is currently restricted to Amazon or Etsy
 and requires at least one parent-charge match tag. File filters support `*`,
-`*.extension`, or one exact filename. Returns 409 if a directory or recursively
-discovered account already has the logical ID; ID comparison is
+`*.extension`, or one exact filename. Returns 409 if a top-level account
+directory or discovered account already has the logical ID; ID comparison is
 case-insensitive.
 
 ### `PUT /api/accounts/:id`
@@ -116,8 +116,12 @@ Multipart fields:
 - `relativePaths`: a JSON string array positional to `files`.
 
 Each file is limited to 20 MiB and the request to 100 MiB; size-limit failures
-return 413. Files below a nested account path are staged but rejected when that
-account has disabled subfolder scanning. The response has two sections:
+return 413. The website validates all selected paths against the account-folder
+list before sending file bytes. The server repeats account-folder validation
+before staging or promotion; an unknown or misspelled folder rejects the whole
+request with no filesystem changes. Files in a subdirectory beneath a valid
+top-level account are staged but rejected when that account has disabled
+subfolder scanning. The response has two sections:
 
 ```json
 {
@@ -146,6 +150,10 @@ account has disabled subfolder scanning. The response has two sections:
 A 201 response means staging/promotion was processed; callers must still check
 `rebuild.committed`. If it is false, the response lists parse failures and the
 last known-good snapshot remains authoritative.
+
+The Accounts page presents promoted, duplicate, and rejected counts after every
+processed import, plus an expandable result for every file showing its decision,
+message, and destination or existing duplicate where applicable.
 
 `migratedEditTargets` counts legacy exact-ID rule parameters safely retargeted
 to one uniquely equivalent rebuilt transaction. `unresolvedEditTargets` counts

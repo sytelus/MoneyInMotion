@@ -40,7 +40,7 @@ interface PersistedConfig {
 
 const CONFIG_DIR = path.join(os.homedir(), '.moneyinmotion');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
-const DEFAULT_DATA_ROOT = path.join(os.homedir(), 'min_root');
+const DEFAULT_DATA_ROOT = path.join(os.homedir(), 'mim_root');
 const DEFAULT_PORT = 3001;
 
 /** Restrict usernames to a single safe path segment. */
@@ -79,7 +79,7 @@ export function buildConfig(dataRoot: string, username: string, port: number): S
   };
 }
 
-/** Parse an environment or persisted port without accepting partial numbers. */
+/** Parse a persisted or submitted port without accepting partial numbers. */
 export function parseConfiguredPort(value: unknown): number | null {
   const parsed =
     typeof value === 'number'
@@ -91,13 +91,13 @@ export function parseConfiguredPort(value: unknown): number | null {
   return Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535 ? parsed : null;
 }
 
-function loadPersistedConfig(): PersistedConfig {
-  if (!fs.existsSync(CONFIG_FILE)) {
+function loadPersistedConfig(configFile = CONFIG_FILE): PersistedConfig {
+  if (!fs.existsSync(configFile)) {
     return {};
   }
 
   try {
-    const parsed = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')) as unknown;
+    const parsed = JSON.parse(fs.readFileSync(configFile, 'utf-8')) as unknown;
     if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new Error('the root value must be a JSON object');
     }
@@ -119,9 +119,9 @@ function loadPersistedConfig(): PersistedConfig {
     }
     return config;
   } catch (err) {
-    const backupPath = `${CONFIG_FILE}.corrupt-${Date.now()}`;
+    const backupPath = `${configFile}.corrupt-${Date.now()}`;
     try {
-      fs.renameSync(CONFIG_FILE, backupPath);
+      fs.renameSync(configFile, backupPath);
       console.error(
         `MoneyInMotion config is malformed (${err instanceof Error ? err.message : String(err)}). ` +
           `Moved it to backup "${path.basename(backupPath)}" and falling back to defaults.`,
@@ -157,39 +157,43 @@ function migrateLegacyDataPath(fileConfig: PersistedConfig): {
 }
 
 /**
- * Load configuration with priority: environment, config file, defaults.
- *
- * Environment variables:
- * - `MIM_DATA_ROOT` (preferred) or `MONEYAI_DATA_ROOT`
- * - `MIM_USERNAME` (preferred) or `MONEYAI_USERNAME`
- * - `MIM_PORT` (preferred) or `MONEYAI_PORT`
+ * Load the single canonical configuration file, creating it with safe defaults
+ * on first start. A legacy `dataPath` inside that file is migrated once to the
+ * current root + username shape; process environment variables are deliberately
+ * ignored so Settings and the file can never disagree about the source of truth.
  */
-export function loadConfig(options: { ensureDirectories?: boolean } = {}): ServerConfig {
-  const fileConfig = loadPersistedConfig();
+export function loadConfig(
+  options: { ensureDirectories?: boolean; configFile?: string } = {},
+): ServerConfig {
+  const configFile = options.configFile ?? CONFIG_FILE;
+  const fileConfig = loadPersistedConfig(configFile);
   const migrated = migrateLegacyDataPath(fileConfig);
 
-  const dataRoot =
-    process.env['MIM_DATA_ROOT'] ??
-    process.env['MONEYAI_DATA_ROOT'] ??
-    fileConfig.dataRoot ??
-    migrated.dataRoot ??
-    DEFAULT_DATA_ROOT;
-  const username =
-    process.env['MIM_USERNAME'] ??
-    process.env['MONEYAI_USERNAME'] ??
-    fileConfig.username ??
-    migrated.username ??
-    os.userInfo().username;
-  const environmentPort = process.env['MIM_PORT'] ?? process.env['MONEYAI_PORT'];
-  const port =
-    environmentPort == null
-      ? (parseConfiguredPort(fileConfig.port) ?? DEFAULT_PORT)
-      : parseConfiguredPort(environmentPort);
-  if (port == null) {
-    throw new Error('MIM_PORT must be an integer between 1 and 65535.');
-  }
+  const dataRoot = fileConfig.dataRoot ?? migrated.dataRoot ?? DEFAULT_DATA_ROOT;
+  const username = fileConfig.username ?? migrated.username ?? os.userInfo().username;
+  const port = parseConfiguredPort(fileConfig.port) ?? DEFAULT_PORT;
 
   const config = buildConfig(dataRoot, username, port);
+
+  // Materialize defaults and complete one-time legacy migration so every
+  // subsequent read has exactly one explicit, human-editable source.
+  if (
+    !fs.existsSync(configFile) ||
+    fileConfig.dataRoot !== config.dataRoot ||
+    fileConfig.username !== config.username ||
+    fileConfig.port !== config.port ||
+    fileConfig.dataPath != null
+  ) {
+    ensureDirExists(path.dirname(configFile));
+    writeTextFileAtomically(
+      configFile,
+      JSON.stringify(
+        { dataRoot: config.dataRoot, username: config.username, port: config.port },
+        null,
+        2,
+      ),
+    );
+  }
 
   if (options.ensureDirectories !== false) {
     // Startup creates the complete storage skeleton. Read-only config API

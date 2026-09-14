@@ -1,7 +1,7 @@
 /**
  * Accounts API routes.
  *
- * GET    /api/accounts      - scan statementsDir for AccountConfig.json files
+ * GET    /api/accounts      - scan top-level statement folders for AccountConfig.json
  * POST   /api/accounts      - create account folder + AccountConfig.json
  * PUT    /api/accounts/:id  - update an existing account config
  * DELETE /api/accounts/:id  - remove an account config without touching raw statements

@@ -14,7 +14,7 @@ import { decodeAccountConfig } from './account-config-codec.js';
 
 export const ACCOUNT_CONFIG_FILE_NAME = 'AccountConfig.json';
 
-/** A discovered AccountConfig cannot be trusted or safely ignored. */
+/** A top-level AccountConfig cannot be trusted or safely ignored. */
 export class InvalidAccountConfigError extends Error {
   readonly status = 422;
 
@@ -36,22 +36,27 @@ export interface DiscoveredAccountConfig {
   relativeDirectory: string;
 }
 
-export function discoverAccountConfigs(
-  statementsDir: string,
-  dirPath: string = statementsDir,
-): DiscoveredAccountConfig[] {
-  if (!fs.existsSync(dirPath)) return [];
-
+/** Discover only `Statements/<account>/AccountConfig.json`. */
+export function discoverAccountConfigs(statementsDir: string): DiscoveredAccountConfig[] {
+  if (!fs.existsSync(statementsDir)) return [];
   const results: DiscoveredAccountConfig[] = [];
-  const configPath = path.join(dirPath, ACCOUNT_CONFIG_FILE_NAME);
-  if (fs.existsSync(configPath)) {
+  const entries = fs
+    .readdirSync(statementsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  for (const entry of entries) {
+    const accountDir = path.join(statementsDir, entry.name);
+    const configPath = path.join(accountDir, ACCOUNT_CONFIG_FILE_NAME);
+    if (!fs.existsSync(configPath)) continue;
+
     try {
       const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as unknown;
       results.push({
         config: decodeAccountConfig(raw),
         configPath,
-        accountDir: dirPath,
-        relativeDirectory: path.relative(statementsDir, dirPath).split(path.sep).join('/'),
+        accountDir,
+        relativeDirectory: entry.name,
       });
     } catch (err) {
       const portableConfigPath = path.relative(statementsDir, configPath).split(path.sep).join('/');
@@ -60,14 +65,6 @@ export function discoverAccountConfigs(
         .join(portableConfigPath);
       throw new InvalidAccountConfigError(portableConfigPath, message, err);
     }
-  }
-
-  const entries = fs
-    .readdirSync(dirPath, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .sort((left, right) => left.name.localeCompare(right.name));
-  for (const entry of entries) {
-    results.push(...discoverAccountConfigs(statementsDir, path.join(dirPath, entry.name)));
   }
   return results;
 }
@@ -97,7 +94,7 @@ export function matchesFileFilters(fileName: string, fileFilters: readonly strin
   });
 }
 
-/** Return true when an account tree contains input beyond its config file. */
+/** Return true when an account folder contains input beyond its root config file. */
 export function accountDirectoryHasStatements(dirPath: string): boolean {
   if (!fs.existsSync(dirPath)) return false;
   const stack = [dirPath];

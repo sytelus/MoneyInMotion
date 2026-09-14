@@ -42,7 +42,7 @@ describe('stageAndPromoteFolder', () => {
     return config;
   }
 
-  it('stages all files, promotes new content, and records duplicates/rejections', () => {
+  it('stages all matched files, promotes new content, and records duplicates/rejections', () => {
     const config = arrangeAccount();
     const existingContent = Buffer.from('Date,Description,Amount\n01/01/2024,Existing,-1\n');
     fs.writeFileSync(path.join(config.statementsDir, 'Amex', 'existing.csv'), existingContent);
@@ -56,19 +56,17 @@ describe('stageAndPromoteFolder', () => {
           buffer: existingContent,
         },
         { buffer: Buffer.from('no') },
-        { buffer: newContent },
       ],
       [
         'browser-export/Amex/new.csv',
         'browser-export/Amex/same-again.csv',
         'browser-export/Amex/notes.txt',
-        'browser-export/Unknown/orphan.csv',
       ],
     );
 
     expect(result.promotedCount).toBe(1);
     expect(result.duplicateCount).toBe(1);
-    expect(result.rejectedCount).toBe(2);
+    expect(result.rejectedCount).toBe(1);
     expect(fs.readFileSync(path.join(config.statementsDir, 'Amex', 'new.csv'), 'utf-8')).toBe(
       newContent.toString(),
     );
@@ -77,10 +75,26 @@ describe('stageAndPromoteFolder', () => {
     expect(fs.existsSync(manifestPath)).toBe(true);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     expect(manifest.batchId).toBe(result.batchId);
-    expect(manifest.files).toHaveLength(4);
+    expect(manifest.files).toHaveLength(3);
     expect(
       fs.existsSync(path.join(path.dirname(manifestPath), 'files', 'Amex', 'same-again.csv')),
     ).toBe(true);
+  });
+
+  it('rejects misspelled account folders before staging or promoting anything', () => {
+    const config = arrangeAccount();
+    const newContent = Buffer.from('Date,Description,Amount\n01/02/2024,New,-2\n');
+
+    expect(() =>
+      stageAndPromoteFolder(
+        config,
+        [{ buffer: newContent }, { buffer: newContent }],
+        ['browser-export/Amex/new.csv', 'browser-export/Amxe/orphan.csv'],
+      ),
+    ).toThrow(/No configured account folder matches.*Amxe\/orphan\.csv.*no files were staged/i);
+
+    expect(fs.readdirSync(config.stagingDir)).toHaveLength(0);
+    expect(fs.existsSync(path.join(config.statementsDir, 'Amex', 'new.csv'))).toBe(false);
   });
 
   it('keeps both files when a filename is reused for different content', () => {
