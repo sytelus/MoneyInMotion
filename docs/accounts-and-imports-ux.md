@@ -7,7 +7,8 @@ schema or claiming that a file receipt proves a successful rebuild.
 ## User tasks and navigation
 
 - **Accounts** creates and edits account configurations, searches/filters them,
-  inspects each account's snapshot records, and reconnects preserved folders.
+  inspects each account's snapshot records, duplicates settings into an editable
+  unsaved form, and reconnects preserved folders.
 - **Imports → Import statements** selects a folder, checks it locally, uploads
   eligible statement files, and explains the immediate rebuild result.
 - **Imports → Statement sources** searches the files referenced by the current
@@ -48,6 +49,11 @@ the stricter account-ID syntax.
 Editing configuration does not immediately rewrite the snapshot. The editor and
 saved result explain that a rebuild is needed to apply updated parser, matching,
 account title/type, scan, or file-filter settings to existing records.
+
+**Duplicate** copies the institution, account type, file filters, matching tags,
+and subfolder behavior into the Add Account form. It never saves immediately:
+the account ID is blank, the form says that nothing has been saved, and the user
+must review the copied values and explicitly create the new account.
 
 **Remove config** means removing `AccountConfig.json`, not erasing finances.
 Current snapshot records remain until rebuild; the next rebuild excludes that

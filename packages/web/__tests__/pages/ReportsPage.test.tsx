@@ -162,7 +162,8 @@ describe('Reports overview', () => {
     const refetch = vi.fn();
     useTransactionsMock.mockReturnValue({ error: new Error('Snapshot unavailable'), refetch });
     renderPage();
-    expect(screen.getByRole('alert')).toHaveTextContent('Snapshot unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent('Financial overview could not be loaded');
+    expect(screen.queryByText('Snapshot unavailable')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(refetch).toHaveBeenCalledOnce();
   });

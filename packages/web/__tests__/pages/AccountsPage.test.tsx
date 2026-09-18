@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AccountType } from '@moneyinmotion/core';
 import { AccountsPage } from '../../src/pages/AccountsPage.js';
@@ -17,6 +17,14 @@ const disconnectedFoldersMock = vi.fn();
 const reconnectAccountMock = vi.fn();
 
 vi.mock('../../src/api/imports.js', () => ({
+  ImportApiError: class ImportApiError extends Error {
+    constructor(
+      readonly status: number,
+      message: string,
+    ) {
+      super(message);
+    }
+  },
   getDisconnectedFolders: () => disconnectedFoldersMock(),
   reconnectAccount: (...args: unknown[]) => reconnectAccountMock(...args),
 }));
@@ -168,6 +176,88 @@ describe('AccountsPage', () => {
       );
     });
     expect(refetchMock).toHaveBeenCalled();
+  });
+
+  it('copies account settings into an editable unsaved duplicate', async () => {
+    const refetchMock = vi.fn().mockResolvedValue(undefined);
+    useAccountsMock.mockReturnValue({
+      data: [makeAccount()],
+      isLoading: false,
+      error: null,
+      refetch: refetchMock,
+    });
+    createAccountMock.mockResolvedValue(
+      makeAccount({
+        config: {
+          ...makeAccount().config,
+          accountInfo: {
+            ...makeAccount().config.accountInfo,
+            id: 'acct-checking-joint',
+            title: 'Joint Checking',
+          },
+        },
+      }),
+    );
+
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Duplicate' }));
+
+    expect(screen.getByRole('dialog', { name: 'Duplicate account settings' })).toBeInTheDocument();
+    expect(screen.getByText(/Settings copied — nothing has been saved/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Account ID')).toHaveValue('');
+    expect(screen.getByLabelText('Account Title')).toHaveValue('Checking');
+    expect(screen.getByLabelText('Institution')).toHaveValue('TestBank');
+    expect(screen.getByLabelText('Match Tags')).toHaveValue('TRANSFER');
+    expect(screen.getByLabelText('File Filters')).toHaveValue('*.csv');
+    expect(screen.getByLabelText(/Scan subfolders/i)).toBeChecked();
+    expect(createAccountMock).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Account ID'), {
+      target: { value: 'acct-checking-joint' },
+    });
+    fireEvent.change(screen.getByLabelText('Account Title'), {
+      target: { value: 'Joint Checking' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create duplicate account' }));
+
+    await waitFor(() =>
+      expect(createAccountMock).toHaveBeenCalledWith({
+        accountInfo: expect.objectContaining({
+          id: 'acct-checking-joint',
+          title: 'Joint Checking',
+          instituteName: 'TestBank',
+          type: AccountType.BankChecking,
+          interAccountNameTags: ['TRANSFER'],
+        }),
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      }),
+    );
+    expect(refetchMock).toHaveBeenCalled();
+    expect(await screen.findByText('Duplicate account created')).toBeInTheDocument();
+  });
+
+  it('explains a stale server without exposing an API error as account data', async () => {
+    disconnectedFoldersMock.mockRejectedValueOnce(new Error('API endpoint not found.'));
+    renderPage();
+
+    expect(
+      await screen.findByText('Restart MoneyInMotion to finish this update'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Disconnected-folder check unavailable/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/API endpoint not found/i)).not.toBeInTheDocument();
+    const reconnectCard = screen.getByText('Folders to reconnect').parentElement;
+    expect(reconnectCard).not.toBeNull();
+    expect(within(reconnectCard!).getByText('—')).toBeInTheDocument();
+
+    disconnectedFoldersMock.mockResolvedValueOnce([]);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(disconnectedFoldersMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Restart MoneyInMotion to finish this update'),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it('explains unsupported order-history settings before sending them', async () => {

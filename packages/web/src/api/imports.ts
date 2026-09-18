@@ -26,9 +26,20 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Request failed (${response.status}).`);
+    throw new ImportApiError(response.status, body.error ?? `Request failed (${response.status}).`);
   }
   return response.json() as Promise<T>;
+}
+
+/** Preserves HTTP status for useful recovery guidance without exposing raw API copy. */
+export class ImportApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ImportApiError';
+  }
 }
 
 export function getUploadHistory(filters: UploadHistoryFilters): Promise<UploadHistory> {

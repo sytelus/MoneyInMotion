@@ -5,11 +5,12 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Building2,
-  CheckCircle2,
+  Copy,
   FolderOpen,
   Link2,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   UploadCloud,
@@ -21,9 +22,14 @@ import { Input } from '../components/ui/input.js';
 import { Select } from '../components/ui/select.js';
 import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog.js';
 import { HelpHint } from '../components/ui/help-hint.js';
+import { Notice } from '../components/ui/notice.js';
 import { useAccounts } from '../api/hooks.js';
 import { deleteAccount, getConfig, type AccountSummary } from '../api/client.js';
-import { getDisconnectedFolders, type DisconnectedAccountFolder } from '../api/imports.js';
+import {
+  getDisconnectedFolders,
+  ImportApiError,
+  type DisconnectedAccountFolder,
+} from '../api/imports.js';
 import {
   AccountFormDialog,
   accountTypeLabels,
@@ -39,14 +45,31 @@ interface Feedback {
   rebuild: boolean;
 }
 
+interface FolderCheckFailure {
+  restartRequired: boolean;
+}
+
+function describeFolderCheckFailure(error: unknown): FolderCheckFailure {
+  const message = error instanceof Error ? error.message : '';
+  return {
+    restartRequired:
+      (error instanceof ImportApiError && error.status === 404) ||
+      /endpoint not found|not found/i.test(message),
+  };
+}
+
 export function AccountsPage() {
   const { data: accounts, isLoading, error, refetch } = useAccounts();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AccountSummary | null>(null);
+  const [duplicatingAccount, setDuplicatingAccount] = useState<AccountSummary | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<AccountSummary | null>(null);
   const [reconnectFolder, setReconnectFolder] = useState<string | null>(null);
   const [disconnected, setDisconnected] = useState<DisconnectedAccountFolder[]>([]);
-  const [folderError, setFolderError] = useState<string | null>(null);
+  const [folderCheckStatus, setFolderCheckStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading',
+  );
+  const [folderError, setFolderError] = useState<FolderCheckFailure | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [dataPath, setDataPath] = useState<string | null>(null);
@@ -55,6 +78,20 @@ export function AccountsPage() {
   const search = useDeferredValue(query);
   const [type, setType] = useState('all');
   const [status, setStatus] = useState('all');
+
+  const retryDisconnectedFolders = () => {
+    setFolderCheckStatus('loading');
+    setFolderError(null);
+    getDisconnectedFolders()
+      .then((folders) => {
+        setDisconnected(folders);
+        setFolderCheckStatus('ready');
+      })
+      .catch((err: unknown) => {
+        setFolderError(describeFolderCheckFailure(err));
+        setFolderCheckStatus('error');
+      });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -68,13 +105,14 @@ export function AccountsPage() {
         if (!cancelled) {
           setDisconnected(folders);
           setFolderError(null);
+          setFolderCheckStatus('ready');
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled)
-          setFolderError(
-            err instanceof Error ? err.message : 'Could not check disconnected folders.',
-          );
+        if (!cancelled) {
+          setFolderError(describeFolderCheckFailure(err));
+          setFolderCheckStatus('error');
+        }
       });
     return () => {
       cancelled = true;
@@ -86,9 +124,11 @@ export function AccountsPage() {
     setFeedback({
       title: reconnectFolder
         ? 'Account folder reconnected'
-        : previousId == null
-          ? 'Account created'
-          : 'Account updated',
+        : duplicatingAccount
+          ? 'Duplicate account created'
+          : previousId == null
+            ? 'Account created'
+            : 'Account updated',
       description:
         previousId != null || savedAccount.hasStatementFiles
           ? 'Configuration is saved. Existing snapshot records are unchanged until you rebuild from stored statements in Imports.'
@@ -96,6 +136,7 @@ export function AccountsPage() {
       rebuild: previousId != null || savedAccount.hasStatementFiles,
     });
     setEditingAccount(null);
+    setDuplicatingAccount(null);
     setReconnectFolder(null);
   };
 
@@ -168,9 +209,21 @@ export function AccountsPage() {
 
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            { label: 'Configured accounts', value: accounts?.length ?? 0, Icon: Building2 },
-            { label: 'Folders with stored files', value: storedCount, Icon: FolderOpen },
-            { label: 'Folders to reconnect', value: disconnected.length, Icon: Link2 },
+            {
+              label: 'Configured accounts',
+              value: isLoading ? '—' : (accounts?.length ?? 0),
+              Icon: Building2,
+            },
+            {
+              label: 'Folders with stored files',
+              value: isLoading ? '—' : storedCount,
+              Icon: FolderOpen,
+            },
+            {
+              label: 'Folders to reconnect',
+              value: folderCheckStatus === 'ready' ? disconnected.length : '—',
+              Icon: Link2,
+            },
           ].map(({ label, value, Icon }) => (
             <div
               key={label}
@@ -180,7 +233,7 @@ export function AccountsPage() {
                 <Icon className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : value}</p>
+                <p className="text-2xl font-semibold tabular-nums">{value}</p>
                 <p className="text-xs text-muted-foreground">{label}</p>
               </div>
             </div>
@@ -188,34 +241,32 @@ export function AccountsPage() {
         </div>
 
         {feedback && (
-          <div
-            role="status"
-            className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100"
-          >
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-              <div className="flex-1">
-                <p className="font-semibold">{feedback.title}</p>
-                <p className="mt-1 text-sm">{feedback.description}</p>
+          <Notice
+            tone="success"
+            title={feedback.title}
+            actions={
+              <>
                 {feedback.rebuild && (
                   <Link
                     to="/imports"
-                    className="mt-2 inline-block text-sm font-semibold underline underline-offset-2"
+                    className={buttonClassName({ size: 'sm', variant: 'outline' })}
                   >
                     Open Imports to rebuild
                   </Link>
                 )}
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setFeedback(null)}
-                aria-label="Dismiss account message"
-              >
-                Dismiss
-              </Button>
-            </div>
-          </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setFeedback(null)}
+                  aria-label="Dismiss account message"
+                >
+                  Dismiss
+                </Button>
+              </>
+            }
+          >
+            {feedback.description}
+          </Notice>
         )}
 
         {disconnected.length > 0 && (
@@ -227,7 +278,7 @@ export function AccountsPage() {
               <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
               Folders without an account configuration
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-slate-800 dark:text-slate-100">
               These folders are excluded from rebuilds. Reconnect with the original account ID and
               parser settings to preserve transaction identities. No statement file will be deleted.
             </p>
@@ -241,7 +292,7 @@ export function AccountsPage() {
                     <code className="break-all text-sm">
                       Statements/{folder.relativeDirectory}/
                     </code>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-xs text-slate-700 dark:text-slate-200">
                       {folder.originalAccount
                         ? `Original account: ${folder.originalAccount.title || folder.originalAccount.id} (${folder.originalAccount.id})`
                         : folder.identityStatus === 'ambiguous'
@@ -264,10 +315,40 @@ export function AccountsPage() {
           </section>
         )}
         {folderError && (
-          <p role="alert" className="text-sm text-amber-800 dark:text-amber-200">
-            Disconnected-folder check unavailable: {folderError} Configured accounts are still shown
-            below.
-          </p>
+          <Notice
+            tone={folderError.restartRequired ? 'info' : 'warning'}
+            role="alert"
+            title={
+              folderError.restartRequired
+                ? 'Restart MoneyInMotion to finish this update'
+                : 'Account folder recovery could not be checked'
+            }
+            actions={
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={folderCheckStatus === 'loading'}
+                onClick={retryDisconnectedFolders}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {folderCheckStatus === 'loading' ? 'Checking…' : 'Try again'}
+              </Button>
+            }
+          >
+            {folderError.restartRequired ? (
+              <p>
+                Your configured accounts are available. This app update is only partially loaded, so
+                folder recovery is not ready yet. Restart MoneyInMotion with <code>./run.sh</code>,
+                then try again.
+              </p>
+            ) : (
+              <p>
+                Your configured accounts are available. MoneyInMotion could not check whether any
+                saved statement folders need to be reconnected. Check that the server is running,
+                then try again.
+              </p>
+            )}
+          </Notice>
         )}
 
         <section className="space-y-4" aria-label="Configured accounts">
@@ -308,15 +389,18 @@ export function AccountsPage() {
             </p>
           )}
           {error && (
-            <div
-              role="alert"
-              className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive"
+            <Notice
+              tone="error"
+              title="Accounts could not be loaded"
+              actions={
+                <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                  Try again
+                </Button>
+              }
             >
-              <p>Failed to load accounts: {error.message}</p>
-              <Button variant="outline" size="sm" className="mt-2" onClick={() => void refetch()}>
-                Try again
-              </Button>
-            </div>
+              MoneyInMotion could not reach the account service. Check that the app is running, then
+              try again. No account configuration was changed.
+            </Notice>
           )}
           {accounts && (
             <p aria-live="polite" className="text-xs text-muted-foreground">
@@ -388,10 +472,14 @@ export function AccountsPage() {
                       </code>
                     </div>
                   </details>
-                  <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
+                  <div className="mt-5 grid grid-cols-1 gap-2 border-t border-border pt-4 sm:grid-cols-2">
                     <Link
                       to={transactionsHref({ account: info.id, basis: 'records', view: 'list' })}
-                      className={buttonClassName({ size: 'sm', variant: 'outline' })}
+                      className={buttonClassName({
+                        size: 'sm',
+                        variant: 'outline',
+                        className: 'w-full',
+                      })}
                     >
                       Inspect account records
                       <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" />
@@ -403,6 +491,15 @@ export function AccountsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => setDuplicatingAccount(account)}
+                    >
+                      <Copy className="mr-1.5 h-3.5 w-3.5" />
+                      Duplicate
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
                       onClick={() => {
                         setDeleteError(null);
                         setDeletingAccount(account);
@@ -445,6 +542,16 @@ export function AccountsPage() {
         open={editingAccount != null}
         onOpenChange={(open) => {
           if (!open) setEditingAccount(null);
+        }}
+        onSaved={handleAccountSaved}
+      />
+      <AccountFormDialog
+        key={`duplicate-${duplicatingAccount?.config.accountInfo.id ?? 'closed'}`}
+        mode="create"
+        templateAccount={duplicatingAccount}
+        open={duplicatingAccount != null}
+        onOpenChange={(open) => {
+          if (!open) setDuplicatingAccount(null);
         }}
         onSaved={handleAccountSaved}
       />
@@ -494,9 +601,9 @@ export function AccountsPage() {
               </p>
             </div>
             {deleteError && (
-              <p role="alert" className="text-destructive">
+              <Notice tone="error" title="Account configuration was not removed">
                 {deleteError}
-              </p>
+              </Notice>
             )}
           </div>
           <DialogFooter>

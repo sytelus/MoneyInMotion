@@ -9,6 +9,7 @@ import {
 import { Button } from '../ui/button.js';
 import { Input } from '../ui/input.js';
 import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
+import { Notice } from '../ui/notice.js';
 import { createAccount, updateAccount, type AccountSummary } from '../../api/client.js';
 import { reconnectAccount } from '../../api/imports.js';
 
@@ -125,6 +126,8 @@ interface AccountFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   account?: AccountSummary | null;
+  /** Copies settings into a new, unsaved account. The new ID is intentionally blank. */
+  templateAccount?: AccountSummary | null;
   reconnectFolder?: string | null;
   originalAccount?: AccountInfo | null;
   onSaved: (savedAccount: AccountSummary, previousId: string | null) => Promise<void> | void;
@@ -135,25 +138,31 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
   open,
   onOpenChange,
   account,
+  templateAccount,
   reconnectFolder,
   originalAccount,
   onSaved,
 }) => {
   const editedConfig = mode === 'edit' ? account?.config : undefined;
-  const initialInfo = editedConfig?.accountInfo ?? originalAccount;
-  const [accountId, setAccountId] = useState(initialInfo?.id ?? '');
+  const templateConfig = mode === 'create' ? templateAccount?.config : undefined;
+  const initialInfo = editedConfig?.accountInfo ?? originalAccount ?? templateConfig?.accountInfo;
+  const [accountId, setAccountId] = useState(templateConfig ? '' : (initialInfo?.id ?? ''));
   const [title, setTitle] = useState(initialInfo?.title ?? initialInfo?.id ?? '');
   const [instituteName, setInstituteName] = useState(initialInfo?.instituteName ?? 'Generic');
   const [accountType, setAccountType] = useState<AccountType>(
     initialInfo?.type ?? AccountType.CreditCard,
   );
   const [fileFilters, setFileFilters] = useState(
-    editedConfig ? formatCsvList(editedConfig.fileFilters) : '*.csv',
+    editedConfig || templateConfig
+      ? formatCsvList((editedConfig ?? templateConfig)?.fileFilters)
+      : '*.csv',
   );
   const [interAccountNameTags, setInterAccountNameTags] = useState(
     formatCsvList(initialInfo?.interAccountNameTags),
   );
-  const [scanSubFolders, setScanSubFolders] = useState(editedConfig?.scanSubFolders ?? true);
+  const [scanSubFolders, setScanSubFolders] = useState(
+    (editedConfig ?? templateConfig)?.scanSubFolders ?? true,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -220,18 +229,32 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
         title={
           reconnectFolder
             ? 'Reconnect account folder'
-            : mode === 'create'
-              ? 'Add Account'
-              : 'Edit Account'
+            : templateAccount
+              ? 'Duplicate account settings'
+              : mode === 'create'
+                ? 'Add Account'
+                : 'Edit Account'
         }
-        description="Configure how MoneyInMotion should discover and interpret files for this account."
+        description={
+          templateAccount
+            ? 'Review the copied settings and create a separate account only when you are ready.'
+            : 'Configure how MoneyInMotion should discover and interpret files for this account.'
+        }
         className="max-w-xl"
       >
         <div className="space-y-5">
           {error && (
-            <div role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <Notice tone="error" title="Account could not be saved">
               {error}
-            </div>
+            </Notice>
+          )}
+
+          {templateAccount && (
+            <Notice tone="info" title="Settings copied — nothing has been saved">
+              File filters, matching tags, institution, account type, and subfolder behavior were
+              copied from <strong>{templateAccount.config.accountInfo.title}</strong>. Enter a new,
+              unique account ID and review every field before creating the account.
+            </Notice>
           )}
 
           {reconnectFolder && (
@@ -250,11 +273,11 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
             </div>
           )}
           {mode === 'edit' && (
-            <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+            <Notice tone="warning" title="A rebuild is required after saving">
               Changes update account configuration only. Rebuild from Imports to refresh existing
               records, matching, and reporting. Changing parser, type, or file filters can change
               which records are included.
-            </p>
+            </Notice>
           )}
 
           <div className="space-y-1.5">
@@ -346,7 +369,7 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
               ))}
             </div>
             {isOrderHistory && (
-              <div className="rounded-md bg-yellow-50 p-3 text-xs text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-slate-950 dark:border-amber-700 dark:bg-amber-950/50 dark:text-slate-50">
                 Order history accounts (Amazon, Etsy) need match tags so purchases can be reconciled
                 to the credit-card charge.
               </div>
@@ -412,9 +435,11 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
                 : 'Saving...'
               : reconnectFolder
                 ? 'Reconnect folder'
-                : mode === 'create'
-                  ? 'Create Account'
-                  : 'Save Changes'}
+                : templateAccount
+                  ? 'Create duplicate account'
+                  : mode === 'create'
+                    ? 'Create Account'
+                    : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>

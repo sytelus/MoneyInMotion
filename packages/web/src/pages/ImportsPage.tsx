@@ -9,6 +9,7 @@ import { StatementFolderUpload } from '../components/importing/StatementFolderUp
 import { ExistingStatements } from '../components/importing/ExistingStatements.js';
 import { SourceInventory } from '../components/importing/SourceInventory.js';
 import { UploadHistory } from '../components/importing/UploadHistory.js';
+import { Notice } from '../components/ui/notice.js';
 
 /** Separate import operations and traceable evidence from account configuration. */
 export function ImportsPage() {
@@ -69,9 +70,18 @@ export function ImportsPage() {
           <div className="space-y-5">
             {accounts.isLoading && <p role="status">Loading account folders…</p>}
             {accounts.error && (
-              <p role="alert" className="text-sm text-destructive">
-                Could not load accounts: {accounts.error.message}
-              </p>
+              <Notice
+                tone="error"
+                title="Account folders could not be loaded"
+                actions={
+                  <Button variant="outline" size="sm" onClick={() => void accounts.refetch()}>
+                    Try again
+                  </Button>
+                }
+              >
+                Import is unavailable until MoneyInMotion can read the configured accounts. No files
+                were uploaded or changed.
+              </Notice>
             )}
             {accounts.data && (
               <>
@@ -85,9 +95,18 @@ export function ImportsPage() {
           <>
             {snapshot.isLoading && <p role="status">Loading statement sources…</p>}
             {snapshot.error && (
-              <p role="alert" className="text-sm text-destructive">
-                Could not load sources: {snapshot.error.message}
-              </p>
+              <Notice
+                tone="error"
+                title="Statement sources could not be loaded"
+                actions={
+                  <Button variant="outline" size="sm" onClick={() => void snapshot.refetch()}>
+                    Try again
+                  </Button>
+                }
+              >
+                MoneyInMotion could not read the current snapshot. No statement or transaction data
+                was changed.
+              </Notice>
             )}
             {transactions && <SourceInventory transactions={transactions} />}
           </>

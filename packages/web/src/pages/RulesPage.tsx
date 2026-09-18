@@ -27,6 +27,7 @@ import { Select } from '../components/ui/select.js';
 import { Badge } from '../components/ui/badge.js';
 import { Pagination } from '../components/ui/pagination.js';
 import { HelpHint } from '../components/ui/help-hint.js';
+import { Notice } from '../components/ui/notice.js';
 import { RuleEditor } from '../components/editing/RuleEditor.js';
 import { RuleChangePreview } from '../components/editing/RuleChangePreview.js';
 import { ruleChangesLabel, ruleFields, scopeLabel } from '../lib/rules.js';
@@ -441,13 +442,19 @@ export const RulesPage: React.FC = () => {
               </Button>
             </div>
             {params.has('rule') && !inspected && (
-              <p role="alert" className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-                The linked rule is not in the currently saved history. It may have been deleted or
-                the active data location may have changed.{' '}
-                <button className="underline" onClick={closeInspection}>
-                  Dismiss
-                </button>
-              </p>
+              <Notice
+                tone="warning"
+                role="alert"
+                title="This rule is no longer available"
+                actions={
+                  <Button variant="outline" size="sm" onClick={closeInspection}>
+                    Dismiss
+                  </Button>
+                }
+              >
+                The link points to a rule that is not in the currently saved rules. It may have been
+                deleted, or the active data location may have changed.
+              </Notice>
             )}
             {filtered.length === 0 && (
               <div className="rounded-lg border border-dashed border-border p-8 text-center">

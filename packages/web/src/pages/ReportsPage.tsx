@@ -20,6 +20,7 @@ import { Button, buttonClassName } from '../components/ui/button.js';
 import { Input } from '../components/ui/input.js';
 import { Select } from '../components/ui/select.js';
 import { HelpHint } from '../components/ui/help-hint.js';
+import { Notice } from '../components/ui/notice.js';
 import { ActivityChart } from '../components/reports/ActivityChart.js';
 import { BreakdownPanel } from '../components/reports/BreakdownPanel.js';
 import { ReviewQueue } from '../components/reports/ReviewQueue.js';
@@ -49,10 +50,15 @@ export function ReportsPage() {
       ) : error ? (
         <main className="mx-auto max-w-3xl p-8">
           <h1 className="text-2xl font-semibold">Overview unavailable</h1>
-          <p role="alert" className="my-4 text-sm text-destructive">
-            {error.message}
-          </p>
-          <Button onClick={() => void refetch()}>Try again</Button>
+          <Notice
+            tone="error"
+            title="Financial overview could not be loaded"
+            className="my-4"
+            actions={<Button onClick={() => void refetch()}>Try again</Button>}
+          >
+            MoneyInMotion could not read the current snapshot. Your statements, rules, and saved
+            transaction data were not changed.
+          </Notice>
         </main>
       ) : transactions && transactions.allTransactionCount > 0 ? (
         <FinancialOverview transactions={transactions} />
@@ -295,18 +301,15 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
           does not establish that every statement has been imported.
         </p>
         {scopeWarnings.length > 0 && (
-          <p role="status" className="mt-3 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
+          <Notice tone="warning" title="Reporting scope adjusted" className="mt-3">
             {scopeWarnings.join(' ')}
-          </p>
+          </Notice>
         )}
       </section>
       {invalid ? (
-        <div
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"
-        >
+        <Notice tone="warning" role="alert" title="Reporting period needs attention">
           The start date is after the end date. Fix the reporting period to view or export results.
-        </div>
+        </Notice>
       ) : (
         <>
           {report.rows.length === 0 && (

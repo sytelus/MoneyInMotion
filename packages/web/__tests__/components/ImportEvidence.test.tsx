@@ -11,7 +11,21 @@ import { sourceInventory } from '../../src/lib/import-evidence.js';
 import type { AccountSummary, FolderUploadItem } from '../../src/api/client.js';
 
 const getHistory = vi.hoisted(() => vi.fn());
-vi.mock('../../src/api/imports.js', () => ({ getUploadHistory: getHistory }));
+const MockImportApiError = vi.hoisted(
+  () =>
+    class ImportApiError extends Error {
+      constructor(
+        readonly status: number,
+        message: string,
+      ) {
+        super(message);
+      }
+    },
+);
+vi.mock('../../src/api/imports.js', () => ({
+  getUploadHistory: getHistory,
+  ImportApiError: MockImportApiError,
+}));
 
 const account: AccountSummary = {
   config: {
@@ -183,15 +197,27 @@ describe('saved upload receipts', () => {
     });
     showHistory();
     expect(await screen.findByText('Bank/sample.csv')).toBeInTheDocument();
-    expect(screen.getByText(/not a successful snapshot rebuild/)).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('1 upload receipt(s) could not be read');
+    expect(screen.getByText(/not a completed rebuild/)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('1 upload receipt could not be read');
     expect(screen.getByText('Content checksum (SHA-256)')).toBeInTheDocument();
   });
   it('makes read failures visible and provides retry', async () => {
     getHistory.mockRejectedValue(new Error('Manifest storage unavailable'));
     showHistory();
-    expect(await screen.findByRole('alert')).toHaveTextContent('Manifest storage unavailable');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Upload receipts could not be loaded',
+    );
+    expect(screen.queryByText('Manifest storage unavailable')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+  });
+
+  it('turns a missing history endpoint into restart guidance', async () => {
+    getHistory.mockRejectedValue(new MockImportApiError(404, 'API endpoint not found'));
+    showHistory();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Restart MoneyInMotion to finish this update',
+    );
+    expect(screen.queryByText('API endpoint not found')).not.toBeInTheDocument();
   });
 
   it('refreshes a cached empty history when returning after a new upload receipt exists', async () => {

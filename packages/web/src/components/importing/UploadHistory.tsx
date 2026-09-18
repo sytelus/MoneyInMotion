@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, CopyCheck, Download, History, Search } from 'lucide-react';
 import {
   getUploadHistory,
+  ImportApiError,
   type UploadBatch,
   type UploadHistoryFilters,
 } from '../../api/imports.js';
@@ -11,6 +12,7 @@ import { Input } from '../ui/input.js';
 import { Select } from '../ui/select.js';
 import { Button } from '../ui/button.js';
 import { Pagination } from '../ui/pagination.js';
+import { Notice } from '../ui/notice.js';
 
 function downloadReceipt(batch: UploadBatch) {
   const url = URL.createObjectURL(
@@ -46,16 +48,13 @@ export function UploadHistory() {
           See what arrived, what was already present, and which files were rejected.
         </p>
       </div>
-      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
-        <p className="font-medium">
-          Receipts confirm file handling, not a successful snapshot rebuild.
-        </p>
+      <Notice tone="info" title="Receipts confirm file handling, not a completed rebuild">
         <p className="mt-1">
           Historical rebuild outcomes and original first-import times were not saved. Files copied
           directly to the server have no browser upload receipt; use Statement sources to trace
           their current records.
         </p>
-      </div>
+      </Notice>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
         <label className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -91,31 +90,37 @@ export function UploadHistory() {
         </p>
       )}
       {history.error && (
-        <div role="alert" className="rounded-xl border border-destructive/30 p-4">
-          <p className="text-sm text-destructive">
-            Could not read upload history: {history.error.message}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            onClick={() => void history.refetch()}
-          >
-            Try again
-          </Button>
-        </div>
+        <Notice
+          tone={
+            history.error instanceof ImportApiError && history.error.status === 404
+              ? 'info'
+              : 'error'
+          }
+          role="alert"
+          title={
+            history.error instanceof ImportApiError && history.error.status === 404
+              ? 'Restart MoneyInMotion to finish this update'
+              : 'Upload receipts could not be loaded'
+          }
+          actions={
+            <Button variant="outline" size="sm" onClick={() => void history.refetch()}>
+              Try again
+            </Button>
+          }
+        >
+          {history.error instanceof ImportApiError && history.error.status === 404
+            ? 'This app update is only partially loaded, so upload receipts are not ready yet. Restart MoneyInMotion with ./run.sh, then try again. Your statements and current snapshot are unchanged.'
+            : 'MoneyInMotion could not read saved upload receipts. Statement files and the current snapshot were not changed. Check that the server is running, then try again.'}
+        </Notice>
       )}
       {history.data != null && (
         <>
           {history.data.unreadableCount > 0 && (
-            <p
-              role="alert"
-              className="rounded-xl bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
-            >
-              {history.data.unreadableCount} upload receipt(s) could not be read or validated. Their
-              files have not been changed. Check the staging folder for incomplete or invalid
-              manifests.
-            </p>
+            <Notice tone="warning" role="alert" title="Some saved receipts need attention">
+              {history.data.unreadableCount} upload receipt
+              {history.data.unreadableCount === 1 ? '' : 's'} could not be read or validated. Their
+              files were not changed. Check the staging folder for incomplete or invalid manifests.
+            </Notice>
           )}
           <div className="space-y-3">
             {history.data.entries.map((batch) => {

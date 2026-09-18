@@ -4,6 +4,7 @@ import type { AccountSummary } from '../../api/client.js';
 import { useRebuildSnapshot } from '../../api/hooks.js';
 import { Button, buttonClassName } from '../ui/button.js';
 import { MissingRuleTargets } from '../editing/MissingRuleTargets.js';
+import { Notice } from '../ui/notice.js';
 
 /** Make server-side statements usable without asking users to upload them again. */
 export const ExistingStatements: React.FC<{ accounts: AccountSummary[] }> = ({ accounts }) => {
@@ -34,9 +35,10 @@ export const ExistingStatements: React.FC<{ accounts: AccountSummary[] }> = ({ a
         </Link>
       </div>
       {rebuild.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {rebuild.error.message}
-        </p>
+        <Notice tone="error" title="Transaction history could not be rebuilt">
+          The previous snapshot was kept. Review the statement files reported by the server, then
+          try again; no incomplete result replaced your current data.
+        </Notice>
       )}
       {result && (
         <div role="status" className="text-sm space-y-2">
