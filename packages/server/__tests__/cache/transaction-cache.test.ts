@@ -4,7 +4,16 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { FileRepository } from '../../src/storage/file-repository.js';
 import { TransactionCache } from '../../src/cache/transaction-cache.js';
-import { ScopeType, createAuditInfo, createScopeFilter, editValue } from '@moneyinmotion/core';
+import {
+  ScopeType,
+  Transactions,
+  TransactionEdits,
+  createAuditInfo,
+  createScopeFilter,
+  editValue,
+} from '@moneyinmotion/core';
+import { TransactionsStorage } from '../../src/storage/transactions-storage.js';
+import { TransactionEditsStorage } from '../../src/storage/transaction-edits-storage.js';
 
 describe('TransactionCache', () => {
   let tempDir: string;
@@ -27,6 +36,76 @@ describe('TransactionCache', () => {
 
     const txns = await cache.getTransactions();
     expect(txns.allTransactionCount).toBe(0);
+  });
+
+  it('loads standalone rules without a snapshot and replays them when existing statements are built', async () => {
+    const repo = new FileRepository(tempDir);
+    const edits = new TransactionEdits('legacy');
+    edits.createEditCategory([createScopeFilter(ScopeType.All, [])], ['Existing rule']);
+    new TransactionEditsStorage().save(repo.latestMergedEditsPath, edits);
+    const originalRules = fs.readFileSync(repo.latestMergedEditsPath, 'utf-8');
+    const accountDir = path.join(tempDir, 'Statements', 'Bank');
+    fs.mkdirSync(accountDir);
+    fs.writeFileSync(
+      path.join(accountDir, 'AccountConfig.json'),
+      JSON.stringify({
+        accountInfo: { id: 'bank', instituteName: 'Generic', type: 2, requiresParent: false },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(accountDir, 'statement.csv'),
+      'Date,Description,Amount\n01/01/2024,Purchase,-10\n',
+    );
+    const cache = new TransactionCache(repo);
+    const before = await cache.getTransactions();
+    expect(before.allTransactionCount).toBe(0);
+    expect(before.editsCount).toBe(1);
+    expect(repo.latestMergedExists()).toBe(false);
+    expect(fs.readFileSync(repo.latestMergedEditsPath, 'utf-8')).toBe(originalRules);
+
+    expect(await cache.rebuildFromStatements()).toMatchObject({
+      committed: true,
+      totalTransactions: 1,
+      appliedEdits: 1,
+    });
+    const restored = await new TransactionCache(repo).getTransactions();
+    expect(restored.editsCount).toBe(1);
+    expect([...restored.topLevelTransactions][0]?.categoryPath).toEqual(['Existing rule']);
+  });
+
+  it('includes rules from both snapshot and separate aggregate', async () => {
+    const repo = new FileRepository(tempDir);
+    const embedded = new TransactionEdits('snapshot');
+    embedded.createEditCategory([createScopeFilter(ScopeType.All, [])], ['Embedded']);
+    const snapshot = new Transactions('snapshot');
+    snapshot.applyEdits(embedded, true);
+    new TransactionsStorage().save(repo.latestMergedPath, snapshot);
+    const separate = new TransactionEdits('standalone');
+    const sameRule = [...embedded][0]!;
+    separate.add({
+      sourceId: sameRule.sourceId,
+      values: sameRule.values,
+      scopeFilters: sameRule.scopeFilters,
+      auditInfo: sameRule.auditInfo,
+      id: sameRule.id,
+    });
+    separate.createEditCategory([createScopeFilter(ScopeType.All, [])], ['Separate']);
+    new TransactionEditsStorage().save(repo.latestMergedEditsPath, separate);
+    const cache = new TransactionCache(repo);
+    expect((await cache.getTransactions()).editsCount).toBe(2);
+    expect(await cache.rebuildFromStatements()).toMatchObject({ committed: true, appliedEdits: 2 });
+    expect((await new TransactionCache(repo).getTransactions()).editsCount).toBe(2);
+  });
+
+  it('does not expose a partially loaded snapshot after an invalid rules file', async () => {
+    const repo = new FileRepository(tempDir);
+    new TransactionsStorage().save(repo.latestMergedPath, new Transactions('snapshot'));
+    fs.writeFileSync(repo.latestMergedEditsPath, '{broken');
+    const cache = new TransactionCache(repo);
+    await expect(cache.getTransactions()).rejects.toThrow('Failed to load transaction edits');
+    await expect(cache.getTransactions()).rejects.toThrow('Failed to load transaction edits');
   });
 
   it('serializes concurrent save() calls', async () => {

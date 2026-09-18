@@ -231,8 +231,32 @@ describe('transactions-store', () => {
     });
 
     it('returns all transactions when no year/month filter is set', () => {
+      useTransactionsStore.getState().selectYearMonth(null, null);
       const result = useTransactionsStore.getState().getFilteredTransactions();
       expect(result.length).toBe(3);
+    });
+
+    it('opens on the latest available month, never an unlabeled all-time list', () => {
+      expect(useTransactionsStore.getState().selectedYear).toBe('2024');
+      expect(useTransactionsStore.getState().selectedMonth).toBe('04');
+      expect(
+        useTransactionsStore
+          .getState()
+          .getFilteredTransactions()
+          .map((t) => t.id),
+      ).toEqual(['tx-april']);
+    });
+
+    it('supports whole-year, inclusive custom dates, search, and clears stale selections', () => {
+      const store = useTransactionsStore.getState();
+      store.selectYearMonth('2024', null);
+      expect(store.getFilteredTransactions()).toHaveLength(3);
+      store.selectTransaction('tx-april');
+      store.setFilters({ from: '2024-01-05', to: '2024-03-15' });
+      expect(store.getFilteredTransactions()).toHaveLength(2);
+      expect(useTransactionsStore.getState().selectedTransactionIds.size).toBe(0);
+      store.setFilters({ search: 'march' });
+      expect(store.getFilteredTransactions().map((t) => t.id)).toEqual(['tx-march']);
     });
 
     it('returns only transactions matching the selected year and month', () => {

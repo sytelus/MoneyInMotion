@@ -13,6 +13,8 @@ import { transactionReasonTitleLookup } from '@moneyinmotion/core';
 import { cn, formatDate } from '../../lib/utils.js';
 import { AmountDisplay } from './AmountDisplay.js';
 import { TransactionContextMenuButton } from '../editing/TransactionContextMenu.js';
+import { useTransactionsStore } from '../../store/transactions-store.js';
+import { transactionCategory } from '../../lib/transaction-explorer.js';
 
 export interface TransactionRowProps {
   /** The transaction to render. */
@@ -51,6 +53,10 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   onToggleFlag,
   onRemoveFlag,
 }) => {
+  const toggleSelection = useTransactionsStore((s) => s.toggleTransactionSelection);
+  const accountTitle = useTransactionsStore(
+    (s) => s.transactions?.getAccountInfo(transaction.accountId).title || transaction.accountId,
+  );
   const reasonTitle =
     transactionReasonTitleLookup[String(transaction.correctedTransactionReason)] ?? 'Unknown';
   const accountDisplay =
@@ -63,15 +69,18 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   return (
     <div
       role="row"
+      data-explorer-focus="true"
+      data-transaction-id={transaction.id}
       aria-selected={isSelected}
       tabIndex={0}
       className={cn(
-        'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2 text-sm border-b border-border cursor-pointer hover:bg-accent/50 transition-colors group sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto]',
+        'transaction-grid-row items-center px-3 py-2 text-sm border-b border-border cursor-pointer hover:bg-accent/50 transition-colors group',
         isSelected && 'bg-accent',
       )}
-      style={{ paddingLeft: `${depth * 1.5 + 0.75}rem` }}
+      style={{ paddingLeft: `${Math.min(depth, 3) * 0.5 + 0.75}rem` }}
       onClick={() => onClick?.(transaction.id)}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onClick?.(transaction.id);
@@ -80,7 +89,28 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
     >
       {/* Entity name + indicators */}
       <div role="gridcell" className="flex items-center gap-2 min-w-0">
-        <span className="truncate">{transaction.displayEntityNameNormalized}</span>
+        <input
+          type="checkbox"
+          aria-label={`Select ${transaction.displayEntityNameNormalized}`}
+          checked={isSelected}
+          onClick={(e) => e.stopPropagation()}
+          onChange={() => toggleSelection(transaction.id)}
+          className="h-4 w-4 shrink-0 accent-primary"
+        />
+        <span className="min-w-0">
+          <span className="transaction-name" title={transaction.displayEntityNameNormalized}>
+            {transaction.displayEntityNameNormalized}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {transactionCategory(transaction)} · {reasonTitle}
+          </span>
+          <span className="transaction-inline-details block truncate text-xs text-muted-foreground">
+            <span className="transaction-inline-date">
+              {formatDate(transaction.correctedTransactionDate)} ·{' '}
+            </span>
+            {accountTitle}
+          </span>
+        </span>
         {transaction.isUserFlagged && (
           <span title="Flagged for review" className="shrink-0 inline-flex">
             <Flag className="h-3.5 w-3.5 text-destructive" />
@@ -94,39 +124,40 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       </div>
 
       {/* Amount */}
-      <div role="gridcell">
+      <div role="gridcell" className="text-right whitespace-nowrap">
         <AmountDisplay amount={transaction.correctedAmount} />
       </div>
 
       {/* Transaction type badge */}
       <span
         role="gridcell"
-        className="hidden xl:inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground whitespace-nowrap"
+        className="transaction-wide-cell truncate rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"
+        title={reasonTitle}
       >
         {reasonTitle}
       </span>
 
       {/* Date */}
-      <span role="gridcell" className="hidden text-muted-foreground whitespace-nowrap sm:block">
+      <span
+        role="gridcell"
+        className="transaction-date-cell text-muted-foreground whitespace-nowrap"
+      >
         {formatDate(transaction.correctedTransactionDate)}
       </span>
 
       {/* Account */}
       <span
         role="gridcell"
-        className="hidden text-muted-foreground text-xs truncate max-w-[8rem] xl:block"
-        title={transaction.accountId}
+        className="transaction-wide-cell text-muted-foreground text-xs truncate"
+        title={accountTitle}
       >
-        {accountDisplay}
+        {accountTitle || accountDisplay}
       </span>
 
       {/* Context menu button - visible on hover or when row is selected */}
       <div
         role="gridcell"
-        className={cn(
-          'opacity-0 group-hover:opacity-100 transition-opacity',
-          isSelected && 'opacity-100',
-        )}
+        className={cn('opacity-100 transition-opacity', isSelected && 'opacity-100')}
       >
         {hasEditActions ? (
           <TransactionContextMenuButton

@@ -6,11 +6,15 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ChevronDown, ChevronRight, Flag } from 'lucide-react';
 import { NetAggregator, type Transaction } from '@moneyinmotion/core';
-import { formatDate, formatCategoryPath } from '../../lib/utils.js';
+import { formatDate } from '../../lib/utils.js';
+import { transactionCategory } from '../../lib/transaction-explorer.js';
 import { AmountDisplay } from './AmountDisplay.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
+import { HelpHint } from '../ui/help-hint.js';
+import { Button } from '../ui/button.js';
 
 /**
  * Collapsible section for provider attributes (arbitrary key-value metadata
@@ -24,6 +28,7 @@ const ProviderAttributes: React.FC<{ attributes: Record<string, string> }> = ({ 
   return (
     <div className="border-t border-border pt-3">
       <button
+        aria-expanded={isOpen}
         className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -35,7 +40,7 @@ const ProviderAttributes: React.FC<{ attributes: Record<string, string> }> = ({ 
           {entries.map(([key, value]) => (
             <div key={key} className="grid grid-cols-[auto_1fr] gap-2 text-xs">
               <dt className="text-muted-foreground font-medium">{key}</dt>
-              <dd className="truncate">{value}</dd>
+              <dd className="break-all">{value}</dd>
             </div>
           ))}
         </dl>
@@ -48,16 +53,24 @@ const ProviderAttributes: React.FC<{ attributes: Record<string, string> }> = ({ 
 const DetailRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex justify-between gap-2 text-sm">
     <span className="text-muted-foreground shrink-0">{label}</span>
-    <span className="text-right truncate">{children}</span>
+    <span className="min-w-0 break-words text-right">{children}</span>
   </div>
 );
 
 /** Single-transaction detail view. */
 const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) => {
+  const transactions = useTransactionsStore((s) => s.transactions);
+  const select = useTransactionsStore((s) => s.selectTransaction);
+  const source = transaction.toData();
+  const related = [
+    transaction.parentId,
+    source.relatedTransferId,
+    ...Object.keys(transaction.children ?? {}),
+  ].filter((id): id is string => Boolean(id));
   return (
     <div className="space-y-3">
       <h3
-        className="font-semibold text-base truncate"
+        className="font-semibold text-base break-words"
         title={transaction.displayEntityNameNormalized}
       >
         {transaction.displayEntityNameNormalized}
@@ -68,8 +81,10 @@ const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) =
           <AmountDisplay amount={transaction.correctedAmount} />
         </DetailRow>
         <DetailRow label="Date">{formatDate(transaction.correctedTransactionDate)}</DetailRow>
-        <DetailRow label="Account">{transaction.accountId}</DetailRow>
-        <DetailRow label="Category">{formatCategoryPath(transaction.categoryPath)}</DetailRow>
+        <DetailRow label="Account">
+          {transactions?.getAccountInfo(transaction.accountId).title || transaction.accountId}
+        </DetailRow>
+        <DetailRow label="Category">{transactionCategory(transaction)}</DetailRow>
 
         {transaction.note && (
           <div className="text-sm">
@@ -79,14 +94,69 @@ const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) =
         )}
 
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Flagged:</span>
+          <span className="text-muted-foreground">Marked for review:</span>
           {transaction.isUserFlagged ? (
-            <Flag className="h-4 w-4 text-destructive" />
+            <span className="inline-flex items-center gap-1">
+              <Flag className="h-4 w-4 text-destructive" />
+              Yes
+            </span>
           ) : (
             <span className="text-muted-foreground">No</span>
           )}
         </div>
+        <HelpHint title="Mark for review">
+          A personal reminder you can filter by. Marking a transaction does not affect totals.
+        </HelpHint>
       </div>
+
+      {related.length > 0 && (
+        <details className="border-t border-border pt-3 text-xs">
+          <summary className="cursor-pointer font-medium">
+            Related payment / order details ({related.length})
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {related.map((id) => {
+              const tx = transactions?.getTransaction(id);
+              return tx ? (
+                <li key={id}>
+                  <button
+                    className="text-left text-primary underline underline-offset-2"
+                    onClick={() => select(id)}
+                  >
+                    {tx.displayEntityNameNormalized} · {formatDate(tx.correctedTransactionDate)}
+                  </button>
+                </li>
+              ) : null;
+            })}
+          </ul>
+          <p className="mt-2 text-muted-foreground">
+            Related records provide context. They are not added again to reporting totals.
+          </p>
+        </details>
+      )}
+      <details className="border-t border-border pt-3 text-xs">
+        <summary className="cursor-pointer font-medium">
+          Original statement values &amp; IDs
+        </summary>
+        <dl className="mt-2 space-y-2 break-all">
+          <dt>Name</dt>
+          <dd>{transaction.entityName}</dd>
+          <dt>Imported amount</dt>
+          <dd>{source.amount}</dd>
+          <dt>Imported date</dt>
+          <dd>{source.transactionDate}</dd>
+          {transaction.providerCategoryName && (
+            <>
+              <dt>Statement category</dt>
+              <dd>{transaction.providerCategoryName}</dd>
+            </>
+          )}
+          <dt>Transaction ID</dt>
+          <dd className="select-all">{transaction.id}</dd>
+          <dt>Import ID</dt>
+          <dd>{source.importId}</dd>
+        </dl>
+      </details>
 
       {transaction.providerAttributes && (
         <ProviderAttributes attributes={transaction.providerAttributes} />
@@ -102,7 +172,7 @@ const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) =
 export const TransactionSummary: React.FC = () => {
   const transactions = useTransactionsStore((s) => s.transactions);
   const selectedIds = useTransactionsStore((s) => s.selectedTransactionIds);
-  const filteredTxns = useTransactionsStore((s) => s.getFilteredTransactions());
+  const filteredTxns = useTransactionsStore(useShallow((s) => s.getFilteredTransactions()));
 
   const selectedTransactions = useMemo(() => {
     if (!transactions || selectedIds.size === 0) return [];
@@ -124,6 +194,14 @@ export const TransactionSummary: React.FC = () => {
   if (selectedTransactions.length === 1) {
     return (
       <div className="p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mb-3"
+          onClick={() => useTransactionsStore.getState().clearSelection()}
+        >
+          Back to period summary
+        </Button>
         <SingleDetail transaction={selectedTransactions[0]!} />
         <p className="mt-4 text-xs text-muted-foreground">
           Tip: Press Alt+T to categorize, Alt+N to add a note.
@@ -182,11 +260,12 @@ export const TransactionSummary: React.FC = () => {
       </div>
 
       <div className="border-t border-border pt-3 text-xs text-muted-foreground">
-        {filteredTxns.length} transactions
+        {filteredTxns.length} reporting items in the displayed period and filters
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Tip: Click a transaction to see details. Right-click for editing options.
+        Click a transaction to see details. Use its actions menu to edit; use checkboxes for bulk
+        changes.
       </p>
     </div>
   );

@@ -38,12 +38,27 @@ export const DialogContent: React.FC<DialogContentProps> = ({
   children,
   className,
 }) => {
+  const descriptionId = React.useId();
+  const returnFocus = React.useRef<HTMLElement | null>(null);
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
       <DialogPrimitive.Content
+        onOpenAutoFocus={() => {
+          returnFocus.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          // Many app dialogs are controlled without a Radix Trigger. Return to
+          // the actual opener, including a help button inside another dialog.
+          if (returnFocus.current?.isConnected) {
+            event.preventDefault();
+            returnFocus.current.focus({ preventScroll: true });
+          }
+        }}
+        aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          'fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-lg border border-border bg-background p-6 shadow-lg focus:outline-none',
+          'fixed left-[50%] top-[50%] z-50 w-[calc(100%-1.5rem)] max-w-lg max-h-[90dvh] overflow-y-auto translate-x-[-50%] translate-y-[-50%] rounded-lg border border-border bg-background p-6 shadow-lg focus:outline-none',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -56,7 +71,10 @@ export const DialogContent: React.FC<DialogContentProps> = ({
               {title}
             </DialogPrimitive.Title>
             {description && (
-              <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+              <DialogPrimitive.Description
+                id={descriptionId}
+                className="mt-1 text-sm text-muted-foreground"
+              >
                 {description}
               </DialogPrimitive.Description>
             )}

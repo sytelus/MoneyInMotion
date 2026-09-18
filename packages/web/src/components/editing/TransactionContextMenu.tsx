@@ -64,7 +64,7 @@ export const TransactionContextMenuButton: React.FC<
 
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="min-w-[200px] rounded-md border border-border bg-popover p-1 shadow-md z-50"
+          className="min-w-[200px] rounded-md border border-border bg-background p-1 shadow-md z-50"
           align="end"
           sideOffset={4}
         >
@@ -92,13 +92,13 @@ export const TransactionContextMenuButton: React.FC<
           <MenuItem
             onSelect={onToggleFlag}
             icon={<Flag className="h-4 w-4" />}
-            label="Toggle Flag"
+            label="Toggle review mark"
             shortcut="Alt+F"
           />
           <MenuItem
             onSelect={onRemoveFlag}
             icon={<FlagOff className="h-4 w-4" />}
-            label="Remove Flag"
+            label="Clear review mark"
             shortcut="Alt+Shift+F"
           />
         </DropdownMenu.Content>

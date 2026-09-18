@@ -16,6 +16,28 @@ function dispatchKey(key: string, options: KeyboardEventInit = {}): KeyboardEven
 }
 
 describe('useKeyboardShortcuts', () => {
+  it('leaves dialog Escape handling and already-consumed keys to their owner', () => {
+    const onEscape = vi.fn();
+    const onEditNote = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onEscape, onEditNote }));
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.append(dialog);
+    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(onEscape).not.toHaveBeenCalled();
+    dialog.remove();
+    const consumed = new KeyboardEvent('keydown', {
+      key: 'n',
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    consumed.preventDefault();
+    document.dispatchEvent(consumed);
+    expect(onEditNote).not.toHaveBeenCalled();
+    dispatchKey('Escape');
+    expect(onEscape).toHaveBeenCalledOnce();
+  });
   it('does not consume keys when the mounted caller has no matching action', () => {
     renderHook(() => useKeyboardShortcuts({ onEditNote: vi.fn() }));
 

@@ -23,8 +23,10 @@ proxy and do not advertise the service as a public multiuser application.
 - Filesystem persistence supports one writer process. Multiple replicas sharing
   a volume have no distributed lock.
 - The transaction graph is held in memory, all statements are reparsed during a
-  rebuild, and the browser receives the serialized graph. Very large histories
-  are not optimized.
+  rebuild, and the browser receives the serialized graph. Search is indexed and
+  rendered rows are paginated, but there is no server-side query pagination or
+  incremental graph loading for very large histories. Bulk actions are bounded
+  to 1,000 rules/items per request; narrow filters for larger sets.
 - Uploads use memory-backed multipart handling, limited to 200 files, 20 MiB per
   file, 203 parts, and 100 MiB of received file bytes. Declared oversized
   requests are rejected before decoding, but a malicious chunked request can
@@ -42,7 +44,8 @@ claim.
   rather than one cross-file transaction. A process or disk failure between
   replacements may require replaying edits or restoring a backup. The shared
   atomic-file helper protects each file from partial text and cleans up failed
-  temporary writes, but cannot make two renames one transaction.
+  temporary writes. Caught write errors restore the previous pair of files, but
+  an abrupt process/storage failure still cannot make two renames one transaction.
 - Promoted statement files are not rolled back when a later rebuild fails.
   This is deliberate for diagnosis, but there is no one-click batch rollback.
 - Promotion is file-by-file. An infrastructure failure during promotion can
@@ -97,7 +100,8 @@ test; use the provided selection script.
   conformance audit yet.
 - There is no offline/PWA mode. An interrupted network upload must be selected
   again.
-- There is no bulk search/query builder, budget planner, cash-flow forecast,
+- Search, compound filters, rule conditions, and bulk editing are supported.
+  There is no saved-query/report builder, budget planner, cash-flow forecast,
   receipt attachment system, exchange-rate model, or investment valuation.
 
 ## Operations

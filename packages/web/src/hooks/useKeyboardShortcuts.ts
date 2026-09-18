@@ -3,8 +3,8 @@
  * and editing actions.
  *
  * Shortcuts are only active when no `<input>`, `<textarea>`, or other
- * interactive form element has focus (Escape is the exception so dialogs
- * can always be dismissed).
+ * interactive form element has focus. Modal dialogs own their Escape handling
+ * so closing nested help never also closes its parent editor.
  *
  * The user-facing list of shortcuts lives in `lib/shortcuts.ts` and is
  * rendered by `KeyboardShortcutsDialog` and `WelcomePage`. The wiring
@@ -44,7 +44,8 @@ function isInputFocused(event: KeyboardEvent): boolean {
     tagName === 'input' ||
     tagName === 'textarea' ||
     tagName === 'select' ||
-    target.isContentEditable
+    target.isContentEditable ||
+    target.closest('[role="dialog"]') != null
   );
 }
 
@@ -55,10 +56,13 @@ function isInputFocused(event: KeyboardEvent): boolean {
  */
 export function useKeyboardShortcuts(actions: KeyboardShortcutActions): void {
   const handleShortcut = useEffectEvent((event: KeyboardEvent): void => {
+    if (event.defaultPrevented) return;
     const a = actions;
 
-    // Escape always works, even in inputs (to close dialogs)
+    // Radix dismisses only the topmost dialog. Do not dismiss an underlying
+    // editor again through the document-level shortcut handler.
     if (event.key === 'Escape') {
+      if (event.target instanceof HTMLElement && event.target.closest('[role="dialog"]')) return;
       a.onEscape?.();
       return;
     }

@@ -78,8 +78,12 @@ At startup the server:
 4. Constructs one `FileRepository` and one `TransactionCache` for that user.
 5. Starts the API and, in production, serves `packages/web/dist`.
 
-The cache loads `Merged/LatestMerged.json` lazily. If no snapshot exists, the UI
-receives an empty transaction collection. The server is the sole supported
+The cache loads `Merged/LatestMerged.json` lazily and loads saved rules from
+`LatestMergedEdits.json` even if there is no snapshot. New standalone rules are
+merged with embedded history; conflicting rule IDs fail visibly. Nothing is
+published into the cache until both inputs validate. When statements exist but
+history has not been built, Home, Accounts, and Getting Started offer **Build
+from existing statements**, including results and source errors. The server is the sole supported
 writer and serializes edit/rebuild mutations through one process-local queue.
 It updates the cache through edits and rebuilds. If an administrator
 changes statement files directly, **Rebuild snapshot** in Settings refreshes it.
@@ -137,10 +141,19 @@ The server derives a candidate from the active graph, applies the full batch,
 persists the materialized snapshot plus the independent edit aggregate, and
 only then swaps the candidate into live memory. Rebuilding from statements
 replays the edit aggregate, so corrected
-behavior is reproducible without modifying source exports. A field reset
-appends a voiding edit targeted to the transaction IDs known to have received
-the selected rule; history is not silently erased and future transactions are
-not accidentally captured by the reset.
+behavior is reproducible without modifying source exports. Rule management
+previews and commits a validated replacement set, retaining existing rule order.
+Scopes match the imported baseline; later rules win for overlapping fields.
+Deleting a rule replays remaining rules, whereas restoring an imported field
+explicitly clears prior corrections. Previous aggregates are backed up. A
+preview includes a snapshot revision; a change after preview blocks its commit.
+
+The transaction explorer builds a reporting-item index (complete children
+replace parents), uses effective item dates, and opens on the latest available
+month. Search, filters, summaries, and exports share that index. The UI renders
+at most 100 transaction/group rows or 25 rule cards per page; rule match counts
+are indexed in one pass. This bounds DOM size, not network payload size: the
+full graph is still loaded once into the browser.
 
 ## Why filesystem storage remains appropriate
 

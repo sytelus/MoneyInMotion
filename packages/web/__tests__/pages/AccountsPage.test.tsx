@@ -16,6 +16,7 @@ const deleteAccountMock = vi.fn();
 vi.mock('../../src/api/hooks.js', () => ({
   useAccounts: () => useAccountsMock(),
   useUploadStatementFolder: () => useUploadStatementFolderMock(),
+  useRebuildSnapshot: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock('../../src/api/client.js', () => ({

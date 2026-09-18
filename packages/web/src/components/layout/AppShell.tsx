@@ -30,11 +30,48 @@ import { NoteEditor } from '../editing/NoteEditor.js';
 import { AttributeEditor } from '../editing/AttributeEditor.js';
 import { AlertCircle, CalendarRange, PanelRight, Sparkles, X } from 'lucide-react';
 import { buttonClassName } from '../ui/button.js';
-import { useTransactions, useApplyEdits } from '../../api/hooks.js';
+import { useTransactions, useApplyEdits, useAccounts } from '../../api/hooks.js';
+import { ExistingStatements } from '../importing/ExistingStatements.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 
 type EditDialog = 'category' | 'note' | 'attributes' | null;
+
+const EmptyTransactions: React.FC = () => {
+  const accounts = useAccounts();
+  if (accounts.isLoading) return <p>Checking existing statements…</p>;
+  if (accounts.error)
+    return (
+      <div role="alert">
+        <p>Could not check existing accounts: {accounts.error.message}</p>
+        <Link to="/accounts" className={buttonClassName({ variant: 'outline' })}>
+          Review accounts
+        </Link>
+        <Link to="/settings" className={buttonClassName({ variant: 'outline' })}>
+          Settings
+        </Link>
+      </div>
+    );
+  if (accounts.data?.some((account) => account.hasStatementFiles)) {
+    return <ExistingStatements accounts={accounts.data} />;
+  }
+  return (
+    <>
+      <h2 className="text-xl font-semibold">No transaction history yet</h2>
+      <p className="text-muted-foreground">
+        {accounts.data?.length
+          ? 'Your accounts are configured. Add statements to build your history.'
+          : 'Set up your accounts and add statement files to get started.'}
+      </p>
+      <Link to="/welcome" className={buttonClassName({ size: 'lg' })}>
+        Get Started
+      </Link>
+      <Link to="/rules" className={buttonClassName({ variant: 'outline' })}>
+        View saved rules
+      </Link>
+    </>
+  );
+};
 
 /**
  * Root layout component. Fetches transactions on mount and renders the
@@ -54,6 +91,7 @@ export const AppShell: React.FC = () => {
   const [activeDialog, setActiveDialog] = useState<EditDialog>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [quickEditError, setQuickEditError] = useState<string | null>(null);
+  const [compactPanel, setCompactPanel] = useState<'period' | 'details' | null>(null);
 
   // Push server data into the Zustand store when it arrives
   useEffect(() => {
@@ -208,15 +246,7 @@ export const AppShell: React.FC = () => {
       {!isLoading && !error && transactions && transactions.topLevelTransactionCount === 0 && (
         <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center p-8">
           <Sparkles className="h-12 w-12 text-muted-foreground/50" />
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Welcome to MoneyInMotion!</h2>
-            <p className="text-muted-foreground max-w-md">
-              Set up your accounts and import statement files to get started.
-            </p>
-          </div>
-          <Link to="/welcome" className={buttonClassName({ size: 'lg' })}>
-            Get Started
-          </Link>
+          <EmptyTransactions />
         </div>
       )}
 
@@ -231,47 +261,45 @@ export const AppShell: React.FC = () => {
           {/* Center: transaction list */}
           <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
             {/* Compact access to controls hidden by the desktop sidebars. */}
-            <div className="flex border-b border-border bg-background lg:hidden">
-              <details className="group relative flex-1 border-r border-border md:hidden">
-                <summary className="flex cursor-pointer list-none items-center justify-center gap-2 px-3 py-2 text-sm font-medium hover:bg-accent">
-                  <CalendarRange className="h-4 w-4 text-muted-foreground" />
-                  {selectedYear && selectedMonth
-                    ? `${selectedYear}-${selectedMonth}`
-                    : 'Choose period'}
-                </summary>
-                <div className="max-h-72 overflow-y-auto border-t border-border bg-background">
-                  <YearMonthNav />
-                </div>
-              </details>
-              <details className="group relative flex-1">
-                <summary className="flex cursor-pointer list-none items-center justify-center gap-2 px-3 py-2 text-sm font-medium hover:bg-accent">
-                  <PanelRight className="h-4 w-4 text-muted-foreground" />
-                  {selectedIds.size > 0 ? 'Selection details' : 'Summary'}
-                </summary>
-                <div className="max-h-80 overflow-y-auto border-t border-border bg-background">
-                  <TransactionSummary />
-                </div>
-              </details>
+            <div className="grid shrink-0 grid-cols-2 border-b border-border bg-background md:grid-cols-1 lg:hidden">
+              <button
+                type="button"
+                aria-expanded={compactPanel === 'period'}
+                aria-controls="compact-period"
+                onClick={() => setCompactPanel(compactPanel === 'period' ? null : 'period')}
+                className="flex items-center justify-center gap-2 border-r border-border px-3 py-2 text-sm font-medium hover:bg-accent md:hidden"
+              >
+                <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                {selectedYear && selectedMonth
+                  ? `${selectedYear}-${selectedMonth}`
+                  : 'Choose period'}
+              </button>
+              <button
+                type="button"
+                aria-expanded={compactPanel === 'details'}
+                aria-controls="compact-details"
+                onClick={() => setCompactPanel(compactPanel === 'details' ? null : 'details')}
+                className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium hover:bg-accent"
+              >
+                <PanelRight className="h-4 w-4 text-muted-foreground" />
+                {selectedIds.size > 0 ? 'Selection details' : 'Summary'}
+              </button>
+              <div
+                id="compact-period"
+                hidden={compactPanel !== 'period'}
+                className="col-span-full max-h-[35dvh] overflow-y-auto border-t border-border bg-background md:hidden"
+              >
+                <YearMonthNav />
+              </div>
+              <div
+                id="compact-details"
+                hidden={compactPanel !== 'details'}
+                className="col-span-full max-h-[35dvh] overflow-y-auto border-t border-border bg-background"
+              >
+                <TransactionSummary />
+              </div>
             </div>
 
-            {/* Inline banner for users who have transactions but haven't selected a period */}
-            {transactions &&
-              transactions.topLevelTransactionCount > 0 &&
-              !selectedYear &&
-              !selectedMonth && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border text-sm">
-                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-muted-foreground">
-                    New here? Check the{' '}
-                    <Link
-                      to="/welcome"
-                      className="text-primary underline underline-offset-4 hover:text-primary/80"
-                    >
-                      Getting Started guide
-                    </Link>
-                  </span>
-                </div>
-              )}
             <div className="flex-1 min-h-0">
               <TransactionList
                 onEditCategory={handleRowEditCategory}
@@ -284,9 +312,11 @@ export const AppShell: React.FC = () => {
           </main>
 
           {/* Right sidebar: transaction summary / details */}
-          <aside className="hidden lg:block w-72 border-l border-border overflow-y-auto shrink-0">
-            <TransactionSummary />
-          </aside>
+          {selectedIds.size > 0 && (
+            <aside className="hidden lg:block w-80 border-l border-border overflow-y-auto shrink-0">
+              <TransactionSummary />
+            </aside>
+          )}
         </div>
       )}
 

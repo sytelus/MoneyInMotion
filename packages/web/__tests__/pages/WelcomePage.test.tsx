@@ -8,6 +8,9 @@ import type { AccountSummary } from '../../src/api/client.js';
 
 const getConfigMock = vi.fn();
 const getAccountsMock = vi.fn();
+vi.mock('../../src/api/hooks.js', () => ({
+  useRebuildSnapshot: () => ({ mutate: vi.fn(), isPending: false }),
+}));
 
 vi.mock('../../src/api/client.js', () => ({
   getConfig: (...args: unknown[]) => getConfigMock(...args),

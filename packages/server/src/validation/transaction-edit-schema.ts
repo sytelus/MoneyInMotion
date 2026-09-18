@@ -124,7 +124,10 @@ function buildEditedValuesSchema(allowLegacyEmptyValues: boolean) {
       });
 }
 
-function buildTransactionEditSchema(allowLegacyHash: boolean) {
+function buildTransactionEditSchema(
+  allowLegacyHash: boolean,
+  allowLegacyEmptyValues = allowLegacyHash,
+) {
   return z
     .object({
       id: z.string().trim().min(1).max(200),
@@ -137,7 +140,7 @@ function buildTransactionEditSchema(allowLegacyHash: boolean) {
         })
         .strict(),
       scopeFilters: z.array(buildScopeFilterSchema(allowLegacyHash)).min(1).max(20),
-      values: buildEditedValuesSchema(allowLegacyHash),
+      values: buildEditedValuesSchema(allowLegacyEmptyValues),
       sourceId: z.string().trim().min(1).max(200),
     })
     .strict();
@@ -151,6 +154,46 @@ export const transactionEditsRequestSchema = z
 
 /** Compatibility schema for one edit loaded from durable JSON. */
 export const persistedTransactionEditSchema = buildTransactionEditSchema(true);
+
+export const ruleChangesRequestSchema = z
+  .object({
+    preview: z.boolean(),
+    expectedRevision: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .optional(),
+    changes: z
+      .array(
+        z
+          .object({
+            previous: persistedTransactionEditSchema.nullable(),
+            next: buildTransactionEditSchema(false, true).nullable(),
+          })
+          .strict()
+          .refine(
+            (change) => change.previous != null || change.next != null,
+            'A rule change is required.',
+          )
+          .superRefine((change, context) => {
+            // Existing legacy rules may legitimately contain empty field values.
+            // Preserve those when editing another field; new rules remain strict.
+            if (change.previous == null && change.next != null) {
+              const result = buildTransactionEditSchema(false).safeParse(change.next);
+              if (!result.success)
+                for (const issue of result.error.issues) {
+                  context.addIssue({
+                    code: 'custom',
+                    path: ['next', ...issue.path],
+                    message: issue.message,
+                  });
+                }
+            }
+          }),
+      )
+      .min(1)
+      .max(1000),
+  })
+  .strict();
 
 /** Validate and return a complete persisted edit array with useful paths. */
 export function parsePersistedTransactionEdits(

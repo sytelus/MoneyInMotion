@@ -34,8 +34,21 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({ transactio
   const [includeAccount, setIncludeAccount] = useState(false);
   const [includeReason, setIncludeReason] = useState(false);
   const [includeAmountRange, setIncludeAmountRange] = useState(false);
+  const [words, setWords] = useState(transaction.entityNameNormalized || transaction.entityName);
+  const [minimum, setMinimum] = useState((Math.abs(transaction.amount) * 0.9).toFixed(2));
+  const [maximum, setMaximum] = useState((Math.abs(transaction.amount) * 1.1).toFixed(2));
+  const invalidWords = primaryScope === 'entityNameAllTokens' && !words.trim();
+  const invalidRange =
+    includeAmountRange &&
+    (!minimum.trim() ||
+      !maximum.trim() ||
+      !Number.isFinite(Number(minimum)) ||
+      !Number.isFinite(Number(maximum)) ||
+      Number(minimum) < 0 ||
+      Number(maximum) < Number(minimum));
 
   const buildFilters = useCallback((): ScopeFilter[] => {
+    if (invalidWords || (primaryScope !== 'transactionId' && invalidRange)) return [];
     const filters: ScopeFilter[] = [];
 
     // Primary scope filter
@@ -46,14 +59,12 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({ transactio
       case 'entityNameNormalized':
         filters.push(
           createScopeFilter(ScopeType.EntityNameNormalized, [
-            transaction.displayEntityNameNormalized,
+            transaction.entityNameNormalized || transaction.entityName,
           ]),
         );
         break;
       case 'entityNameAllTokens': {
-        const tokens = transaction.displayEntityNameNormalized
-          .split(/\s+/)
-          .filter((t) => t.length > 0);
+        const tokens = words.split(/\s+/).filter((t) => t.length > 0);
         if (tokens.length > 0) {
           filters.push(createScopeFilter(ScopeType.EntityNameAllTokens, tokens));
         }
@@ -62,35 +73,41 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({ transactio
     }
 
     // Optional narrowing filters
-    if (includeAccount) {
+    if (primaryScope !== 'transactionId' && includeAccount) {
       filters.push(createScopeFilter(ScopeType.AccountId, [transaction.accountId]));
     }
-    if (includeReason) {
+    if (primaryScope !== 'transactionId' && includeReason) {
       filters.push(
-        createScopeFilter(ScopeType.TransactionReason, [
-          String(transaction.correctedTransactionReason),
-        ]),
+        createScopeFilter(ScopeType.TransactionReason, [String(transaction.transactionReason)]),
       );
     }
-    if (includeAmountRange) {
-      const absAmount = Math.abs(transaction.correctedAmount);
-      const margin = absAmount * 0.1; // +/-10%
-      const min = (absAmount - margin).toFixed(2);
-      const max = (absAmount + margin).toFixed(2);
-      const amountRangeParameters =
-        transaction.correctedAmount < 0 ? [min, max, 'true'] : [min, max];
+    if (primaryScope !== 'transactionId' && includeAmountRange) {
+      const min = minimum;
+      const max = maximum;
+      const amountRangeParameters = transaction.amount < 0 ? [min, max, 'true'] : [min, max];
       filters.push(createScopeFilter(ScopeType.AmountRange, amountRangeParameters));
     }
 
     return filters;
-  }, [primaryScope, includeAccount, includeReason, includeAmountRange, transaction]);
+  }, [
+    primaryScope,
+    includeAccount,
+    includeReason,
+    includeAmountRange,
+    transaction,
+    words,
+    minimum,
+    maximum,
+    invalidWords,
+    invalidRange,
+  ]);
 
   // Notify parent whenever the selection changes
   useEffect(() => {
     onChange(buildFilters());
   }, [buildFilters, onChange]);
 
-  const entityName = transaction.displayEntityNameNormalized;
+  const entityName = transaction.entityNameNormalized || transaction.entityName;
   const tokens = entityName.split(/\s+/).filter((t) => t.length > 0);
 
   return (
@@ -142,6 +159,25 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({ transactio
         </label>
       </div>
 
+      {primaryScope === 'entityNameAllTokens' && (
+        <label className="block text-sm">
+          Required words
+          <input
+            className="mt-1 block w-full rounded-md border border-input p-2"
+            value={words}
+            onChange={(e) => setWords(e.target.value)}
+          />
+          <span className="text-xs text-muted-foreground">
+            Separate words with spaces. Every word must occur in the name.
+          </span>
+        </label>
+      )}
+      {invalidWords && (
+        <p role="alert" className="text-sm text-destructive">
+          Enter at least one word before saving.
+        </p>
+      )}
+
       {/* Optional narrowing filters (only shown when not single-transaction) */}
       {primaryScope !== 'transactionId' && (
         <div className="ml-6 space-y-2 border-l-2 border-border pl-4">
@@ -174,8 +210,43 @@ export const ScopeFilterEditor: React.FC<ScopeFilterEditorProps> = ({ transactio
               onChange={(e) => setIncludeAmountRange(e.target.checked)}
               className="accent-primary"
             />
-            Only for amount range (&plusmn;10%)
+            Only for amount range (starts at &plusmn;10%)
           </label>
+          {includeAmountRange && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs">
+                Minimum magnitude
+                <input
+                  className="mt-1 w-full rounded-md border border-input p-2"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={minimum}
+                  onChange={(e) => setMinimum(e.target.value)}
+                />
+              </label>
+              <label className="text-xs">
+                Maximum magnitude
+                <input
+                  className="mt-1 w-full rounded-md border border-input p-2"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={maximum}
+                  onChange={(e) => setMaximum(e.target.value)}
+                />
+              </label>
+              <p className="col-span-2 text-xs text-muted-foreground">
+                Matches {transaction.amount < 0 ? 'outgoing (negative)' : 'incoming (positive)'}{' '}
+                amounts using positive magnitudes.
+              </p>
+            </div>
+          )}
+          {invalidRange && (
+            <p role="alert" className="text-sm text-destructive">
+              Enter a valid minimum and maximum, with 0 ≤ minimum ≤ maximum.
+            </p>
+          )}
         </div>
       )}
     </fieldset>

@@ -13,10 +13,10 @@
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 215.3 19.3% 34.5%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 73.7% 41.8%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
@@ -50,5 +50,56 @@
 
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Size columns against the actual results pane, not the window: opening
+     transaction details must not squeeze names into a tiny desktop column. */
+  .transaction-explorer {
+    container-type: inline-size;
+  }
+  .transaction-grid-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6.5rem 1.75rem;
+    column-gap: 0.75rem;
+  }
+  .transaction-date-cell,
+  .transaction-wide-cell {
+    display: none;
+  }
+  .transaction-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  @container (min-width: 36rem) {
+    .transaction-name {
+      display: block;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .transaction-grid-row {
+      grid-template-columns: minmax(0, 1fr) 6.5rem 6.25rem 1.75rem;
+    }
+    .transaction-date-cell {
+      display: block;
+    }
+    .transaction-inline-date {
+      display: none;
+    }
+  }
+  @container (min-width: 64rem) {
+    .transaction-grid-row {
+      grid-template-columns: minmax(0, 1fr) 6.5rem 7.75rem 6.25rem 7rem 1.75rem;
+    }
+    .transaction-wide-cell {
+      display: block;
+    }
+    .transaction-inline-details {
+      display: none;
+    }
   }
 }

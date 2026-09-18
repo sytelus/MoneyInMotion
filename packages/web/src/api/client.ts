@@ -11,6 +11,28 @@ import type { TransactionsData, TransactionEditData, AccountConfig } from '@mone
 
 const BASE_URL = '/api';
 
+export interface RuleChange {
+  previous: TransactionEditData | null;
+  next: TransactionEditData | null;
+}
+export interface RuleChangeResult {
+  revision: string;
+  affectedTransactionsCount: number;
+  totalRules: number;
+  missingTargets: number;
+  samples: Array<{ id: string; before: Record<string, unknown>; after: Record<string, unknown> }>;
+}
+export function manageRules(
+  changes: RuleChange[],
+  preview: boolean,
+  expectedRevision?: string,
+): Promise<RuleChangeResult> {
+  return request('/transaction-edits/manage', {
+    method: 'POST',
+    body: JSON.stringify({ changes, preview, expectedRevision }),
+  });
+}
+
 export interface ApiConfig {
   /** Port persisted to the config file (what the next server start will use). */
   port: number;

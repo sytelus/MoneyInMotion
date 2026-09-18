@@ -18,6 +18,24 @@ function getLastFilters(onChange: ReturnType<typeof vi.fn>): ScopeFilter[] {
 }
 
 describe('ScopeFilterEditor', () => {
+  it('allows custom words and amounts, and fails closed for invalid conditions', () => {
+    const onChange = vi.fn();
+    render(<ScopeFilterEditor transaction={createTransaction(-100)} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText(/Transactions matching all words/i));
+    fireEvent.change(screen.getByLabelText(/Required words/), {
+      target: { value: 'Coffee Market' },
+    });
+    expect(getLastFilters(onChange)[0]?.parameters).toEqual(['Coffee', 'Market']);
+    fireEvent.click(screen.getByLabelText(/Only for amount range/i));
+    fireEvent.change(screen.getByLabelText('Minimum magnitude'), { target: { value: '50' } });
+    expect(getLastFilters(onChange)[1]?.parameters).toEqual(['50', '110.00', 'true']);
+    fireEvent.change(screen.getByLabelText('Maximum magnitude'), { target: { value: '10' } });
+    expect(getLastFilters(onChange)).toEqual([]);
+    expect(screen.getByRole('alert')).toHaveTextContent('minimum');
+    fireEvent.click(screen.getByLabelText('This transaction only'));
+    expect(getLastFilters(onChange)).toHaveLength(1);
+    expect(getLastFilters(onChange)[0]?.type).toBe(ScopeType.TransactionId);
+  });
   it('preserves the negative flag when building amount-range filters for expenses', async () => {
     const onChange = vi.fn();
 

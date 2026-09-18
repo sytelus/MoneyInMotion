@@ -17,6 +17,7 @@ import {
   type ScopeFilter,
   type Transaction,
   type TransactionEditData,
+  TransactionEdits,
 } from '@moneyinmotion/core';
 import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { Button } from '../ui/button.js';
@@ -41,7 +42,7 @@ export interface CategoryEditorProps {
  */
 function parseCategoryPath(input: string): string[] {
   return input
-    .split('>')
+    .split(/[/>]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
@@ -73,7 +74,7 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
   const allCategoryPaths = useMemo(() => {
     if (!transactions) return [];
     const pathSet = new Set<string>();
-    for (const tx of transactions.topLevelTransactions) {
+    for (const tx of transactions.allParentChildTransactions) {
       const cp = tx.categoryPath;
       if (cp.length > 0) {
         pathSet.add(cp.join(' > '));
@@ -146,12 +147,12 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
       scopeFilters[0]!.parameters.length === 1;
 
     if (!isSingleTx && transactions) {
-      const affected = transactions.filterTransactions(edit);
-      if (affected.length > 1) {
-        setPendingEdit(edit);
-        setAffectedTxns(affected);
-        return;
-      }
+      const affected = transactions
+        .withReplayedEdits(new TransactionEdits())
+        .filterTransactions(edit);
+      setPendingEdit(edit);
+      setAffectedTxns(affected);
+      return;
     }
 
     applyEdit(edit);
@@ -189,7 +190,7 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
                   autoFocus
                 />
                 {showSuggestions && filteredSuggestions.length > 0 && (
-                  <ul className="absolute z-10 w-full mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                  <ul className="absolute z-10 w-full mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-background shadow-md">
                     {filteredSuggestions.map((suggestion) => (
                       <li key={suggestion}>
                         <button
@@ -197,6 +198,10 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
                           className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
                           onMouseDown={(e) => {
                             e.preventDefault();
+                            setCategoryInput(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                          onClick={() => {
                             setCategoryInput(suggestion);
                             setShowSuggestions(false);
                           }}
@@ -221,7 +226,10 @@ export const CategoryEditor: React.FC<CategoryEditorProps> = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={applyEdits.isPending}>
+            <Button
+              onClick={handleSubmit}
+              disabled={applyEdits.isPending || scopeFilters.length === 0}
+            >
               {applyEdits.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>

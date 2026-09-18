@@ -24,9 +24,12 @@ Do not expose an unprotected instance to the public Internet; see
   transfers, normalizes merchant names, and builds monthly summaries.
 - Corrects amount, date, reason, merchant/payee, category, note, and flag fields.
   A correction can target selected transactions or become a reusable rule.
+- Opens on the latest available month with collapsed, type/category summaries;
+  supports all-date/year/custom periods, search, filters, sorting, bulk edits,
+  and CSV export with bounded result pages.
 - Preserves imported values. User intent is stored separately in
-  `LatestMergedEdits.json`, with an append-only audit history and explicit
-  field-reset actions.
+  `LatestMergedEdits.json`. Rules can be created, edited, or deleted individually
+  or in bulk after previewing their effects; prior rule files are backed up.
 
 ## Quick start
 

@@ -22,8 +22,8 @@ export const KEYBOARD_SHORTCUTS: readonly ShortcutEntry[] = [
   { keys: 'Alt + T', action: 'Edit category' },
   { keys: 'Alt + N', action: 'Edit note' },
   { keys: 'Alt + E', action: 'Fix attributes' },
-  { keys: 'Alt + F', action: 'Toggle flag' },
-  { keys: 'Alt + Shift + F', action: 'Remove flag' },
+  { keys: 'Alt + F', action: 'Toggle review mark' },
+  { keys: 'Alt + Shift + F', action: 'Clear review mark' },
   { keys: 'Escape', action: 'Close dialog' },
   { keys: '?', action: 'Show this keyboard shortcuts help' },
 ];

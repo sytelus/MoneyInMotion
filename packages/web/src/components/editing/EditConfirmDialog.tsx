@@ -53,6 +53,16 @@ export const EditConfirmDialog: React.FC<EditConfirmDialogProps> = ({
             <span className="font-semibold text-foreground">{affectedCount}</span> transaction
             {affectedCount !== 1 ? 's' : ''}.
           </p>
+          <p className="text-xs text-muted-foreground">
+            Conditions match imported values. This rule also applies to future imports. No original
+            statement values are changed.
+          </p>
+          {affectedCount === 0 && (
+            <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+              No loaded transactions match. Check your conditions before saving; a rule with no
+              current matches can still affect future imports.
+            </p>
+          )}
 
           {displayedNames.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-md border border-border">

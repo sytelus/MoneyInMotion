@@ -1,108 +1,111 @@
 # Transaction edits and rules
 
-MoneyInMotion separates imported facts from user corrections. Statement files
-remain unchanged, while a chronological edit aggregate expresses how the
-financial view should differ. The server automatically saves every accepted
-edit; there is no manual save step.
+MoneyInMotion separates imported facts from corrections. Rule management never
+rewrites statement files or imported transaction values. Accepted changes save
+automatically; previews do not save anything.
 
-## Editable attributes
+## Viewing and organizing rules
 
-The transaction editor can correct:
+Rules supports search by merchant, account, category, note, rule ID, and source;
+filters by edited field and application/attention status; sorting by saved order,
+match count, condition, or change; and 25-rule result pages. Select a page or all
+filtered results to edit or delete multiple rules (up to 1,000).
 
-- amount;
-- transaction date;
-- transaction reason (income, expense, transfer, and related domain values);
-- merchant or payee/entity name;
-- category path;
-- free-text note; and
-- flagged state.
+Specific-ID rules show available target names and dates, not just opaque IDs.
+Recorded match counts come from the snapshot's applied-edit IDs; later rules
+can override these values. “Unavailable transactions” means that a saved ID is
+not present, not that money is missing. The help popup explains checking retained
+statements and editing/removing obsolete rules. Missing historical references
+are preserved, never guessed.
 
-An imported value and an effective value are distinct. Aggregation, net groups,
-summaries, display, and later amount/reason scope matching all use the effective
-corrected value. The raw imported value remains available for reconstruction.
+## Create, edit, delete, and restore
 
-## Rule scopes
+The editor exposes amount, date, type/reason, merchant name, category, note, and
+“Mark for review.” A review mark is a personal reminder, with no effect on totals.
 
-An edit contains one or more filters. All filters on the edit must match; a
-multi-value filter matches any of its values. Supported scope types are:
+1. Create a rule or open an existing rule's edit button.
+2. Choose conditions and fields. All conditions must match. Multiple values
+   within a condition are alternatives, except “all words.”
+3. Preview the effect across the full history, including a before/after sample.
+4. Save only after reviewing the result. Rules apply to future imports too.
 
-| Scope              | Meaning                                         |
-| ------------------ | ----------------------------------------------- |
-| All                | Every transaction                               |
-| Transaction ID     | One or more exact transactions                  |
-| Exact entity       | Exact merchant/payee names                      |
-| Normalized entity  | Equivalent names after entity normalization     |
-| Any entity tokens  | At least one supplied token appears in the name |
-| All entity tokens  | Every supplied token appears in the name        |
-| Account            | One or more stable account IDs                  |
-| Transaction reason | One or more effective reason values             |
-| Amount range       | Inclusive effective numeric range               |
+Existing rules keep their ID and position when edited. Later rules override
+earlier rules for the same field. Changing list sort order does not reorder
+execution. Bulk edits preserve each rule's conditions and untouched fields.
 
-The editor begins with a transaction-specific scope. The confirmation dialog
-shows and validates broader choices before saving, helping prevent accidental
-mass edits.
+Deleting a rule removes it from the active set and replays the remainder; an
+earlier rule may become effective again. In contrast, “Restore imported value”
+is an explicit void marker that clears prior overrides for that field.
+“Do not change” omits that field from a rule. Bulk “Keep current setting” leaves
+each selected rule's existing field behavior intact.
 
-## Persistence and replay
+Previous aggregate files receive timestamped backups. There is no in-app undo
+button or immutable per-rule audit ledger. Deletion therefore always requires
+preview and confirmation.
 
-The browser submits complete edit objects to `POST /api/transaction-edits`.
-Each object includes an ID, timestamps and creator identity, scope filters,
-changed values, and a source ID. The active username is used for the audit
-identity in the current single-user deployment.
+## Scope semantics and deterministic replay
 
-The server validates the whole request and exact-ID targets before changing
-state. It then applies edits sequentially to a cloned candidate and saves:
+Supported conditions are all/no transactions, exact IDs, imported entity names,
+normalized names, any/all name tokens, account IDs, transaction reasons, and
+inclusive amount ranges. Amount-range bounds are non-negative magnitudes with
+an explicit incoming/outgoing direction.
 
-- the materialized, corrected transaction graph in `LatestMerged.json`; and
-- the independent chronological rules in `LatestMergedEdits.json`.
+Financial views use corrected values. Rule scopes, however, are resolved
+against the imported baseline before applying the ordered rule set. This is
+the same behavior on create, edit, delete, quick correction, and statement
+rebuild; a rule cannot stop matching itself by changing the field it tested.
+Low-level core `filterTransactions` operates on the provided collection, so
+callers building a rule preview must supply the unedited baseline.
 
-The candidate becomes active only after persistence succeeds. This makes a
-rejected batch or failed disk write side-effect free in live memory. Mutating
-requests are serialized so two browser actions cannot overwrite each other's
-candidate state.
+## HTTP and persistence
 
-During a statement rebuild, MiM creates a clean graph, completes transaction
-matching, and then replays the separate rules. This ensures a broader rule can
-apply to a newly imported transaction and that a rebuild never edits a source
-statement.
+Quick corrections use `POST /api/transaction-edits`. Rule management uses
+`POST /api/transaction-edits/manage` with:
 
-Legacy transaction IDs depended on .NET enum names, decimal text scale, and
-provider-specific parsing details. During the first rebuild of an existing
-legacy snapshot, MiM preserves exact-ID rules conservatively: if an old target
-is absent and the old snapshot plus rebuilt graph identify exactly one
-semantically equivalent transaction, the rule is retargeted and saved in its
-ordinary JSON form. A missing or ambiguous target is retained unchanged and
-reported, never expanded or deleted. Later rebuilds need no hidden alias table.
+```json
+{
+  "preview": true,
+  "changes": [
+    { "previous": null, "next": "<complete new rule object>" }
+  ]
+}
+```
 
-## Rule history and field reset
+For updates, supply both the previous and replacement rule. For deletion,
+supply the previous rule and `next: null`. The example's string placeholder
+must be replaced by a validated edit object. A commit uses `preview: false`
+and the `expectedRevision` returned by preview.
 
-The Rules page lists persisted rules with their scope, changed values, audit
-metadata, and affected-transaction count. Where the snapshot contains applied
-edit IDs, that durable record is used instead of re-evaluating the old filter
-against values the rule itself may have changed.
+The API validates the entire batch, checks previous rules for conflicts,
+rejects new missing exact-ID targets, and serializes mutations. It rejects a
+preview revision if transactions or rules changed in the meantime. A snapshot
+with corrections but incomplete rule history is rejected for managed replay
+rather than silently losing unknown corrections.
 
-Resetting does not delete or rewrite history. It appends a new edit whose
-selected values are marked void, restoring the imported value for the exact
-transactions recorded as receiving the selected rule. IDs are split into
-bounded request scopes when necessary. The original broad filter is not reused,
-so an old reset cannot unexpectedly capture transactions imported in the
-future.
+The server clones the active graph, removes its derived correction overlays,
+resolves scopes, replays rules, and recalculates parent completeness. IDs,
+imported facts, parent/child relationships, and transfer links are preserved.
+It saves `LatestMerged.json` and `LatestMergedEdits.json` before publishing the
+candidate in memory. Caught write failures restore previous files. Abrupt
+process/storage failures remain subject to the documented two-file transaction
+limit.
 
-Rule order matters: edits are applied chronologically and later applicable
-values supersede earlier ones. Consequently, reset means “restore these fields
-to imported values now,” not “remove only this historic rule”: it also overrides
-any later corrections to the same fields on those transactions. The confirmation
-dialog states this explicitly. A field omitted from a later rule leaves the
-previous correction untouched.
+Audit creator strings identify the UI/source producing a rule, not an
+authenticated human. This remains a single-user application.
+
+## Legacy targets
+
+On statement rebuild, legacy exact-ID rules can be safely retargeted only when
+the old and rebuilt graphs identify exactly one semantically equivalent record.
+Missing or ambiguous references remain unchanged for manual review.
 
 ## Maintainer invariants
 
-- Do not mutate imported transaction fields to implement a correction.
-- Add new editable fields to the core model, merge logic, serializer,
-  validation schema, editor, Rules presentation, and replay tests together.
-- Use corrected amount and reason for financial computations and rule matching.
-- Preserve numeric scope-enum values and accepted legacy JSON shapes unless a
-  versioned migration is introduced.
-- Save edit intent before treating an edit response as successful.
-- A rebuild must replay rules only after relationship matching is complete.
-- Parent and flattened child indexes must wrap the same transaction data object
-  so child corrections survive snapshot serialization and restart.
+- Never implement corrections by mutating imported fields.
+- Keep API preview, quick edits, and rebuild replay semantics consistent.
+- Validate a whole batch before applying it; preserve rule order.
+- Reject incomplete correction histories and stale previews.
+- Keep flattened and parent-held child records consistent.
+- Preserve legacy numeric scope enums and JSON compatibility.
+- Test create/update/delete, narrowing scopes, precedence, missing targets,
+  parent completeness, concurrent requests, save failure, and reload.

@@ -16,6 +16,7 @@ import {
   editValue,
   transactionReasonInfo,
   type ScopeFilter,
+  TransactionEdits,
   type Transaction,
   type TransactionEditData,
   type EditedValues,
@@ -168,12 +169,12 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
       scopeFilters[0]!.parameters.length === 1;
 
     if (!isSingleTx && transactions) {
-      const affected = transactions.filterTransactions(edit);
-      if (affected.length > 1) {
-        setPendingEdit(edit);
-        setAffectedTxns(affected);
-        return;
-      }
+      const affected = transactions
+        .withReplayedEdits(new TransactionEdits())
+        .filterTransactions(edit);
+      setPendingEdit(edit);
+      setAffectedTxns(affected);
+      return;
     }
 
     applyEdit(edit);
@@ -291,7 +292,10 @@ export const AttributeEditor: React.FC<AttributeEditorProps> = ({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={applyEdits.isPending}>
+            <Button
+              onClick={handleSubmit}
+              disabled={applyEdits.isPending || scopeFilters.length === 0}
+            >
               {applyEdits.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>

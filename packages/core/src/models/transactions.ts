@@ -1002,6 +1002,29 @@ export class Transactions {
   // -----------------------------------------------------------------------
 
   /**
+   * Build a new view from the same imported records and a replacement rule set.
+   * Identities, source values, hierarchy and transfer links are never rewritten.
+   * Like statement rebuilds, scopes are resolved against the imported baseline;
+   * later rules win when more than one rule changes the same field.
+   */
+  withReplayedEdits(edits: TransactionEdits): Transactions {
+    const data = structuredClone(this.serialize());
+    const clear = (tx: TransactionData): void => {
+      tx.mergedEdit = null;
+      tx.appliedEditIdsDescending = [];
+      for (const child of Object.values(tx.children ?? {})) clear(child);
+    };
+    for (const tx of Object.values(data.topItems)) clear(tx);
+    data.edits = [];
+    const candidate = Transactions.fromData(data);
+    for (const tx of candidate.allParentChildTransactions) {
+      if (tx.children && Object.keys(tx.children).length > 0) tx.completeParent();
+    }
+    candidate.applyEdits(edits, true);
+    return candidate;
+  }
+
+  /**
    * Serialize to a {@link TransactionsData} object suitable for JSON
    * persistence.
    */

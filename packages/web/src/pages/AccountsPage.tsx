@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { AccountType, validateAccountConfigSupport, type AccountConfig } from '@moneyinmotion/core';
 import { Button } from '../components/ui/button.js';
+import { Header } from '../components/layout/Header.js';
 import { Badge } from '../components/ui/badge.js';
 import { Input } from '../components/ui/input.js';
 import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog.js';
@@ -34,6 +35,7 @@ import {
   type AccountSummary,
 } from '../api/client.js';
 import { StatementFolderUpload } from '../components/importing/StatementFolderUpload.js';
+import { ExistingStatements } from '../components/importing/ExistingStatements.js';
 
 const institutionOptions = [
   { value: 'AmericanExpress', label: 'American Express' },
@@ -485,6 +487,7 @@ export const AccountsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       <header className="flex items-center justify-between h-14 px-4 border-b border-border">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
@@ -509,6 +512,7 @@ export const AccountsPage: React.FC = () => {
 
         {accounts && (
           <div className="mb-7">
+            <ExistingStatements accounts={accounts} />
             <StatementFolderUpload accounts={accounts} />
           </div>
         )}

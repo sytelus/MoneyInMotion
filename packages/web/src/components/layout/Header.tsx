@@ -23,6 +23,7 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 import { cn } from '../../lib/utils.js';
 
 const navItems = [
+  { to: '/', label: 'Transactions', icon: CircleDollarSign },
   { to: '/accounts', label: 'Accounts', icon: CreditCard },
   { to: '/rules', label: 'Rules', icon: History },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -59,6 +60,9 @@ export const Header: React.FC = () => {
           <NavLink
             key={to}
             to={to}
+            end={to === '/'}
+            aria-label={label}
+            title={label}
             className={({ isActive }) =>
               cn(
                 'inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground sm:px-3',

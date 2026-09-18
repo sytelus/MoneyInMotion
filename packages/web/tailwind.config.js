@@ -34,8 +34,8 @@ export default {
           foreground: 'hsl(var(--card-foreground))',
         },
         // App-specific colors
-        income: '#16a34a',
-        expense: '#dc2626',
+        income: '#15803d',
+        expense: '#b91c1c',
         transfer: '#2563eb',
       },
       borderRadius: {

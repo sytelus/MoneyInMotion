@@ -9,6 +9,7 @@
  */
 
 import * as fs from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 import {
   Transactions,
   Transaction,
@@ -23,6 +24,13 @@ import { TransactionsStorage } from '../storage/transactions-storage.js';
 import { TransactionEditsStorage } from '../storage/transaction-edits-storage.js';
 import { getStatementParser } from '../parsers/statement/index.js';
 import { FileLocation } from '../storage/file-location.js';
+import { writeTextFileAtomically } from '../storage/atomic-file.js';
+import {
+  prepareRuleChanges,
+  snapshotRevision,
+  RuleConflictError,
+  type RuleChange,
+} from './rule-management.js';
 
 export interface SnapshotBuildResult {
   /** True only when every statement parsed and the new snapshot was saved. */
@@ -81,15 +89,41 @@ export class TransactionCache {
   async applyEdits(edits: TransactionEditData[]): Promise<{ affectedTransactionsCount: number }> {
     return this.enqueueMutation(async () => {
       const current = await this.getTransactions();
-      const candidate = Transactions.fromData(current.serialize());
+      const preflight = Transactions.fromData(structuredClone(current.serialize()));
       const batch = new TransactionEdits('web-api');
       for (const edit of edits) batch.add(edit);
 
-      const affected = candidate.applyEdits(batch, false);
+      // Keep the old API's strict target validation, but use the same imported
+      // baseline and precedence as rule management and statement rebuilds.
+      preflight.applyEdits(batch, false);
+      const previousEdits = current.getClonedEdits();
+      const changes = [...batch]
+        .filter((edit) => !previousEdits.get(edit.id))
+        .map((next) => ({ previous: null, next }));
+      if (!changes.length) return { affectedTransactionsCount: 0 };
+      const { candidate, result } = prepareRuleChanges(current, changes);
       await this.saveSnapshot(candidate);
       this.transactions = candidate;
 
-      return { affectedTransactionsCount: affected.length };
+      return { affectedTransactionsCount: result.affectedTransactionsCount };
+    });
+  }
+
+  /** Preview and commit share the same validation and replay logic. */
+  async manageRules(changes: RuleChange[], preview: boolean, expectedRevision?: string) {
+    return this.enqueueMutation(async () => {
+      const current = await this.getTransactions();
+      if (expectedRevision && snapshotRevision(current) !== expectedRevision) {
+        throw new RuleConflictError(
+          'Transactions or rules changed after this preview. Cancel and preview again before saving.',
+        );
+      }
+      const { candidate, result } = prepareRuleChanges(current, changes);
+      if (!preview) {
+        await this.saveSnapshot(candidate);
+        this.transactions = candidate;
+      }
+      return result;
     });
   }
 
@@ -110,8 +144,26 @@ export class TransactionCache {
   /** Queue a two-file snapshot write for a specific immutable candidate. */
   private async saveSnapshot(transactions: Transactions): Promise<void> {
     const next = this.savePromise.then(() => {
-      this.transactionsStorage.save(this.repo.latestMergedPath, transactions);
-      this.editsStorage.save(this.repo.latestMergedEditsPath, transactions.getClonedEdits());
+      const targets = [this.repo.latestMergedPath, this.repo.latestMergedEditsPath];
+      const previous = targets.map((file) =>
+        fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null,
+      );
+      try {
+        this.transactionsStorage.save(this.repo.latestMergedPath, transactions);
+        this.editsStorage.save(this.repo.latestMergedEditsPath, transactions.getClonedEdits());
+      } catch (error) {
+        // Especially important for deleted rules: a failed second write must
+        // not leave an old aggregate that resurrects them on the next restart.
+        for (let index = 0; index < targets.length; index++) {
+          const file = targets[index]!;
+          const content = previous[index]!;
+          if (content == null) {
+            if (fs.existsSync(file)) fs.unlinkSync(file);
+          } else if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== content)
+            writeTextFileAtomically(file, content);
+        }
+        throw error;
+      }
     });
     // Swallow errors on the chained promise so that one failed save
     // does not permanently block every subsequent save; the original
@@ -204,9 +256,8 @@ export class TransactionCache {
     }
 
     txns.matchTransactions();
-    const edits = this.repo.latestMergedEditsExists()
-      ? this.editsStorage.load(this.repo.latestMergedEditsPath)
-      : previous.getClonedEdits();
+    const edits = previous.getClonedEdits();
+    edits.merge(this.loadAdditionalEdits(edits));
     const editMigration = migrateLegacyEditTargets(edits, previous, txns);
     txns.applyEdits(editMigration.edits, true);
 
@@ -236,20 +287,17 @@ export class TransactionCache {
    * Load transactions from disk (LatestMerged.json + edits).
    */
   private async loadFromDisk(): Promise<void> {
-    if (this.repo.latestMergedExists()) {
-      this.transactions = this.transactionsStorage.load(this.repo.latestMergedPath);
+    const candidate = this.repo.latestMergedExists()
+      ? this.transactionsStorage.load(this.repo.latestMergedPath)
+      : new Transactions('LatestMerged');
 
-      // A materialized snapshot already carries merged values and its
-      // edit history. Overlay the separate aggregate only for an older
-      // snapshot that did not embed edits.
-      if (this.transactions.editsCount === 0 && this.repo.latestMergedEditsExists()) {
-        const edits = this.editsStorage.load(this.repo.latestMergedEditsPath);
-        this.transactions.applyEdits(edits, true);
-      }
-    } else {
-      // No merged file yet -- start with empty collection
-      this.transactions = new Transactions('LatestMerged');
-    }
+    // Rules are durable data in their own right, even before a snapshot exists.
+    // Validate the separate aggregate on every load, and apply only new rules:
+    // replaying embedded rules against already-corrected values changes scopes.
+    candidate.applyEdits(this.loadAdditionalEdits(candidate.getClonedEdits()), true);
+    // Publish only after all disk inputs validate, so a failed read cannot leave
+    // a partially loaded cache that appears successful on the next request.
+    this.transactions = candidate;
   }
 
   /**
@@ -296,5 +344,19 @@ export class TransactionCache {
       console.error(`Error parsing statement "${loc.portableAddress}": ${message}`);
       return { transactions: null, error: message };
     }
+  }
+  /** Merge histories by rule identity, independent of JSON object key order. */
+  private loadAdditionalEdits(embedded: TransactionEdits): TransactionEdits {
+    const missing = new TransactionEdits('saved-rules');
+    if (!this.repo.latestMergedEditsExists()) return missing;
+    const saved = this.editsStorage.load(this.repo.latestMergedEditsPath);
+    for (const edit of saved) {
+      const existing = embedded.get(edit.id);
+      if (existing == null) missing.add(edit);
+      else if (!isDeepStrictEqual(existing, edit)) {
+        throw new Error(`Conflicting saved rule "${edit.id}" in snapshot and rules file.`);
+      }
+    }
+    return missing;
   }
 }

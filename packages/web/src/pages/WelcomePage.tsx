@@ -21,9 +21,11 @@ import {
   Keyboard,
 } from 'lucide-react';
 import { Button, buttonClassName } from '../components/ui/button.js';
+import { Header } from '../components/layout/Header.js';
 import { getConfig, getAccounts, type AccountSummary } from '../api/client.js';
 import { cn } from '../lib/utils.js';
 import { KEYBOARD_SHORTCUTS } from '../lib/shortcuts.js';
+import { ExistingStatements } from '../components/importing/ExistingStatements.js';
 
 // ---------------------------------------------------------------------------
 // Step status helpers
@@ -36,6 +38,7 @@ interface StepStatus {
   dataPathConfigured: boolean;
   accounts: AccountSummary[];
   accountsLoaded: boolean;
+  error: string | null;
 }
 
 function useStepStatus(): StepStatus & { refresh: () => void } {
@@ -46,6 +49,7 @@ function useStepStatus(): StepStatus & { refresh: () => void } {
   const [accounts, setAccounts] = useState<AccountSummary[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [tick, setTick] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = () => setTick((t) => t + 1);
 
@@ -53,6 +57,7 @@ function useStepStatus(): StepStatus & { refresh: () => void } {
     let cancelled = false;
 
     (async () => {
+      setError(null);
       try {
         const config = await getConfig();
         if (!cancelled) {
@@ -61,8 +66,9 @@ function useStepStatus(): StepStatus & { refresh: () => void } {
           setRestartRequired(config.restartRequired);
           setDataPathConfigured(!!config.dataRoot && !!config.username);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Could not load configuration');
           setDataPath(null);
           setActiveDataPath(null);
           setRestartRequired(false);
@@ -76,8 +82,9 @@ function useStepStatus(): StepStatus & { refresh: () => void } {
           setAccounts(accts);
           setAccountsLoaded(true);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Could not load accounts');
           setAccounts([]);
           setAccountsLoaded(true);
         }
@@ -97,6 +104,7 @@ function useStepStatus(): StepStatus & { refresh: () => void } {
     accounts,
     accountsLoaded,
     refresh,
+    error,
   };
 }
 
@@ -167,6 +175,7 @@ export const WelcomePage: React.FC = () => {
     dataPathConfigured,
     accounts,
     accountsLoaded,
+    error,
   } = useStepStatus();
 
   const hasAccounts = accounts.length > 0;
@@ -176,6 +185,7 @@ export const WelcomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       {/* Header */}
       <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
         <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
@@ -185,6 +195,12 @@ export const WelcomePage: React.FC = () => {
       </header>
 
       <main className="p-6 max-w-2xl mx-auto">
+        {error && (
+          <p role="alert" className="text-destructive">
+            Could not check setup: {error}
+          </p>
+        )}
+        <ExistingStatements accounts={accounts} />
         {/* Welcome hero */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Welcome to MoneyInMotion</h2>

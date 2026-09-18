@@ -11,9 +11,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Check, Download, FolderOpen, Waypoints } from 'lucide-react';
 import { Button } from '../components/ui/button.js';
+import { Header } from '../components/layout/Header.js';
 import { Input } from '../components/ui/input.js';
 import { getConfig, updateConfig } from '../api/client.js';
 import { useRebuildSnapshot } from '../api/hooks.js';
+import { MissingRuleTargets } from '../components/editing/MissingRuleTargets.js';
 
 function parsePortInput(portInput: string): number | null {
   if (!/^\d+$/.test(portInput.trim())) {
@@ -157,6 +159,7 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
         <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
@@ -298,7 +301,12 @@ export const SettingsPage: React.FC = () => {
                   <p className="text-xs font-medium text-muted-foreground mb-2">
                     Expected directory structure:
                   </p>
-                  <pre className="text-xs text-muted-foreground font-mono leading-relaxed">
+                  <pre
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Expected directory structure"
+                    className="overflow-x-auto text-xs text-muted-foreground font-mono leading-relaxed"
+                  >
                     {`${originalDataRoot || '{dataRoot}'}/
 └── ${originalUsername || '{username}'}/
     ├── Statements/          ← Configured account folders
@@ -391,9 +399,7 @@ export const SettingsPage: React.FC = () => {
                 )}
                 {rebuildMutation.data.unresolvedEditTargets > 0 && (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
-                    {rebuildMutation.data.unresolvedEditTargets} legacy exact-ID rule target
-                    {rebuildMutation.data.unresolvedEditTargets === 1 ? '' : 's'} could not be
-                    resolved uniquely. MiM retained them unchanged for review in Rules.
+                    <MissingRuleTargets count={rebuildMutation.data.unresolvedEditTargets} />
                   </div>
                 )}
                 {rebuildMutation.data.failedFiles?.length > 0 && (

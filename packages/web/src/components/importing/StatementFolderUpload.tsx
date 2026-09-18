@@ -21,6 +21,7 @@ import {
 import type { AccountSummary, FolderUploadItem } from '../../api/client.js';
 import { useUploadStatementFolder } from '../../api/hooks.js';
 import { Button } from '../ui/button.js';
+import { MissingRuleTargets } from '../editing/MissingRuleTargets.js';
 
 interface StatementFolderUploadProps {
   accounts: AccountSummary[];
@@ -327,9 +328,7 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
                 ))}
                 {result.rebuild.unresolvedEditTargets > 0 && (
                   <li>
-                    {result.rebuild.unresolvedEditTargets} legacy exact-ID rule target
-                    {result.rebuild.unresolvedEditTargets === 1 ? '' : 's'} no longer identify a
-                    transaction and were retained unchanged in Rules.
+                    <MissingRuleTargets count={result.rebuild.unresolvedEditTargets} />
                   </li>
                 )}
               </ul>
