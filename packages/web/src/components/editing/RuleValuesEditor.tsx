@@ -9,6 +9,7 @@ import { ruleFields } from '../../lib/rules.js';
 import { Select } from '../ui/select.js';
 import { Input } from '../ui/input.js';
 import { HelpHint } from '../ui/help-hint.js';
+import { Textarea } from '../ui/textarea.js';
 
 export function RuleValuesEditor({
   values,
@@ -22,7 +23,7 @@ export function RuleValuesEditor({
   const update = (key: keyof EditedValues, value: EditedValues[keyof EditedValues]) =>
     onChange({ ...values, [key]: value });
   return (
-    <fieldset className="space-y-3">
+    <fieldset className="grid gap-3 sm:grid-cols-2">
       <legend className="mb-2 font-semibold">Changes to make</legend>
       {ruleFields.map(({ key, label }) => {
         const field = values[key];
@@ -92,6 +93,13 @@ export function RuleValuesEditor({
                   }))}
                   onChange={(e) => update(key, editValue(Number(e.target.value)))}
                 />
+              ) : key === 'note' ? (
+                <Textarea
+                  aria-label={`${label} value`}
+                  rows={3}
+                  value={String(field!.value)}
+                  onChange={(event) => update(key, editValue(event.target.value))}
+                />
               ) : (
                 <Input
                   aria-label={`${label} value`}
@@ -126,7 +134,7 @@ export function RuleValuesEditor({
           </div>
         );
       })}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground sm:col-span-2">
         “Restore imported value” clears the field’s overrides, including those from earlier rules.
         Deleting a rule is different: it lets earlier rules take effect again.
       </p>

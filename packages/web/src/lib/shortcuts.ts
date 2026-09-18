@@ -19,11 +19,14 @@ export interface ShortcutEntry {
 /** Canonical shortcut reference, ordered by expected frequency of use. */
 export const KEYBOARD_SHORTCUTS: readonly ShortcutEntry[] = [
   { keys: 'Up / Down', action: 'Navigate transactions' },
-  { keys: 'Alt + T', action: 'Edit category' },
-  { keys: 'Alt + N', action: 'Edit note' },
-  { keys: 'Alt + E', action: 'Fix attributes' },
-  { keys: 'Alt + F', action: 'Toggle review mark' },
-  { keys: 'Alt + Shift + F', action: 'Clear review mark' },
+  { keys: 'Alt + T', action: 'Edit category for the selection' },
+  { keys: 'Alt + N', action: 'Edit note for the selection' },
+  { keys: 'Alt + E', action: 'Edit selected transaction values' },
+  { keys: 'Alt + F', action: 'Toggle review mark (opens batch editor for multiple records)' },
+  {
+    keys: 'Alt + Shift + F',
+    action: 'Restore imported review mark (batch editor for multiple records)',
+  },
   { keys: 'Escape', action: 'Close dialog' },
   { keys: '?', action: 'Show this keyboard shortcuts help' },
 ];

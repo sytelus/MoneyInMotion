@@ -103,13 +103,22 @@ async function verifyServer(port) {
     throw new Error(`Unexpected health response: ${JSON.stringify(healthBody)}`);
   }
 
-  const deepLink = await fetch(`http://127.0.0.1:${port}/rules`);
-  const html = await deepLink.text();
-  if (!deepLink.ok || !html.includes('<div id="root"></div>')) {
-    throw new Error('The production server did not serve the React SPA fallback.');
-  }
-  if (!deepLink.headers.has('content-security-policy')) {
-    throw new Error('The production response is missing Helmet security headers.');
+  for (const route of [
+    '/',
+    '/transactions?basis=records',
+    '/imports?tab=sources',
+    '/accounts',
+    '/rules',
+    '/settings',
+  ]) {
+    const deepLink = await fetch(`http://127.0.0.1:${port}${route}`);
+    const html = await deepLink.text();
+    if (!deepLink.ok || !html.includes('<div id="root"></div>')) {
+      throw new Error(`The production server did not serve the React SPA fallback for ${route}.`);
+    }
+    if (!deepLink.headers.has('content-security-policy')) {
+      throw new Error('The production response is missing Helmet security headers.');
+    }
   }
 
   const unknownApi = await fetch(`http://127.0.0.1:${port}/api/not-a-route`);

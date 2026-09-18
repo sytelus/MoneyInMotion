@@ -8,7 +8,7 @@ import { ExistingStatements } from '../../src/components/importing/ExistingState
 import { useTransactionsStore } from '../../src/store/transactions-store.js';
 import type { AccountSummary } from '../../src/api/client.js';
 
-const state = vi.hoisted(() => ({ transactions: vi.fn(), rebuild: vi.fn() }));
+const state = vi.hoisted(() => ({ transactions: vi.fn(), rebuild: vi.fn(), quickEdit: vi.fn() }));
 const account: AccountSummary = {
   config: {
     accountInfo: {
@@ -27,8 +27,21 @@ const account: AccountSummary = {
 vi.mock('../../src/api/hooks.js', () => ({
   useTransactions: () => state.transactions(),
   useAccounts: () => ({ data: [account], isLoading: false, error: null }),
-  useApplyEdits: () => ({ mutate: vi.fn() }),
+  useApplyEdits: () => ({ mutate: state.quickEdit }),
   useRebuildSnapshot: () => state.rebuild(),
+}));
+vi.mock('../../src/components/editing/TransactionEditWorkflow.js', () => ({
+  TransactionEditWorkflow: ({
+    transactions,
+    initialField,
+  }: {
+    transactions: unknown[];
+    initialField?: string;
+  }) => (
+    <div role="dialog" aria-label="Selection editor">
+      Editing {transactions.length} records: {initialField}
+    </div>
+  ),
 }));
 
 beforeEach(() => {
@@ -43,6 +56,44 @@ beforeEach(() => {
 });
 
 describe('existing data workflow', () => {
+  it('applies keyboard editing to the full selection and never silently flags only its first record', async () => {
+    const collection = new Transactions('selection');
+    for (let i = 0; i < 2; i++)
+      collection.addNew(
+        Transaction.create('file', 'bank', false, {
+          amount: -10 - i,
+          transactionDate: '2024-01-01',
+          entityName: `Store ${i}`,
+          transactionReason: TransactionReason.Purchase,
+        }),
+        account.config.accountInfo,
+        { id: 'file', portableAddress: 'Bank/file.csv', format: 'csv', contentHash: 'file' },
+        false,
+      );
+    state.transactions.mockReturnValue({
+      data: collection.serialize(),
+      isLoading: false,
+      error: null,
+    });
+    state.quickEdit.mockClear();
+    render(
+      <MemoryRouter>
+        <AppShell />
+      </MemoryRouter>,
+    );
+    await screen.findByRole('grid');
+    act(() =>
+      useTransactionsStore
+        .getState()
+        .selectTransactions([...collection.allParentChildTransactions].map((tx) => tx.id)),
+    );
+    fireEvent.keyDown(document.body, { key: 'n', altKey: true });
+    expect(screen.getByRole('dialog')).toHaveTextContent('Editing 2 records: note');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.keyDown(document.body, { key: 'f', altKey: true });
+    expect(screen.getByRole('dialog')).toHaveTextContent('Editing 2 records: isFlagged');
+    expect(state.quickEdit).not.toHaveBeenCalled();
+  });
   it('offers a build instead of onboarding when statements exist without a snapshot', async () => {
     state.transactions.mockReturnValue({
       data: new Transactions('empty').serialize(),

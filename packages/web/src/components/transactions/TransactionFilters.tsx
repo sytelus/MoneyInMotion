@@ -6,10 +6,17 @@ import { Input } from '../ui/input.js';
 import { Select } from '../ui/select.js';
 import { Button } from '../ui/button.js';
 import { transactionCategory } from '../../lib/transaction-explorer.js';
+import { ruleChangesLabel } from '../../lib/rules.js';
 
 export function TransactionFilters() {
-  const { transactions, reporting, filters, setFilters, selectedYear, selectedMonth } =
-    useTransactionsStore();
+  const {
+    transactions,
+    records: reporting,
+    filters,
+    setFilters,
+    selectedYear,
+    selectedMonth,
+  } = useTransactionsStore();
   const accounts = React.useMemo(
     () =>
       [...new Set(reporting.map((t) => t.accountId))]
@@ -32,12 +39,40 @@ export function TransactionFilters() {
     [reporting],
   );
   const active = Object.values(filters).filter(Boolean).length;
+  const matchedRuleLabel = React.useMemo(() => {
+    if (!filters.rule || !transactions) return '';
+    const rules = [...transactions.getClonedEdits()];
+    const index = rules.findIndex((rule) => rule.id === filters.rule);
+    return index < 0
+      ? 'Unavailable saved rule'
+      : `Rule ${index + 1} · ${ruleChangesLabel(rules[index]!.values)}`;
+  }, [transactions, filters.rule]);
+  let sourceLabel = filters.source;
+  if (filters.source && transactions) {
+    try {
+      sourceLabel = transactions.getImportInfo(filters.source).portableAddress;
+    } catch {
+      sourceLabel = `Unavailable source (${filters.source})`;
+    }
+  }
   const periodFrom = selectedYear ? `${selectedYear}-${selectedMonth || '01'}-01` : '';
   const periodTo = selectedYear
     ? new Date(Date.UTC(Number(selectedYear), selectedMonth ? Number(selectedMonth) : 12, 0))
         .toISOString()
         .slice(0, 10)
     : '';
+  const chipLabels = {
+    source: `Source file: ${sourceLabel}`,
+    rule: matchedRuleLabel,
+    merchant: `Merchant: ${filters.merchant}`,
+    flow: `Activity: ${filters.flow}`,
+    account: `Account: ${accounts.find((account) => account.value === filters.account)?.label ?? filters.account}`,
+    category: `Category: ${filters.category}`,
+    reason: `Type: ${transactionReasonTitleLookup[filters.reason] ?? filters.reason}`,
+    review: `Review: ${{ flagged: 'Marked for review', unmatched: 'Unmatched order details', uncategorized: 'Uncategorized', incomplete: 'Incomplete matches' }[filters.review] ?? filters.review}`,
+    min: `Amount ≥ ${filters.min}`,
+    max: `Amount ≤ ${filters.max}`,
+  };
   return (
     <section aria-label="Filter transactions" className="space-y-3">
       <label className="relative block">
@@ -50,6 +85,23 @@ export function TransactionFilters() {
           onChange={(e) => setFilters({ search: e.target.value })}
         />
       </label>
+      <div role="group" className="flex flex-wrap gap-2" aria-label="Active filters">
+        {(Object.keys(chipLabels) as (keyof typeof chipLabels)[])
+          .filter((key) => filters[key])
+          .map((key) => (
+            <button
+              key={key}
+              type="button"
+              className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs text-sky-900"
+              title={`Remove ${key} filter`}
+              aria-label={`Remove filter: ${chipLabels[key]}`}
+              onClick={() => setFilters({ [key]: '' })}
+            >
+              <span className="break-all">{chipLabels[key]}</span>
+              <span aria-hidden>×</span>
+            </button>
+          ))}
+      </div>
       <details className="rounded-lg border border-border bg-muted/20">
         <summary className="flex cursor-pointer items-center gap-2 p-3 text-sm font-medium">
           <SlidersHorizontal className="h-4 w-4" />
@@ -98,8 +150,23 @@ export function TransactionFilters() {
                 { value: 'flagged', label: 'Marked for review' },
                 { value: 'unmatched', label: 'Unmatched to a payment' },
                 { value: 'uncategorized', label: 'Uncategorized' },
+                { value: 'incomplete', label: 'Incomplete order matches' },
               ]}
               onChange={(e) => setFilters({ review: e.target.value })}
+            />
+          </label>
+          <label className="text-xs font-medium">
+            Activity
+            <Select
+              className="mt-1"
+              value={filters.flow}
+              options={[
+                { value: '', label: 'All activity, including transfers' },
+                { value: 'activity', label: 'Credits and debits (excludes transfers/unmatched)' },
+                { value: 'credits', label: 'Recorded credits' },
+                { value: 'debits', label: 'Recorded debits' },
+              ]}
+              onChange={(e) => setFilters({ flow: e.target.value })}
             />
           </label>
           <label className="text-xs font-medium">

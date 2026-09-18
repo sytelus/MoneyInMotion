@@ -9,7 +9,7 @@
  * @module
  */
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import type { Transaction } from '@moneyinmotion/core';
 import {
@@ -20,14 +20,14 @@ import {
   editValue,
   voidedEditValue,
   type TransactionEditData,
+  type EditedValues,
 } from '@moneyinmotion/core';
 import { Header } from './Header.js';
 import { YearMonthNav } from '../navigation/YearMonthNav.js';
 import { TransactionList } from '../transactions/TransactionList.js';
 import { TransactionSummary } from '../transactions/TransactionSummary.js';
-import { CategoryEditor } from '../editing/CategoryEditor.js';
-import { NoteEditor } from '../editing/NoteEditor.js';
-import { AttributeEditor } from '../editing/AttributeEditor.js';
+import { TransactionEditWorkflow } from '../editing/TransactionEditWorkflow.js';
+import { useTransactionNavigation } from '../../hooks/useTransactionNavigation.js';
 import { AlertCircle, CalendarRange, PanelRight, Sparkles, X } from 'lucide-react';
 import { buttonClassName } from '../ui/button.js';
 import { useTransactions, useApplyEdits, useAccounts } from '../../api/hooks.js';
@@ -35,7 +35,7 @@ import { ExistingStatements } from '../importing/ExistingStatements.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 
-type EditDialog = 'category' | 'note' | 'attributes' | null;
+type EditDialog = 'categoryPath' | 'note' | 'isFlagged' | 'attributes' | null;
 
 const EmptyTransactions: React.FC = () => {
   const accounts = useAccounts();
@@ -80,7 +80,7 @@ const EmptyTransactions: React.FC = () => {
  */
 export const AppShell: React.FC = () => {
   const { data, isLoading, error } = useTransactions();
-  const setTransactions = useTransactionsStore((s) => s.setTransactions);
+  useTransactionNavigation(data);
   const transactions = useTransactionsStore((s) => s.transactions);
   const selectedIds = useTransactionsStore((s) => s.selectedTransactionIds);
   const selectedYear = useTransactionsStore((s) => s.selectedYear);
@@ -89,45 +89,44 @@ export const AppShell: React.FC = () => {
   const applyEdits = useApplyEdits();
 
   const [activeDialog, setActiveDialog] = useState<EditDialog>(null);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingTransactions, setEditingTransactions] = useState<Transaction[]>([]);
+  const [editDefaults, setEditDefaults] = useState<EditedValues | undefined>(undefined);
   const [quickEditError, setQuickEditError] = useState<string | null>(null);
+  const [success, setSuccess] = useState('');
   const [compactPanel, setCompactPanel] = useState<'period' | 'details' | null>(null);
 
-  // Push server data into the Zustand store when it arrives
-  useEffect(() => {
-    if (data) {
-      setTransactions(data);
-    }
-  }, [data, setTransactions]);
-
-  // Get the currently selected transaction (first in selection)
-  const selectedTransaction = useMemo(() => {
-    if (!transactions || selectedIds.size === 0) return null;
-    const firstId = [...selectedIds][0];
-    return firstId ? (transactions.getTransaction(firstId) ?? null) : null;
+  const selectedTransactions = useMemo(() => {
+    if (!transactions) return [];
+    return [...selectedIds].flatMap((id) => transactions.getTransaction(id) ?? []);
   }, [transactions, selectedIds]);
+  const selectedTransaction = selectedTransactions.length === 1 ? selectedTransactions[0] : null;
 
   // Edit dialog openers
   const openEditDialog = useCallback(
     (dialog: EditDialog, tx?: Transaction) => {
-      const target = tx ?? selectedTransaction;
-      if (!target) return;
-      setEditingTransaction(target);
+      const targets = tx ? [tx] : selectedTransactions;
+      if (!targets.length) return;
+      setEditingTransactions(targets);
+      setEditDefaults(undefined);
       setActiveDialog(dialog);
     },
-    [selectedTransaction],
+    [selectedTransactions],
   );
 
   const closeDialogs = useCallback(() => {
     setActiveDialog(null);
-    setEditingTransaction(null);
+    setEditingTransactions([]);
   }, []);
 
   // Flag toggle handler
   const handleToggleFlag = useCallback(
     (tx?: Transaction) => {
+      if (!tx && selectedTransactions.length > 1) {
+        openEditDialog('isFlagged');
+        return;
+      }
       const target = tx ?? selectedTransaction;
-      if (!target) return;
+      if (!target || applyEdits.isPending) return;
 
       const edit: TransactionEditData = {
         id: createUUID(),
@@ -141,19 +140,30 @@ export const AppShell: React.FC = () => {
 
       setQuickEditError(null);
       applyEdits.mutate([edit], {
+        onSuccess: () =>
+          setSuccess(
+            target.isUserFlagged
+              ? 'Review mark cleared. Original statement values are unchanged.'
+              : 'Transaction marked for review. This does not exclude it from totals.',
+          ),
         onError: (error) => {
           setQuickEditError(error instanceof Error ? error.message : 'Failed to update the flag.');
         },
       });
     },
-    [selectedTransaction, applyEdits],
+    [selectedTransaction, selectedTransactions.length, openEditDialog, applyEdits],
   );
 
   // Flag remove handler
   const handleRemoveFlag = useCallback(
     (tx?: Transaction) => {
+      if (!tx && selectedTransactions.length > 1) {
+        openEditDialog('isFlagged');
+        setEditDefaults({ isFlagged: voidedEditValue<boolean>() });
+        return;
+      }
       const target = tx ?? selectedTransaction;
-      if (!target) return;
+      if (!target || applyEdits.isPending) return;
 
       const edit: TransactionEditData = {
         id: createUUID(),
@@ -167,17 +177,18 @@ export const AppShell: React.FC = () => {
 
       setQuickEditError(null);
       applyEdits.mutate([edit], {
+        onSuccess: () => setSuccess('Review mark restored to its imported state.'),
         onError: (error) => {
           setQuickEditError(error instanceof Error ? error.message : 'Failed to remove the flag.');
         },
       });
     },
-    [selectedTransaction, applyEdits],
+    [selectedTransaction, selectedTransactions.length, openEditDialog, applyEdits],
   );
 
   // Register keyboard shortcuts
   useKeyboardShortcuts({
-    onEditCategory: () => openEditDialog('category'),
+    onEditCategory: () => openEditDialog('categoryPath'),
     onEditNote: () => openEditDialog('note'),
     onEditAttributes: () => openEditDialog('attributes'),
     onToggleFlag: () => handleToggleFlag(),
@@ -187,7 +198,7 @@ export const AppShell: React.FC = () => {
 
   // Callbacks for TransactionList rows
   const handleRowEditCategory = useCallback(
-    (tx: Transaction) => openEditDialog('category', tx),
+    (tx: Transaction) => openEditDialog('categoryPath', tx),
     [openEditDialog],
   );
   const handleRowEditNote = useCallback(
@@ -208,8 +219,19 @@ export const AppShell: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-dvh">
       <Header />
+      {(success || applyEdits.isPending) && (
+        <div
+          role="status"
+          className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900"
+        >
+          <span className="flex-1">{applyEdits.isPending ? 'Saving review mark…' : success}</span>
+          <button type="button" aria-label="Dismiss update message" onClick={() => setSuccess('')}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {quickEditError && (
         <div
@@ -254,7 +276,10 @@ export const AppShell: React.FC = () => {
       {!isLoading && !error && (!transactions || transactions.topLevelTransactionCount > 0) && (
         <div className="flex flex-1 min-h-0">
           {/* Left sidebar: year/month navigation */}
-          <aside className="hidden md:block w-64 border-r border-border overflow-y-auto shrink-0">
+          <aside
+            aria-label="Transaction periods"
+            className="hidden md:block w-52 border-r border-border overflow-y-auto shrink-0"
+          >
             <YearMonthNav />
           </aside>
 
@@ -313,7 +338,21 @@ export const AppShell: React.FC = () => {
 
           {/* Right sidebar: transaction summary / details */}
           {selectedIds.size > 0 && (
-            <aside className="hidden lg:block w-80 border-l border-border overflow-y-auto shrink-0">
+            <aside
+              aria-label="Selection details"
+              className="hidden lg:block w-80 xl:w-96 border-l border-border overflow-y-auto shrink-0"
+            >
+              <div className="flex items-center justify-between border-b p-3 text-sm font-semibold">
+                Selection details
+                <button
+                  type="button"
+                  aria-label="Close selection details"
+                  onClick={() => useTransactionsStore.getState().clearSelection()}
+                  className="rounded p-1 hover:bg-accent"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
               <TransactionSummary />
             </aside>
           )}
@@ -321,33 +360,20 @@ export const AppShell: React.FC = () => {
       )}
 
       {/* Edit Dialogs */}
-      {editingTransaction && activeDialog === 'category' && (
-        <CategoryEditor
-          open={true}
+      {editingTransactions.length > 0 && activeDialog && (
+        <TransactionEditWorkflow
+          transactions={editingTransactions}
+          open
+          initialField={activeDialog === 'attributes' ? undefined : activeDialog}
+          initialValues={editDefaults}
           onOpenChange={(open) => {
             if (!open) closeDialogs();
           }}
-          transaction={editingTransaction}
-        />
-      )}
-
-      {editingTransaction && activeDialog === 'note' && (
-        <NoteEditor
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) closeDialogs();
-          }}
-          transaction={editingTransaction}
-        />
-      )}
-
-      {editingTransaction && activeDialog === 'attributes' && (
-        <AttributeEditor
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) closeDialogs();
-          }}
-          transaction={editingTransaction}
+          onSaved={(result) =>
+            setSuccess(
+              `Saved correction. ${result.affectedTransactionsCount.toLocaleString()} records changed; original statements are preserved.`,
+            )
+          }
         />
       )}
     </div>

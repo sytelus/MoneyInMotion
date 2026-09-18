@@ -7,18 +7,13 @@ import {
   AlertTriangle,
   ChevronRight,
   ChevronDown,
-  Download,
   LayoutList,
   Layers,
   X,
 } from 'lucide-react';
-import { createScopeFilter, ScopeType, type Transaction } from '@moneyinmotion/core';
+import type { Transaction } from '@moneyinmotion/core';
 import { useTransactionsStore } from '../../store/transactions-store.js';
-import {
-  explorerGroups,
-  flattenExplorer,
-  transactionsCsv,
-} from '../../lib/transaction-explorer.js';
+import { explorerGroups, flattenExplorer } from '../../lib/transaction-explorer.js';
 import { formatCurrency, formatDate, getMonthName } from '../../lib/utils.js';
 import { TransactionRow } from './TransactionRow.js';
 import { TransactionFilters } from './TransactionFilters.js';
@@ -26,9 +21,8 @@ import { Button } from '../ui/button.js';
 import { Select } from '../ui/select.js';
 import { HelpHint } from '../ui/help-hint.js';
 import { Pagination } from '../ui/pagination.js';
-import { RuleEditor } from '../editing/RuleEditor.js';
-import { RuleChangePreview } from '../editing/RuleChangePreview.js';
-import type { RuleChange } from '../../api/client.js';
+import { TransactionEditWorkflow } from '../editing/TransactionEditWorkflow.js';
+import { TransactionExport } from './TransactionExport.js';
 
 export interface TransactionListProps {
   onEditCategory?: (transaction: Transaction) => void;
@@ -66,6 +60,11 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
   const {
     transactions,
     reporting,
+    records,
+    dateIndex,
+    basis,
+    view,
+    scopedIds,
     selectedYear,
     selectedMonth,
     filters,
@@ -76,36 +75,33 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
     selectTransactions,
     clearSelection,
   } = useTransactionsStore();
-  const [view, setView] = useState<{ mode: 'summary' | 'list'; search: string }>({
-    mode: 'summary',
-    search: '',
-  });
-  const mode =
-    view.search === filters.search ? view.mode : filters.search.trim() ? 'list' : 'summary';
-  const setMode = (mode: 'summary' | 'list') => setView({ mode, search: filters.search });
+  const mode = basis === 'records' ? 'list' : view;
+  const setMode = (view: 'summary' | 'list') => useTransactionsStore.setState({ view });
   const [sort, setSort] = useState('newest');
   const [paging, setPaging] = useState({ key: '', page: 0 });
   const resultsRef = useRef<HTMLDivElement>(null);
   const [bulk, setBulk] = useState(false);
-  const [changes, setChanges] = useState<RuleChange[] | null>(null);
   const [success, setSuccess] = useState('');
-  const groups = useMemo(() => explorerGroups(filtered), [filtered]);
+  const groups = useMemo(
+    () => (basis === 'reporting' ? explorerGroups(filtered) : []),
+    [filtered, basis],
+  );
   const ordered = useMemo(
     () =>
       [...filtered].sort((a, b) => {
         const compared =
           sort === 'oldest'
-            ? a.correctedTransactionDate.localeCompare(b.correctedTransactionDate)
+            ? dateIndex.get(a.id)!.localeCompare(dateIndex.get(b.id)!)
             : sort === 'amountAsc'
               ? a.correctedAmount - b.correctedAmount
               : sort === 'amountDesc'
                 ? b.correctedAmount - a.correctedAmount
                 : sort === 'name'
                   ? a.displayEntityNameNormalized.localeCompare(b.displayEntityNameNormalized)
-                  : b.correctedTransactionDate.localeCompare(a.correctedTransactionDate);
+                  : dateIndex.get(b.id)!.localeCompare(dateIndex.get(a.id)!);
         return compared || a.id.localeCompare(b.id);
       }),
-    [filtered, sort],
+    [filtered, sort, dateIndex],
   );
   const rows = useMemo(
     () =>
@@ -114,7 +110,15 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
         : ordered.map((transaction) => ({ transaction, depth: 0 })),
     [mode, groups, expandedGroupIds, ordered],
   );
-  const pageKey = JSON.stringify([selectedYear, selectedMonth, filters, mode, sort]);
+  const pageKey = JSON.stringify([
+    selectedYear,
+    selectedMonth,
+    filters,
+    mode,
+    sort,
+    basis,
+    scopedIds ? [...scopedIds] : null,
+  ]);
   const page = Math.min(
     paging.key === pageKey ? paging.page : 0,
     Math.max(0, Math.ceil(rows.length / PAGE_SIZE) - 1),
@@ -122,17 +126,15 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
   const visible = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const bounds = useMemo(
     () =>
-      reporting.reduce(
+      (basis === 'records' ? records : reporting).reduce(
         (result, tx) =>
           [
-            !result[0] || tx.correctedTransactionDate < result[0]
-              ? tx.correctedTransactionDate
-              : result[0],
-            tx.correctedTransactionDate > result[1]! ? tx.correctedTransactionDate : result[1]!,
+            !result[0] || dateIndex.get(tx.id)! < result[0] ? dateIndex.get(tx.id)! : result[0],
+            dateIndex.get(tx.id)! > result[1]! ? dateIndex.get(tx.id)! : result[1]!,
           ] as [string, string],
         ['', ''] as [string, string],
       ),
-    [reporting],
+    [reporting, records, basis, dateIndex],
   );
   const period = selectedYear
     ? selectedMonth
@@ -144,18 +146,6 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
   const net = groups
     .filter((g) => g.label === 'Income' || g.label === 'Expenses')
     .reduce((sum, group) => sum + group.sum, 0);
-  const download = () => {
-    const url = URL.createObjectURL(
-      new Blob([transactionsCsv(ordered)], { type: 'text/csv;charset=utf-8' }),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'moneyinmotion-filtered-transactions.csv';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
   const navigateRows = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     if (!(event.target instanceof HTMLElement) || event.target.matches('input,select,textarea'))
@@ -175,12 +165,15 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
     <div className="transaction-explorer h-full overflow-y-auto p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold">Transaction overview</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Transactions</h1>
           <p className="mt-1 text-sm font-semibold text-sky-800" data-testid="reporting-period">
             {period} <span className="font-normal text-muted-foreground">· UTC</span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {filtered.length.toLocaleString()} reporting items · Net income {formatCurrency(net)}
+            {filtered.length.toLocaleString()}{' '}
+            {basis === 'records'
+              ? 'source records · Inspection view (not additive)'
+              : `reporting items · Net recorded activity ${formatCurrency(net)}`}
             {Object.values(filters).some(Boolean) ? ' · Filtered results' : ''}
           </p>
         </div>
@@ -192,51 +185,107 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
           <p>
             Completed order details replace their parent payment in totals to avoid double counting.
             Incomplete orders use the parent amount instead. Unmatched records and account transfers
-            are separate from net income. Every figure follows the displayed date range and filters.
+            are separate from net recorded activity. Every figure follows the displayed date range
+            and filters.
           </p>
         </HelpHint>
       </div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <label className="flex items-center gap-2 text-xs font-medium">
+          View basis
+          <Select
+            className="w-auto max-w-full"
+            value={basis}
+            options={[
+              { value: 'reporting', label: 'Reporting items · non-duplicated totals' },
+              { value: 'records', label: 'Source records · investigate & correct' },
+            ]}
+            onChange={(e) =>
+              useTransactionsStore.setState({
+                basis: e.target.value as 'reporting' | 'records',
+                view: e.target.value === 'records' ? 'list' : view,
+                selectedTransactionIds: new Set(),
+              })
+            }
+          />
+        </label>
+        <span className="text-xs text-muted-foreground">
+          Select a row for source details and applied rules
+        </span>
+      </div>
+      {basis === 'records' && (
+        <p className="mb-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950">
+          Source records include payments and their order details. Amounts are shown for inspection,
+          not added together. Switch to Reporting items for non-duplicated totals.
+        </p>
+      )}
+      {scopedIds && (
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+          <span>
+            Showing {scopedIds.size.toLocaleString()} linked record{scopedIds.size === 1 ? '' : 's'}
+            {filtered.length < scopedIds.size
+              ? ' · Some records are unavailable or excluded by filters.'
+              : ''}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              useTransactionsStore.setState({ scopedIds: null, selectedTransactionIds: new Set() })
+            }
+          >
+            Show other records
+          </Button>
+        </div>
+      )}
       <TransactionFilters />
       {success && (
         <p role="status" className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-900">
           {success}
         </p>
       )}
-      <section aria-label="Period summary" className="my-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
-        {Object.entries(visuals).map(([label, { Icon, color, background }]) => {
-          const group = groups.find((g) => g.label === label);
-          return (
-            <button
-              key={label}
-              type="button"
-              aria-label={`Explore ${label}`}
-              disabled={!group}
-              className={`rounded-lg border p-3 text-left transition-shadow hover:shadow-sm disabled:opacity-60 ${background}`}
-              onClick={() => {
-                setMode('summary');
-                if (group && !expandedGroupIds.has(group.id)) toggleGroupExpand(group.id);
-              }}
-            >
-              <span className={`flex items-center gap-1.5 text-xs font-semibold ${color}`}>
-                <Icon className="h-4 w-4" />
-                {label}
-              </span>
-              <span className="mt-2 block text-lg font-semibold tabular-nums">
-                {formatCurrency(group?.sum ?? 0)}
-              </span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                {group?.count.toLocaleString() ?? 0} items
-              </span>
-            </button>
-          );
-        })}
-      </section>
+      {basis === 'reporting' && (
+        <section aria-label="Period summary" className="my-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
+          {Object.entries(visuals).map(([label, { Icon, color, background }]) => {
+            const group = groups.find((g) => g.label === label);
+            return (
+              <button
+                key={label}
+                type="button"
+                aria-label={`Explore ${label}`}
+                disabled={!group}
+                className={`rounded-lg border p-3 text-left transition-shadow hover:shadow-sm disabled:opacity-60 ${background}`}
+                onClick={() => {
+                  setMode('summary');
+                  if (group && !expandedGroupIds.has(group.id)) toggleGroupExpand(group.id);
+                }}
+              >
+                <span className={`flex items-center gap-1.5 text-xs font-semibold ${color}`}>
+                  <Icon className="h-4 w-4" />
+                  {label === 'Income'
+                    ? 'Incoming amounts'
+                    : label === 'Expenses'
+                      ? 'Outgoing amounts'
+                      : label}
+                </span>
+                <span className="mt-2 block text-lg font-semibold tabular-nums">
+                  {formatCurrency(group?.sum ?? 0)}
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {group?.count.toLocaleString() ?? 0} items
+                </span>
+              </button>
+            );
+          })}
+        </section>
+      )}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex rounded-md border border-border p-1">
           <Button
             size="sm"
             variant={mode === 'summary' ? 'secondary' : 'ghost'}
             aria-pressed={mode === 'summary'}
+            disabled={basis === 'records'}
             onClick={() => setMode('summary')}
           >
             <Layers className="mr-1 h-4 w-4" />
@@ -252,10 +301,15 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
             All matching items
           </Button>
         </div>
-        <Button variant="outline" size="sm" disabled={!filtered.length} onClick={download}>
-          <Download className="mr-1 h-4 w-4" />
-          Export results
-        </Button>
+        {transactions && (
+          <TransactionExport
+            results={ordered}
+            selected={selectedTransactionIds}
+            collection={transactions}
+            basis={basis}
+            period={period}
+          />
+        )}
       </div>
       {mode === 'list' ? (
         <label className="mb-3 flex items-center gap-2 text-sm">
@@ -374,7 +428,7 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
               <span role="columnheader" className="transaction-wide-cell">
                 Account
               </span>
-              <span role="columnheader" aria-label="Actions" />
+              <span role="columnheader"><span className="sr-only">Actions</span></span>
             </div>
           </div>
           <div role="rowgroup">
@@ -437,23 +491,14 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
         noun={mode === 'summary' ? 'visible rows' : 'transactions'}
       />
       {bulk && transactions && (
-        <RuleEditor
-          rules={[]}
-          initialScopes={[createScopeFilter(ScopeType.TransactionId, [...selectedTransactionIds])]}
-          transactions={transactions}
-          onClose={() => setBulk(false)}
-          onReview={(next) => {
-            setBulk(false);
-            setChanges(next);
-          }}
-        />
-      )}
-      {changes && (
-        <RuleChangePreview
-          changes={changes}
-          onClose={() => setChanges(null)}
+        <TransactionEditWorkflow
+          open
+          transactions={[...selectedTransactionIds].flatMap(
+            (id) => transactions.getTransaction(id) ?? [],
+          )}
+          onOpenChange={setBulk}
           onSaved={(result) => {
-            setChanges(null);
+            setBulk(false);
             clearSelection();
             setSuccess(
               `Saved changes to ${result.affectedTransactionsCount.toLocaleString()} transactions.`,

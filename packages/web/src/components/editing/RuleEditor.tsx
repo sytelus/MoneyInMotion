@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   createAuditInfo,
   createUUID,
@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { RuleValuesEditor } from './RuleValuesEditor.js';
 import { editableRule, scopeNames } from '../../lib/rules.js';
 import type { RuleChange } from '../../api/client.js';
+import { RuleTargetPicker } from './RuleTargetPicker.js';
+import { useAccounts } from '../../api/hooks.js';
 
 export function RuleEditor({
   rules,
@@ -25,15 +27,44 @@ export function RuleEditor({
   onClose,
   onReview,
   initialScopes,
+  initialValues,
+  open = true,
+  title,
+  description,
 }: {
   rules: TransactionEditData[];
   transactions: Transactions;
   onClose: () => void;
   onReview: (changes: RuleChange[]) => void;
   initialScopes?: ScopeFilter[];
+  initialValues?: EditedValues;
+  open?: boolean;
+  title?: string;
+  description?: string;
 }) {
+  const configuredAccounts = useAccounts();
+  const accountOptions = useMemo(() => {
+    const observed = new Set(
+      [...transactions.allParentChildTransactions].map((transaction) => transaction.accountId),
+    );
+    const accounts = new Map(
+      [...observed].map((id) => [id, transactions.getAccountInfo(id).title || id]),
+    );
+    for (const {
+      config: { accountInfo },
+    } of configuredAccounts.data ?? [])
+      accounts.set(
+        accountInfo.id,
+        `${accountInfo.title || accountInfo.id}${observed.has(accountInfo.id) ? '' : ' · no imported records'}`,
+      );
+    return [...accounts]
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [transactions, configuredAccounts.data]);
   const bulk = rules.length > 1;
-  const [values, setValues] = useState<EditedValues>(bulk ? {} : (rules[0]?.values ?? {}));
+  const [values, setValues] = useState<EditedValues>(
+    initialValues ?? (bulk ? {} : (rules[0]?.values ?? {})),
+  );
   const [scopes, setScopes] = useState(() =>
     (
       initialScopes ??
@@ -94,14 +125,20 @@ export function RuleEditor({
   };
   return (
     <Dialog
-      open
+      open={open}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
       <DialogContent
-        title={bulk ? `Edit ${rules.length} rules` : rules.length ? 'Edit rule' : 'Create rule'}
-        description="Preview the effects before saving. Imported statement values stay unchanged."
+        title={
+          title ??
+          (bulk ? `Edit ${rules.length} rules` : rules.length ? 'Edit rule' : 'Create rule')
+        }
+        description={
+          description ??
+          'Preview the effects before saving. Imported statement values stay unchanged.'
+        }
         className="max-w-3xl"
       >
         {!bulk && (
@@ -130,7 +167,9 @@ export function RuleEditor({
                             ? []
                             : type === ScopeType.AmountRange
                               ? ['0', '100', 'false']
-                              : [''],
+                              : type === ScopeType.TransactionId
+                                ? []
+                                : [''],
                       });
                     }}
                   />
@@ -143,7 +182,13 @@ export function RuleEditor({
                     Remove
                   </Button>
                 </div>
-                {s.type === ScopeType.AmountRange ? (
+                {s.type === ScopeType.TransactionId ? (
+                  <RuleTargetPicker
+                    transactions={transactions}
+                    ids={s.parameters}
+                    onChange={(parameters) => changeScope(index, { parameters })}
+                  />
+                ) : s.type === ScopeType.AmountRange ? (
                   <div className="grid gap-2 sm:grid-cols-3">
                     <label className="space-y-1 text-xs font-medium">
                       Minimum amount
@@ -200,20 +245,46 @@ export function RuleEditor({
                     </p>
                   </div>
                 ) : s.type === ScopeType.AccountId && s.parameters.length <= 1 ? (
-                  <Select
-                    aria-label="Account condition"
-                    value={s.parameters[0] ?? ''}
-                    placeholder="Choose an account"
-                    options={[
-                      ...new Set(
-                        [...transactions.allParentChildTransactions].map((t) => t.accountId),
-                      ),
-                    ].map((id) => ({
-                      value: id,
-                      label: transactions.getAccountInfo(id).title || id,
-                    }))}
-                    onChange={(e) => changeScope(index, { parameters: [e.target.value] })}
-                  />
+                  <div className="space-y-2">
+                    <Select
+                      aria-label="Account condition"
+                      value={s.parameters[0] ?? ''}
+                      placeholder="Choose an account"
+                      options={[
+                        ...accountOptions,
+                        ...(s.parameters[0] &&
+                        !accountOptions.some((option) => option.value === s.parameters[0])
+                          ? [
+                              {
+                                value: s.parameters[0],
+                                label: `${s.parameters[0]} · not currently available`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                      onChange={(e) => changeScope(index, { parameters: [e.target.value] })}
+                    />
+                    {configuredAccounts.isLoading && (
+                      <p role="status" className="text-xs text-muted-foreground">
+                        Loading configured accounts; accounts from loaded history are already
+                        available.
+                      </p>
+                    )}
+                    {configuredAccounts.error && (
+                      <p className="text-xs text-amber-800">
+                        Could not load configured accounts. You can still use accounts from loaded
+                        history.{' '}
+                        <button
+                          className="underline"
+                          onClick={() => {
+                            void configuredAccounts.refetch();
+                          }}
+                        >
+                          Retry account list
+                        </button>
+                      </p>
+                    )}
+                  </div>
                 ) : s.type === ScopeType.TransactionReason && s.parameters.length <= 1 ? (
                   <Select
                     aria-label="Transaction type condition"

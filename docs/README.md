@@ -6,6 +6,14 @@ history but are deliberately absent from the working tree.
 
 ## Use and operation
 
+- [Workflow UX review](UX_LIFECYCLE_REVIEW.md) records the user journeys,
+  evidence, implementation contracts, and data enhancements awaiting review.
+- [Financial overview and reports](financial-reports.md) explains reporting
+  totals, drill-downs, cash-flow-style charts, exports, and limitations.
+- [Accounts and imports UX](accounts-and-imports-ux.md) covers lifecycle
+  consequences, preflight, receipts, and source inspection.
+- [Rules and provenance UX](rules-and-provenance-ux.md) explains current rule
+  effects, shared correction previews, and trustworthy source metadata.
 - [Data and imports](data-and-imports.md) describes account folders, browser
   uploads, staging, deduplication, and snapshot creation.
 - [Transaction edits and rules](transaction-edits.md) explains non-destructive

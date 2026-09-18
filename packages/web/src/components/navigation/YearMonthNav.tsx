@@ -10,6 +10,7 @@
 
 import React, { useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { parseDate } from '@moneyinmotion/core';
 import { cn, getMonthName } from '../../lib/utils.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 
@@ -36,7 +37,7 @@ function buildYearMonthTree(
     // so the navigation tree and `transactions-store.getFilteredTransactions`
     // agree on which month a transaction belongs to regardless of the
     // viewer's local timezone.
-    const date = new Date(tx.correctedTransactionDate);
+    const date = parseDate(tx.correctedTransactionDate);
     const year = date.getUTCFullYear().toString();
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
 
@@ -72,14 +73,17 @@ function buildYearMonthTree(
 export const YearMonthNav: React.FC = () => {
   const transactions = useTransactionsStore((s) => s.transactions);
   const reporting = useTransactionsStore((s) => s.reporting);
+  const records = useTransactionsStore((s) => s.records);
+  const basis = useTransactionsStore((s) => s.basis);
+  const filters = useTransactionsStore((s) => s.filters);
   const selectedYear = useTransactionsStore((s) => s.selectedYear);
   const selectedMonth = useTransactionsStore((s) => s.selectedMonth);
   const selectYearMonth = useTransactionsStore((s) => s.selectYearMonth);
 
   const yearMonthTree = useMemo(() => {
     if (!transactions) return [];
-    return buildYearMonthTree(reporting);
-  }, [transactions, reporting]);
+    return buildYearMonthTree(basis === 'records' ? records : reporting);
+  }, [transactions, reporting, records, basis]);
 
   if (yearMonthTree.length === 0) {
     return (
@@ -93,12 +97,12 @@ export const YearMonthNav: React.FC = () => {
   return (
     <nav aria-label="Year and month navigation" className="py-2">
       <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Reporting period
+        {basis === 'records' ? 'Record period' : 'Reporting period'}
       </p>
       <button
         type="button"
         className="w-full px-4 py-2 text-left text-sm font-medium hover:bg-accent"
-        aria-current={!selectedYear ? 'date' : undefined}
+        aria-current={!selectedYear && !filters.from && !filters.to ? 'date' : undefined}
         onClick={() => selectYearMonth(null, null)}
       >
         All dates

@@ -24,9 +24,17 @@ Do not expose an unprotected instance to the public Internet; see
   transfers, normalizes merchant names, and builds monthly summaries.
 - Corrects amount, date, reason, merchant/payee, category, note, and flag fields.
   A correction can target selected transactions or become a reusable rule.
-- Opens on the latest available month with collapsed, type/category summaries;
-  supports all-date/year/custom periods, search, filters, sorting, bulk edits,
-  and CSV export with bounded result pages.
+- Opens on a date-scoped Overview with recorded credits/debits, daily/monthly
+  activity, category/merchant breakdowns, review queues, and linked transfers.
+  Figures drill into filtered transactions; source-record inspection is kept
+  separate from non-duplicated reporting totals.
+- Supports all-date/year/custom periods, search, filters, sorting, single/batch
+  corrections, selected/filtered CSV export, aggregate reports, and print.
+- Explains each transaction's statement source and current correction chain;
+  rules have searchable matched-record inspection, account/purpose filters,
+  duplication, bulk editing, and JSON export.
+- Separates account management from Imports, including safe account-folder
+  reconnection, pre-upload checks, immediate outcomes, and saved upload receipts.
 - Preserves imported values. User intent is stored separately in
   `LatestMergedEdits.json`. Rules can be created, edited, or deleted individually
   or in bulk after previewing their effects; prior rule files are backed up.
@@ -67,7 +75,8 @@ For development with API and UI hot reload:
 
 1. Open Accounts and create or review an account. The displayed account folder
    is the name MiM expects in an uploaded directory.
-2. Select a local directory containing one subfolder per configured account.
+2. Open Imports and select an account folder or a local directory containing
+   one subfolder per configured account.
    Browsers send file bytes and relative paths; they never disclose or grant
    the server access to an arbitrary local path.
 3. Review the detected folders. A misspelled or unknown account folder blocks
@@ -83,6 +92,13 @@ For development with API and UI hot reload:
 
 See [Data and imports](docs/data-and-imports.md) for the precise storage and
 deduplication contract.
+
+For the complete user workflow and its limitations, see the
+[UX lifecycle review](docs/UX_LIFECYCLE_REVIEW.md),
+[financial reports](docs/financial-reports.md), and
+[rules/provenance guide](docs/rules-and-provenance-ux.md).
+First-ever import times and immutable rule history are not reconstructed from
+file timestamps; proposed history metadata is documented for separate review.
 
 ## Repository layout
 

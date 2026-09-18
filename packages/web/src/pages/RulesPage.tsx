@@ -1,7 +1,23 @@
 import React, { useDeferredValue, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertTriangle, ListFilter, Pencil, Plus, Search, Trash2 } from 'lucide-react';
-import { ScopeType, Transactions, type TransactionEditData } from '@moneyinmotion/core';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Copy,
+  Download,
+  Eye,
+  ListFilter,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react';
+import {
+  ScopeType,
+  Transactions,
+  type EditedValues,
+  type ScopeFilter,
+  type TransactionEditData,
+} from '@moneyinmotion/core';
 import { useTransactions } from '../api/hooks.js';
 import type { RuleChange } from '../api/client.js';
 import { Header } from '../components/layout/Header.js';
@@ -15,6 +31,9 @@ import { RuleEditor } from '../components/editing/RuleEditor.js';
 import { RuleChangePreview } from '../components/editing/RuleChangePreview.js';
 import { ruleChangesLabel, ruleFields, scopeLabel } from '../lib/rules.js';
 import { formatDate } from '../lib/utils.js';
+import { ruleKind, summarizeRuleEffects, type RuleEffectSummary } from '../lib/rule-effects.js';
+import { RuleInspectionDialog } from '../components/editing/RuleInspectionDialog.js';
+import { downloadText } from '../lib/download.js';
 
 const PAGE_SIZE = 25;
 export const RulesPage: React.FC = () => {
@@ -25,23 +44,38 @@ export const RulesPage: React.FC = () => {
   const [field, setField] = useState('all');
   const [status, setStatus] = useState('all');
   const [sort, setSort] = useState('newest');
+  const [kind, setKind] = useState('all');
+  const [account, setAccount] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [params, setParams] = useSearchParams();
   const [page, setPage] = useState(0);
   const resultsRef = useRef<HTMLElement>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editor, setEditor] = useState<TransactionEditData[] | null>(null);
+  const [duplicate, setDuplicate] = useState<{
+    scopes: ScopeFilter[];
+    values: EditedValues;
+  } | null>(null);
   const [changes, setChanges] = useState<RuleChange[] | null>(null);
   const [success, setSuccess] = useState('');
+  const effects = useMemo(
+    () =>
+      transactions ? summarizeRuleEffects(transactions) : new Map<string, RuleEffectSummary>(),
+    [transactions],
+  );
   const rules = useMemo(() => {
     if (!transactions) return [];
-    const matches = new Map<string, number>();
-    for (const tx of transactions.allParentChildTransactions) {
-      for (const id of tx.appliedEditIdsDescending ?? [])
-        matches.set(id, (matches.get(id) ?? 0) + 1);
-    }
     return [...transactions.getClonedEdits()].map((edit, order) => ({
       edit,
       order,
-      count: matches.get(edit.id) ?? 0,
+      count: effects.get(edit.id)?.matches.length ?? 0,
+      kind: ruleKind(edit),
+      accounts: new Set([
+        ...(effects.get(edit.id)?.accountIds ?? []),
+        ...edit.scopeFilters
+          .filter((scope) => scope.type === ScopeType.AccountId)
+          .flatMap((scope) => [...scope.parameters]),
+      ]),
       missing: edit.scopeFilters
         .filter((s) => s.type === ScopeType.TransactionId)
         .flatMap((s) => [...s.parameters])
@@ -56,7 +90,14 @@ export const RulesPage: React.FC = () => {
         ),
       changes: ruleChangesLabel(edit.values),
     }));
-  }, [transactions]);
+  }, [transactions, effects]);
+  const accountOptions = useMemo(
+    () =>
+      [...new Set(rules.flatMap((rule) => [...rule.accounts]))]
+        .sort()
+        .map((id) => ({ value: id, label: data?.accountInfos[id]?.title || id })),
+    [rules, data],
+  );
   const filtered = useMemo(() => {
     const words = deferredQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
     return rules
@@ -65,6 +106,8 @@ export const RulesPage: React.FC = () => {
           (field === 'all' ||
             rule.edit.values?.[field as keyof NonNullable<TransactionEditData['values']>] !=
               null) &&
+          (kind === 'all' || rule.kind === kind) &&
+          (account === 'all' || rule.accounts.has(account)) &&
           (status === 'all' ||
             (status === 'attention'
               ? rule.missing > 0
@@ -88,10 +131,45 @@ export const RulesPage: React.FC = () => {
                 ? a.changes.localeCompare(b.changes)
                 : b.order - a.order,
       );
-  }, [rules, deferredQuery, field, status, sort]);
+  }, [rules, deferredQuery, field, status, sort, kind, account]);
   const currentPage = Math.min(page, Math.max(0, Math.ceil(filtered.length / PAGE_SIZE) - 1));
   const visible = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
   const selectedRules = rules.filter((r) => selected.has(r.edit.id)).map((r) => r.edit);
+  const inspected = rules.find((rule) => rule.edit.id === params.get('rule'));
+  const closeInspection = () =>
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('rule');
+      return next;
+    });
+  const openEditor = (rulesToEdit: TransactionEditData[]) => {
+    setDuplicate(null);
+    setEditor(rulesToEdit);
+  };
+  const duplicateRule = (rule: TransactionEditData) => {
+    setDuplicate({
+      scopes: rule.scopeFilters.map((scope) => ({ ...scope, parameters: [...scope.parameters] })),
+      values: structuredClone(rule.values ?? {}),
+    });
+    setEditor([]);
+    closeInspection();
+  };
+  const closeEditor = () => {
+    setEditor(null);
+    setDuplicate(null);
+    setChanges(null);
+  };
+  const exportRules = () => {
+    const exported = selectedRules.length ? selectedRules : filtered.map((rule) => rule.edit);
+    downloadText(
+      JSON.stringify(exported, null, 2),
+      `moneyinmotion-rules-${new Date().toISOString().slice(0, 10)}.json`,
+      'application/json',
+    );
+    setSuccess(
+      `Exported ${exported.length} ${selectedRules.length ? 'selected' : 'filtered'} rules as JSON. The saved rules have not changed.`,
+    );
+  };
   const resetSelection = () => {
     setPage(0);
     setSelected(new Set());
@@ -115,7 +193,7 @@ export const RulesPage: React.FC = () => {
               imports; original statement values are preserved.
             </p>
           </div>
-          <Button disabled={!transactions} onClick={() => setEditor([])}>
+          <Button disabled={!transactions} onClick={() => openEditor([])}>
             <Plus className="mr-2 h-4 w-4" />
             Create rule
           </Button>
@@ -130,6 +208,8 @@ export const RulesPage: React.FC = () => {
               setStatus('attention');
               setQuery('');
               setField('all');
+              setKind('all');
+              setAccount('all');
               resetSelection();
             }}
           >
@@ -187,7 +267,7 @@ export const RulesPage: React.FC = () => {
           <>
             <section
               aria-label="Find rules"
-              className="grid gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]"
+              className="space-y-3 rounded-lg border border-border bg-muted/30 p-4"
             >
               <label className="text-xs font-medium">
                 <span className="mb-1 flex items-center gap-1">
@@ -203,56 +283,109 @@ export const RulesPage: React.FC = () => {
                   }}
                 />
               </label>
-              <label className="text-xs font-medium">
-                Changes field
-                <Select
-                  className="mt-1"
-                  value={field}
-                  onChange={(e) => {
-                    setField(e.target.value);
-                    resetSelection();
-                  }}
-                  options={[
-                    { value: 'all', label: 'All fields' },
-                    ...ruleFields.map((f) => ({ value: f.key, label: f.label })),
-                  ]}
-                />
-              </label>
-              <label className="text-xs font-medium">
-                Status
-                <Select
-                  className="mt-1"
-                  value={status}
-                  onChange={(e) => {
-                    setStatus(e.target.value);
-                    resetSelection();
-                  }}
-                  options={[
-                    { value: 'all', label: 'All rules' },
-                    { value: 'attention', label: 'Needs attention' },
-                    { value: 'applied', label: 'Applied to transactions' },
-                    { value: 'unapplied', label: 'No recorded matches' },
-                  ]}
-                />
-              </label>
-              <label className="text-xs font-medium">
-                Sort rules
-                <Select
-                  className="mt-1"
-                  value={sort}
-                  onChange={(e) => {
-                    setSort(e.target.value);
-                    setPage(0);
-                  }}
-                  options={[
-                    { value: 'newest', label: 'Last applied first' },
-                    { value: 'oldest', label: 'Rule order (first to last)' },
-                    { value: 'matches', label: 'Most matches' },
-                    { value: 'scope', label: 'Condition A–Z' },
-                    { value: 'changes', label: 'Change / category A–Z' },
-                  ]}
-                />
-              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:hidden"
+                aria-expanded={showFilters}
+                aria-controls="rule-advanced-filters"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <ListFilter className="mr-1 h-4 w-4" />
+                Filters &amp; sort
+                {[field, status, kind, account].filter((value) => value !== 'all').length > 0
+                  ? ` · ${[field, status, kind, account].filter((value) => value !== 'all').length} active`
+                  : ''}
+              </Button>
+              <div
+                id="rule-advanced-filters"
+                className={`${showFilters ? 'grid' : 'hidden'} gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-3`}
+              >
+                <label className="text-xs font-medium">
+                  Changes field
+                  <Select
+                    className="mt-1"
+                    value={field}
+                    onChange={(e) => {
+                      setField(e.target.value);
+                      resetSelection();
+                    }}
+                    options={[
+                      { value: 'all', label: 'All fields' },
+                      ...ruleFields.map((f) => ({ value: f.key, label: f.label })),
+                    ]}
+                  />
+                </label>
+                <label className="text-xs font-medium">
+                  Status
+                  <Select
+                    className="mt-1"
+                    value={status}
+                    onChange={(e) => {
+                      setStatus(e.target.value);
+                      resetSelection();
+                    }}
+                    options={[
+                      { value: 'all', label: 'All rules' },
+                      { value: 'attention', label: 'Needs attention' },
+                      { value: 'applied', label: 'Applied to transactions' },
+                      { value: 'unapplied', label: 'No recorded matches' },
+                    ]}
+                  />
+                </label>
+                <label className="text-xs font-medium">
+                  Sort rules
+                  <Select
+                    className="mt-1"
+                    value={sort}
+                    onChange={(e) => {
+                      setSort(e.target.value);
+                      setPage(0);
+                    }}
+                    options={[
+                      { value: 'newest', label: 'Last applied first' },
+                      { value: 'oldest', label: 'Rule order (first to last)' },
+                      { value: 'matches', label: 'Most matches' },
+                      { value: 'scope', label: 'Condition A–Z' },
+                      { value: 'changes', label: 'Change / category A–Z' },
+                    ]}
+                  />
+                </label>
+                <label className="text-xs font-medium">
+                  Rule purpose
+                  <Select
+                    className="mt-1"
+                    value={kind}
+                    onChange={(event) => {
+                      setKind(event.target.value);
+                      resetSelection();
+                    }}
+                    options={[
+                      { value: 'all', label: 'Corrections and automations' },
+                      { value: 'correction', label: 'Specific-record corrections' },
+                      { value: 'automation', label: 'Reusable automations' },
+                      { value: 'inactive', label: 'Matches no transactions' },
+                    ]}
+                  />
+                </label>
+                <label className="text-xs font-medium">
+                  Account scope or recorded match
+                  <Select
+                    className="mt-1"
+                    value={account}
+                    onChange={(event) => {
+                      setAccount(event.target.value);
+                      resetSelection();
+                    }}
+                    options={[{ value: 'all', label: 'All accounts' }, ...accountOptions]}
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
+                  Corrections target specific records. Automations can match future imports. The
+                  account filter includes explicit account conditions and recorded matches; it does
+                  not predict every future match.
+                </p>
+              </div>
             </section>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Button
@@ -278,7 +411,7 @@ export const RulesPage: React.FC = () => {
               </span>
               {selectedRules.length > 0 && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setEditor(selectedRules)}>
+                  <Button variant="outline" size="sm" onClick={() => openEditor(selectedRules)}>
                     <Pencil className="mr-1 h-3.5 w-3.5" />
                     Edit selected
                   </Button>
@@ -297,7 +430,25 @@ export const RulesPage: React.FC = () => {
                   </Button>
                 </>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!filtered.length && !selectedRules.length}
+                onClick={exportRules}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" />
+                Export {selectedRules.length ? 'selected' : 'results'}
+              </Button>
             </div>
+            {params.has('rule') && !inspected && (
+              <p role="alert" className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+                The linked rule is not in the currently saved history. It may have been deleted or
+                the active data location may have changed.{' '}
+                <button className="underline" onClick={closeInspection}>
+                  Dismiss
+                </button>
+              </p>
+            )}
             {filtered.length === 0 && (
               <div className="rounded-lg border border-dashed border-border p-8 text-center">
                 <ListFilter className="mx-auto mb-2 h-7 w-7 text-muted-foreground" />
@@ -316,6 +467,8 @@ export const RulesPage: React.FC = () => {
                       setQuery('');
                       setField('all');
                       setStatus('all');
+                      setKind('all');
+                      setAccount('all');
                       resetSelection();
                     }}
                   >
@@ -349,8 +502,20 @@ export const RulesPage: React.FC = () => {
                       )}
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span>Order {rule.order + 1}</span>
+                        <Badge variant="secondary">
+                          {rule.kind === 'correction'
+                            ? 'Specific records'
+                            : rule.kind === 'automation'
+                              ? 'Automation'
+                              : 'No-match condition'}
+                        </Badge>
                         <span>Created {formatDate(rule.edit.auditInfo.createDate)}</span>
-                        <Badge variant="secondary">{rule.count} recorded matches</Badge>
+                        <button
+                          className="font-medium text-primary underline underline-offset-2"
+                          onClick={() => setParams({ rule: rule.edit.id })}
+                        >
+                          {rule.count} recorded matches
+                        </button>
                         {rule.missing > 0 && (
                           <span className="inline-flex items-center">
                             <Badge variant="warning">
@@ -379,7 +544,7 @@ export const RulesPage: React.FC = () => {
                         size="icon"
                         aria-label={`Edit rule ${rule.order + 1}`}
                         title="Edit rule"
-                        onClick={() => setEditor([rule.edit])}
+                        onClick={() => openEditor([rule.edit])}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -393,6 +558,20 @@ export const RulesPage: React.FC = () => {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                  </div>
+                  <div className="ml-7 mt-3 flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setParams({ rule: rule.edit.id })}
+                    >
+                      <Eye className="mr-1 h-3.5 w-3.5" />
+                      Inspect results
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => duplicateRule(rule.edit)}>
+                      <Copy className="mr-1 h-3.5 w-3.5" />
+                      Duplicate
+                    </Button>
                   </div>
                   <details className="ml-7 mt-2 text-xs text-muted-foreground">
                     <summary className="cursor-pointer">Rule details</summary>
@@ -409,7 +588,8 @@ export const RulesPage: React.FC = () => {
                       ))}
                       <p>
                         Recorded matches show where this rule was applied. Later rules can override
-                        these values. Use Edit → Preview changes to inspect current effects.
+                        these values. Inspect results to see which fields are controlled or
+                        overridden.
                       </p>
                     </div>
                   </details>
@@ -429,7 +609,7 @@ export const RulesPage: React.FC = () => {
               }}
               noun="rules"
             />
-            <Link to="/" className={buttonClassName({ variant: 'link' })}>
+            <Link to="/transactions" className={buttonClassName({ variant: 'link' })}>
               Back to Transactions
             </Link>
           </>
@@ -438,24 +618,42 @@ export const RulesPage: React.FC = () => {
           <RuleEditor
             rules={editor}
             transactions={transactions}
-            onClose={() => setEditor(null)}
+            open={!changes}
+            title={duplicate ? 'Duplicate rule' : undefined}
+            initialScopes={duplicate?.scopes}
+            initialValues={duplicate?.values}
+            onClose={closeEditor}
             onReview={(next) => {
               setChanges(next);
-              setEditor(null);
             }}
           />
         )}
         {changes && (
           <RuleChangePreview
+            transactions={transactions ?? undefined}
             changes={changes}
-            onClose={() => setChanges(null)}
+            onClose={closeEditor}
+            onBack={editor ? () => setChanges(null) : undefined}
             onSaved={(result) => {
-              setChanges(null);
+              closeEditor();
               setSelected(new Set());
               setSuccess(
                 `Saved. ${result.affectedTransactionsCount.toLocaleString()} transaction values changed; ${result.totalRules.toLocaleString()} rules remain.`,
               );
             }}
+          />
+        )}
+        {inspected && transactions && !editor && !changes && (
+          <RuleInspectionDialog
+            rule={inspected.edit}
+            transactions={transactions}
+            summary={effects.get(inspected.edit.id)!}
+            onClose={closeInspection}
+            onEdit={() => {
+              openEditor([inspected.edit]);
+              closeInspection();
+            }}
+            onDuplicate={() => duplicateRule(inspected.edit)}
           />
         )}
       </main>

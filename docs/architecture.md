@@ -82,8 +82,12 @@ The cache loads `Merged/LatestMerged.json` lazily and loads saved rules from
 `LatestMergedEdits.json` even if there is no snapshot. New standalone rules are
 merged with embedded history; conflicting rule IDs fail visibly. Nothing is
 published into the cache until both inputs validate. When statements exist but
-history has not been built, Home, Accounts, and Getting Started offer **Build
-from existing statements**, including results and source errors. The server is the sole supported
+history has not been built, Imports and the empty-history/Getting Started
+recovery flows offer **Build from existing statements**, including results and
+source errors. Overview is a read-only, period-scoped reporting projection;
+source/rule drill-downs use a separate non-additive source-record inspection
+basis. See [UX lifecycle contracts](UX_LIFECYCLE_REVIEW.md) for the navigation,
+calculation, editing, and provenance module boundaries. The server is the sole supported
 writer and serializes edit/rebuild mutations through one process-local queue.
 It updates the cache through edits and rebuilds. If an administrator
 changes statement files directly, **Rebuild snapshot** in Settings refreshes it.

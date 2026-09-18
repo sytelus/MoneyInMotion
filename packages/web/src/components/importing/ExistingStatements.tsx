@@ -14,17 +14,19 @@ export const ExistingStatements: React.FC<{ accounts: AccountSummary[] }> = ({ a
 
   return (
     <section className="rounded-xl border border-border bg-muted/30 p-5 space-y-3 text-left">
-      <h2 className="text-lg font-semibold">Your existing statements are available</h2>
+      <h2 className="text-lg font-semibold">Rebuild from stored statements</h2>
       <p className="text-sm text-muted-foreground">
         Files are already stored for {storedAccounts.length} account
         {storedAccounts.length === 1 ? '' : 's'}. Build your transaction history from these files to
-        browse dates, analyze spending, and apply saved rules.
+        browse dates, analyze spending, and apply saved rules. Rebuilding rereads every configured
+        account and applies its latest parser, filters, and matching settings. Accounts whose
+        configurations were removed will not be included.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button disabled={rebuild.isPending} onClick={() => rebuild.mutate(undefined)}>
           {rebuild.isPending ? 'Building transaction history…' : 'Build from existing statements'}
         </Button>
-        <Link to="/" className={buttonClassName({ variant: 'outline' })}>
+        <Link to="/transactions" className={buttonClassName({ variant: 'outline' })}>
           View transactions
         </Link>
         <Link to="/rules" className={buttonClassName({ variant: 'outline' })}>
@@ -49,6 +51,15 @@ export const ExistingStatements: React.FC<{ accounts: AccountSummary[] }> = ({ a
           </p>
           {result.unresolvedEditTargets > 0 && (
             <MissingRuleTargets count={result.unresolvedEditTargets} />
+          )}
+          {result.committed && (
+            <p>
+              {result.previousTransactionCount.toLocaleString()} →{' '}
+              {result.totalTransactions.toLocaleString()} snapshot records (
+              {result.newTransactions >= 0 ? '+' : ''}
+              {result.newTransactions.toLocaleString()} net change). Source record counts include
+              related payment and order records.
+            </p>
           )}
           {result.failedFiles.length > 0 && (
             <ul className="list-disc pl-5">

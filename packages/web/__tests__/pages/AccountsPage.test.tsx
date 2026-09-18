@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AccountType } from '@moneyinmotion/core';
 import { AccountsPage } from '../../src/pages/AccountsPage.js';
+import { StatementFolderUpload } from '../../src/components/importing/StatementFolderUpload.js';
 import type { AccountSummary } from '../../src/api/client.js';
 
 const useAccountsMock = vi.fn();
@@ -12,6 +13,13 @@ const getConfigMock = vi.fn();
 const createAccountMock = vi.fn();
 const updateAccountMock = vi.fn();
 const deleteAccountMock = vi.fn();
+const disconnectedFoldersMock = vi.fn();
+const reconnectAccountMock = vi.fn();
+
+vi.mock('../../src/api/imports.js', () => ({
+  getDisconnectedFolders: () => disconnectedFoldersMock(),
+  reconnectAccount: (...args: unknown[]) => reconnectAccountMock(...args),
+}));
 
 vi.mock('../../src/api/hooks.js', () => ({
   useAccounts: () => useAccountsMock(),
@@ -61,6 +69,7 @@ function renderPage() {
 describe('AccountsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    disconnectedFoldersMock.mockResolvedValue([]);
     getConfigMock.mockResolvedValue({
       port: 3001,
       dataRoot: '/tmp',
@@ -94,9 +103,8 @@ describe('AccountsPage', () => {
   it('renders per-account import stats and match tags', async () => {
     renderPage();
 
-    expect(await screen.findByText(/Imported: 2 transactions/)).toBeInTheDocument();
-    expect(screen.getByText(/Imported: 2 transactions/)).toBeInTheDocument();
-    expect(screen.getByText(/Last import: 2024-03-01 08:00:00 UTC/)).toBeInTheDocument();
+    expect(await screen.findByText('Snapshot records')).toBeInTheDocument();
+    expect(screen.getByText(/Latest record build: 2024-03-01 08:00:00 UTC/)).toBeInTheDocument();
     expect(screen.getByText(/Match tags: TRANSFER/)).toBeInTheDocument();
     expect(await screen.findByText('/tmp/mim-data/Statements/acct-checking/')).toBeInTheDocument();
   });
@@ -203,10 +211,11 @@ describe('AccountsPage', () => {
 
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Delete/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Remove config/i }));
     expect(screen.getByText(/Raw statement files are preserved/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Delete Account Config/i }));
+    expect(screen.getByText(/The next rebuild excludes this account/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Remove configuration/i }));
 
     await waitFor(() => {
       expect(deleteAccountMock).toHaveBeenCalledWith('acct-checking');
@@ -225,7 +234,11 @@ describe('AccountsPage', () => {
       error: null,
     });
 
-    renderPage();
+    render(
+      <MemoryRouter>
+        <StatementFolderUpload accounts={[makeAccount()]} />
+      </MemoryRouter>,
+    );
 
     const input = await screen.findByLabelText(/Choose statement folder/i);
     const file = new File(['Date,Amount\n'], 'statement.csv', { type: 'text/csv' });
@@ -258,7 +271,11 @@ describe('AccountsPage', () => {
       error: null,
     });
 
-    renderPage();
+    render(
+      <MemoryRouter>
+        <StatementFolderUpload accounts={[makeAccount()]} />
+      </MemoryRouter>,
+    );
 
     const input = await screen.findByLabelText(/Choose statement folder/i);
     const file = new File(['Date,Amount\n'], 'statement.csv', { type: 'text/csv' });
@@ -273,5 +290,62 @@ describe('AccountsPage', () => {
     expect(screen.getByText(/No files have been uploaded/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Upload & build snapshot/i })).toBeDisabled();
     expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('filters accounts and links to the account reporting scope', async () => {
+    renderPage();
+    expect(await screen.findByRole('link', { name: 'Inspect account records' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('account=acct-checking'),
+    );
+    fireEvent.change(screen.getByLabelText('Search accounts'), {
+      target: { value: 'missing-bank' },
+    });
+    expect(screen.getByText('No accounts match these filters')).toBeInTheDocument();
+  });
+
+  it('reconnects an existing folder explicitly and explains the required rebuild', async () => {
+    disconnectedFoldersMock.mockResolvedValue([{ relativeDirectory: 'old-bank' }]);
+    reconnectAccountMock.mockResolvedValue(makeAccount({ hasStatementFiles: true }));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Reconnect folder' }));
+    fireEvent.change(screen.getByLabelText('Account ID'), { target: { value: 'original-id' } });
+    fireEvent.change(screen.getByLabelText('Account Title'), {
+      target: { value: 'Restored account' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect folder' }));
+    await waitFor(() =>
+      expect(reconnectAccountMock).toHaveBeenCalledWith(
+        'old-bank',
+        expect.objectContaining({ accountInfo: expect.objectContaining({ id: 'original-id' }) }),
+      ),
+    );
+    expect(await screen.findByText('Account folder reconnected')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Existing snapshot records are unchanged until you rebuild/i),
+    ).toBeInTheDocument();
+  });
+
+  it('prefills and locks a known original account identity rather than using its folder name', async () => {
+    disconnectedFoldersMock.mockResolvedValue([
+      {
+        relativeDirectory: 'old-folder',
+        identityStatus: 'known',
+        originalAccount: {
+          ...makeAccount().config.accountInfo,
+          id: 'original-id',
+          title: 'Original account',
+        },
+      },
+    ]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Reconnect folder' }));
+    expect(screen.getByLabelText('Account ID')).toHaveValue('original-id');
+    expect(screen.getByLabelText('Account ID')).toBeDisabled();
+    expect(screen.getByLabelText('Account Title')).toHaveValue('Original account');
+    expect(screen.getByLabelText('Institution')).toHaveValue('TestBank');
+    expect(
+      screen.getByText(/File filters and subfolder settings are not retained/),
+    ).toBeInTheDocument();
   });
 });

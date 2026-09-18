@@ -12,13 +12,19 @@ import {
 } from '@moneyinmotion/core';
 import { RulesPage } from '../../src/pages/RulesPage.js';
 const useTransactionsMock = vi.fn();
+const useAccountsMock = vi.fn();
 const manageRulesMock = vi.fn();
+const downloadTextMock = vi.fn();
 vi.mock('../../src/api/hooks.js', () => ({
   useTransactions: () => useTransactionsMock(),
+  useAccounts: () => useAccountsMock(),
   queryKeys: { transactions: ['transactions'] },
 }));
 vi.mock('../../src/api/client.js', () => ({
   manageRules: (...args: unknown[]) => manageRulesMock(...args),
+}));
+vi.mock('../../src/lib/download.js', () => ({
+  downloadText: (...args: unknown[]) => downloadTextMock(...args),
 }));
 function makeTransactionsData(): TransactionsData {
   return {
@@ -110,6 +116,7 @@ describe('RulesPage', () => {
     const data = makeTransactionsData();
     data.edits[0]!.scopeFilters = [createScopeFilter(ScopeType.EntityNameNormalized, ['Amazon'])];
     useTransactionsMock.mockReturnValue({ data, isLoading: false, error: null, refetch: vi.fn() });
+    useAccountsMock.mockReturnValue({ data: [], isLoading: false, error: null, refetch: vi.fn() });
     manageRulesMock.mockResolvedValue({
       affectedTransactionsCount: 1,
       totalRules: 0,
@@ -193,5 +200,90 @@ describe('RulesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete rule 1' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Refresh Rules');
     expect(screen.getByRole('button', { name: 'Delete rules' })).toBeDisabled();
+  });
+  it('inspects recorded effects, filters by purpose and account, and preserves edit drafts', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect results' }));
+    expect(screen.getByRole('dialog', { name: 'Rule 1 · results & details' })).toHaveTextContent(
+      'Controls: Category',
+    );
+    expect(manageRulesMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit rule' }));
+    fireEvent.change(screen.getByLabelText('Category value'), {
+      target: { value: 'Retained draft' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
+    await screen.findByText('1 transaction will change');
+    fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
+    expect(screen.getByLabelText('Category value')).toHaveValue('Retained draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.change(screen.getByLabelText('Rule purpose'), { target: { value: 'correction' } });
+    expect(screen.getByText('No rules match these filters')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    fireEvent.change(screen.getByLabelText('Account scope or recorded match'), {
+      target: { value: 'acct-1' },
+    });
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+  });
+  it('duplicates into a new draft without altering the original identity', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+    expect(screen.getByRole('dialog', { name: 'Duplicate rule' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Category value')).toHaveValue('Shopping / Online');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
+    await waitFor(() => expect(manageRulesMock).toHaveBeenCalled());
+    expect(manageRulesMock.mock.calls[0]?.[0][0].previous).toBeNull();
+    expect(manageRulesMock.mock.calls[0]?.[0][0].next.id).not.toBe('edit-1');
+  });
+  it('targets a configured empty account before the first import, with a read-failure fallback', async () => {
+    useAccountsMock.mockReturnValue({
+      data: [{ config: { accountInfo: { id: 'new-account', title: 'New savings' } } }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    const page = renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Create rule' }));
+    fireEvent.change(screen.getByLabelText('Condition 1 type'), {
+      target: { value: String(ScopeType.AccountId) },
+    });
+    expect(
+      screen.getByRole('option', { name: 'New savings · no imported records' }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Account condition'), {
+      target: { value: 'new-account' },
+    });
+    fireEvent.change(screen.getByLabelText('Mark for review'), { target: { value: 'set' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview changes' }));
+    await waitFor(() => expect(manageRulesMock).toHaveBeenCalled());
+    expect(manageRulesMock.mock.calls[0]?.[0][0].next.scopeFilters[0].parameters).toEqual([
+      'new-account',
+    ]);
+    page.unmount();
+    useAccountsMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('offline'),
+      refetch: vi.fn(),
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Create rule' }));
+    fireEvent.change(screen.getByLabelText('Condition 1 type'), {
+      target: { value: String(ScopeType.AccountId) },
+    });
+    expect(screen.getByRole('option', { name: 'Checking' })).toBeInTheDocument();
+    expect(screen.getByText(/Could not load configured accounts/)).toBeInTheDocument();
+  });
+  it('exports filtered or selected saved rules locally without calling the mutation API', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Export results' }));
+    expect(JSON.parse(downloadTextMock.mock.calls[0]?.[0])).toMatchObject([{ id: 'edit-1' }]);
+    expect(downloadTextMock.mock.calls[0]?.[1]).toMatch(/^moneyinmotion-rules-.*\.json$/);
+    expect(downloadTextMock.mock.calls[0]?.[2]).toBe('application/json');
+    fireEvent.click(screen.getByRole('button', { name: 'Select page' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Export selected' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Exported 1 selected rules as JSON');
+    expect(downloadTextMock).toHaveBeenCalledTimes(2);
+    expect(manageRulesMock).not.toHaveBeenCalled();
   });
 });

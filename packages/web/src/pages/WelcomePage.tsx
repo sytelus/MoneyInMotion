@@ -315,7 +315,7 @@ export const WelcomePage: React.FC = () => {
                 </Button>
               )}
               {hasImportedTransactions && (
-                <Button size="sm" variant="outline" onClick={() => navigate('/')}>
+                <Button size="sm" variant="outline" onClick={() => navigate('/transactions')}>
                   Start Exploring
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>

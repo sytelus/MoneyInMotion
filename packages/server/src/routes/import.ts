@@ -10,6 +10,7 @@
 
 import { Router } from 'express';
 import multer from 'multer';
+import { z } from 'zod';
 import type { TransactionCache } from '../cache/transaction-cache.js';
 import type { ServerConfig } from '../config.js';
 import {
@@ -17,6 +18,7 @@ import {
   stageAndPromoteFolder,
   type FolderUploadFile,
 } from '../services/folder-import-service.js';
+import { readImportHistory } from '../services/import-history-service.js';
 
 const folderUpload = multer({
   storage: multer.memoryStorage(),
@@ -48,6 +50,26 @@ function parseRelativePaths(raw: unknown): string[] {
 
 export function createImportRouter(cache: TransactionCache, config: ServerConfig): Router {
   const router = Router();
+
+  router.get('/history', (req, res, next) => {
+    const query = z
+      .object({
+        page: z.coerce.number().int().min(0).max(100000).default(0),
+        pageSize: z.coerce.number().int().min(1).max(50).default(10),
+        search: z.string().max(300).default(''),
+        status: z.enum(['all', 'promoted', 'duplicate', 'rejected']).default('all'),
+      })
+      .safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ error: 'Invalid upload history filters or page.', status: 400 });
+      return;
+    }
+    try {
+      res.json(readImportHistory(config, query.data));
+    } catch (err) {
+      next(err);
+    }
+  });
 
   router.post('/folder', (req, res, next) => {
     const declaredBytes = Number(req.headers['content-length']);

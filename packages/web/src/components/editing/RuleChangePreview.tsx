@@ -4,7 +4,7 @@ import { manageRules, type RuleChange, type RuleChangeResult } from '../../api/c
 import { queryKeys } from '../../api/hooks.js';
 import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { Button } from '../ui/button.js';
-import { transactionReasonTitleLookup } from '@moneyinmotion/core';
+import { transactionReasonTitleLookup, type Transactions } from '@moneyinmotion/core';
 import { formatCurrency, formatDate } from '../../lib/utils.js';
 
 const valueLabels: Record<string, string> = {
@@ -30,10 +30,14 @@ export function RuleChangePreview({
   changes,
   onClose,
   onSaved,
+  onBack,
+  transactions,
 }: {
   changes: RuleChange[];
   onClose: () => void;
   onSaved: (result: RuleChangeResult) => void;
+  onBack?: () => void;
+  transactions?: Transactions;
 }) {
   const client = useQueryClient();
   const [preview, setPreview] = useState<RuleChangeResult | null>(null);
@@ -100,6 +104,10 @@ export function RuleChangePreview({
                 : 'Rules retain their order. Later rules take precedence when they change the same field.'}{' '}
               Original statements are not modified. Previous rule files are backed up on the server.
             </p>
+            <p className="text-xs text-muted-foreground">
+              Counts include source and item records; they are not added together as reporting
+              totals.
+            </p>
             {preview.missingTargets > 0 && (
               <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
                 {preview.missingTargets} saved transaction references across the rule set are
@@ -119,32 +127,59 @@ export function RuleChangePreview({
                   Before / after sample (up to 10 transactions)
                 </summary>
                 <ul className="mt-2 space-y-3 text-sm">
-                  {preview.samples.map((sample) => (
-                    <li key={sample.id} className="rounded-md border border-border p-3">
-                      <p className="font-medium break-words">
-                        {String(sample.after['name'] ?? sample.before['name'] ?? sample.id)}
-                      </p>
-                      {Object.keys(sample.before)
-                        .filter(
-                          (key) =>
-                            JSON.stringify(sample.before[key]) !==
-                            JSON.stringify(sample.after[key]),
-                        )
-                        .map((key) => (
-                          <p key={key} className="break-words">
-                            <span className="font-medium">{valueLabels[key] ?? key}: </span>
-                            {displayValue(key, sample.before[key])} →{' '}
-                            {displayValue(key, sample.after[key])}
-                          </p>
-                        ))}
-                    </li>
-                  ))}
+                  {preview.samples.map((sample) => {
+                    const transaction = transactions?.getTransaction(sample.id);
+                    const account = transaction
+                      ? transactions?.getAccountInfo(transaction.accountId).title ||
+                        transaction.accountId
+                      : null;
+                    const date = sample.after['date'] ?? sample.before['date'];
+                    const amount = sample.after['amount'] ?? sample.before['amount'];
+                    return (
+                      <li key={sample.id} className="rounded-md border border-border p-3">
+                        <p className="font-medium break-words">
+                          {String(sample.after['name'] ?? sample.before['name'] ?? sample.id)}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {[
+                            typeof date === 'string' ? formatDate(date) : null,
+                            account,
+                            typeof amount === 'number' ? formatCurrency(amount) : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ') || 'Record details not available'}
+                        </p>
+                        {Object.keys(sample.before)
+                          .filter(
+                            (key) =>
+                              JSON.stringify(sample.before[key]) !==
+                              JSON.stringify(sample.after[key]),
+                          )
+                          .map((key) => (
+                            <p key={key} className="break-words">
+                              <span className="font-medium">{valueLabels[key] ?? key}: </span>
+                              {displayValue(key, sample.before[key])} →{' '}
+                              {displayValue(key, sample.after[key])}
+                            </p>
+                          ))}
+                        <details className="mt-2 text-xs text-muted-foreground">
+                          <summary className="cursor-pointer">Record identity</summary>
+                          <p className="mt-1 select-all break-all">{sample.id}</p>
+                        </details>
+                      </li>
+                    );
+                  })}
                 </ul>
               </details>
             )}
           </div>
         )}
         <DialogFooter>
+          {onBack && (
+            <Button variant="outline" disabled={saving} onClick={onBack}>
+              Back to editing
+            </Button>
+          )}
           <Button variant="outline" disabled={saving} onClick={onClose}>
             Cancel
           </Button>

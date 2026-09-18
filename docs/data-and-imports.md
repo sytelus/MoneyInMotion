@@ -132,7 +132,8 @@ accounts may be meaningful and are retained for both.
 ## Automatic rebuild
 
 For a restored data folder with statements already on the server, use **Build
-from existing statements** on Home, Accounts, or Getting Started. No upload is
+from existing statements** in Imports (also available in empty transaction
+history and Getting Started recovery flows). No upload is
 required. Saved rules remain visible in Rules even before the first build.
 Missing transaction-ID targets are reported and preserved; migration of old
 IDs requires a previous snapshot that identifies the original transactions.

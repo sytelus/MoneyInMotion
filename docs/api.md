@@ -54,8 +54,10 @@ does not rebind a running repository or listener.
 ### `GET /api/accounts`
 
 Returns account configs found exactly at `Statements/<account>/AccountConfig.json`,
-with transaction count, most recent imported audit date, statement-file
+with graph-record count, latest record-creation/rebuild timestamp, statement-file
 presence, and the top-level directory expected in browser uploads.
+The legacy wire field `lastImportedAt` is retained for compatibility, but it
+is not a reliable first-import timestamp.
 
 If any discovered `AccountConfig.json` is malformed or unsupported, discovery
 returns 422 with its path instead of returning an incomplete account list.
@@ -82,13 +84,31 @@ the subsequent config replacement fails, the directory rename is rolled back.
 Deletes `AccountConfig.json`. It deletes the directory only if it is empty and
 reports whether statement files were preserved. It never recursively deletes
 source data.
+Existing snapshot records remain until rebuild. The next rebuild excludes the
+removed account, and its exact-target rules can then refer to unavailable records.
+
+### `GET /api/accounts/disconnected`
+
+Lists safe, unconfigured top-level folders without following symbolic links.
+Returns `relativeDirectory`, `identityStatus` (`known`, `unknown`, or `ambiguous`),
+and `originalAccount` when surviving snapshot source paths establish one account
+identity. Unknown does not mean the folder is safe to assign an arbitrary old ID.
+
+### `POST /api/accounts/:folder/reconnect`
+
+Accepts an `AccountConfig` and explicitly restores only the missing configuration
+in an existing real directory. Raw statements are preserved. Existing configs,
+duplicate account IDs, conflicting known historical IDs, and ambiguous historical
+identities return 409. If no identity is retained, the user must supply it; the
+UI never silently substitutes the folder name for a historical logical ID.
 
 ## Transactions and rules
 
 ### `GET /api/transactions`
 
 Returns the serialized current transaction graph, account and import metadata,
-and edit history. The cache lazily loads the last materialized snapshot.
+and current saved rules. The cache lazily loads the last materialized snapshot.
+Saved rules are not an immutable log of previous rule revisions.
 
 ### `POST /api/transaction-edits`
 
@@ -151,7 +171,7 @@ A 201 response means staging/promotion was processed; callers must still check
 `rebuild.committed`. If it is false, the response lists parse failures and the
 last known-good snapshot remains authoritative.
 
-The Accounts page presents promoted, duplicate, and rejected counts after every
+The Imports page presents promoted, duplicate, and rejected counts after every
 processed import, plus an expandable result for every file showing its decision,
 message, and destination or existing duplicate where applicable.
 
@@ -164,6 +184,18 @@ broadens or drops them silently.
 
 Runs the same full rebuild over server-side statements without an upload. This
 is a maintenance operation. It returns the `rebuild` object shown above.
+
+### `GET /api/import/history`
+
+Read-only view of existing staging manifests. Query fields: zero-based `page`,
+`pageSize` (1–50), `search`, and `status` (`all`, `promoted`, `duplicate`, or
+`rejected`). Returns `entries`, `total`, `totalRecorded`, `unreadableCount`,
+`page`, and `pageSize`. Regular-file and size/schema validation prevents unsafe
+or malformed receipts being presented as valid. Pagination bounds the response;
+the service still scans manifests before filtering.
+
+These receipts describe received files, byte digests, and promotion decisions.
+They do not retain the later rebuild outcome or establish first-ever import time.
 
 ## Compatibility policy
 

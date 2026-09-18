@@ -1,9 +1,11 @@
 import {
   isIncoming,
+  parseDate,
   isInterAccount,
   type Transaction,
   type Transactions,
   transactionReasonPluralTitleLookup,
+  transactionReasonTitleLookup,
 } from '@moneyinmotion/core';
 
 /** Same accounting grain as NetAggregator: completed children replace parents. */
@@ -91,7 +93,14 @@ export function flattenExplorer(groups: ExplorerGroup[], expanded: Set<string>):
 }
 
 /** Quote cells and neutralize spreadsheet formula injection in user/source text. */
-export function transactionsCsv(transactions: Transaction[]): string {
+export function transactionsCsv(
+  transactions: Transaction[],
+  options?: {
+    collection?: Transactions;
+    provenance?: boolean;
+    basis?: 'reporting' | 'records';
+  },
+): string {
   const cell = (value: string | number) =>
     '"' +
     (typeof value === 'string' && /^[=+@\-\t\r]/.test(value)
@@ -109,9 +118,23 @@ export function transactionsCsv(transactions: Transaction[]): string {
       'Note',
       'Marked for review',
       'Transaction ID',
+      ...(options ? ['Export basis', 'Transaction type'] : []),
+      ...(options?.provenance
+        ? [
+            'Source file',
+            'Source row',
+            'Institution reference',
+            'Original date',
+            'Original name',
+            'Original amount',
+            'Applied rule IDs',
+            'Parent ID',
+            'Related transfer ID',
+          ]
+        : []),
     ],
     ...transactions.map((t) => [
-      t.correctedTransactionDate.slice(0, 10),
+      parseDate(t.correctedTransactionDate).toISOString().slice(0, 10),
       t.displayEntityNameNormalized,
       t.correctedAmount,
       t.accountId,
@@ -119,6 +142,26 @@ export function transactionsCsv(transactions: Transaction[]): string {
       t.note ?? '',
       t.isUserFlagged ? 'Yes' : 'No',
       t.id,
+      ...(options
+        ? [
+            options.basis === 'records' ? 'Source records (not additive)' : 'Reporting items',
+            transactionReasonTitleLookup[String(t.correctedTransactionReason)] ??
+              String(t.correctedTransactionReason),
+          ]
+        : []),
+      ...(options?.provenance
+        ? [
+            options.collection?.getImportInfo(t.importId)?.portableAddress ?? t.importId,
+            t.toData().lineNumber ?? '',
+            t.toData().instituteReference ?? '',
+            t.toData().transactionDate,
+            t.toData().entityName,
+            t.toData().amount,
+            (t.appliedEditIdsDescending ?? []).join(' | '),
+            t.parentId ?? '',
+            t.relatedTransferId ?? '',
+          ]
+        : []),
     ]),
   ]
     .map((row) => row.map(cell).join(','))

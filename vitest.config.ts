@@ -34,6 +34,10 @@ export default defineConfig({
           include: ['__tests__/**/*.test.{ts,tsx}'],
           setupFiles: ['__tests__/setup.ts'],
         },
+        // JSDOM checks semantics, not generated Tailwind layout. Actual styles
+        // are compiled by the production build and exercised in Chromium.
+        // Avoid resolving a root-CWD Tailwind config for incidental CSS imports.
+        css: { postcss: { plugins: [] } },
         resolve: {
           alias: {
             '@moneyinmotion/core': new URL('./packages/core/src/index.ts', import.meta.url)

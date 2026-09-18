@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import {
   Transactions,
   Transaction,
@@ -57,11 +58,22 @@ beforeEach(() =>
 );
 
 describe('Transaction explorer', () => {
+  it('explains unavailable source links without crashing', () => {
+    useTransactionsStore.getState().setTransactions(fixture().serialize());
+    useTransactionsStore.getState().applyScope({ source: 'missing-source' });
+    render(<TransactionList />);
+    expect(screen.getByText(/Unavailable source/)).toBeInTheDocument();
+    expect(screen.getByText(/No transactions to display/)).toBeInTheDocument();
+  });
   it('uses the statement category consistently in selected details and reporting', () => {
     const collection = fixture();
     useTransactionsStore.getState().setTransactions(collection.serialize());
     useTransactionsStore.getState().selectTransaction([...collection.topLevelTransactions][0]!.id);
-    render(<TransactionSummary />);
+    render(
+      <MemoryRouter>
+        <TransactionSummary />
+      </MemoryRouter>,
+    );
     expect(screen.queryByText('Uncategorized')).not.toBeInTheDocument();
     expect(screen.getAllByText('Shopping')).toHaveLength(2);
     expect(screen.getByText('Statement category')).toBeInTheDocument();
@@ -78,6 +90,23 @@ describe('Transaction explorer', () => {
       within(screen.getByRole('grid')).getByRole('button', { name: /Expenses/ }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Store 0')).not.toBeInTheDocument();
+  });
+  it('starts searches in the list but allows an explicit drill into search summary groups', () => {
+    useTransactionsStore.getState().setTransactions(fixture(3).serialize());
+    render(<TransactionList />);
+    fireEvent.change(screen.getByLabelText('Search transactions'), { target: { value: 'Store' } });
+    expect(screen.getByRole('button', { name: 'All matching items' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Explore Expenses' }));
+    expect(screen.getByRole('button', { name: 'Summary', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(
+      within(screen.getByRole('grid')).getByRole('button', { name: /Expenses/ }),
+    ).toHaveAttribute('aria-expanded', 'true');
   });
   it('drills through type and provider category without a duplicate singleton merchant group', () => {
     useTransactionsStore.getState().setTransactions(fixture().serialize());

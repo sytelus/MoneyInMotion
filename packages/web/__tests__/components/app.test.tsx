@@ -10,7 +10,9 @@ import { App } from '../../src/App.js';
 describe('App', () => {
   it('renders without crashing', async () => {
     render(<App />);
-    // The header should contain the app title
-    expect(await screen.findByText('MoneyInMotion')).toBeInTheDocument();
+    // The real landing route is lazy-loaded. Cold transforms in the parallel
+    // monorepo suite can exceed Testing Library's one-second default; wait for
+    // the actual header, not merely the Suspense loading text.
+    expect(await screen.findByText('MoneyInMotion', {}, { timeout: 4000 })).toBeInTheDocument();
   });
 });

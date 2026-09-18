@@ -30,6 +30,11 @@ import {
   type DiscoveredAccountConfig,
 } from '../storage/account-config-repository.js';
 import { writeTextFileAtomically } from '../storage/atomic-file.js';
+import {
+  accountIdentitiesByFolder,
+  disconnectedAccountFolder,
+  isSafeAccountFolder,
+} from '../services/account-reconnection-service.js';
 
 interface AccountStats {
   transactionCount: number;
@@ -162,6 +167,31 @@ function buildAccountSummary(
 export function createAccountsRouter(config: ServerConfig, cache: TransactionCache): Router {
   const router = Router();
 
+  router.get('/disconnected', async (_req, res, next) => {
+    try {
+      const identities = accountIdentitiesByFolder(await cache.getTransactions());
+      const folders = fs.existsSync(config.statementsDir)
+        ? fs
+            .readdirSync(config.statementsDir, { withFileTypes: true })
+            .filter(
+              (entry) =>
+                entry.isDirectory() &&
+                isSafeAccountFolder(entry.name) &&
+                !fs.existsSync(
+                  path.join(config.statementsDir, entry.name, ACCOUNT_CONFIG_FILE_NAME),
+                ),
+            )
+            .map((entry) =>
+              disconnectedAccountFolder(entry.name, identities.get(entry.name.toLowerCase())),
+            )
+            .sort((a, b) => a.relativeDirectory.localeCompare(b.relativeDirectory))
+        : [];
+      res.json(folders);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get('/', async (_req, res, next) => {
     try {
       const discoveredAccounts = discoverAccountConfigs(config.statementsDir);
@@ -184,7 +214,7 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
     }
   });
 
-  router.post('/', (req, res, next) => {
+  router.post(['/', '/:id/reconnect'], async (req, res, next) => {
     try {
       const result = accountConfigSchema.safeParse(req.body);
       if (!result.success) {
@@ -213,6 +243,42 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         return;
       }
 
+      const reconnectFolder = req.params.id;
+      if (
+        reconnectFolder != null &&
+        (typeof reconnectFolder !== 'string' || !isSafeAccountFolder(reconnectFolder))
+      ) {
+        res.status(400).json({ error: 'Invalid folder name.', status: 400 });
+        return;
+      }
+      // Read provenance before any synchronous existence checks/writes so an
+      // asynchronous cache load cannot create an overwrite race between them.
+      if (reconnectFolder != null) {
+        const originalAccounts =
+          accountIdentitiesByFolder(await cache.getTransactions()).get(
+            reconnectFolder.toLowerCase(),
+          ) ?? [];
+        if (originalAccounts.length > 1) {
+          res
+            .status(409)
+            .json({
+              error:
+                'This folder has ambiguous historical account identities. Restore its original AccountConfig.json from a backup before rebuilding.',
+              status: 409,
+            });
+          return;
+        }
+        const original = originalAccounts[0];
+        if (original && original.id !== accountId) {
+          res
+            .status(409)
+            .json({
+              error: `This folder belongs to historical account ID "${original.id}". Reconnect with that exact ID to preserve transactions and rule targets.`,
+              status: 409,
+            });
+          return;
+        }
+      }
       const duplicateAccount = discoverAccountConfigs(config.statementsDir).find(
         (account) => account.config.accountInfo.id.toLowerCase() === accountId.toLowerCase(),
       );
@@ -224,33 +290,46 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         return;
       }
 
-      // Create account folder named by account id
-      const accountDir = path.join(config.statementsDir, accountConfig.accountInfo.id);
-      if (fs.existsSync(accountDir)) {
+      // Reconnecting is explicit: preserve raw files and only recreate the
+      // missing configuration. A normal create never claims an existing folder.
+      const accountDir = path.join(config.statementsDir, reconnectFolder ?? accountId);
+      const configPath = path.join(accountDir, ACCOUNT_CONFIG_FILE_NAME);
+      if (reconnectFolder != null) {
+        if (
+          !fs.existsSync(accountDir) ||
+          !fs.lstatSync(accountDir).isDirectory() ||
+          fs.existsSync(configPath)
+        ) {
+          res.status(409).json({
+            error: 'Only an existing, unconfigured account folder can be reconnected.',
+            status: 409,
+          });
+          return;
+        }
+      } else if (fs.existsSync(accountDir)) {
         res.status(409).json({
-          error: `Account "${accountId}" already exists.`,
+          error: `Folder "${accountId}" already exists. Use Reconnect folder to preserve and reconnect its statements.`,
           status: 409,
         });
         return;
       }
-      fs.mkdirSync(accountDir, { recursive: true });
+      if (reconnectFolder == null) fs.mkdirSync(accountDir, { recursive: true });
 
-      const configPath = path.join(accountDir, ACCOUNT_CONFIG_FILE_NAME);
       try {
         writeAccountConfig(configPath, accountConfig);
       } catch (err) {
         // The directory was created by this request and no asynchronous work
         // can add user files before this synchronous write completes. Remove a
         // failed partial creation so a corrected retry is not blocked forever.
-        fs.rmSync(accountDir, { recursive: true, force: true });
+        if (reconnectFolder == null) fs.rmSync(accountDir, { recursive: true, force: true });
         throw err;
       }
 
       res.status(201).json({
         config: accountConfig,
         stats: buildEmptyStats(),
-        hasStatementFiles: false,
-        relativeDirectory: accountConfig.accountInfo.id,
+        hasStatementFiles: accountDirectoryHasStatements(accountDir),
+        relativeDirectory: reconnectFolder ?? accountConfig.accountInfo.id,
       } satisfies AccountSummary);
     } catch (err) {
       next(err);

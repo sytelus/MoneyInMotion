@@ -9,6 +9,7 @@
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { parseDate } from '@moneyinmotion/core';
 
 /**
  * Merge Tailwind CSS class names, resolving conflicts automatically.
@@ -44,8 +45,12 @@ export function formatCurrency(amount: number): string {
  * @returns A string like `"Mar 15, 2024"`.
  */
 export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return dateStr;
+  let date: Date;
+  try {
+    date = parseDate(dateStr);
+  } catch {
+    return dateStr;
+  }
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
