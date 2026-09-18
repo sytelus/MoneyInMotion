@@ -51,8 +51,9 @@ cd MoneyInMotion
 ./run.sh
 ```
 
-Open `http://localhost:3001`, or the HTTPS URL of the reverse proxy in front of
-the server. The default storage location is:
+Open the URL printed at startup (`http://localhost:3001` by default), or the
+HTTPS URL of the reverse proxy in front of the server. The default storage
+location is:
 
 ```text
 ~/mim_root/<operating-system-username>/
@@ -68,7 +69,7 @@ For development with API and UI hot reload:
 ./install.sh --development
 ./run.sh dev
 # website: http://localhost:5173
-# API:     http://localhost:3001
+# API:     port from ~/.moneyinmotion/config.json (default 3001)
 ```
 
 ## Statement import workflow
@@ -138,6 +139,8 @@ React application and `/api` from one origin.
 | `./run.sh prod`                                  | Explicit equivalent of the default `./run.sh`                       |
 | `npm test`                                       | Run all unit, integration, route, storage, parser, and UI tests     |
 | `npm run test:coverage`                          | Run tests and generate a coverage report                            |
+| `npm run format:check`                           | Check repository formatting without changing files                  |
+| `npm run format`                                 | Apply the repository's Prettier formatting rules                    |
 | `npm run smoke:production`                       | Verify a built production server and restart in isolation           |
 | `npm run verify:legacy -- /absolute/legacy/root` | Read-only compatibility report using an isolated temporary copy     |
 | `npm run clean`                                  | Remove package build output while preserving installed dependencies |
@@ -156,7 +159,9 @@ React application and `/api` from one origin.
 
 On first start the app creates this file with `~/mim_root`, the operating-system
 username, and port `3001`. A legacy `dataPath` inside the file is migrated once.
-Process environment variables do not override these settings.
+Process environment variables do not override these settings. An invalid file
+stops startup and remains untouched so it can be repaired; move it aside only
+when intentionally returning to generated defaults.
 
 ## Documentation
 

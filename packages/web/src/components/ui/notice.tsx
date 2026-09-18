@@ -2,7 +2,7 @@ import React, { type ReactNode } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { cn } from '../../lib/utils.js';
 
-export type NoticeTone = 'info' | 'success' | 'warning' | 'error';
+type NoticeTone = 'info' | 'success' | 'warning' | 'error';
 
 const toneStyles: Record<NoticeTone, { frame: string; icon: string }> = {
   info: {

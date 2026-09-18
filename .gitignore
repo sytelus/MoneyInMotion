@@ -30,6 +30,8 @@ $RECYCLE.BIN/
 # Data (PII)
 data/
 App_Data/
+mim_root/
+# Legacy misspelling used by early local checkouts
 min_root/
 
 # Logs

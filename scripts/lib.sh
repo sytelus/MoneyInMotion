@@ -81,8 +81,11 @@ ensure_core_built() {
     local core_buildinfo=packages/core/tsconfig.tsbuildinfo
 
     if [ -f "$core_index" ]; then
-        # Dist exists — rebuild only if any source file is newer than it.
-        if [ -z "$(find packages/core/src -name '*.ts' -newer "$core_index" 2>/dev/null | head -1)" ]; then
+        # Dist exists — rebuild only if a source or compiler input is newer.
+        if [ -z "$(find \
+            tsconfig.base.json \
+            packages/core/package.json packages/core/tsconfig.json packages/core/src \
+            -type f -newer "$core_index" 2>/dev/null | head -1)" ]; then
             return 0
         fi
     else
@@ -107,10 +110,12 @@ ensure_production_built() {
         || [ ! -f "$build_marker" ]; then
         artifacts_missing=true
     elif [ -n "$(find \
-        package.json package-lock.json tsconfig.json \
+        package.json package-lock.json tsconfig.json tsconfig.base.json \
         packages/core/package.json packages/core/tsconfig.json packages/core/src \
         packages/server/package.json packages/server/tsconfig.json packages/server/src \
-        packages/web/package.json packages/web/tsconfig.json packages/web/vite.config.ts packages/web/src \
+        packages/web/package.json packages/web/tsconfig.json packages/web/vite.config.ts \
+        packages/web/index.html packages/web/postcss.config.js packages/web/tailwind.config.js \
+        packages/web/src \
         -type f -newer "$build_marker" 2>/dev/null | head -1)" ]; then
         build_stale=true
     fi

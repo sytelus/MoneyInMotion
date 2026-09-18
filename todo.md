@@ -39,9 +39,10 @@ ideas live in [Suggested improvements](docs/legacy_suggested_improvements.md).
 - [ ] **Explain reconciliation decisions.** Show why an order/charge or transfer
       was linked and allow audited unlink/relink rules before changing matching
       infrastructure.
-- [ ] **Add product features based on actual use.** Likely candidates are search,
-      category management, splits, duplicate review, budgets, exports, and a
-      backup/restore wizard. Validate priority before adding dependencies.
+- [ ] **Add product features based on actual use.** Likely candidates are
+      category management, splits, duplicate review, budgets, server-indexed
+      saved views, and a complete backup/restore export. Validate priority before
+      adding dependencies; browser search and scoped CSV/rule export already exist.
 
 ## Add only when the requirement exists
 

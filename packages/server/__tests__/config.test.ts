@@ -28,12 +28,20 @@ describe('server configuration', () => {
     expect(() => buildConfig('/tmp/mim', 'user', 3.14)).toThrow('port');
   });
 
-  it('uses one normalized root for every derived path', () => {
-    const config = buildConfig('/tmp/parent/../mim', 'user', 3001);
+  it('rejects usernames that resolve to the data-root directory itself', () => {
+    expect(() => buildConfig('/tmp/mim', '.', 3001)).toThrow('username');
+  });
 
-    expect(config.dataRoot).toBe(path.normalize('/tmp/parent/../mim'));
+  it('uses one normalized root for every derived path', () => {
+    const config = buildConfig('/tmp//mim/.', 'user', 3001);
+
+    expect(config.dataRoot).toBe(path.normalize('/tmp//mim/.'));
     expect(config.userDataPath).toBe(path.join(config.dataRoot, 'user'));
     expect(config.statementsDir).toBe(path.join(config.userDataPath, 'Statements'));
+  });
+
+  it('rejects parent segments in directly edited configuration', () => {
+    expect(() => buildConfig('/tmp/parent/../mim', 'user', 3001)).toThrow('".."');
   });
 
   it('uses only config.json and ignores former application environment variables', () => {
@@ -72,5 +80,43 @@ describe('server configuration', () => {
       port: config.port,
     });
     expect(config.dataRoot).toBe(path.join(os.homedir(), 'mim_root'));
+  });
+
+  it('fails closed and preserves a malformed config file', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-config-test-'));
+    temporaryDirectories.push(directory);
+    const configFile = path.join(directory, 'config.json');
+    const malformed = '{ "dataRoot": "/financial-data",';
+    fs.writeFileSync(configFile, malformed, 'utf-8');
+
+    expect(() => loadConfig({ ensureDirectories: false, configFile })).toThrow(
+      'Fix the file or move it aside',
+    );
+    expect(fs.readFileSync(configFile, 'utf-8')).toBe(malformed);
+    expect(fs.readdirSync(directory)).toEqual(['config.json']);
+  });
+
+  it('migrates the legacy dataPath setting to the canonical shape', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-config-test-'));
+    temporaryDirectories.push(directory);
+    const configFile = path.join(directory, 'config.json');
+    fs.writeFileSync(
+      configFile,
+      JSON.stringify({ dataPath: '/srv/moneyinmotion/alex', port: 4100 }),
+      'utf-8',
+    );
+
+    const config = loadConfig({ ensureDirectories: false, configFile });
+
+    expect(config).toMatchObject({
+      dataRoot: '/srv/moneyinmotion',
+      username: 'alex',
+      port: 4100,
+    });
+    expect(JSON.parse(fs.readFileSync(configFile, 'utf-8'))).toEqual({
+      dataRoot: '/srv/moneyinmotion',
+      username: 'alex',
+      port: 4100,
+    });
   });
 });

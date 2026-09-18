@@ -86,6 +86,7 @@ const accountConfigSchema = z
 function isValidAccountId(accountId: string): boolean {
   return (
     !!accountId &&
+    accountId !== '.' &&
     !/[/\\]/.test(accountId) &&
     !accountId.includes('..') &&
     /^[a-zA-Z0-9._-]+$/.test(accountId)
@@ -237,7 +238,7 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
       if (!isValidAccountId(accountId)) {
         res.status(400).json({
           error:
-            'Invalid account ID: must contain only alphanumeric characters, hyphens, underscores, and dots, and must not contain path separators or ".."',
+            'Invalid account ID: must contain only alphanumeric characters, hyphens, underscores, and dots, and must not be "." or contain path separators or ".."',
           status: 400,
         });
         return;
@@ -259,23 +260,19 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
             reconnectFolder.toLowerCase(),
           ) ?? [];
         if (originalAccounts.length > 1) {
-          res
-            .status(409)
-            .json({
-              error:
-                'This folder has ambiguous historical account identities. Restore its original AccountConfig.json from a backup before rebuilding.',
-              status: 409,
-            });
+          res.status(409).json({
+            error:
+              'This folder has ambiguous historical account identities. Restore its original AccountConfig.json from a backup before rebuilding.',
+            status: 409,
+          });
           return;
         }
         const original = originalAccounts[0];
         if (original && original.id !== accountId) {
-          res
-            .status(409)
-            .json({
-              error: `This folder belongs to historical account ID "${original.id}". Reconnect with that exact ID to preserve transactions and rule targets.`,
-              status: 409,
-            });
+          res.status(409).json({
+            error: `This folder belongs to historical account ID "${original.id}". Reconnect with that exact ID to preserve transactions and rule targets.`,
+            status: 409,
+          });
           return;
         }
       }

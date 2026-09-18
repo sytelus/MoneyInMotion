@@ -2,7 +2,7 @@
  * Shared utility functions for the web package.
  *
  * Provides the shadcn/ui `cn` classname helper along with domain-specific
- * formatters for currency, dates, and category paths.
+ * formatters for currency and dates.
  *
  * @module
  */
@@ -57,19 +57,6 @@ export function formatDate(dateStr: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   });
-}
-
-/**
- * Format a category path array into a human-readable breadcrumb string.
- *
- * @param path - An array of category path segments, or `null`/`undefined`.
- * @returns A string like `"Food > Groceries"`, or `"Uncategorized"` when empty.
- */
-export function formatCategoryPath(path: string[] | null | undefined): string {
-  if (!path || path.length === 0) {
-    return 'Uncategorized';
-  }
-  return path.join(' > ');
 }
 
 /**

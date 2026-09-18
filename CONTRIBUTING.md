@@ -52,6 +52,7 @@ Before submitting a change, run:
 ```bash
 npm run typecheck
 npm run lint
+npm run format:check
 npm test
 npm run build
 npm audit --audit-level=high

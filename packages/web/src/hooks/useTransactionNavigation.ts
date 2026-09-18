@@ -8,7 +8,7 @@ import {
   type TransactionScope,
 } from '../lib/transaction-navigation.js';
 
-export function scopeFromState(state: TransactionsState): TransactionScope {
+function scopeFromState(state: TransactionsState): TransactionScope {
   const { selectedYear: year, selectedMonth: month } = state;
   return {
     ...state.filters,

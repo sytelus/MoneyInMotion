@@ -11,17 +11,18 @@ Run from the repository root:
 ```bash
 npm run typecheck
 npm run lint
+npm run format:check
 npm test
 npm run build
 npm run smoke:production
 npm audit --audit-level=high
 ```
 
-`./build.sh test` combines the first four product checks. CI uses Node 24 and
-runs type checking, lint, the full test suite, the production build, and a
-high-severity dependency audit on pushes and pull requests. CI then runs the
-production installer (including development-dependency pruning) and the
-dependency-free production smoke test.
+`./build.sh test` combines type checking, lint, the production build, and the
+full test suite. CI additionally checks formatting and performs a high-severity
+dependency audit on pushes and pull requests. It then runs the production
+installer (including development-dependency pruning) and the dependency-free
+production smoke test.
 
 ## Test coverage map
 
@@ -46,19 +47,20 @@ percentage as a substitute for fixtures that represent real provider exports.
 
 ## Last verified baseline
 
-The complete acceptance run on 2026-08-28 produced:
+The complete acceptance run on 2026-09-17 produced:
 
-- 51 passing test files and 617 passing tests;
-- 76.96% statement, 66.90% branch, 73.05% function, and 78.00% line coverage;
-- a clean TypeScript build, ESLint run, and optimized Vite production build;
-- zero vulnerabilities in the most recent completed
-  `npm audit --audit-level=high` run; and
+- 63 passing test files and 724 passing tests;
+- 85.49% statement, 75.09% branch, 81.13% function, and 86.32% line coverage;
+- clean TypeScript, ESLint, Prettier, shell-syntax, and optimized production
+  build checks;
+- zero vulnerabilities from `npm audit --audit-level=high`; and
 - successful production-mode HTTP smoke tests with the expected health,
   static-site fallback, same-origin routing, persisted data after restart, and
   security-header behavior.
 
-The production smoke test ran after `./install.sh` pruned the compiler, test
-runner, and browser build dependencies. The resulting production
+An earlier production-pruning verification ran the smoke test after
+`./install.sh` removed the compiler, test runner, and browser build dependencies.
+The resulting production
 `node_modules` occupied approximately 13 MiB, compared with approximately
 286 MiB for the complete development installation. The supplied systemd unit
 also passes `systemd-analyze verify`.

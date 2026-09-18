@@ -42,7 +42,7 @@ fi
 echo ""
 echo -e "${C_BOLD}MoneyInMotion server installation is ready.${C_NC}"
 echo ""
-echo "  Production:  ./run.sh                 (http://localhost:3001)"
+echo "  Production:  ./run.sh                 (URL and configured port print at startup)"
 if [ "$install_mode" = "--development" ]; then
     echo "  Development: ./run.sh dev             (http://localhost:5173)"
     echo "  Tests:       npm test"

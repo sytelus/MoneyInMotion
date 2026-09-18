@@ -63,7 +63,8 @@ They build into one deployable website and are not microservices.
 The remaining direct libraries each perform a current job that would be harder
 or less safe to reimplement locally:
 
-- React and React Router render five browser routes;
+- React and React Router render six primary browser destinations plus recovery
+  and compatibility redirects;
 - TanStack Query coordinates server reads and mutation refreshes;
 - Zustand holds shared period, selection, and expansion state;
 - Radix Dialog and Dropdown Menu provide accessible focus/menu behavior;

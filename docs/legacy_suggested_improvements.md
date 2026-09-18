@@ -50,13 +50,15 @@ This is the prerequisite for safe public Internet or shared-household use.
 
 ## 5. Financial product capabilities
 
-- Fast full-text and structured search across merchant, note, category, amount,
-  account, rule, and date.
+- Move the existing browser search and structured filters to indexed server-side
+  queries when measured history size makes full-snapshot loading too slow; add
+  saved views and richer amount/category expressions at that point.
 - User-managed category taxonomy, split transactions, reusable category-rule
   suggestions, and duplicate-review inbox.
 - Budgets, recurring-transaction detection, cash-flow forecast, savings goals,
   net-worth accounts, and configurable dashboards.
-- CSV/JSON export and a documented backup/restore wizard.
+- Extend the existing transaction/report CSV and rule JSON exports into a
+  complete, checksummed backup/export and guided restore workflow.
 - Optional receipt attachments with privacy-aware OCR.
 
 ## 6. Browser experience and accessibility

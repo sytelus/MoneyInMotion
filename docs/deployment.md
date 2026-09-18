@@ -80,8 +80,9 @@ sudo -H -u moneyinmotion editor /home/moneyinmotion/.moneyinmotion/config.json
 `~/.moneyinmotion/config.json` is the only application configuration source and
 can also be viewed and updated through the website's Settings page. Invalid
 roots, usernames, or ports fail startup rather than silently selecting a
-different directory or listener. File or website changes take effect after a
-server restart.
+different directory or listener. The invalid file is preserved for repair;
+moving it aside intentionally recreates defaults on the next start. File or
+website changes take effect after a server restart.
 
 ## Run with systemd
 

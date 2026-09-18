@@ -40,7 +40,7 @@ const options = {
   basis: ['reporting', 'records'],
 } as const;
 
-export function transactionScopeParams(scope: TransactionScope): URLSearchParams {
+function transactionScopeParams(scope: TransactionScope): URLSearchParams {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(scope)) {
     if (key === 'ids') {

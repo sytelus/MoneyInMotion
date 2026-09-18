@@ -156,7 +156,9 @@ unchanged. Statement mutations were confined to the copied directory.
 
 ### Automated checks
 
-- `npm test`: **62 test files, 713 tests passed**.
+- `npm test`: **63 test files, 724 tests passed** in the current repository
+  verification (the original browser journey was completed before the later
+  configuration and HTTP-boundary regressions were added).
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
 - `npm run build`: passed, including production frontend and server output.

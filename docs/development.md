@@ -8,7 +8,7 @@ VM deployment instructions intentionally agree on Node 24.
 ```bash
 nvm use                    # when nvm is installed
 ./install.sh --development # npm ci, type check, production build
-./run.sh dev               # API :3001, Vite site :5173
+./run.sh dev               # API on configured port, Vite site :5173
 ```
 
 The `--development` option keeps compilers, tests, and hot-reload tools.
@@ -31,7 +31,7 @@ fast source-level tooling out of the smaller, safer runtime served to users.
 | ---------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
 | Primary purpose        | Implement and debug changes                      | Serve browser users reliably                                  |
 | Website server         | Vite on port 5173 with hot-module reload         | Express on the port in `config.json`, default 3001            |
-| API server             | Express on port 3001; Vite proxies `/api`        | Same Express process and origin as the website                |
+| API server             | Express on configured port; Vite proxies `/api`  | Same Express process and origin as the website                |
 | Code form              | TypeScript/TSX transformed on demand             | Precompiled server and optimized browser assets               |
 | Build required first   | Core is built automatically when needed          | `run.sh` rebuilds stale output when build tools are installed |
 | Browser caching/assets | Developer-oriented source maps and rapid refresh | Hashed, minified production assets                            |
@@ -49,6 +49,8 @@ restore the production values before running the production instance again.
 ```bash
 npm run typecheck          # TypeScript project references
 npm run lint               # ESLint across application code and repository scripts
+npm run format:check       # Prettier consistency without changing files
+npm run format             # Format supported repository files in place
 npm test                   # complete Vitest suite, once
 npm run test:watch         # focused test development
 npm run test:coverage      # V8 coverage output

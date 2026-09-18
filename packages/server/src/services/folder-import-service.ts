@@ -35,9 +35,9 @@ export class FolderUploadValidationError extends Error {
   }
 }
 
-export type StagedFileStatus = 'promoted' | 'duplicate' | 'rejected';
+type StagedFileStatus = 'promoted' | 'duplicate' | 'rejected';
 
-export interface StagedFileResult {
+interface StagedFileResult {
   relativePath: string;
   accountId: string | null;
   status: StagedFileStatus;

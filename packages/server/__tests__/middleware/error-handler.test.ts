@@ -18,6 +18,7 @@ describe('errorHandler', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -62,5 +63,23 @@ describe('errorHandler', () => {
 
     expect(json).toHaveBeenCalledWith({ error: 'Malformed JSON request body.', status: 400 });
     expect(console.error).toHaveBeenCalledWith('[Error 400]', 'Malformed JSON request body.');
+  });
+
+  it('hides unexpected error details in production responses', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { response, json } = responseDouble();
+
+    errorHandler(
+      new Error('private path: /srv/finance/secret.json'),
+      {} as Request,
+      response,
+      vi.fn() as NextFunction,
+    );
+
+    expect(json).toHaveBeenCalledWith({ error: 'Internal server error.', status: 500 });
+    expect(console.error).toHaveBeenCalledWith(
+      '[Error 500]',
+      'private path: /srv/finance/secret.json',
+    );
   });
 });

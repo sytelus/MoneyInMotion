@@ -72,7 +72,8 @@ users, not because they are extension points.
 
 At startup the server:
 
-1. Loads `~/.moneyinmotion/config.json`, creating explicit defaults on first start.
+1. Loads `~/.moneyinmotion/config.json`, creating explicit defaults on first
+   start and failing closed without altering the file when it is invalid.
 2. Validates the absolute data root and safe single-segment username.
 3. Creates `Statements`, `staging`, and `Merged` beneath the active user path.
 4. Constructs one `FileRepository` and one `TransactionCache` for that user.

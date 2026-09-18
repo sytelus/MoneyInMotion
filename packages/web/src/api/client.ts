@@ -57,7 +57,7 @@ export interface ApiConfig {
   restartRequired: boolean;
 }
 
-export interface AccountStats {
+interface AccountStats {
   transactionCount: number;
   lastImportedAt: string | null;
 }

@@ -65,9 +65,7 @@ Quick corrections use `POST /api/transaction-edits`. Rule management uses
 ```json
 {
   "preview": true,
-  "changes": [
-    { "previous": null, "next": "<complete new rule object>" }
-  ]
+  "changes": [{ "previous": null, "next": "<complete new rule object>" }]
 }
 ```
 

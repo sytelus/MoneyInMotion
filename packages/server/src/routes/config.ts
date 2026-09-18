@@ -88,7 +88,8 @@ export function createConfigRouter(activeConfig: ServerConfig): Router {
     }
     if (username != null && !isValidUsername(username)) {
       res.status(400).json({
-        error: 'username may contain only letters, numbers, dots, hyphens, and underscores',
+        error:
+          'username may contain only letters, numbers, dots, hyphens, and underscores, and must not be "."',
         status: 400,
       });
       return;

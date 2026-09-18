@@ -153,7 +153,7 @@ export const transactionEditsRequestSchema = z
   .max(100);
 
 /** Compatibility schema for one edit loaded from durable JSON. */
-export const persistedTransactionEditSchema = buildTransactionEditSchema(true);
+const persistedTransactionEditSchema = buildTransactionEditSchema(true);
 
 export const ruleChangesRequestSchema = z
   .object({

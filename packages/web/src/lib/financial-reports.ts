@@ -48,7 +48,7 @@ export interface TransferPair {
 export function reportDay(transaction: Transaction): string {
   return parseDate(transaction.correctedTransactionDate).toISOString().slice(0, 10);
 }
-export function matchesReportScope(transaction: Transaction, scope: ReportScope): boolean {
+function matchesReportScope(transaction: Transaction, scope: ReportScope): boolean {
   const day = reportDay(transaction);
   return (
     (!scope.from || day >= scope.from) &&
@@ -102,7 +102,7 @@ export function monthBounds(month: string): { from: string; to: string } {
  * A pair is included when either endpoint is in scope, deduplicated once.
  * Counterpart dates and edited-amount discrepancies remain visible.
  */
-export function transferPairs(transactions: Transactions, scope: ReportScope): TransferPair[] {
+function transferPairs(transactions: Transactions, scope: ReportScope): TransferPair[] {
   const seen = new Set<string>();
   const pairs: TransferPair[] = [];
   for (const row of transactions.allParentChildTransactions) {

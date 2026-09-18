@@ -45,7 +45,7 @@ const DEFAULT_PORT = 3001;
 
 /** Restrict usernames to a single safe path segment. */
 export function isValidUsername(username: string): boolean {
-  return /^[a-zA-Z0-9._-]+$/.test(username) && !username.includes('..');
+  return username !== '.' && /^[a-zA-Z0-9._-]+$/.test(username) && !username.includes('..');
 }
 
 function ensureDirExists(dirPath: string): void {
@@ -57,9 +57,12 @@ export function buildConfig(dataRoot: string, username: string, port: number): S
   if (!path.isAbsolute(dataRoot)) {
     throw new Error(`MoneyInMotion data root must be absolute: "${dataRoot}"`);
   }
+  if (dataRoot.split(path.sep).includes('..')) {
+    throw new Error('MoneyInMotion data root must not contain ".." path segments.');
+  }
   if (!isValidUsername(username)) {
     throw new Error(
-      'MoneyInMotion username may contain only letters, numbers, dots, hyphens, and underscores.',
+      'MoneyInMotion username may contain only letters, numbers, dots, hyphens, and underscores, and must not be ".".',
     );
   }
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -119,20 +122,15 @@ function loadPersistedConfig(configFile = CONFIG_FILE): PersistedConfig {
     }
     return config;
   } catch (err) {
-    const backupPath = `${configFile}.corrupt-${Date.now()}`;
-    try {
-      fs.renameSync(configFile, backupPath);
-      console.error(
-        `MoneyInMotion config is malformed (${err instanceof Error ? err.message : String(err)}). ` +
-          `Moved it to backup "${path.basename(backupPath)}" and falling back to defaults.`,
-      );
-    } catch {
-      console.error(
-        `MoneyInMotion config is malformed and could not be backed up; ` +
-          'falling back to defaults for this session.',
-      );
-    }
-    return {};
+    const reason = err instanceof Error ? err.message : String(err);
+    // Fail closed instead of silently serving the default data directory.
+    // Selecting a different financial history is more dangerous than refusing
+    // to start, and preserving the original file lets the user repair it.
+    throw new Error(
+      `MoneyInMotion config "${configFile}" is invalid: ${reason}. ` +
+        'Fix the file or move it aside to recreate safe defaults.',
+      { cause: err },
+    );
   }
 }
 

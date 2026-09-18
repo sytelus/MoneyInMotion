@@ -428,7 +428,9 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
               <span role="columnheader" className="transaction-wide-cell">
                 Account
               </span>
-              <span role="columnheader"><span className="sr-only">Actions</span></span>
+              <span role="columnheader">
+                <span className="sr-only">Actions</span>
+              </span>
             </div>
           </div>
           <div role="rowgroup">

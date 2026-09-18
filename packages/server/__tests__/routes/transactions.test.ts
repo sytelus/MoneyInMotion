@@ -203,7 +203,7 @@ describe('config routes', () => {
     expect(res.body.restartRequired).toBe(true);
   });
 
-  it('PUT /api/config returns 400 for invalid port', async () => {
+  it('PUT /api/config returns 400 for invalid path identifiers and ports', async () => {
     const config = createTestConfig();
     const cache = createMockCache();
     const app = createTestApp(config, cache);
@@ -218,6 +218,14 @@ describe('config routes', () => {
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
+
+    const unsafeUsername = await request(app)
+      .put('/api/config')
+      .send({ username: '.' })
+      .set('Content-Type', 'application/json');
+
+    expect(unsafeUsername.status).toBe(400);
+    expect(unsafeUsername.body.error).toContain('must not be "."');
   });
 });
 
@@ -381,6 +389,32 @@ describe('accounts routes', () => {
     expect(fs.existsSync(path.join(tempDir, 'Statements', 'EXISTING', 'AccountConfig.json'))).toBe(
       true,
     );
+  });
+
+  it('POST /api/accounts rejects an ID that resolves to the Statements directory itself', async () => {
+    const app = createTestApp(
+      createTestConfig(tempDir),
+      createMockCache({ allParentChildTransactions: [] }),
+    );
+
+    const res = await request(app)
+      .post('/api/accounts')
+      .send({
+        accountInfo: {
+          id: '.',
+          instituteName: 'Bank',
+          title: 'Unsafe account',
+          type: 2,
+          requiresParent: false,
+          interAccountNameTags: [],
+        },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('must not be "."');
+    expect(fs.existsSync(path.join(tempDir, 'Statements', 'AccountConfig.json'))).toBe(false);
   });
 
   it('POST /api/accounts derives requiresParent from the account type', async () => {
