@@ -4,6 +4,10 @@ This is the behavioral map for maintainers. The implementation and tests are
 authoritative; this document explains the invariants behind them so a cleanup
 does not accidentally change financial meaning.
 
+Apply the [UX design guide](UX_DESIGN_GUIDE.md), especially UX-04, UX-14, and
+UX-18, when presenting these facts: simplify the view without changing meaning,
+explain uncertainty, and request approval for missing persisted evidence.
+
 ## Identity and source metadata
 
 - Account IDs are stable and participate in transaction identity. Renaming an
@@ -57,8 +61,8 @@ silently normalize a scope that claims exact matching.
   institutions use the generic delimited parser where possible.
 - Ambiguous extra CSV fields are an error rather than grounds to truncate data.
   The parser has a narrow recovery for legacy rows whose unquoted final amount
-  contains a thousands separator and validates the reconstruction
-  mathematically.
+  contains a thousands separator. It recognizes the narrow numeric shape before
+  the statement parser validates the reconstructed amount.
 - Date parsing and amount sign conversion are provider-specific and require
   regression fixtures before change.
 
@@ -109,9 +113,11 @@ set for that dimension. Later edits win per changed field. A null/absent field
 means no change, while a present voided field reverts that field to its imported
 state. See [Transaction edits and rules](transaction-edits.md).
 
-The Rules page determines a historic rule's affected transactions from their
-recorded applied-edit IDs where available. A reset targets those exact IDs in
-bounded batches rather than reusing the original broad filter.
+The Rules page derives recorded matches and current field effects from saved
+applied-edit IDs where available; matches are not necessarily effective changes.
+Deleting a rule replays the remaining set against imported values. Restoring an
+imported field is a separate explicit correction, not deletion or an inverse of
+the selected rule. See [Rules and provenance UX](rules-and-provenance-ux.md).
 
 ## Failure policy
 

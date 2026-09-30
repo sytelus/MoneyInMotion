@@ -19,6 +19,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: python3 --version
+      - run: bash -n install.sh build.sh run.sh scripts/lib.sh
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check

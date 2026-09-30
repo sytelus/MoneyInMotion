@@ -47,7 +47,6 @@ function createMockCache(transactions: unknown = new Transactions('test')): Tran
   return {
     getTransactions: vi.fn().mockResolvedValue(transactions),
     applyEdits: vi.fn().mockResolvedValue({ affectedTransactionsCount: 0 }),
-    save: vi.fn().mockResolvedValue(undefined),
     rebuildFromStatements: vi.fn().mockResolvedValue({
       committed: true,
       previousTransactionCount: 0,
@@ -193,7 +192,7 @@ describe('config routes', () => {
       .set('Content-Type', 'application/json');
 
     expect(res.status).toBe(200);
-    expect(saveConfigSpy).toHaveBeenCalledWith({
+    expect(saveConfigSpy.mock.calls[0]?.[0]).toEqual({
       dataRoot: '/tmp/new-root',
       username: 'alex',
       port: 4010,
@@ -334,6 +333,37 @@ describe('accounts routes', () => {
 
     expect(emptyNested.hasStatementFiles).toBe(false);
     expect(nestedFiles.hasStatementFiles).toBe(true);
+  });
+
+  it('GET /api/accounts compares audit timestamps by instant, not string format', async () => {
+    writeAccountConfig(tempDir, 'bank');
+    const cache = createMockCache({
+      allParentChildTransactions: [
+        { accountId: 'bank', auditInfo: { createDate: '2024-03-01T08:00:00Z' } },
+        { accountId: 'bank', auditInfo: { createDate: '2024-03-01 09:00:00Z' } },
+        { accountId: 'bank', auditInfo: { createDate: '2024-03-01T10:00:00+02:00' } },
+      ],
+    });
+    const response = await request(createTestApp(createTestConfig(tempDir), cache)).get(
+      '/api/accounts',
+    );
+    expect(response.status).toBe(200);
+    expect(response.body[0].stats.lastImportedAt).toBe('2024-03-01 09:00:00Z');
+  });
+
+  it('POST prevents a case-only collision with a differently named account identity', async () => {
+    const accountDir = writeAccountConfig(tempDir, 'bank');
+    fs.renameSync(accountDir, path.join(tempDir, 'Statements', 'Exports'));
+    const app = createTestApp(createTestConfig(tempDir), createMockCache());
+    const response = await request(app)
+      .post('/api/accounts')
+      .send({
+        accountInfo: { id: 'exports', instituteName: 'Generic', type: 2, requiresParent: false },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      });
+    expect(response.status).toBe(409);
+    expect(fs.existsSync(path.join(tempDir, 'Statements', 'exports'))).toBe(false);
   });
 
   it('GET /api/accounts reports a corrupt config instead of returning a partial list', async () => {
@@ -477,7 +507,7 @@ describe('accounts routes', () => {
         },
       });
     expect(missingTags.status).toBe(400);
-    expect(missingTags.body.error).toContain('match tag');
+    expect(missingTags.body.error).toContain('matching name');
   });
 
   it('PUT /api/accounts/:id updates the account config', async () => {
@@ -551,6 +581,23 @@ describe('accounts routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.stats.transactionCount).toBe(1);
     expect(fs.existsSync(path.join(tempDir, 'Statements', 'acct-checking'))).toBe(true);
+  });
+
+  it('PUT does not recreate an account removed while its snapshot is loading', async () => {
+    const accountDir = writeAccountConfig(tempDir, 'bank');
+    const configPath = path.join(accountDir, 'AccountConfig.json');
+    const body = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const cache = createMockCache();
+    vi.mocked(cache.getTransactions).mockImplementationOnce(async () => {
+      // Represents an intervening DELETE while an asynchronous read is pending.
+      fs.unlinkSync(configPath);
+      return new Transactions('test');
+    });
+    const response = await request(createTestApp(createTestConfig(tempDir), cache))
+      .put('/api/accounts/bank')
+      .send(body);
+    expect(response.status).toBe(404);
+    expect(fs.existsSync(configPath)).toBe(false);
   });
 
   it('PUT /api/accounts/:id renames an empty account directory and its stored identity', async () => {

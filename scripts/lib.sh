@@ -52,7 +52,7 @@ ensure_node_version() {
 ensure_deps_installed() {
     if [ ! -d node_modules ]; then
         info "Dependencies not installed. Running npm ci..."
-        npm ci --no-audit --no-fund
+        npm ci --include=dev --no-audit --no-fund
         echo ""
     fi
 }
@@ -76,23 +76,30 @@ ensure_development_deps_installed() {
 # but tsbuildinfo remains, tsc will think nothing changed and skip emit
 # entirely. We clear tsbuildinfo whenever dist is missing to force a full
 # rebuild.
+# Compare each package with its own completion marker. Directory mtimes also
+# catch deleted/renamed source files. `-print -quit` avoids a SIGPIPE under the
+# caller's pipefail setting when many files have changed.
+build_inputs_current() {
+    local build_marker="$1" newer_input
+    shift
+    [ -f "$build_marker" ] || return 1
+    newer_input="$(find "$@" -newer "$build_marker" -print -quit)" || return 1
+    [ -z "$newer_input" ]
+}
+
 ensure_core_built() {
     local core_index=packages/core/dist/index.js
     local core_buildinfo=packages/core/tsconfig.tsbuildinfo
 
-    if [ -f "$core_index" ]; then
-        # Dist exists — rebuild only if a source or compiler input is newer.
-        if [ -z "$(find \
+    if [ -f "$core_index" ] && build_inputs_current "$core_buildinfo" \
             tsconfig.base.json \
-            packages/core/package.json packages/core/tsconfig.json packages/core/src \
-            -type f -newer "$core_index" 2>/dev/null | head -1)" ]; then
-            return 0
-        fi
-    else
-        # Dist missing — nuke any stale buildinfo so tsc emits from scratch.
-        rm -f "$core_buildinfo"
+            packages/core/package.json packages/core/tsconfig.json packages/core/src; then
+        return 0
     fi
 
+    # Force emit even when an input outside TypeScript's dependency graph (or a
+    # missing output) caused the rebuild. This also refreshes the marker once.
+    rm -f "$core_buildinfo"
     info "Building @moneyinmotion/core..."
     npm run build:core --silent
     ok "core built."
@@ -101,23 +108,37 @@ ensure_core_built() {
 
 # -- Ensure the complete production build exists and reflects source inputs --
 ensure_production_built() {
-    local build_marker=packages/web/dist/index.html
     local artifacts_missing=false
     local build_stale=false
 
     if [ ! -f packages/core/dist/index.js ] \
         || [ ! -f packages/server/dist/index.js ] \
-        || [ ! -f "$build_marker" ]; then
+        || [ ! -f packages/web/dist/index.html ]; then
         artifacts_missing=true
-    elif [ -n "$(find \
-        package.json package-lock.json tsconfig.json tsconfig.base.json \
-        packages/core/package.json packages/core/tsconfig.json packages/core/src \
-        packages/server/package.json packages/server/tsconfig.json packages/server/src \
-        packages/web/package.json packages/web/tsconfig.json packages/web/vite.config.ts \
-        packages/web/index.html packages/web/postcss.config.js packages/web/tailwind.config.js \
-        packages/web/src \
-        -type f -newer "$build_marker" 2>/dev/null | head -1)" ]; then
-        build_stale=true
+    else
+        # tsc may not re-emit index.js when only a sibling module changes. Its
+        # buildinfo marks compilation completion; Vite's HTML marks the web
+        # build. A newer web build must not conceal a stale API or core build.
+        local package_name
+        for package_name in core server web; do
+            local build_marker="packages/$package_name/tsconfig.tsbuildinfo"
+            local inputs=(package.json package-lock.json tsconfig.json tsconfig.base.json
+                "packages/$package_name/package.json" "packages/$package_name/tsconfig.json"
+                "packages/$package_name/src")
+            if [ "$package_name" = web ]; then
+                build_marker=packages/web/dist/index.html
+                inputs+=(packages/web/vite.config.ts packages/web/index.html
+                    packages/web/postcss.config.js packages/web/tailwind.config.js)
+                # Vite compiles core source through an alias.
+                inputs+=(packages/core/src packages/core/package.json packages/core/tsconfig.json)
+                if [ -d packages/web/public ]; then inputs+=(packages/web/public); fi
+            elif [ "$package_name" = server ]; then
+                inputs+=(packages/core/src packages/core/package.json packages/core/tsconfig.json)
+            fi
+            if ! build_inputs_current "$build_marker" "${inputs[@]}"; then
+                build_stale=true
+            fi
+        done
     fi
 
     if [ "$artifacts_missing" = false ] && [ "$build_stale" = false ]; then

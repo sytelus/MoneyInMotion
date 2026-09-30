@@ -1,5 +1,12 @@
 # UX and migration review — 2026-09-17
 
+Historical record: the findings, 25-rule pagination, screenshots, and test counts
+below describe this review's implementation, not all current behavior. Later
+changes include an Overview landing page and 50-row rule tables. Use the
+[current topic guides](README.md), [UX design guide](UX_DESIGN_GUIDE.md), and
+[feedback register](UX_FEEDBACK_TRACEABILITY.md) for future work; record new
+verification with the [review template](UX_REVIEW_TEMPLATE.md).
+
 ## Scope and evidence
 
 Compared the current React/TypeScript implementation with commit `309411b`,

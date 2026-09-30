@@ -8,6 +8,17 @@ const getConfigMock = vi.fn();
 const updateConfigMock = vi.fn();
 const useRebuildSnapshotMock = vi.fn();
 
+vi.mock('../../src/api/backups.js', () => ({
+  listBackups: async () => ({
+    directory: '/home/alex',
+    username: 'alex',
+    destination: '/tmp/mim_root/alex',
+    defaultName: 'alex_mim_backup_<datetime>.zip',
+    maxArchiveBytes: 2147483648,
+    backups: [],
+  }),
+}));
+
 vi.mock('../../src/api/client.js', () => ({
   getConfig: (...args: unknown[]) => getConfigMock(...args),
   updateConfig: (...args: unknown[]) => updateConfigMock(...args),

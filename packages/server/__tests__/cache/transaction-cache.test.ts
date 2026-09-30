@@ -108,38 +108,18 @@ describe('TransactionCache', () => {
     await expect(cache.getTransactions()).rejects.toThrow('Failed to load transaction edits');
   });
 
-  it('serializes concurrent save() calls', async () => {
+  it('persists concurrent edits in order without losing either rule', async () => {
     const repo = new FileRepository(tempDir);
     const cache = new TransactionCache(repo);
 
-    // Force the cache to have a transactions instance so save() actually writes.
-    await cache.getTransactions();
-
-    const storage = (
-      cache as unknown as {
-        transactionsStorage: { save: (...args: unknown[]) => void };
-      }
-    ).transactionsStorage;
-    const saveSpy = vi.spyOn(storage, 'save');
-
-    // Make the spy artificially slow so overlap is observable: track in-flight count.
-    let inFlight = 0;
-    let maxInFlight = 0;
-    saveSpy.mockImplementation(() => {
-      inFlight += 1;
-      maxInFlight = Math.max(maxInFlight, inFlight);
-      // Tight busy wait (sync) since storage.save is sync.
-      const end = Date.now() + 5;
-      while (Date.now() < end) {
-        /* noop */
-      }
-      inFlight -= 1;
-    });
-
-    await Promise.all([cache.save(), cache.save(), cache.save()]);
-
-    expect(saveSpy).toHaveBeenCalledTimes(3);
-    expect(maxInFlight).toBe(1);
+    const edits = new TransactionEdits('test');
+    edits.createEditCategory([createScopeFilter(ScopeType.All, [])], ['First']);
+    edits.createEditCategory([createScopeFilter(ScopeType.All, [])], ['Second']);
+    await Promise.all([...edits].map((edit) => cache.applyEdits([edit])));
+    expect((await cache.getTransactions()).editsCount).toBe(2);
+    expect((await new TransactionCache(repo).getTransactions()).serialize()).toEqual(
+      (await cache.getTransactions()).serialize(),
+    );
   });
 
   it('rebuildFromStatements surfaces parse errors as failedFiles', async () => {
@@ -194,55 +174,64 @@ describe('TransactionCache', () => {
     expect(fs.existsSync(path.join(tempDir, 'Merged', 'LatestMerged.json'))).toBe(false);
   });
 
-  it('commits a complete rebuild and preserves it when a later file fails', async () => {
-    const statementsDir = path.join(tempDir, 'Statements', 'MyBank');
-    fs.mkdirSync(statementsDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(statementsDir, 'AccountConfig.json'),
-      JSON.stringify({
-        accountInfo: {
-          id: 'my-bank',
-          instituteName: 'TestBank',
-          type: 1,
-          requiresParent: false,
-        },
-        fileFilters: ['*.csv'],
-        scanSubFolders: false,
-      }),
-    );
-    fs.writeFileSync(
-      path.join(statementsDir, 'good.csv'),
-      'Date,Description,Amount\n01/01/2024,Example,-10\n',
-    );
-    const cache = new TransactionCache(new FileRepository(tempDir));
+  it.each(['malformed statement', 'duplicate account'])(
+    'preserves the last complete rebuild after a %s',
+    async (failure) => {
+      const statementsDir = path.join(tempDir, 'Statements', 'MyBank');
+      fs.mkdirSync(statementsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(statementsDir, 'AccountConfig.json'),
+        JSON.stringify({
+          accountInfo: {
+            id: 'my-bank',
+            instituteName: 'TestBank',
+            type: 1,
+            requiresParent: false,
+          },
+          fileFilters: ['*.csv'],
+          scanSubFolders: false,
+        }),
+      );
+      fs.writeFileSync(
+        path.join(statementsDir, 'good.csv'),
+        'Date,Description,Amount\n01/01/2024,Example,-10\n',
+      );
+      const cache = new TransactionCache(new FileRepository(tempDir));
 
-    const firstBuild = await cache.rebuildFromStatements();
-    const savedSnapshot = fs.readFileSync(
-      path.join(tempDir, 'Merged', 'LatestMerged.json'),
-      'utf-8',
-    );
-    expect(firstBuild).toMatchObject({
-      committed: true,
-      previousTransactionCount: 0,
-      totalTransactions: 1,
-      failedFiles: [],
-    });
+      const firstBuild = await cache.rebuildFromStatements();
+      const savedSnapshot = fs.readFileSync(
+        path.join(tempDir, 'Merged', 'LatestMerged.json'),
+        'utf-8',
+      );
+      expect(firstBuild).toMatchObject({
+        committed: true,
+        previousTransactionCount: 0,
+        totalTransactions: 1,
+        failedFiles: [],
+      });
 
-    fs.writeFileSync(
-      path.join(statementsDir, 'bad.csv'),
-      'Date,Description,Amount,Type\n01/02/2024,Broken,-20,NotAType\n',
-    );
-    const failedBuild = await cache.rebuildFromStatements();
+      if (failure === 'duplicate account') {
+        fs.cpSync(statementsDir, path.join(tempDir, 'Statements', 'OtherBank'), {
+          recursive: true,
+        });
+      } else {
+        fs.writeFileSync(
+          path.join(statementsDir, 'bad.csv'),
+          'Date,Description,Amount,Type\n01/02/2024,Broken,-20,NotAType\n',
+        );
+      }
+      const failedBuild = await cache.rebuildFromStatements();
 
-    expect(failedBuild.committed).toBe(false);
-    expect(failedBuild.previousTransactionCount).toBe(1);
-    expect(failedBuild.totalTransactions).toBe(1);
-    expect(failedBuild.failedFiles).toHaveLength(1);
-    expect((await cache.getTransactions()).allTransactionCount).toBe(1);
-    expect(fs.readFileSync(path.join(tempDir, 'Merged', 'LatestMerged.json'), 'utf-8')).toBe(
-      savedSnapshot,
-    );
-  });
+      expect(failedBuild.committed).toBe(false);
+      expect(failedBuild.previousTransactionCount).toBe(1);
+      expect(failedBuild.totalTransactions).toBe(1);
+      expect(failedBuild.failedFiles).toHaveLength(1);
+      expect((await cache.getTransactions()).allTransactionCount).toBe(1);
+      expect(fs.readFileSync(path.join(tempDir, 'Merged', 'LatestMerged.json'), 'utf-8')).toBe(
+        savedSnapshot,
+      );
+    },
+  );
 
   it('keeps the active snapshot unchanged when a rebuild cannot be persisted', async () => {
     const statementsDir = path.join(tempDir, 'Statements', 'MyBank');

@@ -2,6 +2,11 @@
 
 This document describes the UI projections added for understanding existing financial records. These features do not add fields to statements, transaction snapshots, or saved rules. The original statement values remain separate from saved correction rules.
 
+Apply [UX-06 through UX-08 and UX-14 through UX-16](UX_DESIGN_GUIDE.md) when
+changing this workflow. The [feedback register](UX_FEEDBACK_TRACEABILITY.md)
+retains the original rule-lifecycle, density, missing-target, reset/flag, and
+batch-edit critiques; verify them with the [review template](UX_REVIEW_TEMPLATE.md).
+
 ## User workflows
 
 ### Understand a transaction
@@ -17,6 +22,22 @@ Related-record links explicitly switch to source-record inspection. As a second 
 ### Understand a rule
 
 Rules can be searched, filtered by changed field, status, purpose, and account, sorted, selected in batches, duplicated, and exported as JSON. Sorting the list does not change saved execution order. The account filter includes explicit account conditions and recorded matches, not hypothetical future matches.
+
+The catalog is a compact table rather than one card per rule. Its default
+**Most matches** sort groups multiple-transaction effects, single-transaction
+effects, and no recorded matches. Automation/transaction-correction shortcuts
+filter derived purpose; purpose and match count are different concepts. A
+reusable automation can currently match one transaction or none.
+
+Expand a row for full conditions, target descriptions, creation metadata,
+execution order, technical IDs, and duplication. Click its change description
+or match count for results. Edit/delete stay visible on desktop and are in
+expanded details on small screens. Hidden columns have matching semantic
+colspans so mobile descriptions use all available space.
+
+Empty categories/notes are labeled **clear value**, distinct from **restore
+imported value**. Unavailable targets have a keyboard-accessible explanation
+and recovery instructions; their count is not a missing monetary amount.
 
 Purpose is derived, not persisted:
 
@@ -53,7 +74,7 @@ The latter two record counts can overlap. For example, an earlier rule may still
 
 The complete transaction graph is inspected, including parent records that reporting projections may replace with complete items. Match counts must therefore not be presented as additive financial totals. Missing rule definitions make explanations incomplete; surviving definitions are described as the latest _known_ writers.
 
-The summary calculation visits the graph once and maintains small field-writer sets. Do not replace it with one full-graph scan per rule. The inspector renders ten results per page; the Rules catalog renders 25 rules per page. Exact-target edits are limited to 1,000 records, consistent with the current editing limit.
+The summary calculation visits the graph once and maintains small field-writer sets. Do not replace it with one full-graph scan per rule. The inspector renders ten results per page; the Rules catalog renders 50 compact rows per page. Exact-target edits are limited to 1,000 records, consistent with the current editing limit.
 
 ## Timestamp and identity limitations
 

@@ -54,15 +54,13 @@ export class CsvFileParser implements FileFormatParser {
         continue;
       }
 
-      // Remove trailing blank columns when header is already set
+      // Some exports append empty cells beyond the header. Remove only those
+      // cells: a final comma must never hide a non-empty overflow field.
       let trimmedColumns = columns;
-      if (
-        headerColumns !== null &&
-        trimmedColumns.length > 1 &&
-        trimmedColumns[trimmedColumns.length - 1] === '' &&
-        headerColumns.length < trimmedColumns.length
-      ) {
-        trimmedColumns = trimmedColumns.slice(0, headerColumns.length);
+      if (headerColumns !== null) {
+        let end = columns.length;
+        while (end > headerColumns.length && columns[end - 1] === '') end--;
+        trimmedColumns = columns.slice(0, end);
       }
 
       // First qualifying row becomes the header

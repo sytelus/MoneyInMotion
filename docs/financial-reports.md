@@ -5,6 +5,11 @@ not create a second ledger, change imported values, or persist a reporting
 schema. All drill-downs lead to the same transaction explorer through the shared
 `transaction-navigation.ts` URL contract.
 
+Use [UX-03, UX-04, UX-07, and UX-17](UX_DESIGN_GUIDE.md) to review summary-first
+entry, visible scope, meaningful categories, truthful measures, visualizations,
+drill-down agreement, and export behavior. Current calculations are specified
+below; a new design must not silently redefine them.
+
 ## Questions the overview answers
 
 - What credits and debits are recorded in a clearly stated period?

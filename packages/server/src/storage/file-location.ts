@@ -39,24 +39,16 @@ export class FileLocation {
     const extension = path.extname(this.address).toUpperCase();
 
     if (options?.isImportInfo) {
-      let updateDate: string;
-      let createDate: string;
-      try {
-        const stats = fs.statSync(this.address);
-        updateDate = stats.mtime.toISOString();
-        createDate = stats.birthtime.toISOString();
-      } catch {
-        // If we can't stat the file, use current time as fallback
-        updateDate = new Date().toISOString();
-        createDate = new Date().toISOString();
-      }
+      // These are filesystem times, not import events. If metadata cannot be
+      // read, fail the scan; inventing "now" would misrepresent provenance.
+      const stats = fs.statSync(this.address);
       const importId = getMD5HashString(relativeFilePath, true);
 
       this.importInfo = {
         id: importId,
         portableAddress: relativeFilePath,
-        updateDate,
-        createDate,
+        updateDate: stats.mtime.toISOString(),
+        createDate: stats.birthtime.toISOString(),
         contentHash: importId,
         format: extension.replace('.', '').toLowerCase() || null,
       };

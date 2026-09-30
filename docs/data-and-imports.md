@@ -1,5 +1,11 @@
 # Data and imports
 
+This is the current storage/import contract. The
+[UX design guide](UX_DESIGN_GUIDE.md) explains how to present configuration,
+preflight, outcomes, and provenance honestly; the
+[accounts/imports UX guide](accounts-and-imports-ux.md) maps those principles to
+the website. Schema proposals remain separate from this implemented contract.
+
 ## Storage contract
 
 The `dataRoot` value in `~/.moneyinmotion/config.json` is the parent of username
@@ -55,14 +61,19 @@ accounts require at least one parent-charge match tag. Subdirectories inside an
 account may contain statement files but do not define another account; any
 `AccountConfig.json` below the account root is ignored.
 
+Account IDs and configured top-level folder names must each be unique ignoring
+letter case. Duplicate hand-edited configurations and config symlinks (including
+broken links) fail discovery visibly rather than merging unrelated accounts.
+
 Deleting an account through the website removes its config only. The directory
 is removed only when it is empty; raw statements are never recursively deleted.
 Restore or recreate the config to rediscover preserved files.
 
 ### Staging
 
-Each folder upload gets a collision-resistant batch ID. Every accepted HTTP
-file is written below `staging/<batch>/files` before it is evaluated. The final
+Each folder upload gets a collision-resistant batch ID after path, account,
+and destination safety checks pass. Each remaining file is written below
+`staging/<batch>/files` before duplicate/filter classification. The final
 manifest records relative path, account ID, size, SHA-256, decision, destination
 or duplicate source, explanation, username, and timestamp.
 
@@ -78,6 +89,11 @@ intent and should receive the strongest backup treatment. The edit aggregate
 receives timestamped backups before replacement. Both JSON files, account
 configs, staging manifests, and persisted Settings use a shared atomic
 temporary-file/rename helper so readers do not observe partially written text.
+
+For complete recovery, use [Settings backup and restore](backup-and-restore.md).
+It includes the entire user tree and canonical application config, restores
+saved files without a rebuild, and keeps replaced data outside the active tree.
+An ordinary statement upload is not a full-data restore.
 
 ## Browser directory upload
 
@@ -105,7 +121,9 @@ the operation all-or-nothing with respect to account-folder recognition.
 
 The server rejects the request before creating a batch if paths are missing,
 duplicated, absolute, empty, contain dot segments, contain NULs, or could escape
-the storage root. One request accepts at most 200 files, 20 MiB per file, 203
+the storage root. Existing destination parents must be real directories; links
+and non-directory parents reject the whole batch before staging. Do not change
+the account tree externally during imports. One request accepts at most 200 files, 20 MiB per file, 203
 multipart parts, and 100 MiB when the browser supplies the request length.
 The server also checks the received file bytes after multipart decoding, so a
 missing or dishonest length header cannot bypass the aggregate limit. Split a
@@ -131,8 +149,8 @@ accounts may be meaningful and are retained for both.
 
 ## Automatic rebuild
 
-For a restored data folder with statements already on the server, use **Build
-from existing statements** in Imports (also available in empty transaction
+For a restored data folder with statements already on the server, use **Rebuild
+transactions** in Imports (also available in empty transaction
 history and Getting Started recovery flows). No upload is
 required. Saved rules remain visible in Rules even before the first build.
 Missing transaction-ID targets are reported and preserved; migration of old
@@ -150,8 +168,10 @@ discoverable statement:
 
 If a file cannot parse, promoted source files and the staging manifest remain
 for diagnosis, but the last known-good financial snapshot is not replaced by a
-partial result. Fix or remove the bad server-side input and use **Rebuild
-snapshot** in Settings, or upload a corrected export. The response identifies
+partial result. Fix or move the bad server-side input outside the scanned account
+folder and use **Rebuild transactions** in Settings or Imports. Uploading a corrected
+export alone does not remove the old failing file: promotion never overwrites
+existing statements. The response identifies
 every failed source path. Invalid account configuration is reported through the
 same failed-build result and also preserves the last known-good snapshot.
 
@@ -174,6 +194,10 @@ files; normal users do not need a separate scan or save step.
 Institution export formats change. Add parser fixtures before modifying a
 parser, and treat a reported parse failure as safer than silently accepting
 ambiguous columns.
+
+CSV and IIF reject duplicate financial column names. CSV only discards empty
+overflow cells, never non-empty data before a trailing comma. The narrow legacy
+recovery for an unquoted thousands separator in a final amount field remains.
 
 Numeric fields reject trailing text instead of accepting a partial prefix, and
 date-only values must be real calendar dates. Etsy timestamps and account-config

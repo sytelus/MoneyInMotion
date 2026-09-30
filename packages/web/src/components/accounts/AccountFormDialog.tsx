@@ -8,10 +8,18 @@ import {
 } from '@moneyinmotion/core';
 import { Button } from '../ui/button.js';
 import { Input } from '../ui/input.js';
+import { Select } from '../ui/select.js';
+import { HelpHint } from '../ui/help-hint.js';
 import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { Notice } from '../ui/notice.js';
-import { createAccount, updateAccount, type AccountSummary } from '../../api/client.js';
+import {
+  createAccount,
+  updateAccount,
+  type AccountSummary,
+  type SnapshotBuildResponse,
+} from '../../api/client.js';
 import { reconnectAccount } from '../../api/imports.js';
+import { useRebuildSnapshot } from '../../api/hooks.js';
 
 const institutionOptions = [
   { value: 'AmericanExpress', label: 'American Express' },
@@ -121,6 +129,12 @@ function buildAccountConfig(form: {
 
 type AccountDialogMode = 'create' | 'edit';
 
+/** Configuration saving and rebuilding are separate operations; report both honestly. */
+export interface AccountSaveOutcome {
+  rebuild: SnapshotBuildResponse | null;
+  rebuildError: string | null;
+}
+
 interface AccountFormDialogProps {
   mode: AccountDialogMode;
   open: boolean;
@@ -130,7 +144,7 @@ interface AccountFormDialogProps {
   templateAccount?: AccountSummary | null;
   reconnectFolder?: string | null;
   originalAccount?: AccountInfo | null;
-  onSaved: (savedAccount: AccountSummary, previousId: string | null) => Promise<void> | void;
+  onSaved: (savedAccount: AccountSummary, outcome: AccountSaveOutcome) => Promise<void> | void;
 }
 
 export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
@@ -165,6 +179,9 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const rebuild = useRebuildSnapshot();
+  const shouldRebuild = mode === 'edit' || !!reconnectFolder;
+  const [phase, setPhase] = useState<'save' | 'rebuild'>('save');
 
   const isOrderHistory = accountType === AccountType.OrderHistory;
   const previousId = account?.config.accountInfo.id ?? null;
@@ -175,12 +192,23 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
       (account.stats.transactionCount === 0 && !account.hasStatementFiles));
 
   const handleSubmit = async () => {
+    if (isSaving) return;
     if (!accountId.trim() || !title.trim()) {
       setError('Account ID and title are required.');
       return;
     }
     if (!instituteName.trim()) {
       setError('Institution is required.');
+      return;
+    }
+    if (
+      accountId.trim() === '.' ||
+      accountId.includes('..') ||
+      !/^[a-zA-Z0-9._-]+$/.test(accountId.trim())
+    ) {
+      setError(
+        'Use letters, numbers, hyphens, underscores or dots for the account ID. Spaces, path separators, "." and ".." are not allowed.',
+      );
       return;
     }
 
@@ -200,6 +228,7 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
     }
 
     setIsSaving(true);
+    setPhase('save');
     setError(null);
 
     try {
@@ -209,7 +238,19 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
           ? await createAccount(config)
           : await updateAccount(previousId ?? config.accountInfo.id, config);
 
-      await onSaved(saved, previousId);
+      const outcome: AccountSaveOutcome = { rebuild: null, rebuildError: null };
+      if (shouldRebuild) {
+        setPhase('rebuild');
+        try {
+          outcome.rebuild = await rebuild.mutateAsync();
+        } catch (error) {
+          // The account is already saved. A failed second step must never be
+          // described as a failed save or cause a retry to create it twice.
+          outcome.rebuildError =
+            error instanceof Error ? error.message : 'Could not rebuild transactions.';
+        }
+      }
+      await onSaved(saved, outcome);
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save account');
@@ -228,7 +269,7 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
       <DialogContent
         title={
           reconnectFolder
-            ? 'Reconnect account folder'
+            ? 'Configure account folder'
             : templateAccount
               ? 'Duplicate account settings'
               : mode === 'create'
@@ -238,208 +279,211 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
         description={
           templateAccount
             ? 'Review the copied settings and create a separate account only when you are ready.'
-            : 'Configure how MoneyInMotion should discover and interpret files for this account.'
+            : 'Choose which statement files to read and how to match their transactions.'
         }
-        className="max-w-xl"
+        className="max-w-3xl"
       >
-        <div className="space-y-5">
-          {error && (
-            <Notice tone="error" title="Account could not be saved">
-              {error}
-            </Notice>
-          )}
+        <form
+          id={`${mode}-account-form`}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSubmit();
+          }}
+        >
+          <fieldset disabled={isSaving} className="grid min-w-0 gap-5 sm:grid-cols-2">
+            {error && (
+              <Notice className="sm:col-span-2" tone="error" title="Account could not be saved">
+                {error}
+              </Notice>
+            )}
 
-          {templateAccount && (
-            <Notice tone="info" title="Settings copied — nothing has been saved">
-              File filters, matching tags, institution, account type, and subfolder behavior were
-              copied from <strong>{templateAccount.config.accountInfo.title}</strong>. Enter a new,
-              unique account ID and review every field before creating the account.
-            </Notice>
-          )}
-
-          {reconnectFolder && (
-            <div className="rounded-lg bg-sky-50 p-3 text-sm text-sky-950 dark:bg-sky-950/30 dark:text-sky-100">
-              <p className="font-medium break-all">Reconnect Statements/{reconnectFolder}/</p>
-              <p className="mt-1">
-                {originalAccount
-                  ? 'The original account identity was found in surviving snapshot records and is locked to preserve transaction IDs and rule targets. Institution, type, title, and matching tags are prefilled from those records.'
-                  : 'No unique account identity was found in the current snapshot. Enter the original account ID and settings from your backup; the folder name is not necessarily the account ID. Choosing a different ID can invalidate saved rule targets.'}
-              </p>
-              <p className="mt-2">
-                Statement files remain untouched. File filters and subfolder settings are not
-                retained in snapshot records: review the defaults below, then rebuild from Imports
-                after saving.
-              </p>
-            </div>
-          )}
-          {mode === 'edit' && (
-            <Notice tone="warning" title="A rebuild is required after saving">
-              Changes update account configuration only. Rebuild from Imports to refresh existing
-              records, matching, and reporting. Changing parser, type, or file filters can change
-              which records are included.
-            </Notice>
-          )}
-
-          <div className="space-y-1.5">
-            <label htmlFor={`${mode}-account-id`} className="text-sm font-medium">
-              Account ID
-            </label>
-            <Input
-              id={`${mode}-account-id`}
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              placeholder="e.g. amex-plat"
-              autoFocus={mode === 'create'}
-              disabled={!canEditId}
-            />
-            <p className="text-xs text-muted-foreground">
-              {reconnectFolder ? (
-                'Use the same account ID as the original imported records.'
-              ) : (
-                <>
-                  This becomes the folder name under <code>Statements/</code>. Use letters, digits,
-                  hyphens, underscores, or dots; no spaces.
-                </>
-              )}
-            </p>
-            {!canEditId && (
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                Account ID is locked to preserve existing transactions and their saved rule targets.
+            {templateAccount && (
+              <p className="sm:col-span-2 rounded-lg bg-info p-3 text-sm text-info-foreground">
+                Settings copied — nothing has been saved. Enter a new account ID and review the
+                settings from <strong>{templateAccount.config.accountInfo.title}</strong>.
               </p>
             )}
-          </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor={`${mode}-account-title`} className="text-sm font-medium">
-              Account Title
-            </label>
-            <Input
-              id={`${mode}-account-title`}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Platinum Card"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor={`${mode}-institution`} className="text-sm font-medium">
-              Institution
-            </label>
-            <Input
-              id={`${mode}-institution`}
-              list={`${mode}-institution-options`}
-              value={instituteName}
-              onChange={(e) => setInstituteName(e.target.value)}
-              placeholder="e.g. Chase or Generic"
-            />
-            <datalist id={`${mode}-institution-options`}>
-              {institutionOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </datalist>
-            <p className="text-xs text-muted-foreground">
-              Enter the institution name. Known names select a specialized parser; other names use
-              the generic statement parser.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Account Type</span>
-            <p className="text-xs text-muted-foreground">
-              This controls how transactions are grouped and matched.
-            </p>
-            <div className="space-y-1.5">
-              {accountTypeOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                >
-                  <input
-                    type="radio"
-                    name={`${mode}-accountType`}
-                    value={option.value}
-                    checked={accountType === option.value}
-                    onChange={() => setAccountType(option.value)}
-                    className="accent-primary"
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-            {isOrderHistory && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-slate-950 dark:border-amber-700 dark:bg-amber-950/50 dark:text-slate-50">
-                Order history accounts (Amazon, Etsy) need match tags so purchases can be reconciled
-                to the credit-card charge.
+            {reconnectFolder && (
+              <div className="sm:col-span-2 rounded-lg bg-info p-3 text-sm text-info-foreground">
+                <p className="font-medium break-all">Statements/{reconnectFolder}/</p>
+                <p className="mt-1">
+                  {originalAccount
+                    ? 'Original account identity has been filled in. The account ID stays fixed so saved corrections still apply. File patterns and subfolder settings are not retained in transactions; check the defaults below.'
+                    : 'For an existing account, use its original ID and settings from a backup so saved corrections still apply. For a new account, choose a unique ID.'}
+                </p>
+                <p className="mt-2">
+                  Review the file types and subfolder setting below. Saving also rebuilds
+                  transactions from all configured accounts.
+                </p>
               </div>
             )}
-          </div>
+            <div className="space-y-1.5">
+              <label htmlFor={`${mode}-account-id`} className="text-sm font-medium">
+                Account ID
+              </label>
+              <Input
+                id={`${mode}-account-id`}
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                placeholder="e.g. amex-plat"
+                autoFocus={mode === 'create'}
+                disabled={!canEditId}
+              />
+              <p className="text-xs text-muted-foreground">
+                {!canEditId ? (
+                  'Fixed because this account has imported transactions or stored statements.'
+                ) : reconnectFolder ? (
+                  'Use the original ID if this folder belonged to a previously imported account.'
+                ) : (
+                  <>
+                    This becomes the folder name under <code>Statements/</code>. Use letters,
+                    digits, hyphens, underscores, or dots; no spaces.
+                  </>
+                )}
+              </p>
+            </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor={`${mode}-match-tags`} className="text-sm font-medium">
-              Match Tags
-            </label>
-            <Input
-              id={`${mode}-match-tags`}
-              value={interAccountNameTags}
-              onChange={(e) => setInterAccountNameTags(e.target.value)}
-              placeholder="e.g. AMEX, AMERICAN EXPRESS"
-            />
-            <p className="text-xs text-muted-foreground">
-              Comma-separated name fragments used for transfer matching and Amazon/Etsy
-              parent-charge matching.
-            </p>
-          </div>
+            <div className="space-y-1.5">
+              <label htmlFor={`${mode}-account-title`} className="text-sm font-medium">
+                Account Title
+              </label>
+              <Input
+                id={`${mode}-account-title`}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Platinum Card"
+              />
+            </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor={`${mode}-file-filters`} className="text-sm font-medium">
-              File Filters
-            </label>
-            <Input
-              id={`${mode}-file-filters`}
-              value={fileFilters}
-              onChange={(e) => setFileFilters(e.target.value)}
-              placeholder="*.csv"
-            />
-            <p className="text-xs text-muted-foreground">
-              Comma-separated filters: <code>*.csv</code>, an exact filename, or <code>*</code>.
-            </p>
-          </div>
+            <div className="space-y-1.5">
+              <label htmlFor={`${mode}-institution`} className="text-sm font-medium">
+                Institution
+              </label>
+              <Input
+                id={`${mode}-institution`}
+                list={`${mode}-institution-options`}
+                value={instituteName}
+                onChange={(e) => setInstituteName(e.target.value)}
+                placeholder="e.g. Chase or Generic"
+              />
+              <datalist id={`${mode}-institution-options`}>
+                {institutionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">
+                Select your provider, or enter your bank’s name for a standard CSV statement.
+              </p>
+            </div>
 
-          <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
-            <input
-              type="checkbox"
-              checked={scanSubFolders}
-              onChange={(e) => setScanSubFolders(e.target.checked)}
-              className="mt-0.5 accent-primary"
-            />
-            <span>
-              <span className="font-medium">Scan subfolders</span>
-              <span className="block text-xs text-muted-foreground">
-                Enable this if your bank export files are organized in yearly or monthly
-                subdirectories.
+            <div className="space-y-2">
+              <label htmlFor={`${mode}-account-type`} className="text-sm font-medium">
+                Account Type
+              </label>
+              <Select
+                id={`${mode}-account-type`}
+                value={String(accountType)}
+                onChange={(event) => setAccountType(Number(event.target.value) as AccountType)}
+                options={accountTypeOptions.map((option) => ({
+                  value: String(option.value),
+                  label: option.label,
+                }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Bank, card, payment service or purchase history.
+              </p>
+              {isOrderHistory && (
+                <p className="text-xs text-info-foreground">
+                  Amazon and Etsy orders need matching names to find their payments.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label htmlFor={`${mode}-match-tags`} className="text-sm font-medium">
+                Transaction matching names
+              </label>
+              <Input
+                id={`${mode}-match-tags`}
+                value={interAccountNameTags}
+                onChange={(e) => setInterAccountNameTags(e.target.value)}
+                placeholder="e.g. AMEX, AMERICAN EXPRESS"
+              />
+              <p className="text-xs text-muted-foreground">
+                Comma-separated text to look for in other statements, such as{' '}
+                <strong>ETSY, PAYPAL</strong> or <strong>AMEX</strong>. Used to match purchases to
+                payments and transfers between accounts.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor={`${mode}-file-filters`} className="text-sm font-medium">
+                Statement files to process
+              </label>
+              <Input
+                id={`${mode}-file-filters`}
+                value={fileFilters}
+                onChange={(e) => setFileFilters(e.target.value)}
+                placeholder="*.csv"
+              />
+              <p className="text-xs text-muted-foreground">
+                Comma-separated filename patterns, for example <code>*.csv, *.json</code>. Other
+                files are ignored. Supported formats: CSV, JSON and IIF; Excel files must be
+                exported as CSV.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={scanSubFolders}
+                onChange={(e) => setScanSubFolders(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
+              <span>
+                <span className="font-medium">Include subfolders</span>
+                <span className="block text-xs text-muted-foreground">
+                  Read statements in year, month or other folders inside this account.
+                </span>
               </span>
-            </span>
-          </label>
-        </div>
+            </label>
+          </fieldset>
+        </form>
 
-        <DialogFooter>
+        <DialogFooter className="sticky -bottom-6 -mx-6 mb-[-1.5rem] flex-wrap items-center border-t border-border bg-background px-6 py-4">
+          {shouldRebuild && (
+            <p className="mr-auto flex items-center text-xs text-muted-foreground">
+              Refreshes all configured accounts.
+              <HelpHint title="Save and rebuild">
+                <p>
+                  Saves this account’s settings, then rereads stored statements for every configured
+                  account and applies saved rules. Accounts without settings are excluded. If a file
+                  cannot be read, the current transactions stay available and the result lists the
+                  files to fix.
+                </p>
+              </HelpHint>
+            </p>
+          )}
           <Button variant="outline" disabled={isSaving} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isSaving}>
+          <Button type="submit" form={`${mode}-account-form`} disabled={isSaving}>
             {isSaving
-              ? mode === 'create'
-                ? 'Creating...'
-                : 'Saving...'
-              : reconnectFolder
-                ? 'Reconnect folder'
+              ? phase === 'rebuild'
+                ? 'Rebuilding…'
+                : mode === 'create'
+                  ? 'Creating...'
+                  : 'Saving...'
+              : shouldRebuild
+                ? 'Save and rebuild'
                 : templateAccount
                   ? 'Create duplicate account'
                   : mode === 'create'
                     ? 'Create Account'
-                    : 'Save Changes'}
+                    : 'Save changes'}
           </Button>
         </DialogFooter>
       </DialogContent>

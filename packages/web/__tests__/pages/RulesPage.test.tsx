@@ -127,7 +127,9 @@ describe('RulesPage', () => {
   it('shows clear rule labels, previews deletion, and saves only after confirmation', async () => {
     renderPage();
     expect(screen.getByText('Category: Shopping / Online')).toBeInTheDocument();
-    expect(screen.getByText('1 recorded matches')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'View results for rule 1: 1 transaction' }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Delete rule 1' }));
     expect(await screen.findByText('1 transaction will change')).toBeInTheDocument();
     expect(manageRulesMock).toHaveBeenCalledTimes(1);
@@ -176,13 +178,13 @@ describe('RulesPage', () => {
     }));
     useTransactionsMock.mockReturnValue({ data, isLoading: false, error: null });
     renderPage();
-    expect(screen.getAllByRole('article')).toHaveLength(25);
+    expect(screen.getAllByRole('checkbox', { name: /Select rule/ })).toHaveLength(50);
     fireEvent.change(screen.getByLabelText('Search rules'), { target: { value: 'Unique target' } });
-    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getAllByRole('checkbox', { name: /Select rule/ })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Select page' }));
     expect(screen.getByRole('button', { name: 'Edit selected' })).toBeEnabled();
     fireEvent.change(screen.getByLabelText('Search rules'), { target: { value: 'no such rule' } });
-    expect(screen.queryAllByRole('article')).toHaveLength(0);
+    expect(screen.queryAllByRole('checkbox', { name: /Select rule/ })).toHaveLength(0);
     expect(screen.getByText('No rules match these filters')).toBeInTheDocument();
   });
   it('explains unavailable targets in a keyboard-accessible popup', async () => {
@@ -203,7 +205,7 @@ describe('RulesPage', () => {
   });
   it('inspects recorded effects, filters by purpose and account, and preserves edit drafts', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Inspect results' }));
+    fireEvent.click(screen.getByRole('button', { name: 'View results for rule 1: 1 transaction' }));
     expect(screen.getByRole('dialog', { name: 'Rule 1 · results & details' })).toHaveTextContent(
       'Controls: Category',
     );
@@ -217,16 +219,17 @@ describe('RulesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to editing' }));
     expect(screen.getByLabelText('Category value')).toHaveValue('Retained draft');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    fireEvent.change(screen.getByLabelText('Rule purpose'), { target: { value: 'correction' } });
+    fireEvent.change(screen.getByLabelText('Rule type'), { target: { value: 'correction' } });
     expect(screen.getByText('No rules match these filters')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
-    fireEvent.change(screen.getByLabelText('Account scope or recorded match'), {
+    fireEvent.change(screen.getByLabelText('Account'), {
       target: { value: 'acct-1' },
     });
-    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getAllByRole('checkbox', { name: /Select rule/ })).toHaveLength(1);
   });
   it('duplicates into a new draft without altering the original identity', async () => {
     renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand rule 1' }));
     fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     expect(screen.getByRole('dialog', { name: 'Duplicate rule' })).toBeInTheDocument();
     expect(screen.getByLabelText('Category value')).toHaveValue('Shopping / Online');

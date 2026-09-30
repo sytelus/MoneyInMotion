@@ -18,6 +18,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { FileRepository } from '../packages/server/dist/storage/file-repository.js';
+import { discoverAccountConfigs } from '../packages/server/dist/storage/account-config-repository.js';
 import { TransactionsStorage } from '../packages/server/dist/storage/transactions-storage.js';
 import { TransactionEditsStorage } from '../packages/server/dist/storage/transaction-edits-storage.js';
 import { TransactionCache } from '../packages/server/dist/cache/transaction-cache.js';
@@ -170,21 +171,13 @@ try {
       ),
     );
 
-  // Copy all account configs so account discovery remains representative,
-  // then copy only the exact statement generation represented above.
-  const copyAccountConfigs = (sourceDir) => {
-    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
-      const sourcePath = path.join(sourceDir, entry.name);
-      if (entry.isDirectory()) {
-        copyAccountConfigs(sourcePath);
-      } else if (entry.name === 'AccountConfig.json') {
-        const destination = path.join(statementsDir, path.relative(sourceStatements, sourcePath));
-        fs.mkdirSync(path.dirname(destination), { recursive: true });
-        fs.copyFileSync(sourcePath, destination);
-      }
-    }
-  };
-  copyAccountConfigs(sourceStatements);
+  // Use the application's top-level-only discovery contract. Nested configs
+  // are not accounts and copying them (or following their links) is unnecessary.
+  for (const account of discoverAccountConfigs(sourceStatements)) {
+    const destination = path.join(statementsDir, account.relativeDirectory, 'AccountConfig.json');
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.copyFileSync(account.configPath, destination);
+  }
   for (const location of selectedLocations) {
     const destination = path.join(statementsDir, path.relative(sourceStatements, location.address));
     fs.mkdirSync(path.dirname(destination), { recursive: true });

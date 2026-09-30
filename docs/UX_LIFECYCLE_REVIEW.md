@@ -5,6 +5,19 @@ This review extends the JavaScript/C# migration review in
 workflow, not a replacement financial model. Imported values remain intact;
 corrections continue to use the existing saved-rule overlay.
 
+For future reviews, start with the [general UX design guide](UX_DESIGN_GUIDE.md),
+[feedback traceability](UX_FEEDBACK_TRACEABILITY.md), and
+[review template](UX_REVIEW_TEMPLATE.md). This document retains dated evidence
+and the canonical data-enhancement proposal register. Its historical screenshots
+and test results are not a fresh acceptance result for later revisions.
+
+The [2026-09-18 density and clarity review](UX_DENSITY_AND_CLARITY_REVIEW.md)
+supersedes the visual/layout findings below. The historical evidence remains
+here for context. Account edits now offer **Save and rebuild**, Rules uses a
+compact table, and Imports includes a live Statements explorer. The proposed
+schema enhancements later in this document remain proposals, not implemented
+features.
+
 ## Evidence and priorities
 
 The existing work was checkpointed and pushed as `722dd3e`. The next review used
@@ -39,7 +52,7 @@ an actionable recovery path when it fails.
 - **Imports** (`/imports`): folder preflight, upload/rebuild result, current source
   inventory, retained upload receipts, and links to the relevant source records.
 - **Accounts** (`/accounts`): configure, modify, remove configuration, reconnect
-  a preserved folder, and inspect account records.
+  a preserved folder through **Configure account**, and **View transactions**.
 - **Rules** (`/rules`): create/edit/duplicate/delete, organize/filter/search,
   inspect current effects, bulk-change, and export.
 - **Settings** (`/settings`): the existing single config-file source of truth;
@@ -99,6 +112,11 @@ financial schema. Keep pure transformations independently tested and keep page
 composition separate from parsers, aggregation, and file access.
 
 ## Enhancements that require user review — not implemented implicitly
+
+This is the canonical proposal register referenced by UX-18 in the design guide.
+The guide and feedback register link here rather than keeping competing proposal
+lists. A future proposal must also describe compatibility, migration, privacy,
+and recovery effects, with an explicit approval status.
 
 | Proposed metadata                                                                                               | Where it would come from                                                                                         | Capability / historical limit                                                                                                 |
 | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |

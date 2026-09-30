@@ -58,6 +58,35 @@ export function getDisconnectedFolders(): Promise<DisconnectedAccountFolder[]> {
   return request('/api/accounts/disconnected');
 }
 
+export interface StatementEntry {
+  path: string;
+  name: string;
+  kind: 'folder' | 'file' | 'symlink';
+  accountId: string | null;
+  status:
+    | 'eligible'
+    | 'ignored'
+    | 'unsupported'
+    | 'unconfigured'
+    | 'configuration'
+    | 'symlink'
+    | 'unreadable';
+  reason: string;
+  sizeBytes: number | null;
+  modifiedAt: string | null;
+  fileCount: number;
+  eligibleCount: number;
+}
+export interface StatementInventory {
+  entries: StatementEntry[];
+  truncated: boolean;
+  unreadableFolders: number;
+}
+/** Current on-disk inventory, including files absent from the transaction snapshot. */
+export function getStatementInventory(): Promise<StatementInventory> {
+  return request('/api/import/files');
+}
+
 export function reconnectAccount(folder: string, config: AccountConfig): Promise<AccountSummary> {
   return request(`/api/accounts/${encodeURIComponent(folder)}/reconnect`, {
     method: 'POST',

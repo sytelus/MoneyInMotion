@@ -58,7 +58,7 @@ export function validateAccountConfigSupport(config: AccountConfig): string | nu
     return 'Order History accounts currently support only Amazon and Etsy.';
   }
   if (!(config.accountInfo.interAccountNameTags ?? []).some((tag) => tag.trim().length > 0)) {
-    return 'Order History accounts require at least one match tag for financial-charge matching.';
+    return 'Add at least one transaction matching name so purchases can be matched to payments.';
   }
   return null;
 }

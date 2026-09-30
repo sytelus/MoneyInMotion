@@ -2,6 +2,8 @@ import React, { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronRight,
   Copy,
   Download,
   Eye,
@@ -19,6 +21,7 @@ import {
   type TransactionEditData,
 } from '@moneyinmotion/core';
 import { useTransactions } from '../api/hooks.js';
+import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import type { RuleChange } from '../api/client.js';
 import { Header } from '../components/layout/Header.js';
 import { Button, buttonClassName } from '../components/ui/button.js';
@@ -36,15 +39,20 @@ import { ruleKind, summarizeRuleEffects, type RuleEffectSummary } from '../lib/r
 import { RuleInspectionDialog } from '../components/editing/RuleInspectionDialog.js';
 import { downloadText } from '../lib/download.js';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 export const RulesPage: React.FC = () => {
+  const showActions = useMediaQuery('(min-width: 640px)');
+  const showScope = useMediaQuery('(min-width: 768px)');
+  const showKind = useMediaQuery('(min-width: 1280px)');
+  const columnCount = 4 + Number(showActions) + Number(showScope) + Number(showKind);
   const { data, isLoading, error, refetch } = useTransactions();
   const transactions = useMemo(() => (data ? Transactions.fromData(data) : null), [data]);
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const [field, setField] = useState('all');
   const [status, setStatus] = useState('all');
-  const [sort, setSort] = useState('newest');
+  const [sort, setSort] = useState('matches');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [kind, setKind] = useState('all');
   const [account, setAccount] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -183,15 +191,14 @@ export const RulesPage: React.FC = () => {
       return next;
     });
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/20">
       <Header />
-      <main className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <main className="workspace">
+        <div className="workspace-heading">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Rules</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Manage saved corrections and automation. Rules run on existing transactions and future
-              imports; original statement values are preserved.
+              Automate recurring changes and manage individual transaction corrections.
             </p>
           </div>
           <Button disabled={!transactions} onClick={() => openEditor([])}>
@@ -236,8 +243,8 @@ export const RulesPage: React.FC = () => {
         {!isLoading && !error && transactions?.topLevelTransactionCount === 0 && (
           <p className="rounded-md border border-border p-3 text-sm">
             Your saved rules are available, but no transaction history is loaded.{' '}
-            <Link className="underline" to="/accounts">
-              Build from existing statements in Accounts
+            <Link className="underline" to="/imports">
+              Rebuild transactions in Imports
             </Link>{' '}
             to see their effects.
           </p>
@@ -266,9 +273,35 @@ export const RulesPage: React.FC = () => {
         )}
         {!isLoading && !error && (
           <>
+            <nav aria-label="Rule types" className="flex flex-wrap gap-2">
+              {[
+                { value: 'all', label: 'All rules' },
+                { value: 'automation', label: 'Automations' },
+                { value: 'correction', label: 'Transaction corrections' },
+              ].map((item) => (
+                <Button
+                  key={item.value}
+                  variant={kind === item.value ? 'default' : 'outline'}
+                  size="sm"
+                  aria-pressed={kind === item.value}
+                  onClick={() => {
+                    setKind(item.value);
+                    resetSelection();
+                  }}
+                >
+                  {item.label}
+                  <span className="ml-2 rounded bg-black/10 px-1.5 tabular-nums">
+                    {
+                      rules.filter((rule) => item.value === 'all' || rule.kind === item.value)
+                        .length
+                    }
+                  </span>
+                </Button>
+              ))}
+            </nav>
             <section
               aria-label="Find rules"
-              className="space-y-3 rounded-lg border border-border bg-muted/30 p-4"
+              className="space-y-3 rounded-xl border border-border bg-background p-4"
             >
               <label className="text-xs font-medium">
                 <span className="mb-1 flex items-center gap-1">
@@ -300,7 +333,7 @@ export const RulesPage: React.FC = () => {
               </Button>
               <div
                 id="rule-advanced-filters"
-                className={`${showFilters ? 'grid' : 'hidden'} gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-3`}
+                className={`${showFilters ? 'grid' : 'hidden'} gap-3 sm:grid sm:grid-cols-2 xl:grid-cols-5`}
               >
                 <label className="text-xs font-medium">
                   Changes field
@@ -344,7 +377,7 @@ export const RulesPage: React.FC = () => {
                       setPage(0);
                     }}
                     options={[
-                      { value: 'newest', label: 'Last applied first' },
+                      { value: 'newest', label: 'Last in rule order' },
                       { value: 'oldest', label: 'Rule order (first to last)' },
                       { value: 'matches', label: 'Most matches' },
                       { value: 'scope', label: 'Condition A–Z' },
@@ -353,7 +386,7 @@ export const RulesPage: React.FC = () => {
                   />
                 </label>
                 <label className="text-xs font-medium">
-                  Rule purpose
+                  Rule type
                   <Select
                     className="mt-1"
                     value={kind}
@@ -363,14 +396,14 @@ export const RulesPage: React.FC = () => {
                     }}
                     options={[
                       { value: 'all', label: 'Corrections and automations' },
-                      { value: 'correction', label: 'Specific-record corrections' },
-                      { value: 'automation', label: 'Reusable automations' },
+                      { value: 'correction', label: 'Transaction corrections' },
+                      { value: 'automation', label: 'Automation rules' },
                       { value: 'inactive', label: 'Matches no transactions' },
                     ]}
                   />
                 </label>
                 <label className="text-xs font-medium">
-                  Account scope or recorded match
+                  Account
                   <Select
                     className="mt-1"
                     value={account}
@@ -381,10 +414,9 @@ export const RulesPage: React.FC = () => {
                     options={[{ value: 'all', label: 'All accounts' }, ...accountOptions]}
                   />
                 </label>
-                <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-                  Corrections target specific records. Automations can match future imports. The
-                  account filter includes explicit account conditions and recorded matches; it does
-                  not predict every future match.
+                <p className="text-xs text-muted-foreground sm:col-span-2 xl:col-span-5">
+                  Corrections apply to selected transactions; automations can also match future
+                  imports. Sorting this table does not change the order in which rules run.
                 </p>
               </div>
             </section>
@@ -484,124 +516,293 @@ export const RulesPage: React.FC = () => {
                 )}
               </div>
             )}
-            <section ref={resultsRef} tabIndex={-1} aria-label="Saved rules" className="space-y-2">
-              {visible.map((rule) => (
-                <article
-                  key={rule.edit.id}
-                  className="rounded-lg border border-border bg-background p-4"
+            <section
+              ref={resultsRef}
+              tabIndex={-1}
+              aria-label="Saved rules"
+              className="min-w-0 rounded-xl border border-border bg-background shadow-sm"
+            >
+              <div className="overflow-x-auto rounded-xl">
+                <table
+                  className="data-table table-fixed"
+                  aria-label="Rules and transaction corrections"
                 >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 accent-primary"
-                      aria-label={`Select rule ${rule.order + 1}`}
-                      checked={selected.has(rule.edit.id)}
-                      onChange={() => toggle(rule.edit.id)}
-                    />
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <h2 className="break-words text-sm font-semibold">{rule.changes}</h2>
-                      <p className="break-words text-sm text-muted-foreground">{rule.scope}</p>
-                      {rule.targets.length > 0 && (
-                        <p className="break-words text-xs text-muted-foreground">
-                          {rule.targets.slice(0, 2).join(' · ')}
-                          {rule.targets.length > 2 ? ` · and ${rule.targets.length - 2} more` : ''}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span>Order {rule.order + 1}</span>
-                        <Badge variant="secondary">
-                          {rule.kind === 'correction'
-                            ? 'Specific records'
-                            : rule.kind === 'automation'
-                              ? 'Automation'
-                              : 'No-match condition'}
-                        </Badge>
-                        <span>Created {formatDate(rule.edit.auditInfo.createDate)}</span>
+                  <thead>
+                    <tr>
+                      <th className="w-9 sm:w-10">
+                        <span className="sr-only">Select</span>
+                      </th>
+                      <th className="w-9 sm:w-10">
+                        <span className="sr-only">Details</span>
+                      </th>
+                      <th aria-sort={sort === 'changes' ? 'ascending' : 'none'}>
                         <button
-                          className="font-medium text-primary underline underline-offset-2"
-                          onClick={() => setParams({ rule: rule.edit.id })}
+                          className="text-left"
+                          onClick={() => {
+                            setSort('changes');
+                            setPage(0);
+                          }}
                         >
-                          {rule.count} recorded matches
+                          Change / correction
                         </button>
-                        {rule.missing > 0 && (
-                          <span className="inline-flex items-center">
-                            <Badge variant="warning">
-                              {rule.missing} unavailable transaction{rule.missing === 1 ? '' : 's'}
-                            </Badge>
-                            <HelpHint title="Unavailable transactions">
-                              <p>
-                                This rule refers to {rule.missing} transaction ID(s) that are not in
-                                the loaded history. That part of the rule cannot currently apply.
-                                This is a reference problem, not a missing dollar amount.
-                              </p>
-                              <p>
-                                Build from all retained statements in Accounts. If the transaction
-                                still isn’t available, edit this rule to select a valid target or
-                                delete it if it is no longer needed. The app does not guess a
-                                replacement.
-                              </p>
-                            </HelpHint>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Edit rule ${rule.order + 1}`}
-                        title="Edit rule"
-                        onClick={() => openEditor([rule.edit])}
+                      </th>
+                      <th
+                        className="hidden w-[28%] md:table-cell"
+                        aria-sort={sort === 'scope' ? 'ascending' : 'none'}
                       >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete rule ${rule.order + 1}`}
-                        title="Delete rule"
-                        onClick={() => setChanges([{ previous: rule.edit, next: null }])}
+                        <button
+                          onClick={() => {
+                            setSort('scope');
+                            setPage(0);
+                          }}
+                        >
+                          Applies to
+                        </button>
+                      </th>
+                      <th className="hidden w-32 xl:table-cell">Type</th>
+                      <th
+                        className="w-20 text-right sm:w-24"
+                        aria-sort={sort === 'matches' ? 'descending' : 'none'}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="ml-7 mt-3 flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setParams({ rule: rule.edit.id })}
-                    >
-                      <Eye className="mr-1 h-3.5 w-3.5" />
-                      Inspect results
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => duplicateRule(rule.edit)}>
-                      <Copy className="mr-1 h-3.5 w-3.5" />
-                      Duplicate
-                    </Button>
-                  </div>
-                  <details className="ml-7 mt-2 text-xs text-muted-foreground">
-                    <summary className="cursor-pointer">Rule details</summary>
-                    <div className="mt-2 space-y-1 break-all">
-                      <p>ID: {rule.edit.id}</p>
-                      <p>
-                        Created by {rule.edit.auditInfo.createdBy} · Source: {rule.edit.sourceId}
-                      </p>
-                      {rule.edit.scopeFilters.map((s, i) => (
-                        <p key={i}>
-                          {scopeLabel(s)}{' '}
-                          {s.type === ScopeType.TransactionId ? s.parameters.join(', ') : ''}
-                        </p>
-                      ))}
-                      <p>
-                        Recorded matches show where this rule was applied. Later rules can override
-                        these values. Inspect results to see which fields are controlled or
-                        overridden.
-                      </p>
-                    </div>
-                  </details>
-                </article>
-              ))}
+                        <button
+                          onClick={() => {
+                            setSort('matches');
+                            setPage(0);
+                          }}
+                        >
+                          Matches{sort === 'matches' ? ' ↓' : ''}
+                        </button>
+                      </th>
+                      <th className="hidden w-24 sm:table-cell">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((rule, index) => {
+                      const group =
+                        rule.count > 1
+                          ? 'Multiple transactions'
+                          : rule.count === 1
+                            ? 'Single transaction'
+                            : 'No matching transactions';
+                      const previous = visible[index - 1];
+                      const previousGroup = previous
+                        ? previous.count > 1
+                          ? 'Multiple transactions'
+                          : previous.count === 1
+                            ? 'Single transaction'
+                            : 'No matching transactions'
+                        : null;
+                      const isExpanded = expanded.has(rule.edit.id);
+                      return (
+                        <React.Fragment key={rule.edit.id}>
+                          {sort === 'matches' && group !== previousGroup && (
+                            <tr>
+                              <th
+                                colSpan={columnCount}
+                                scope="rowgroup"
+                                className="!bg-indigo-50 !py-2 !text-indigo-900"
+                              >
+                                {group}
+                              </th>
+                            </tr>
+                          )}
+                          <tr className="data-row" data-selected={selected.has(rule.edit.id)}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                className="mt-1 h-4 w-4 accent-primary"
+                                aria-label={`Select rule ${rule.order + 1}`}
+                                checked={selected.has(rule.edit.id)}
+                                onChange={() => toggle(rule.edit.id)}
+                              />
+                            </td>
+                            <td>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label={`${isExpanded ? 'Collapse' : 'Expand'} rule ${rule.order + 1}`}
+                                aria-expanded={isExpanded}
+                                aria-controls={`rule-details-${rule.order}`}
+                                onClick={() =>
+                                  setExpanded((current) => {
+                                    const next = new Set(current);
+                                    if (next.has(rule.edit.id)) next.delete(rule.edit.id);
+                                    else next.add(rule.edit.id);
+                                    return next;
+                                  })
+                                }
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </td>
+                            <td className="break-words">
+                              <button
+                                className="text-left font-semibold leading-5 hover:text-primary hover:underline"
+                                onClick={() => setParams({ rule: rule.edit.id })}
+                              >
+                                {rule.changes}
+                              </button>
+                              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground md:hidden">
+                                {rule.targets[0] || rule.scope}
+                              </p>
+                              {rule.missing > 0 && (
+                                <span className="mt-1 flex items-center text-xs text-warning-foreground">
+                                  <AlertTriangle className="mr-1 h-3.5 w-3.5 shrink-0" />
+                                  {rule.missing} unavailable transaction
+                                  {rule.missing === 1 ? '' : 's'}
+                                  <HelpHint title="Unavailable transactions">
+                                    <p>
+                                      This rule refers to {rule.missing} transaction ID(s) that are
+                                      not in the loaded history. That part cannot currently apply.
+                                      This is a reference problem, not a missing dollar amount.
+                                    </p>
+                                    <p>
+                                      Rebuild from retained statements in Imports. If the
+                                      transaction is still unavailable, edit the rule to select the
+                                      right transaction or delete the rule if no longer needed.
+                                    </p>
+                                  </HelpHint>
+                                </span>
+                              )}
+                            </td>
+                            <td className="hidden break-words text-muted-foreground md:table-cell">
+                              <p
+                                className="line-clamp-2"
+                                title={rule.targets.join(' · ') || rule.scope}
+                              >
+                                {rule.targets.slice(0, 1).join('') || rule.scope}
+                              </p>
+                              {rule.targets.length > 1 && (
+                                <span className="text-xs">
+                                  +{rule.targets.length - 1} other targets
+                                </span>
+                              )}
+                            </td>
+                            <td className="hidden xl:table-cell">
+                              <Badge variant={rule.kind === 'automation' ? 'info' : 'secondary'}>
+                                {rule.kind === 'automation'
+                                  ? 'Automation'
+                                  : rule.kind === 'correction'
+                                    ? 'Correction'
+                                    : 'Inactive'}
+                              </Badge>
+                            </td>
+                            <td className="text-right">
+                              <button
+                                className="inline-flex min-h-8 min-w-8 items-center justify-end font-semibold tabular-nums text-primary underline underline-offset-4"
+                                aria-label={`View results for rule ${rule.order + 1}: ${rule.count} transaction${rule.count === 1 ? '' : 's'}`}
+                                onClick={() => setParams({ rule: rule.edit.id })}
+                              >
+                                {rule.count.toLocaleString()}
+                              </button>
+                            </td>
+                            <td className="hidden sm:table-cell">
+                              <div className="flex">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  aria-label={`Edit rule ${rule.order + 1}`}
+                                  title="Edit rule"
+                                  onClick={() => openEditor([rule.edit])}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  aria-label={`Delete rule ${rule.order + 1}`}
+                                  title="Delete rule"
+                                  onClick={() => setChanges([{ previous: rule.edit, next: null }])}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr id={`rule-details-${rule.order}`}>
+                              <td colSpan={columnCount} className="!bg-slate-50 !p-4">
+                                <div className="grid gap-4 text-sm lg:grid-cols-[minmax(0,1fr)_auto]">
+                                  <div className="min-w-0 space-y-2">
+                                    <p className="font-medium">{rule.scope}</p>
+                                    {rule.targets.length > 0 && (
+                                      <p className="break-words text-muted-foreground">
+                                        {rule.targets.join(' · ')}
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                      Runs #{rule.order + 1} · Created{' '}
+                                      {formatDate(rule.edit.auditInfo.createDate)} by{' '}
+                                      {rule.edit.auditInfo.createdBy}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Later rules may override this change. View results to see
+                                      which values it currently controls.
+                                    </p>
+                                    <details className="text-xs">
+                                      <summary className="cursor-pointer">
+                                        Technical identifiers
+                                      </summary>
+                                      <p className="mt-2 break-all">
+                                        Rule: {rule.edit.id} · Source: {rule.edit.sourceId}
+                                      </p>
+                                    </details>
+                                  </div>
+                                  <div className="flex flex-wrap items-start gap-2">
+                                    <Button
+                                      className="sm:hidden"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openEditor([rule.edit])}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      className="sm:hidden"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        setChanges([{ previous: rule.edit, next: null }])
+                                      }
+                                    >
+                                      Delete
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setParams({ rule: rule.edit.id })}
+                                    >
+                                      <Eye className="mr-1 h-4 w-4" />
+                                      View results
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => duplicateRule(rule.edit)}
+                                    >
+                                      <Copy className="mr-1 h-4 w-4" />
+                                      Duplicate
+                                    </Button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </section>
             <Pagination
               page={currentPage}

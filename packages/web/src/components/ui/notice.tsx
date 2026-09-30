@@ -6,24 +6,20 @@ type NoticeTone = 'info' | 'success' | 'warning' | 'error';
 
 const toneStyles: Record<NoticeTone, { frame: string; icon: string }> = {
   info: {
-    frame:
-      'border-sky-300 bg-sky-50 text-slate-950 dark:border-sky-700 dark:bg-sky-950/50 dark:text-slate-50',
-    icon: 'text-sky-700 dark:text-sky-300',
+    frame: 'border-info-border bg-info text-info-foreground',
+    icon: 'text-info-foreground',
   },
   success: {
-    frame:
-      'border-emerald-300 bg-emerald-50 text-slate-950 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-slate-50',
-    icon: 'text-emerald-700 dark:text-emerald-300',
+    frame: 'border-success-border bg-success text-success-foreground',
+    icon: 'text-success-foreground',
   },
   warning: {
-    frame:
-      'border-amber-300 bg-amber-50 text-slate-950 dark:border-amber-700 dark:bg-amber-950/50 dark:text-slate-50',
-    icon: 'text-amber-800 dark:text-amber-300',
+    frame: 'border-warning-border bg-warning text-warning-foreground',
+    icon: 'text-warning-foreground',
   },
   error: {
-    frame:
-      'border-red-300 bg-red-50 text-slate-950 dark:border-red-800 dark:bg-red-950/50 dark:text-slate-50',
-    icon: 'text-red-700 dark:text-red-300',
+    frame: 'border-red-300 bg-red-50 text-red-950',
+    icon: 'text-red-800',
   },
 };
 
@@ -62,13 +58,13 @@ export function Notice({
   return (
     <div
       role={role}
-      className={cn('rounded-xl border p-4 text-sm shadow-sm', styles.frame, className)}
+      className={cn('rounded-lg border border-l-4 p-3 text-sm', styles.frame, className)}
     >
       <div className="flex items-start gap-3">
         <Icon aria-hidden className={cn('mt-0.5 h-5 w-5 shrink-0', styles.icon)} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold leading-5">{title}</p>
-          {children && <div className="mt-1 leading-6 text-current/90">{children}</div>}
+          {children && <div className="mt-1 leading-6">{children}</div>}
           {actions && <div className="mt-3 flex flex-wrap gap-2">{actions}</div>}
         </div>
       </div>

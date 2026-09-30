@@ -1,9 +1,26 @@
 # Architecture
 
+Whole-user maintenance is described in [Backup and restore](backup-and-restore.md).
+`BackupService` owns archive policy, preview validation, replacement, and rollback;
+`scripts/backup-archive.py` streams ZIP bytes with Python's standard library.
+An in-process maintenance gate blocks data requests and rechecks delayed request
+bodies before mutation. Restore stages beside the active tree, retains the
+previous tree/config, and invalidates the cache without rebuilding. Startup
+recovers an interrupted replacement before loading configuration. The temporary
+recovery marker is operational state, not a transaction/import history journal.
+
 MoneyInMotion is a hosted, same-origin web application with a transparent
 filesystem persistence model. One Node.js process serves the React site and its
 JSON API in production. A browser uploads statement bytes; only the server reads
 or writes the configured data root.
+
+The [UX design guide](UX_DESIGN_GUIDE.md) defines the review principles for these
+boundaries: complete journeys, one source per setting, truthful projections,
+explicit mutation outcomes, and schema discipline. Current screen contracts are
+in the [accounts/imports](accounts-and-imports-ux.md),
+[rules/provenance](rules-and-provenance-ux.md), and
+[reporting](financial-reports.md) guides; implementation history is not a substitute
+for those contracts or fresh acceptance evidence.
 
 ## System boundaries
 
@@ -84,14 +101,14 @@ The cache loads `Merged/LatestMerged.json` lazily and loads saved rules from
 merged with embedded history; conflicting rule IDs fail visibly. Nothing is
 published into the cache until both inputs validate. When statements exist but
 history has not been built, Imports and the empty-history/Getting Started
-recovery flows offer **Build from existing statements**, including results and
+recovery flows offer **Rebuild transactions**, including results and
 source errors. Overview is a read-only, period-scoped reporting projection;
 source/rule drill-downs use a separate non-additive source-record inspection
 basis. See [UX lifecycle contracts](UX_LIFECYCLE_REVIEW.md) for the navigation,
 calculation, editing, and provenance module boundaries. The server is the sole supported
 writer and serializes edit/rebuild mutations through one process-local queue.
 It updates the cache through edits and rebuilds. If an administrator
-changes statement files directly, **Rebuild snapshot** in Settings refreshes it.
+changes statement files directly, **Rebuild transactions** in Settings refreshes it.
 
 Changing data root, username, or port in Settings writes
 `~/.moneyinmotion/config.json`. The current listener and repository remain
@@ -113,7 +130,9 @@ directory selection → manifest validation → stage and promote → full rebui
                                              atomic file replacement
 ```
 
-Every received file is copied to a unique staging batch before classification.
+Paths, account identities, and existing destination parents are checked before
+creating a batch; symlinks beneath an account cannot redirect promotion.
+Every accepted path is copied to a unique staging batch before file classification.
 Paths are normalized and constrained beneath the batch, account mapping uses
 the configured top-level account directories, and identical content is detected
 per account with SHA-256. A statement subdirectory is rejected when that account
@@ -156,7 +175,7 @@ preview includes a snapshot revision; a change after preview blocks its commit.
 The transaction explorer builds a reporting-item index (complete children
 replace parents), uses effective item dates, and opens on the latest available
 month. Search, filters, summaries, and exports share that index. The UI renders
-at most 100 transaction/group rows or 25 rule cards per page; rule match counts
+at most 100 transaction/group rows or 50 compact rule rows per page; rule match counts
 are indexed in one pass. This bounds DOM size, not network payload size: the
 full graph is still loaded once into the browser.
 
@@ -176,6 +195,8 @@ rebuilt synchronously. These are tracked in
 ## Security boundary
 
 Helmet supplies browser security headers, the site and API share one origin,
+API responses use `Cache-Control: no-store`, and browser mutation requests from
+other origins are rejected before body parsing,
 JSON and upload sizes are bounded, request bodies are validated with Zod, and
 all user-influenced paths are checked. Production error responses hide
 unexpected internal details.

@@ -58,11 +58,11 @@ function buildResponse(saved: ServerConfig, active: ServerConfig): ConfigRespons
   };
 }
 
-export function createConfigRouter(activeConfig: ServerConfig): Router {
+export function createConfigRouter(activeConfig: ServerConfig, configFile?: string): Router {
   const router = Router();
 
   router.get('/', (_req, res) => {
-    res.json(buildResponse(loadConfig({ ensureDirectories: false }), activeConfig));
+    res.json(buildResponse(loadConfig({ ensureDirectories: false, configFile }), activeConfig));
   });
 
   router.put('/', (req, res) => {
@@ -95,8 +95,8 @@ export function createConfigRouter(activeConfig: ServerConfig): Router {
       return;
     }
 
-    saveConfig({ dataRoot, username, port });
-    res.json(buildResponse(loadConfig({ ensureDirectories: false }), activeConfig));
+    saveConfig({ dataRoot, username, port }, configFile);
+    res.json(buildResponse(loadConfig({ ensureDirectories: false, configFile }), activeConfig));
   });
 
   return router;

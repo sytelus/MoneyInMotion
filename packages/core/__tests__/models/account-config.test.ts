@@ -37,6 +37,6 @@ describe('account configuration support', () => {
   });
 
   it('requires a parent-charge match tag for order history', () => {
-    expect(validateAccountConfigSupport(orderConfig('Amazon', ['  ']))).toContain('match tag');
+    expect(validateAccountConfigSupport(orderConfig('Amazon', ['  ']))).toContain('matching name');
   });
 });

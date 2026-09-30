@@ -4,6 +4,14 @@ These items are intentionally deferred. They describe real operational or
 compatibility boundaries and should not be hidden by the UI or deployment
 documentation.
 
+Use the [UX design guide](UX_DESIGN_GUIDE.md) to make these limits understandable
+in the product. The [feedback register](UX_FEEDBACK_TRACEABILITY.md) defines
+required experiences, not an assertion that every limit has been removed.
+Record missing capability/evidence explicitly in the
+[review template](UX_REVIEW_TEMPLATE.md). Data-enhancement proposals remain in
+the [lifecycle register](UX_LIFECYCLE_REVIEW.md#enhancements-that-require-user-review--not-implemented-implicitly)
+and are not authorized by their inclusion in a design checklist.
+
 ## Identity and access
 
 - There is no native authentication, authorization, password recovery, or user
@@ -56,6 +64,12 @@ claim.
   release, or administrative download workflow.
 - Timestamped output backups are local to the same storage tree and are not a
   substitute for an encrypted off-machine backup.
+- [Settings full ZIP backups and guided restore](backup-and-restore.md) preserve
+  the complete user tree and config. They are unencrypted, limited to 2 GiB
+  expanded content, and restore only to the original root/username. Retention,
+  encryption, off-machine replication, and power-loss guarantees remain outside
+  this implementation. Restore has separate process-interruption rollback; it
+  does not turn ordinary snapshot/edit saves into a cross-file transaction.
 
 ## Source formats
 

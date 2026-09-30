@@ -8,13 +8,14 @@
  * @module
  */
 
-import express, { type Express } from 'express';
+import express, { type Express, type RequestHandler } from 'express';
 import helmet from 'helmet';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { ServerConfig } from './config.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { apiBoundary } from './middleware/api-boundary.js';
 import { FileRepository } from './storage/file-repository.js';
 import { TransactionCache } from './cache/transaction-cache.js';
 import { createConfigRouter } from './routes/config.js';
@@ -23,6 +24,9 @@ import { createHealthRouter } from './routes/health.js';
 import { createTransactionsRouter } from './routes/transactions.js';
 import { createTransactionEditsRouter } from './routes/transaction-edits.js';
 import { createImportRouter } from './routes/import.js';
+import { createBackupsRouter } from './routes/backups.js';
+import { BackupService } from './services/backup-service.js';
+import { DataMaintenance } from './services/data-maintenance.js';
 
 // ESM polyfill: resolve the directory of the compiled app.js at runtime.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,8 +37,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * @param config - The server configuration.
  * @returns The configured Express application.
  */
-export function createApp(config: ServerConfig): Express {
+export function createApp(
+  config: ServerConfig,
+  storageOptions: { homeDirectory?: string; configFile?: string } = {},
+): Express {
   const app = express();
+  const maintenance = new DataMaintenance();
 
   // --- Middleware ---
 
@@ -42,9 +50,21 @@ export function createApp(config: ServerConfig): Express {
   // protection, and related defaults). The production UI and API are
   // intentionally same-origin, so Helmet's default policy is appropriate.
   app.use(helmet());
+  app.use('/api', apiBoundary);
+  const checkMaintenance: RequestHandler = (req, _res, next) => {
+    try {
+      if (req.path !== '/health') maintenance.assertAvailable();
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+  app.use('/api', checkMaintenance);
 
   // API JSON contains configuration and edit rules, never statement files.
   app.use(express.json({ limit: '2mb' }));
+  // A slow request body may finish after maintenance acquired its lock.
+  app.use('/api', checkMaintenance);
 
   // --- Dependencies ---
 
@@ -55,11 +75,15 @@ export function createApp(config: ServerConfig): Express {
   // --- Routes ---
 
   app.use('/api/health', createHealthRouter());
-  app.use('/api/config', createConfigRouter(config));
+  app.use('/api/config', createConfigRouter(config, storageOptions.configFile));
+  app.use(
+    '/api/backups',
+    createBackupsRouter(new BackupService(config, cache, maintenance, storageOptions)),
+  );
   app.use('/api/accounts', createAccountsRouter(config, cache));
   app.use('/api/transactions', createTransactionsRouter(cache));
   app.use('/api/transaction-edits', createTransactionEditsRouter(cache));
-  app.use('/api/import', createImportRouter(cache, config));
+  app.use('/api/import', createImportRouter(cache, config, maintenance));
 
   // Keep unknown API requests inside the JSON contract. Without this guard,
   // production's SPA fallback would return index.html with HTTP 200 for a

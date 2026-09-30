@@ -55,6 +55,7 @@ export function ruleChangesLabel(values: EditedValues | null): string {
         if (key === 'transactionDate') value = formatDate(field.value as string);
         if (key === 'transactionReason')
           value = transactionReasonTitleLookup[String(field.value)] ?? value;
+        if (value === '') return `${label}: clear value`;
         return `${label}: ${value}`;
       })
       .join(' · ') || 'No field changes'

@@ -4,23 +4,33 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-    --primary: 244 58% 43%;
+    --primary: 237 70% 48%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 232 80% 96%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.3 19.3% 34.5%;
-    --accent: 210 40% 96.1%;
+    --accent: 230 80% 96%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 73.7% 41.8%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 244 58% 43%;
+    --border: 218 27% 85%;
+    --input: 218 24% 70%;
+    --ring: 237 70% 48%;
+    --info: 210 100% 97%;
+    --info-foreground: 216 76% 27%;
+    --info-border: 212 88% 78%;
+    --success: 155 65% 95%;
+    --success-foreground: 161 80% 20%;
+    --success-border: 155 48% 65%;
+    --warning: 43 100% 95%;
+    --warning-foreground: 26 83% 25%;
+    --warning-border: 39 85% 65%;
     --radius: 0.5rem;
   }
 
@@ -54,6 +64,69 @@
 }
 
 @layer components {
+  .workspace {
+    @apply mx-auto w-full max-w-[1800px] space-y-5 px-4 py-6 sm:px-6 lg:px-8;
+  }
+  .workspace-heading {
+    @apply flex flex-wrap items-start justify-between gap-4;
+  }
+  .workspace-heading h1 {
+    @apply text-3xl font-bold tracking-tight;
+  }
+  .workspace-heading p {
+    @apply mt-2 max-w-3xl text-sm leading-6 text-muted-foreground;
+  }
+  .accounts-layout {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-areas: 'stats' 'tasks' 'accounts';
+  }
+  .accounts-stats {
+    grid-area: stats;
+  }
+  .accounts-content {
+    grid-area: accounts;
+    min-width: 0;
+  }
+  .accounts-tasks {
+    grid-area: tasks;
+    min-width: 0;
+  }
+  @media (min-width: 1280px) {
+    .accounts-layout {
+      grid-template-columns: minmax(0, 1fr) 19rem;
+      grid-template-areas: 'stats tasks' 'accounts tasks';
+      align-items: start;
+    }
+  }
+  @media (min-width: 1600px) {
+    .accounts-layout {
+      grid-template-columns: 12rem minmax(0, 1fr) 20rem;
+      grid-template-areas: 'stats accounts tasks';
+    }
+    .accounts-stats {
+      position: sticky;
+      top: 1rem;
+    }
+  }
+  .data-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .data-table th {
+    @apply border-b border-border bg-slate-100 px-3 py-3 text-xs font-semibold text-slate-700;
+  }
+  .data-table td {
+    @apply border-b border-border px-3 py-2.5 align-top;
+  }
+  .data-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .data-table .data-row:hover {
+    @apply bg-indigo-50/50;
+  }
+  .data-table .data-row[data-selected='true'] {
+    @apply bg-indigo-50;
+  }
   /* Size columns against the actual results pane, not the window: opening
      transaction details must not squeeze names into a tiny desktop column. */
   .transaction-explorer {

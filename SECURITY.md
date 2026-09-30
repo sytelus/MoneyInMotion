@@ -26,9 +26,17 @@ Until an authentication layer is implemented:
 - do not run multiple writer instances against one filesystem root; and
 - encrypt server disks and backups and restrict their retention/access.
 
-Helmet headers, same-origin site/API serving, upload bounds, runtime validation,
+Helmet headers, same-origin site/API serving, browser-origin mutation checks,
+non-cacheable API responses, upload bounds, runtime validation,
 path containment, and generic production error responses are defense in depth;
 they do not establish user identity.
+
+Mutation requests with foreign `Origin` or cross-site/same-site Fetch Metadata
+are rejected before decoding uploads. Reverse proxies must preserve the public
+`Host` header. Non-browser tools without those headers remain usable, so this
+guard is not an access-control layer. Account configs and upload destinations
+cannot follow symlinks beneath account folders. Do not modify the data tree
+externally while the app is writing it.
 
 ## Reporting a vulnerability
 
@@ -52,6 +60,11 @@ safe upgrade path. Never use real user data to demonstrate a report.
 
 ## Sensitive-data rules for contributors
 
+The [UX review process](docs/UX_DESIGN_GUIDE.md#review-and-refinement-loop)
+requires evidence isolation before browser mutations. A usability review or an
+approval to use local Chromium does not authorize publication of financial
+screenshots, external uploads, or writes against the live dataset.
+
 - Never commit statements, snapshots, edits, staging batches, private config,
   browser captures with financial values, or copied legacy data.
 - Reduce regressions to sanitized minimal fixtures.
@@ -64,6 +77,16 @@ safe upgrade path. Never use real user data to demonstrate a report.
   security-critical packages.
 
 ## Backup and incident response
+
+[Settings backup and restore](docs/backup-and-restore.md) writes private but
+**unencrypted** ZIPs into the server user's home. Anyone authorized to reach the
+app can create/download a complete backup or replace the active user's data;
+protect these endpoints with the same access gateway as the rest of the app.
+Checksums detect corruption, not a maliciously authored archive. Restore only
+trusted archives. Validation rejects traversal, links, duplicate paths and
+unsupported ZIPs, bounds entry count/expanded size, and checks saved data before
+replacement. Previous data and config are retained in a private sibling folder.
+Neither backups nor retained recovery folders are automatically expired.
 
 Keep encrypted, tested backups of `Statements`, `LatestMergedEdits.json`, and
 the remaining active user directory. If compromise is suspected, stop access,

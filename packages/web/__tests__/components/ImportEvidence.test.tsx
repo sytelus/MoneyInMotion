@@ -96,9 +96,9 @@ describe('local import preflight', () => {
   });
 });
 
-function collection() {
+function collection(dates = ['2024-03-03', '2023-01-01']) {
   const data = new Transactions('source-test');
-  for (const [i, date] of ['2024-03-03', '2023-01-01'].entries()) {
+  for (const [i, date] of dates.entries()) {
     data.addNew(
       Transaction.create('source', 'bank', false, {
         transactionDate: date,
@@ -122,6 +122,10 @@ function collection() {
 }
 
 describe('source evidence', () => {
+  it('uses the same UTC reporting day for offset dates and legacy date strings', () => {
+    const result = sourceInventory(collection(['2024-01-01T23:30:00-08:00', '12/31/2023']));
+    expect(result[0]).toMatchObject({ from: '2023-12-31', to: '2024-01-02' });
+  });
   it('groups records by source with actual transaction-date coverage', () => {
     const result = sourceInventory(collection());
     expect(result).toHaveLength(1);
@@ -139,11 +143,11 @@ describe('source evidence', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText('Bank/yearly.csv')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Inspect records' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'View transactions' })).toHaveAttribute(
       'href',
       expect.stringContaining('source=source'),
     );
-    expect(screen.getByRole('link', { name: 'Inspect records' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'View transactions' })).toHaveAttribute(
       'href',
       expect.stringContaining('basis=records'),
     );

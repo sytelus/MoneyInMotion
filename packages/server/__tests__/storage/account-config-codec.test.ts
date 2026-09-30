@@ -72,6 +72,6 @@ describe('decodeAccountConfig', () => {
           interAccountNameTags: [],
         },
       }),
-    ).toThrow(/match tag/);
+    ).toThrow(/matching name/);
   });
 });

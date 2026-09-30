@@ -53,11 +53,6 @@ export interface SnapshotBuildResult {
 
 export class TransactionCache {
   private transactions: Transactions | null = null;
-  /**
-   * Serializes concurrent `save()` calls so that two overlapping writes
-   * cannot interleave and corrupt the merged JSON.
-   */
-  private savePromise: Promise<void> = Promise.resolve();
   /** Serializes edit and rebuild mutations to prevent lost updates. */
   private mutationPromise: Promise<void> = Promise.resolve();
 
@@ -65,6 +60,16 @@ export class TransactionCache {
   private readonly editsStorage = new TransactionEditsStorage();
 
   constructor(private readonly repo: FileRepository) {}
+
+  /** Maintenance drains earlier edits/rebuilds before copying or replacing disk state. */
+  async whenIdle(): Promise<void> {
+    await this.mutationPromise;
+  }
+
+  /** Discard old references after a validated restore; never rebuild or rewrite restored bytes. */
+  invalidate(): void {
+    this.transactions = null;
+  }
 
   // -----------------------------------------------------------------------
   // Public API
@@ -127,49 +132,28 @@ export class TransactionCache {
     });
   }
 
-  /**
-   * Persist the current cached transactions to disk.
-   *
-   * Concurrent calls are serialized via {@link savePromise} so that two
-   * simultaneous save requests (for example an edit auto-save arriving
-   * while an automatic rebuild is committing) cannot interleave and corrupt
-   * the JSON files.
-   *
-   */
-  async save(): Promise<void> {
-    if (this.transactions == null) return;
-    return this.saveSnapshot(this.transactions);
-  }
-
-  /** Queue a two-file snapshot write for a specific immutable candidate. */
+  /** Persist a candidate inside the mutation queue; never save a stale cache reference. */
   private async saveSnapshot(transactions: Transactions): Promise<void> {
-    const next = this.savePromise.then(() => {
-      const targets = [this.repo.latestMergedPath, this.repo.latestMergedEditsPath];
-      const previous = targets.map((file) =>
-        fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null,
-      );
-      try {
-        this.transactionsStorage.save(this.repo.latestMergedPath, transactions);
-        this.editsStorage.save(this.repo.latestMergedEditsPath, transactions.getClonedEdits());
-      } catch (error) {
-        // Especially important for deleted rules: a failed second write must
-        // not leave an old aggregate that resurrects them on the next restart.
-        for (let index = 0; index < targets.length; index++) {
-          const file = targets[index]!;
-          const content = previous[index]!;
-          if (content == null) {
-            if (fs.existsSync(file)) fs.unlinkSync(file);
-          } else if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== content)
-            writeTextFileAtomically(file, content);
-        }
-        throw error;
+    const targets = [this.repo.latestMergedPath, this.repo.latestMergedEditsPath];
+    const previous = targets.map((file) =>
+      fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null,
+    );
+    try {
+      this.transactionsStorage.save(this.repo.latestMergedPath, transactions);
+      this.editsStorage.save(this.repo.latestMergedEditsPath, transactions.getClonedEdits());
+    } catch (error) {
+      // Especially important for deleted rules: a failed second write must
+      // not leave an old aggregate that resurrects them on the next restart.
+      for (let index = 0; index < targets.length; index++) {
+        const file = targets[index]!;
+        const content = previous[index]!;
+        if (content == null) {
+          if (fs.existsSync(file)) fs.unlinkSync(file);
+        } else if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== content)
+          writeTextFileAtomically(file, content);
       }
-    });
-    // Swallow errors on the chained promise so that one failed save
-    // does not permanently block every subsequent save; the original
-    // caller still sees the rejection via `next`.
-    this.savePromise = next.catch(() => undefined);
-    return next;
+      throw error;
+    }
   }
 
   /** Run one state-changing operation at a time, and keep the queue usable. */

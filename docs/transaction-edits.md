@@ -4,11 +4,18 @@ MoneyInMotion separates imported facts from corrections. Rule management never
 rewrites statement files or imported transaction values. Accepted changes save
 automatically; previews do not save anything.
 
+The [UX design guide](UX_DESIGN_GUIDE.md), especially UX-11 and UX-14 through
+UX-16, supplies the review criteria for understandable rule effects, safe drafts,
+single/bulk scope, preview, and recovery. See
+[rules/provenance UX](rules-and-provenance-ux.md) for the current catalog layout.
+
 ## Viewing and organizing rules
 
 Rules supports search by merchant, account, category, note, rule ID, and source;
 filters by edited field and application/attention status; sorting by saved order,
-match count, condition, or change; and 25-rule result pages. Select a page or all
+match count, condition, or change; and 50-row result pages in a compact table.
+The default **Most matches** view groups multiple-, single-, and zero-match rules;
+display sort never changes execution order. Select a page or all
 filtered results to edit or delete multiple rules (up to 1,000).
 
 Specific-ID rules show available target names and dates, not just opaque IDs.

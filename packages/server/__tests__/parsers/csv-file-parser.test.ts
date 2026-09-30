@@ -100,6 +100,18 @@ describe('CsvFileParser', () => {
     );
   });
 
+  it('rejects non-empty overflow even when followed by trailing empty cells', () => {
+    expect(() => parser.parse('Name,Amount,Date\nShop,-5.00,2024-01-01,extra,,\n')).toThrow(
+      /Quote values that contain commas/,
+    );
+  });
+
+  it('preserves a recoverable final amount before trailing empty cells', () => {
+    expect(parser.parse('Name,Amount\nPayment,--6,408.99,,\n')).toEqual([
+      { name: 'Payment', amount: '--6,408.99' },
+    ]);
+  });
+
   it('rejects malformed quoting reported by the CSV parser', () => {
     expect(() => parser.parse('Name,Amount\n"unterminated,-5.00\n')).toThrow(/CSV parsing failed/i);
   });

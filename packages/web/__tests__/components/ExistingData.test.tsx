@@ -107,7 +107,7 @@ describe('existing data workflow', () => {
         <AppShell />
       </MemoryRouter>,
     );
-    fireEvent.click(await screen.findByRole('button', { name: 'Build from existing statements' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rebuild transactions' }));
     expect(mutate).toHaveBeenCalledWith(undefined);
     expect(screen.queryByRole('link', { name: 'Get Started' })).not.toBeInTheDocument();
   });
@@ -179,6 +179,6 @@ describe('existing data workflow', () => {
     );
     expect(screen.getByText(/Previous data was kept/)).toBeInTheDocument();
     expect(screen.getByText('Bank/broken.csv')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Build from existing statements' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Rebuild transactions' })).toBeEnabled();
   });
 });

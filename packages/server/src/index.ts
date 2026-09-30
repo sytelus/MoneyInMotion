@@ -10,7 +10,10 @@ import * as os from 'node:os';
 import { setDefaultAuditUser } from '@moneyinmotion/core';
 import { loadConfig } from './config.js';
 import { createApp } from './app.js';
+import { recoverInterruptedRestore } from './services/backup-service.js';
 
+if (recoverInterruptedRestore())
+  console.warn('Recovered the previous data after an interrupted restore.');
 const config = loadConfig();
 // In the pre-authentication architecture the configured storage username is
 // the most accurate available audit identity. Fall back to the OS user only

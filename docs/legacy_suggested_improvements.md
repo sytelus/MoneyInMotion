@@ -1,7 +1,12 @@
 # Suggested improvements
 
-These improvements go beyond the legacy conversion. They are ordered roughly by
-risk reduction and product leverage, not by promised delivery date.
+These are optional directions beyond the legacy conversion, grouped by theme,
+not an approved implementation plan or promised delivery order. The
+[prioritized backlog](../todo.md) governs near-term work. Apply the
+[UX design guide](UX_DESIGN_GUIDE.md) and use measured user needs before expanding
+the single-user architecture. Proposals requiring persisted data changes belong
+in the [lifecycle proposal register](UX_LIFECYCLE_REVIEW.md#enhancements-that-require-user-review--not-implemented-implicitly)
+for separate review; their presence here does not authorize them.
 
 ## 1. Authentication and true multiuser isolation
 
@@ -14,18 +19,25 @@ risk reduction and product leverage, not by promised delivery date.
 - Replace username audit attribution with stable authenticated actor IDs and
   human-readable display metadata.
 
-This is the prerequisite for safe public Internet or shared-household use.
+An authentication boundary is required before public access. Native identity
+and tenancy become necessary if the current access gateway is insufficient or
+independent users must share a process. They are not required merely to refine
+the UX behind the existing trusted network/authenticating-proxy boundary.
 
 ## 2. Durable import jobs and review
 
 - Stream large multipart bodies to quarantine storage instead of retaining them
   in memory.
-- Put parsing/matching into a durable queue with progress, cancellation,
-  retries, idempotency keys, and restart recovery.
+- If measured rebuild duration or reliability exceeds the synchronous model,
+  evaluate durable jobs with progress, cancellation, retries, idempotency keys,
+  and restart recovery.
 - Add a pre-commit review showing new/duplicate/rejected files, predicted
   transactions, account/date coverage, and parse warnings.
-- Add explicit batch rollback/removal, quarantine release, manifest download,
+- Add explicit batch rollback/removal, quarantine release, staged-file download,
   and configurable staging retention.
+
+Current local preflight, immediate outcomes, and JSON receipt downloads already
+exist. These proposals extend those flows rather than treating them as absent.
 
 ## 3. Transactional persistence
 
@@ -57,8 +69,9 @@ This is the prerequisite for safe public Internet or shared-household use.
   suggestions, and duplicate-review inbox.
 - Budgets, recurring-transaction detection, cash-flow forecast, savings goals,
   net-worth accounts, and configurable dashboards.
-- Extend the existing transaction/report CSV and rule JSON exports into a
-  complete, checksummed backup/export and guided restore workflow.
+- Extend the [implemented local ZIP backup and guided restore](backup-and-restore.md)
+  with encrypted off-machine copies or retention controls if needed. Do not
+  confuse report/CSV export with full recovery.
 - Optional receipt attachments with privacy-aware OCR.
 
 ## 6. Browser experience and accessibility
@@ -66,8 +79,8 @@ This is the prerequisite for safe public Internet or shared-household use.
 - Resumable uploads with client-side hashing and a progress view for large
   folders.
 - Installable PWA/offline read-only snapshot with an explicit privacy model.
-- Saved views, advanced filters, density preferences, chart drill-down, and
-  mobile editing refinements.
+- Extend existing structured filters and chart drill-down with saved views,
+  density preferences, and evidence-backed mobile editing refinements.
 - Formal WCAG 2.2 AA audit, assistive-technology testing, visual regression,
   and browser/device compatibility automation.
 
@@ -77,8 +90,9 @@ This is the prerequisite for safe public Internet or shared-household use.
   correction, rule reset, restart, backup, and restore journeys.
 - Property/fuzz testing for parsers, path manifests, serializers, and scope
   composition.
-- Structured privacy-redacted logs, OpenTelemetry traces, metrics, storage/free
-  space alarms, and a deep readiness endpoint.
+- Structured privacy-redacted logs and a local deep diagnostic command while
+  keeping `/api/health` a liveness check. Add tracing/metrics infrastructure only
+  if a measured operating need justifies it.
 - Signed releases, software bill of materials, provenance/attestations,
   dependency scanning, and automated VM migration smoke tests.
 - API versioning and OpenAPI generation if external clients become supported.

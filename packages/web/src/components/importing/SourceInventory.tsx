@@ -71,7 +71,7 @@ export function SourceInventory({ transactions }: { transactions: Transactions }
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Statement sources</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Find a file, then inspect the records it contributes to your current snapshot.
+            Find a source file and view the transactions it contributed to your current history.
           </p>
         </div>
         <HelpHint title="Source records and file dates">
@@ -155,7 +155,7 @@ export function SourceInventory({ transactions }: { transactions: Transactions }
                 to={transactionsHref({ source: item.source.id, basis: 'records', view: 'list' })}
                 className={buttonClassName({ variant: 'outline', size: 'sm' })}
               >
-                Inspect records
+                View transactions
                 <ArrowUpRight className="ml-1.5 h-4 w-4" />
               </Link>
             </div>

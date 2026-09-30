@@ -25,7 +25,7 @@ case "$MODE" in
 
         info "Starting development mode..."
         echo -e "  ${C_BOLD}Open this URL in your browser:${C_NC}  http://localhost:5173"
-        echo -e "  ${C_NC}(API server runs on :3001 and is called via the web UI — don't open it directly)"
+        echo "  (The website proxies API requests to the port in ~/.moneyinmotion/config.json.)"
         echo ""
 
         exec npm run dev --silent

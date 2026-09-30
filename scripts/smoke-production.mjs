@@ -102,6 +102,27 @@ async function verifyServer(port) {
   if (!health.ok || healthBody.status !== 'ok' || healthBody.environment !== 'production') {
     throw new Error(`Unexpected health response: ${JSON.stringify(healthBody)}`);
   }
+  if (health.headers.get('cache-control') !== 'no-store') {
+    throw new Error('API responses must not be cached.');
+  }
+
+  // Probe newer read-only contracts as well as liveness: a stale API paired
+  // with a recent website must not pass release verification.
+  for (const route of ['/api/accounts/disconnected', '/api/import/files']) {
+    const response = await fetch(`http://127.0.0.1:${port}${route}`);
+    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+      throw new Error(`Production API contract unavailable: ${route}`);
+    }
+    await response.json();
+  }
+
+  const foreignMutation = await fetch(`http://127.0.0.1:${port}/api/import/folder`, {
+    method: 'POST',
+    headers: { Origin: 'https://unrelated.invalid' },
+  });
+  if (foreignMutation.status !== 403) {
+    throw new Error('Foreign browser mutations must be blocked before upload processing.');
+  }
 
   for (const route of [
     '/',

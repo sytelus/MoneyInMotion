@@ -34,15 +34,24 @@ Do not expose an unprotected instance to the public Internet; see
   rules have searchable matched-record inspection, account/purpose filters,
   duplication, bulk editing, and JSON export.
 - Separates account management from Imports, including safe account-folder
-  reconnection, pre-upload checks, immediate outcomes, and saved upload receipts.
+  configuration, save-and-rebuild, pre-upload checks, immediate outcomes, and
+  saved upload receipts. A read-only statement explorer shows folder hierarchies,
+  file counts, parsing eligibility, and links to existing transactions.
+- Uses responsive account workspaces and a compact, impact-sorted rule table,
+  with expandable detail, contextual help, and high-contrast status colors.
 - Preserves imported values. User intent is stored separately in
   `LatestMergedEdits.json`. Rules can be created, edited, or deleted individually
   or in bulk after previewing their effects; prior rule files are backed up.
+- Creates complete ZIP backups from Settings and restores the saved user data
+  and configuration after validation and confirmation, retaining the replaced
+  data for recovery. See [Backup and restore](docs/backup-and-restore.md).
 
 ## Quick start
 
 Server prerequisites are Git and Node.js 24 or newer. Browser users install
 nothing.
+Full-data backup and restore additionally require Python 3.9+ (`python3`) on
+the server, using only its standard library.
 
 ```bash
 git clone https://github.com/sytelus/MoneyInMotion.git
@@ -82,9 +91,9 @@ For development with API and UI hot reload:
    the server access to an arbitrary local path.
 3. Review the detected folders. A misspelled or unknown account folder blocks
    the upload until it is fixed; no file bytes are sent.
-4. Choose **Upload & build snapshot**. MiM stores an immutable staging copy,
+4. Choose **Upload and rebuild**. MiM stores a staging copy of submitted files,
    rejects configuration files and
-   unsupported paths, skips statement content already present for the account,
+   unsafe paths, skips statement content already present for the account,
    and promotes new files to `Statements`.
 5. The server rebuilds from every accepted statement and replays saved edits.
    The new snapshot is committed only if every statement parses successfully.
@@ -165,6 +174,11 @@ when intentionally returning to generated defaults.
 
 ## Documentation
 
+- [UX design and self-review guide](docs/UX_DESIGN_GUIDE.md): reusable design
+  principles, review gates, and refinement process distilled from user feedback.
+- [UX feedback traceability](docs/UX_FEEDBACK_TRACEABILITY.md) and
+  [review template](docs/UX_REVIEW_TEMPLATE.md): concrete critiques and a repeatable
+  evidence-based checklist for future work.
 - [Documentation index](docs/README.md)
 - [Architecture](docs/architecture.md)
 - [Architecture and infrastructure simplicity review](docs/simplicity-review.md)

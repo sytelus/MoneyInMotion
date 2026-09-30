@@ -11,11 +11,11 @@
 import * as fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
-/** Atomically replace a UTF-8 text file on the same filesystem. */
-export function writeTextFileAtomically(filePath: string, contents: string): void {
+/** Atomically replace UTF-8 text; optional mode keeps sensitive scratch/target files private. */
+export function writeTextFileAtomically(filePath: string, contents: string, mode?: number): void {
   const temporaryPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    fs.writeFileSync(temporaryPath, contents, 'utf-8');
+    fs.writeFileSync(temporaryPath, contents, { encoding: 'utf-8', mode });
     fs.renameSync(temporaryPath, filePath);
   } catch (error) {
     // Best-effort cleanup must never hide the write/rename failure that caused

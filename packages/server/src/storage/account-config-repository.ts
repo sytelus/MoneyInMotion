@@ -40,6 +40,8 @@ export interface DiscoveredAccountConfig {
 export function discoverAccountConfigs(statementsDir: string): DiscoveredAccountConfig[] {
   if (!fs.existsSync(statementsDir)) return [];
   const results: DiscoveredAccountConfig[] = [];
+  const accountIds = new Map<string, string>();
+  const folderNames = new Map<string, string>();
   const entries = fs
     .readdirSync(statementsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -48,12 +50,36 @@ export function discoverAccountConfigs(statementsDir: string): DiscoveredAccount
   for (const entry of entries) {
     const accountDir = path.join(statementsDir, entry.name);
     const configPath = path.join(accountDir, ACCOUNT_CONFIG_FILE_NAME);
-    if (!fs.existsSync(configPath)) continue;
-
     try {
+      const configStat = fs.lstatSync(configPath, { throwIfNoEntry: false });
+      if (!configStat) continue;
+      // Configurations are trusted local files, not links to another account or
+      // outside the data tree. Apply this boundary to imports and the explorer.
+      if (!configStat.isFile()) {
+        throw new Error('AccountConfig.json must be a regular file, not a symbolic link.');
+      }
       const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as unknown;
+      const config = decodeAccountConfig(raw);
+      // Both account lookups and browser folder matching ignore case. Reject
+      // ambiguous hand-edited configs before any scanner can merge their data.
+      const accountKey = config.accountInfo.id.toLowerCase();
+      const folderKey = entry.name.toLowerCase();
+      const previousAccount = accountIds.get(accountKey);
+      const previousFolder = folderNames.get(folderKey);
+      if (previousAccount) {
+        throw new Error(
+          `Account ID "${config.accountInfo.id}" is already configured in "${previousAccount}/${ACCOUNT_CONFIG_FILE_NAME}". Each account must have a unique ID (ignoring case).`,
+        );
+      }
+      if (previousFolder) {
+        throw new Error(
+          `Folder "${entry.name}" differs from "${previousFolder}" only by letter case. Account folder names must be unique ignoring case for unambiguous uploads.`,
+        );
+      }
+      accountIds.set(accountKey, entry.name);
+      folderNames.set(folderKey, entry.name);
       results.push({
-        config: decodeAccountConfig(raw),
+        config,
         configPath,
         accountDir,
         relativeDirectory: entry.name,

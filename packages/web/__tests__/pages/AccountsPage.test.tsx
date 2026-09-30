@@ -15,6 +15,8 @@ const updateAccountMock = vi.fn();
 const deleteAccountMock = vi.fn();
 const disconnectedFoldersMock = vi.fn();
 const reconnectAccountMock = vi.fn();
+const rebuildSnapshotMock = vi.fn();
+const statementInventoryMock = vi.fn();
 
 vi.mock('../../src/api/imports.js', () => ({
   ImportApiError: class ImportApiError extends Error {
@@ -27,12 +29,17 @@ vi.mock('../../src/api/imports.js', () => ({
   },
   getDisconnectedFolders: () => disconnectedFoldersMock(),
   reconnectAccount: (...args: unknown[]) => reconnectAccountMock(...args),
+  getStatementInventory: () => statementInventoryMock(),
 }));
 
 vi.mock('../../src/api/hooks.js', () => ({
   useAccounts: () => useAccountsMock(),
   useUploadStatementFolder: () => useUploadStatementFolderMock(),
-  useRebuildSnapshot: () => ({ mutate: vi.fn(), isPending: false }),
+  useRebuildSnapshot: () => ({
+    mutate: vi.fn(),
+    mutateAsync: rebuildSnapshotMock,
+    isPending: false,
+  }),
 }));
 
 vi.mock('../../src/api/client.js', () => ({
@@ -78,6 +85,19 @@ describe('AccountsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     disconnectedFoldersMock.mockResolvedValue([]);
+    statementInventoryMock.mockResolvedValue({
+      entries: [],
+      truncated: false,
+      unreadableFolders: 0,
+    });
+    rebuildSnapshotMock.mockResolvedValue({
+      committed: true,
+      importedFiles: [],
+      failedFiles: [],
+      totalTransactions: 2,
+      appliedEdits: 1,
+      unresolvedEditTargets: 0,
+    });
     getConfigMock.mockResolvedValue({
       port: 3001,
       dataRoot: '/tmp',
@@ -111,9 +131,11 @@ describe('AccountsPage', () => {
   it('renders per-account import stats and match tags', async () => {
     renderPage();
 
-    expect(await screen.findByText('Snapshot records')).toBeInTheDocument();
-    expect(screen.getByText(/Latest record build: 2024-03-01 08:00:00 UTC/)).toBeInTheDocument();
-    expect(screen.getByText(/Match tags: TRANSFER/)).toBeInTheDocument();
+    const card = await screen.findByRole('article', { name: 'Checking' });
+    expect(within(card).getByText('2')).toBeInTheDocument();
+    fireEvent.click(within(card).getByText('Account settings & source details'));
+    expect(screen.getByText(/2024-03-01 08:00:00 UTC/)).toBeInTheDocument();
+    expect(screen.getByText('Matching names: TRANSFER')).toBeInTheDocument();
     expect(await screen.findByText('/tmp/mim-data/Statements/acct-checking/')).toBeInTheDocument();
   });
 
@@ -152,14 +174,14 @@ describe('AccountsPage', () => {
     fireEvent.change(screen.getByLabelText('Account Title'), {
       target: { value: 'Updated Checking' },
     });
-    fireEvent.change(screen.getByLabelText('Match Tags'), {
+    fireEvent.change(screen.getByLabelText('Transaction matching names'), {
       target: { value: 'AMEX, TRANSFER' },
     });
-    fireEvent.change(screen.getByLabelText('File Filters'), {
+    fireEvent.change(screen.getByLabelText('Statement files to process'), {
       target: { value: '*.csv, *.txt' },
     });
-    fireEvent.click(screen.getByLabelText(/Scan subfolders/i));
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+    fireEvent.click(screen.getByLabelText(/Include subfolders/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Save and rebuild', exact: true }));
 
     await waitFor(() => {
       expect(updateAccountMock).toHaveBeenCalledWith(
@@ -176,6 +198,8 @@ describe('AccountsPage', () => {
       );
     });
     expect(refetchMock).toHaveBeenCalled();
+    expect(rebuildSnapshotMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Account saved and transactions rebuilt')).toBeInTheDocument();
   });
 
   it('copies account settings into an editable unsaved duplicate', async () => {
@@ -207,9 +231,9 @@ describe('AccountsPage', () => {
     expect(screen.getByLabelText('Account ID')).toHaveValue('');
     expect(screen.getByLabelText('Account Title')).toHaveValue('Checking');
     expect(screen.getByLabelText('Institution')).toHaveValue('TestBank');
-    expect(screen.getByLabelText('Match Tags')).toHaveValue('TRANSFER');
-    expect(screen.getByLabelText('File Filters')).toHaveValue('*.csv');
-    expect(screen.getByLabelText(/Scan subfolders/i)).toBeChecked();
+    expect(screen.getByLabelText('Transaction matching names')).toHaveValue('TRANSFER');
+    expect(screen.getByLabelText('Statement files to process')).toHaveValue('*.csv');
+    expect(screen.getByLabelText(/Include subfolders/i)).toBeChecked();
     expect(createAccountMock).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText('Account ID'), {
@@ -235,6 +259,46 @@ describe('AccountsPage', () => {
     );
     expect(refetchMock).toHaveBeenCalled();
     expect(await screen.findByText('Duplicate account created')).toBeInTheDocument();
+    expect(rebuildSnapshotMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['rejected', 'uncommitted'])(
+    'reports a saved account honestly when rebuild is %s',
+    async (failure) => {
+      updateAccountMock.mockResolvedValue(makeAccount());
+      if (failure === 'rejected')
+        rebuildSnapshotMock.mockRejectedValueOnce(new Error('Server unavailable'));
+      else
+        rebuildSnapshotMock.mockResolvedValueOnce({
+          committed: false,
+          failedFiles: [{ path: 'checking/bad.csv', error: 'Missing amount' }],
+          importedFiles: [],
+          totalTransactions: 2,
+          appliedEdits: 0,
+        });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Save and rebuild', exact: true }));
+      expect(
+        await screen.findByText('Account saved; transactions need a rebuild'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Edit Account' })).not.toBeInTheDocument();
+      expect(updateAccountMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('link', { name: 'Rebuild transactions' })).toHaveAttribute(
+        'href',
+        '/imports',
+      );
+    },
+  );
+
+  it('never rebuilds or closes the editor if saving the account fails', async () => {
+    updateAccountMock.mockRejectedValueOnce(new Error('Account settings could not be written'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save and rebuild', exact: true }));
+    expect(await screen.findByText('Account settings could not be written')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Edit Account' })).toBeInTheDocument();
+    expect(rebuildSnapshotMock).not.toHaveBeenCalled();
   });
 
   it('explains a stale server without exposing an API error as account data', async () => {
@@ -246,7 +310,7 @@ describe('AccountsPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Disconnected-folder check unavailable/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/API endpoint not found/i)).not.toBeInTheDocument();
-    const reconnectCard = screen.getByText('Folders to reconnect').parentElement;
+    const reconnectCard = screen.getByText('Folders to configure').parentElement;
     expect(reconnectCard).not.toBeNull();
     expect(within(reconnectCard!).getByText('—')).toBeInTheDocument();
 
@@ -266,7 +330,9 @@ describe('AccountsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Add Account/i }));
     fireEvent.change(screen.getByLabelText('Account ID'), { target: { value: 'orders' } });
     fireEvent.change(screen.getByLabelText('Account Title'), { target: { value: 'Orders' } });
-    fireEvent.click(screen.getByLabelText('Order History'));
+    fireEvent.change(screen.getByLabelText('Account Type'), {
+      target: { value: String(AccountType.OrderHistory) },
+    });
     fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
 
     expect(
@@ -279,7 +345,7 @@ describe('AccountsPage', () => {
 
     expect(
       screen.getByText(
-        'Order History accounts require at least one match tag for financial-charge matching.',
+        'Add at least one transaction matching name so purchases can be matched to payments.',
       ),
     ).toBeInTheDocument();
     expect(createAccountMock).not.toHaveBeenCalled();
@@ -301,11 +367,11 @@ describe('AccountsPage', () => {
 
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Remove config/i }));
-    expect(screen.getByText(/Raw statement files are preserved/i)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Remove account/i }));
+    expect(screen.getByText(/Statement files are kept/i)).toBeInTheDocument();
 
     expect(screen.getByText(/The next rebuild excludes this account/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Remove configuration/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Remove account/i }));
 
     await waitFor(() => {
       expect(deleteAccountMock).toHaveBeenCalledWith('acct-checking');
@@ -339,7 +405,7 @@ describe('AccountsPage', () => {
     fireEvent.change(input, {
       target: { files: [file] },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Upload & build snapshot/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Upload and rebuild/i }));
 
     expect(mutate).toHaveBeenCalledWith([
       {
@@ -378,13 +444,13 @@ describe('AccountsPage', () => {
     expect(screen.getByText(/Fix the selected folder names before uploading/i)).toBeInTheDocument();
     expect(screen.getByText(/acct-cheking\/statement.csv/i)).toBeInTheDocument();
     expect(screen.getByText(/No files have been uploaded/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Upload & build snapshot/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Upload and rebuild/i })).toBeDisabled();
     expect(mutate).not.toHaveBeenCalled();
   });
 
   it('filters accounts and links to the account reporting scope', async () => {
     renderPage();
-    expect(await screen.findByRole('link', { name: 'Inspect account records' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'View transactions' })).toHaveAttribute(
       'href',
       expect.stringContaining('account=acct-checking'),
     );
@@ -398,22 +464,20 @@ describe('AccountsPage', () => {
     disconnectedFoldersMock.mockResolvedValue([{ relativeDirectory: 'old-bank' }]);
     reconnectAccountMock.mockResolvedValue(makeAccount({ hasStatementFiles: true }));
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Reconnect folder' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Configure account' }));
     fireEvent.change(screen.getByLabelText('Account ID'), { target: { value: 'original-id' } });
     fireEvent.change(screen.getByLabelText('Account Title'), {
       target: { value: 'Restored account' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Reconnect folder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save and rebuild', exact: true }));
     await waitFor(() =>
       expect(reconnectAccountMock).toHaveBeenCalledWith(
         'old-bank',
         expect.objectContaining({ accountInfo: expect.objectContaining({ id: 'original-id' }) }),
       ),
     );
-    expect(await screen.findByText('Account folder reconnected')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Existing snapshot records are unchanged until you rebuild/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Account saved and transactions rebuilt')).toBeInTheDocument();
+    expect(rebuildSnapshotMock).toHaveBeenCalledTimes(1);
   });
 
   it('prefills and locks a known original account identity rather than using its folder name', async () => {
@@ -429,13 +493,13 @@ describe('AccountsPage', () => {
       },
     ]);
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Reconnect folder' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Configure account' }));
     expect(screen.getByLabelText('Account ID')).toHaveValue('original-id');
     expect(screen.getByLabelText('Account ID')).toBeDisabled();
     expect(screen.getByLabelText('Account Title')).toHaveValue('Original account');
     expect(screen.getByLabelText('Institution')).toHaveValue('TestBank');
     expect(
-      screen.getByText(/File filters and subfolder settings are not retained/),
+      screen.getByText(/File patterns and subfolder settings are not retained/),
     ).toBeInTheDocument();
   });
 });

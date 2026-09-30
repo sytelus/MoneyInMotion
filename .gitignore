@@ -33,6 +33,10 @@ App_Data/
 mim_root/
 # Legacy misspelling used by early local checkouts
 min_root/
+*_mim_backup_*.zip
+*_mim_backup_*.zip.partial
+.mim-restore-*/
+__pycache__/
 
 # Logs
 npm-debug.log*

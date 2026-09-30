@@ -18,8 +18,8 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vitest", "run", "--reporter=verbose"],
-      "cwd": "${workspaceFolder}/packages/core",
+      "runtimeArgs": ["vitest", "run", "--project=core", "--reporter=verbose"],
+      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     }
   ]

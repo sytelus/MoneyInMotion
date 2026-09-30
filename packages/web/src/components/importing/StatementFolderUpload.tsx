@@ -73,11 +73,11 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
             <UploadCloud className="h-3.5 w-3.5" />
             1. Choose · 2. Check · 3. Import
           </div>
-          <h2 className="text-xl font-bold tracking-tight">Bring in a statement folder</h2>
+          <h2 className="text-xl font-bold tracking-tight">Import a statement folder</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Choose an account folder, or a folder containing several account folders. Check the
             selection before sending any files. Matching statement files are stored, duplicate
-            content is skipped, and your snapshot is rebuilt with saved rules.
+            content is skipped, and your transaction history is rebuilt with saved rules.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-3">
@@ -103,7 +103,7 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
                 ) : (
                   <UploadCloud className="mr-2 h-4 w-4" />
                 )}
-                {upload.isPending ? 'Uploading & rebuilding…' : 'Upload & build snapshot'}
+                {upload.isPending ? 'Uploading & rebuilding…' : 'Upload and rebuild'}
               </Button>
             )}
           </div>
@@ -128,7 +128,7 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
               {folderNamesValid ? (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Matched account folders: {folderPreflight.selectedFolders.join(', ')}. Nothing is
-                  sent until you choose “Upload & build snapshot.”
+                  sent until you choose “Upload and rebuild.”
                 </p>
               ) : (
                 <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive">
@@ -248,7 +248,9 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                {rebuildFailed ? 'Files staged; previous snapshot kept safe' : 'Snapshot is ready'}
+                {rebuildFailed
+                  ? 'Files stored; transaction history unchanged'
+                  : 'Transactions updated'}
               </p>
               <p className="mt-1 text-sm opacity-90">
                 {result.staging.promotedCount} new, {result.staging.duplicateCount} already present,{' '}

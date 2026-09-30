@@ -19,6 +19,8 @@ import {
   type FolderUploadFile,
 } from '../services/folder-import-service.js';
 import { readImportHistory } from '../services/import-history-service.js';
+import { readStatementInventory } from '../services/statement-inventory-service.js';
+import type { DataMaintenance } from '../services/data-maintenance.js';
 
 const folderUpload = multer({
   storage: multer.memoryStorage(),
@@ -48,8 +50,20 @@ function parseRelativePaths(raw: unknown): string[] {
   return parsed;
 }
 
-export function createImportRouter(cache: TransactionCache, config: ServerConfig): Router {
+export function createImportRouter(
+  cache: TransactionCache,
+  config: ServerConfig,
+  maintenance?: DataMaintenance,
+): Router {
   const router = Router();
+
+  router.get('/files', (_req, res, next) => {
+    try {
+      res.json(readStatementInventory(config));
+    } catch (error) {
+      next(error);
+    }
+  });
 
   router.get('/history', (req, res, next) => {
     const query = z
@@ -98,6 +112,10 @@ export function createImportRouter(cache: TransactionCache, config: ServerConfig
       }
 
       try {
+        // A slow multipart request may have started before maintenance acquired
+        // the gate. Recheck immediately before the first data-directory write.
+        maintenance?.assertAvailable();
+        if (req.aborted) return;
         const files = (Array.isArray(req.files) ? req.files : []).map((file): FolderUploadFile => ({
           buffer: file.buffer,
         }));

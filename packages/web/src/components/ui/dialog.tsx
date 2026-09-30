@@ -25,6 +25,8 @@ export interface DialogContentProps {
   children: React.ReactNode;
   /** Additional CSS class names for the content container. */
   className?: string;
+  /** Explicit opener when an asynchronous action disables it before opening. */
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -37,6 +39,7 @@ export const DialogContent: React.FC<DialogContentProps> = ({
   description,
   children,
   className,
+  returnFocusRef,
 }) => {
   const descriptionId = React.useId();
   const returnFocus = React.useRef<HTMLElement | null>(null);
@@ -51,9 +54,10 @@ export const DialogContent: React.FC<DialogContentProps> = ({
         onCloseAutoFocus={(event) => {
           // Many app dialogs are controlled without a Radix Trigger. Return to
           // the actual opener, including a help button inside another dialog.
-          if (returnFocus.current?.isConnected) {
+          const target = returnFocusRef?.current ?? returnFocus.current;
+          if (target?.isConnected) {
             event.preventDefault();
-            returnFocus.current.focus({ preventScroll: true });
+            target.focus({ preventScroll: true });
           }
         }}
         aria-describedby={description ? descriptionId : undefined}

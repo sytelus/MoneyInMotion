@@ -169,7 +169,7 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
       help: 'Includes refunds, discounts, and other positive amounts.',
       Icon: ArrowDownLeft,
       flow: 'credits',
-      style: 'bg-emerald-50 text-emerald-800',
+      style: 'border-emerald-300 bg-emerald-50 text-emerald-900',
     },
     {
       title: 'Recorded debits',
@@ -177,7 +177,7 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
       help: 'Outgoing amounts, before subtracting credits or refunds.',
       Icon: ArrowUpRight,
       flow: 'debits',
-      style: 'bg-indigo-50 text-indigo-700',
+      style: 'border-indigo-300 bg-indigo-50 text-indigo-900',
     },
     {
       title: 'Net activity',
@@ -185,11 +185,11 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
       help: 'Credits minus debits. Not your balance or earned income.',
       Icon: Wallet,
       flow: 'activity',
-      style: 'bg-slate-100 text-slate-700',
+      style: 'border-sky-300 bg-sky-50 text-sky-900',
     },
   ] as const;
   return (
-    <main className="mx-auto max-w-[1480px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="workspace">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">
@@ -197,7 +197,7 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
           </p>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Overview</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Understand the activity. Follow the details. Decide what needs attention.
+            Review cash flow, spending categories and transactions that need attention.
           </p>
         </div>
         <div className="report-screen-only flex flex-wrap items-center gap-2">
@@ -326,12 +326,12 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
               <Link
                 key={title}
                 to={transactionsHref({ ...scope, flow, view: 'list' })}
-                className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:border-indigo-300 hover:shadow-md"
+                className={`group rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md ${style}`}
                 title={`${title}: ${formatCurrency(value)}. View underlying transactions.`}
               >
                 <span className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-slate-600">{title}</span>
-                  <span className={`rounded-xl p-2 ${style}`}>
+                  <span className="text-sm font-semibold">{title}</span>
+                  <span className="rounded-xl bg-white/70 p-2">
                     <Icon aria-hidden className="h-5 w-5" />
                   </span>
                 </span>

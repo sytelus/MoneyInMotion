@@ -5,6 +5,12 @@ VM, one Node.js process, and filesystem persistence. The goal is not the fewest
 possible lines; it is the fewest concepts and dependencies that safely deliver
 today's behavior.
 
+The same constraint applies to UX improvements: use the
+[UX design guide](UX_DESIGN_GUIDE.md), especially UX-18 through UX-20, to prefer
+clear projections, shared behavior, and evidence-backed performance changes over
+unnecessary schema or infrastructure. Measurements below describe the original
+review environment; fresh user-facing claims require fresh verification.
+
 ## Resulting production shape
 
 ```text

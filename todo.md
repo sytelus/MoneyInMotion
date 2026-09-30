@@ -7,13 +7,21 @@ The operating boundaries remain documented in
 [Current migration limitations](docs/legacy_limitations.md); optional product
 ideas live in [Suggested improvements](docs/legacy_suggested_improvements.md).
 
+Apply the [UX design guide](docs/UX_DESIGN_GUIDE.md) to each relevant item and
+reference the originating [feedback IDs](docs/UX_FEEDBACK_TRACEABILITY.md).
+Use the [review template](docs/UX_REVIEW_TEMPLATE.md) to record acceptance evidence
+and remaining gaps. A guide entry is not proof that the current UI passes it.
+
 ## Near-term reliability and release confidence
 
 - [ ] **Add Playwright end-to-end coverage.** Cover first run, account CRUD,
       directory upload, duplicate and parse-failure reporting, automatic rebuild,
       every correction type, broad rules, exact-target field reset, restart,
       backup, and restore.
-- [ ] **Test backup and recovery as an operation.** Restore encrypted off-VM
+- [ ] **Complete backup operational acceptance.** Local ZIP creation and guided
+      replacement restore now have isolated service/UI regressions; complete
+      live production-browser verification from [the review](docs/BACKUP_RESTORE_REVIEW.md).
+      Separately restore encrypted off-VM
       backups into an empty root and automatically compare account IDs, date range,
       rule counts, and snapshot persistence before accepting the restore.
 - [ ] **Add staging retention controls.** Provide a simple administrator command
@@ -26,6 +34,10 @@ ideas live in [Suggested improvements](docs/legacy_suggested_improvements.md).
       browser/device matrix for directory upload and mobile layouts.
 - [ ] **Expand hostile-input tests where evidence warrants it.** Prioritize path
       manifests, parsers, persisted JSON codecs, and exact-ID rule migration.
+- [ ] **Bound aggregate upload memory during decoding.** Enforce the request
+      budget while consuming chunked multipart bodies, not only after parsing;
+      preserve per-file limits, useful errors, and staging preflight guarantees.
+      Keep an upstream request-size limit until this is implemented.
 
 ## Useful single-user improvements
 
@@ -41,7 +53,8 @@ ideas live in [Suggested improvements](docs/legacy_suggested_improvements.md).
       infrastructure.
 - [ ] **Add product features based on actual use.** Likely candidates are
       category management, splits, duplicate review, budgets, server-indexed
-      saved views, and a complete backup/restore export. Validate priority before
+      saved views, and off-machine backup/retention controls. Full local ZIP
+      backup/restore is documented in [the guide](docs/backup-and-restore.md). Validate priority before
       adding dependencies; browser search and scoped CSV/rule export already exist.
 
 ## Add only when the requirement exists

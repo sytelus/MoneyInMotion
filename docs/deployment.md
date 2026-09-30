@@ -28,7 +28,7 @@ directly to the public Internet.
 
 ## One-time VM setup
 
-Install Git and Node.js 24 on a current Linux distribution. The exact Node
+Install Git, Node.js 24, and Python 3.9+ (for ZIP backup/restore) on a current Linux distribution. The exact Node
 installation command depends on the distribution; verify the result before
 continuing:
 
@@ -36,6 +36,7 @@ continuing:
 node --version
 npm --version
 git --version
+python3 --version
 ```
 
 Create a dedicated service account and directories. These example paths match
@@ -127,6 +128,9 @@ or access gateway in front of `127.0.0.1:3001`. It must:
 
 - terminate TLS and authenticate every route until MiM has native login;
 - proxy both static paths and `/api` to the same MiM process;
+- preserve the browser-facing `Host` header (including a non-default port),
+  plus `Origin` and `Sec-Fetch-Site` when present; the API rejects browser
+  mutations from other origins. TLS can terminate at the proxy;
 - permit multipart request bodies up to MiM's 100 MiB request limit (with at
   most 200 files and 20 MiB per file); and
 - allow a long enough upstream timeout for the synchronous rebuild that follows
@@ -151,6 +155,12 @@ Before upgrading, back up the active user directory and configuration. CI
 should pass before the revision is deployed. After startup, inspect Accounts,
 the latest month, and Rules.
 
+For release handoff, follow [UX-19 and UX-20](UX_DESIGN_GUIDE.md): state which
+build is running, the production URL/command, active data location, restart or
+rebuild needs, checks performed, and remaining limitations. A successful build
+or Git push does not by itself establish that the running user-facing service
+has been upgraded.
+
 ## Backup and recovery
 
 Back up the complete active user directory while no import or edit is running.
@@ -165,10 +175,17 @@ At minimum protect:
 Also back up `~/.moneyinmotion/config.json`. Encrypt backups and store a copy off
 the VM.
 
-To restore, stop MiM, restore into a dedicated empty root, verify ownership,
-start the service, inspect Accounts, then choose **Rebuild snapshot** in
-Settings. Keep the old root unchanged until account counts and date ranges have
-been checked.
+Settings now provides **Create full backup** and **Review restore**. ZIPs default
+to the server user's home directory; restore validates an archive, requires
+explicit confirmation, replaces the whole active user tree, and retains the
+previous tree/config. See [Backup and restore](backup-and-restore.md) for the
+Python prerequisite, limits, original-location restriction, and recovery marker.
+
+Do **not** rebuild merely to finish a restore: loading the archived snapshot
+preserves its saved state. A rebuild is a separate operation that may change
+derived results under newer application code. For offline recovery, stop MiM,
+extract into a dedicated empty location, retain the old tree, restore the config,
+verify ownership, start, and inspect Accounts, Overview, and Rules first.
 
 ## Operational boundary
 

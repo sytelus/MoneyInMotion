@@ -4,6 +4,11 @@ This file records behavior that intentionally differs from the former C# and
 machine-local browser application. These are product and safety decisions, not
 untracked porting gaps.
 
+Use [UX-01 and UX-18](UX_DESIGN_GUIDE.md) to distinguish intentional workflow
+replacements from missing capabilities and unapproved data changes. The
+[feedback register](UX_FEEDBACK_TRACEABILITY.md) preserves the user's parity and
+schema-free requirements; current interaction details live in the topic guides.
+
 ## Hosted application instead of a local desktop companion
 
 The legacy runtime combined local C# processing, a local browser host, and data
@@ -19,7 +24,7 @@ working tree after their behavior was ported; they remain in Git history.
 ## Directory upload instead of entering a local path
 
 A hosted server cannot read a filesystem path typed in a remote browser. The
-Accounts screen uses a browser directory picker and uploads file bytes with
+Imports screen uses a browser directory picker and uploads file bytes with
 their safe relative paths. The server maps account subfolders to configured
 relative account directories.
 
@@ -85,16 +90,17 @@ require deliberate server administration.
 
 Amount, date, reason, entity, category, note, and flag corrections are available
 in the website. Effective corrected amount and reason drive aggregation,
-summary, net grouping, display, and later rule scopes. A date correction changes
-period placement. Raw imported fields stay immutable, rules persist to
-`LatestMergedEdits.json`, and Rules provides an audited field reset targeted to
-the transaction IDs recorded as receiving the selected rule.
+summary, net grouping, and display. A date correction changes period placement.
+Rule scopes are evaluated against imported values during ordered replay, not
+against the result of earlier corrections. Raw imported fields stay immutable;
+rules persist to `LatestMergedEdits.json`.
 
 Justification: presenting a corrected number while calculating from a raw one
-would be internally inconsistent. Exact-target reset preserves history without
-reapplying a broad historic scope to unrelated future imports. The UI also
-states that a reset overrides later changes to the same fields; it is not
-misrepresented as removal of one isolated rule.
+would be internally inconsistent. Baseline scope evaluation prevents a rule from
+ceasing to match itself after changing the field it tests. Rule deletion replays
+the remaining set; restoring an imported field is a separate explicit correction
+that clears prior overrides. Neither is an inverse operation inferred from
+today's matches. See [Transaction edits and rules](transaction-edits.md).
 
 ## Cross-platform and strict parsing fixes
 

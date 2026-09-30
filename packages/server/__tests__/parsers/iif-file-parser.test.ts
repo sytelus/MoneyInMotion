@@ -142,4 +142,10 @@ describe('IifFileParser', () => {
     const content = ['!TRNS\tdate\tamount', 'TRNS\t01/15/2024\t-5.00\textra'].join('\n');
     expect(() => parser.parse(content)).toThrow(/row has 3 fields but its header has 2/i);
   });
+
+  it('rejects repeated headers before one financial field can overwrite another', () => {
+    expect(() => parser.parse('!TRNS\tdate\tamount\tAMOUNT\nTRNS\t01/15/2024\t-5\t-50')).toThrow(
+      /duplicate column names/,
+    );
+  });
 });

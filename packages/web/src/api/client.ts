@@ -164,7 +164,7 @@ export async function getConfig(): Promise<ApiConfig> {
 }
 
 /**
- * Update application configuration. Either field can be omitted to leave
+ * Update application configuration. Any field can be omitted to leave
  * the persisted value for that field unchanged.
  *
  * @param config - The config values to persist.

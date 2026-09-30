@@ -43,6 +43,11 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const DEFAULT_DATA_ROOT = path.join(os.homedir(), 'mim_root');
 const DEFAULT_PORT = 3001;
 
+/** Canonical path shared by Settings and full-data recovery. No environment override. */
+export function getConfigFilePath(): string {
+  return CONFIG_FILE;
+}
+
 /** Restrict usernames to a single safe path segment. */
 export function isValidUsername(username: string): boolean {
   return username !== '.' && /^[a-zA-Z0-9._-]+$/.test(username) && !username.includes('..');
@@ -209,9 +214,10 @@ export function loadConfig(
 /** Persist only configurable fields; derived paths are recalculated at load. */
 export function saveConfig(
   partial: Partial<Pick<ServerConfig, 'dataRoot' | 'username' | 'port'>>,
+  configFile = CONFIG_FILE,
 ): void {
-  ensureDirExists(CONFIG_DIR);
-  const existing = loadPersistedConfig();
+  ensureDirExists(path.dirname(configFile));
+  const existing = loadPersistedConfig(configFile);
   const migrated = migrateLegacyDataPath(existing);
   const persisted: PersistedConfig = {
     port: partial.port ?? existing.port ?? DEFAULT_PORT,
@@ -222,5 +228,5 @@ export function saveConfig(
   // Validate before replacing a known-good file.
   buildConfig(persisted.dataRoot!, persisted.username!, persisted.port!);
 
-  writeTextFileAtomically(CONFIG_FILE, JSON.stringify(persisted, null, 2));
+  writeTextFileAtomically(configFile, JSON.stringify(persisted, null, 2));
 }

@@ -5,6 +5,7 @@ import { useRebuildSnapshot } from '../../api/hooks.js';
 import { Button, buttonClassName } from '../ui/button.js';
 import { MissingRuleTargets } from '../editing/MissingRuleTargets.js';
 import { Notice } from '../ui/notice.js';
+import { HelpHint } from '../ui/help-hint.js';
 
 /** Make server-side statements usable without asking users to upload them again. */
 export const ExistingStatements: React.FC<{ accounts: AccountSummary[] }> = ({ accounts }) => {
@@ -15,17 +16,28 @@ export const ExistingStatements: React.FC<{ accounts: AccountSummary[] }> = ({ a
 
   return (
     <section className="rounded-xl border border-border bg-muted/30 p-5 space-y-3 text-left">
-      <h2 className="text-lg font-semibold">Rebuild from stored statements</h2>
+      <h2 className="flex items-center text-lg font-semibold">
+        Rebuild from stored statements
+        <HelpHint title="What a rebuild does">
+          <p>
+            Rereads every configured account, using its current file patterns and matching settings,
+            then applies saved rules. Accounts without settings are excluded. If a statement fails,
+            the previous transaction history is kept.
+          </p>
+        </HelpHint>
+      </h2>
       <p className="text-sm text-muted-foreground">
         Files are already stored for {storedAccounts.length} account
-        {storedAccounts.length === 1 ? '' : 's'}. Build your transaction history from these files to
-        browse dates, analyze spending, and apply saved rules. Rebuilding rereads every configured
-        account and applies its latest parser, filters, and matching settings. Accounts whose
-        configurations were removed will not be included.
+        {storedAccounts.length === 1 ? '' : 's'}. Rebuild if you changed files directly on disk;
+        there is no need to upload them again.
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button disabled={rebuild.isPending} onClick={() => rebuild.mutate(undefined)}>
-          {rebuild.isPending ? 'Building transaction history…' : 'Build from existing statements'}
+        <Button
+          variant="outline"
+          disabled={rebuild.isPending}
+          onClick={() => rebuild.mutate(undefined)}
+        >
+          {rebuild.isPending ? 'Building transaction history…' : 'Rebuild transactions'}
         </Button>
         <Link to="/transactions" className={buttonClassName({ variant: 'outline' })}>
           View transactions

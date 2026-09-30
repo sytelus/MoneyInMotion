@@ -4,6 +4,13 @@ MoneyInMotion uses Vitest projects for all three workspaces and Testing Library
 for browser behavior. The suite is designed to protect domain compatibility and
 the hosted security/storage boundary, not just individual utility functions.
 
+UX acceptance additionally follows the [UX design guide](UX_DESIGN_GUIDE.md)
+and [review template](UX_REVIEW_TEMPLATE.md). Map regressions to relevant
+[feedback IDs](UX_FEEDBACK_TRACEABILITY.md), distinguish tested from untested
+states, and retain fresh browser evidence for visual/interaction claims.
+Historical baseline counts below remain dated; a documentation update does not
+rerun or expand those application checks.
+
 ## Required verification
 
 Run from the repository root:
@@ -16,12 +23,13 @@ npm test
 npm run build
 npm run smoke:production
 npm audit --audit-level=high
+bash -n install.sh build.sh run.sh scripts/lib.sh
 ```
 
 `./build.sh test` combines type checking, lint, the production build, and the
 full test suite. CI additionally checks formatting and performs a high-severity
 dependency audit on pushes and pull requests. It then runs the production
-installer (including development-dependency pruning) and the dependency-free
+installer (including development-dependency pruning), checks Bash syntax, and runs the dependency-free
 production smoke test.
 
 ## Test coverage map
@@ -37,6 +45,10 @@ production smoke test.
   validation, staging manifests, content deduplication, collision naming, and
   strict HTTP routes. Persistence tests also cover shared atomic replacement
   and cleanup after a failed rename.
+- Shell behavior tests (in the server Vitest project) exercise real Bash
+  helpers with synthetic package trees and stubbed npm. They check per-package
+  freshness, missing artifacts, deleted sources, pruned-tool warnings, and
+  installation under `NODE_ENV=production` without changing the host install.
 - Web tests cover API failures and payloads, navigation state, account CRUD,
   folder upload interaction, Settings restart semantics, Welcome workflow,
   scope editing, amount/date/reason/name correction, Rules history/reset, and
@@ -47,23 +59,61 @@ percentage as a substitute for fixtures that represent real provider exports.
 
 ## Last verified baseline
 
-The complete acceptance run on 2026-09-17 produced:
+The [2026-09-30 backup/restore review](BACKUP_RESTORE_REVIEW.md) preserves the
+initial restricted run and the subsequent unrestricted acceptance. The latest
+full suite passed **813 tests in 70 files**, with clean type, lint, formatting,
+shell-syntax, production-build, and live HTTP smoke checks. Compatible dependency
+updates resolved all three audit findings; the final audit reported zero
+vulnerabilities. The read-only legacy comparison retained the documented parity
+and unchanged save/reload counts and amounts.
 
-- 63 passing test files and 724 passing tests;
-- 85.49% statement, 75.09% branch, 81.13% function, and 86.32% line coverage;
+A fresh local Chromium drill exercised Settings backup, download, uploaded ZIP
+preview, cancel, exact confirmation, restore/reload, and corrupt-archive rejection
+using synthetic data only. Byte comparisons verified restored data/config and the
+retained previous tree. Cancel/Escape focus restoration was corrected and tested.
+The review records desktop/narrow screenshots and the remaining accessibility,
+large-archive, proxy, and durability limits. Coverage percentages were not rerun.
+
+### Historical baseline from 2026-09-18
+
+The repository quality review on 2026-09-18 includes the preceding schema-free
+UX changes. See the [review record](REPOSITORY_QUALITY_REVIEW.md) for corrections
+and regression coverage, and the [density and clarity review](UX_DENSITY_AND_CLARITY_REVIEW.md)
+for the earlier screenshot/accessibility findings.
+
+The acceptance run produced:
+
+- 68 passing test files and 774 passing tests (33 more cases than the 741-test
+  baseline; the obsolete busy-wait save test was replaced);
+- 85.53% statement, 75.93% branch, 80.78% function, and 86.33% line coverage;
 - clean TypeScript, ESLint, Prettier, shell-syntax, and optimized production
   build checks;
 - zero vulnerabilities from `npm audit --audit-level=high`; and
 - successful production-mode HTTP smoke tests with the expected health,
   static-site fallback, same-origin routing, persisted data after restart, and
-  security-header behavior.
+  security-header behavior, including newer inventory endpoints, API
+  `no-store`, and rejected foreign-origin mutations.
+
+A separate local Chromium check loaded the compiled site, created a synthetic
+account, and submitted a real browser multipart upload. Both mutations returned
+201, the rebuild committed one synthetic record, and API caching was disabled.
+The legacy verifier again selected the same source generation, replayed all 431
+rules, retained 125 resolved / 37 already-unresolved targets, and reported zero
+transaction-count or amount changes across persistence. Its documented
+legacy graph deltas were unchanged. All writes used temporary copies.
+
+At that acceptance run, all 24 then-existing repository Markdown documents were
+checked for local file-link targets with no missing files. The supplied systemd
+unit passed `systemd-analyze verify`.
+ShellCheck was not installed on this host; syntax and behavior checks are not a
+substitute for that deferred static check.
 
 An earlier production-pruning verification ran the smoke test after
 `./install.sh` removed the compiler, test runner, and browser build dependencies.
 The resulting production
 `node_modules` occupied approximately 13 MiB, compared with approximately
-286 MiB for the complete development installation. The supplied systemd unit
-also passes `systemd-analyze verify`.
+286 MiB for the complete development installation. Pruning was not repeated in
+the developer's active installation during this review; CI retains that check.
 
 Coverage is a directional baseline rather than a release threshold. The most
 important safety paths—staging path validation and deduplication, all-or-nothing

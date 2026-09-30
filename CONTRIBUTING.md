@@ -30,6 +30,10 @@ Node.js 24 or newer is required. Use npm workspaces and keep
 
 ## Development expectations
 
+- For UX-affecting changes, use the [UX design guide](docs/UX_DESIGN_GUIDE.md)
+  and [feedback register](docs/UX_FEEDBACK_TRACEABILITY.md). Complete the relevant
+  scenarios in the [review template](docs/UX_REVIEW_TEMPLATE.md); record evidence,
+  untested states, and deferred work instead of treating a build as UX acceptance.
 - Keep domain logic in `packages/core`, server/filesystem adapters in
   `packages/server`, and interaction/presentation in `packages/web`.
 - Maintain strict types and validate untrusted runtime data.
@@ -55,6 +59,7 @@ npm run lint
 npm run format:check
 npm test
 npm run build
+npm run smoke:production
 npm audit --audit-level=high
 ```
 
@@ -79,6 +84,10 @@ Keep a pull request focused. Its description should state:
 - persistence/API compatibility impact;
 - security and privacy considerations; and
 - documentation or migration notes.
+
+For UX changes, include applicable UX/F IDs, the user journey, before/after
+evidence when making visual claims, cancellation/failure checks, and links to
+updated current behavior docs. Keep private financial screenshots out of the PR.
 
 Generated build artifacts, dependency directories, coverage output, private
 data roots, and TypeScript build-info files do not belong in commits. Git

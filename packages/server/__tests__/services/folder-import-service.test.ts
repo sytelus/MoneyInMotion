@@ -116,6 +116,41 @@ describe('stageAndPromoteFolder', () => {
     ).toBe(second.toString());
   });
 
+  it('rejects ambiguous account configurations before staging', () => {
+    const config = arrangeAccount();
+    fs.cpSync(path.join(config.statementsDir, 'Amex'), path.join(config.statementsDir, 'Other'), {
+      recursive: true,
+    });
+    expect(() =>
+      stageAndPromoteFolder(config, [{ buffer: Buffer.from('x') }], ['Amex/new.csv']),
+    ).toThrow(/unique ID/);
+    expect(fs.readdirSync(config.stagingDir)).toEqual([]);
+    expect(fs.existsSync(path.join(config.statementsDir, 'Amex', 'new.csv'))).toBe(false);
+  });
+
+  it.each(['directory-link', 'dangling-link', 'file-parent'])(
+    'rejects unsafe destination parents for the whole batch before staging: %s',
+    (kind) => {
+      const config = arrangeAccount();
+      const outside = path.join(tempDir, 'outside');
+      fs.mkdirSync(outside);
+      const unsafe = path.join(config.statementsDir, 'Amex', 'unsafe');
+      if (kind === 'file-parent') fs.writeFileSync(unsafe, 'not a folder');
+      else
+        fs.symlinkSync(kind === 'directory-link' ? outside : path.join(tempDir, 'missing'), unsafe);
+      expect(() =>
+        stageAndPromoteFolder(
+          config,
+          [{ buffer: Buffer.from('safe') }, { buffer: Buffer.from('unsafe') }],
+          ['Amex/safe.csv', 'Amex/unsafe/statement.csv'],
+        ),
+      ).toThrow(/no files were staged or imported/);
+      expect(fs.readdirSync(config.stagingDir)).toEqual([]);
+      expect(fs.readdirSync(outside)).toEqual([]);
+      expect(fs.existsSync(path.join(config.statementsDir, 'Amex', 'safe.csv'))).toBe(false);
+    },
+  );
+
   it('rejects traversal paths before writing a staging batch', () => {
     const config = arrangeAccount();
     expect(() =>

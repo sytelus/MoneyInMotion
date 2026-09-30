@@ -1,5 +1,5 @@
 /** Derived evidence only: this module never interprets file dates as import events. */
-import type { ImportInfo, Transactions } from '@moneyinmotion/core';
+import { parseDate, type ImportInfo, type Transactions } from '@moneyinmotion/core';
 
 export interface SourceInventoryItem {
   source: ImportInfo;
@@ -27,7 +27,9 @@ export function sourceInventory(transactions: Transactions): SourceInventoryItem
     item.recordCount += 1;
     if (!item.accountIds.includes(transaction.accountId))
       item.accountIds.push(transaction.accountId);
-    const date = transaction.correctedTransactionDate.slice(0, 10);
+    // Use the same UTC reporting day as the transaction explorer, including
+    // edited dates with offsets and legacy date strings.
+    const date = parseDate(transaction.correctedTransactionDate).toISOString().slice(0, 10);
     if (item.from == null || date < item.from) item.from = date;
     if (item.to == null || date > item.to) item.to = date;
   }

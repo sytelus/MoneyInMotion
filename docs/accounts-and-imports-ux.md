@@ -4,20 +4,35 @@ This workspace separates account configuration from the repeated task of importi
 statements. It exposes existing storage evidence without changing the financial
 schema or claiming that a file receipt proves a successful rebuild.
 
+Review changes using [UX-01, UX-02, UX-05, and UX-10 through UX-14](UX_DESIGN_GUIDE.md).
+The [feedback register](UX_FEEDBACK_TRACEABILITY.md) retains the specific existing-data,
+configuration, copy, duplication, preflight, results, and folder-explorer critiques.
+Use this document for current behavior and the review template for fresh evidence.
+
 ## User tasks and navigation
 
 - **Accounts** creates and edits account configurations, searches/filters them,
-  inspects each account's snapshot records, duplicates settings into an editable
-  unsaved form, and reconnects preserved folders.
+  views each account's transactions, duplicates settings into an editable
+  unsaved form, and configures preserved folders. Wide screens place account
+  counts on the left, the account list in the center, and tasks on the right.
+  On small screens, account tasks can be expanded without obscuring the list.
 - **Imports → Import statements** selects a folder, checks it locally, uploads
   eligible statement files, and explains the immediate rebuild result.
-- **Imports → Statement sources** searches the files referenced by the current
+- **Imports → Statement explorer** browses actual account/year/month folders,
+  counts stored files, and explains eligibility, exclusions, and unsupported
+  formats. This includes files with no transactions in the current snapshot.
+- **Imports → Imported transactions by file** searches the files referenced by the current
   snapshot, shows transaction-date coverage, and drills into their source records.
-- **Imports → Upload receipts** searches saved browser-upload manifests and
+- **Imports → Upload history** searches saved browser-upload manifests and
   explains each file's promotion, duplicate, or rejection result. A receipt can
   be downloaded as JSON for local inspection.
 
-The Imports tab is represented by `?tab=sources` or `?tab=history`. Source search,
+The Imports tab is represented by `?tab=files`, `?tab=sources` or `?tab=history`.
+The file explorer's selected folder uses `folder=<relative path>`; search and
+status filters include descendants of that folder. File search/status/sort/page
+are also URL state (`fileSearch`, `fileStatus`, `fileSort`, `filePage`), so browser
+Back restores the view after opening a transaction. On phones, the workspace
+tabs become a select control and the folder tree can be expanded. Source search,
 account, sort, and page filters are also URL state, so drilling into transactions
 and using Back returns to the previous source list. Transaction drill-down uses
 the shared `transactionsHref()` contract, not component-specific filter state.
@@ -29,9 +44,10 @@ have recursive year/month folders according to `scanSubFolders`; nested
 `AccountConfig.json` files are not independent accounts.
 
 Creating an account does not silently reuse an existing directory. If a folder
-has no configuration, Accounts lists it under **Folders without an account
-configuration**. **Reconnect folder** explicitly writes only the missing
-configuration, preserving every statement file. Surviving snapshot provenance is
+has no configuration, Accounts lists it under **Folders to configure**.
+**Configure account** opens an unsaved form. **Save and rebuild** writes the
+missing configuration, preserving statement files, then rebuilds transactions
+from all configured accounts. Surviving snapshot provenance is
 checked for the original account identity, which may differ from the folder name.
 When unique, that ID is prefilled and locked, and the server rejects conflicting
 IDs. Title, institution, account type, and matching tags are prefilled from the
@@ -46,16 +62,26 @@ must restore the original configuration from backup before rebuilding. Folder
 names are validated as safe single path segments and may contain spaces, unlike
 the stricter account-ID syntax.
 
-Editing configuration does not immediately rewrite the snapshot. The editor and
-saved result explain that a rebuild is needed to apply updated parser, matching,
-account title/type, scan, or file-filter settings to existing records.
+**Save and rebuild** also applies edits to existing accounts: first save the
+configuration, then call the existing rebuild endpoint. The API configuration
+endpoint itself still only saves settings. The UI reports files read,
+transaction-record counts, saved rules processed, and unavailable rule targets.
+If rebuilding fails, the settings stay saved and the prior snapshot stays
+available; the result explains that distinction and links to Imports for retry.
+Do not describe this two-step operation as one atomic transaction. Creating an
+empty account or a duplicate does not trigger a rebuild.
+
+The editor explains **Transaction matching names** with purchases/payments/
+transfers examples. **Statement files to process** accepts comma-separated
+filename patterns. Supported parser formats are CSV, JSON and IIF; `.xls` and
+`.xlsx` must be exported as CSV, not advertised as supported formats.
 
 **Duplicate** copies the institution, account type, file filters, matching tags,
 and subfolder behavior into the Add Account form. It never saves immediately:
 the account ID is blank, the form says that nothing has been saved, and the user
 must review the copied values and explicitly create the new account.
 
-**Remove config** means removing `AccountConfig.json`, not erasing finances.
+**Remove account** means removing `AccountConfig.json`, not erasing finances.
 Current snapshot records remain until rebuild; the next rebuild excludes that
 account and can remove its records from the snapshot. Saved rules remain and
 their targets may become unavailable. The confirmation explicitly explains this
@@ -99,6 +125,20 @@ or a count of changed transactions.
 
 ## Evidence: what existing data can and cannot prove
 
+The live file explorer reads account settings and filesystem metadata, not
+statement contents. Folder counts include all regular files except account
+settings, including files excluded from parsing. It never follows symbolic
+links. Eligibility means that file patterns, subfolder settings, and supported
+extensions allow a parse attempt; it does not prove a successful import or
+transaction creation. Source links appear only when the current snapshot
+references the same path. Modified dates are explicitly filesystem dates.
+Missing transaction history is reported as unavailable evidence, not zero
+matching records.
+
+Inventory listing is bounded at 20,000 entries and 40 folder levels. Truncated
+or unreadable folders are disclosed and counts must be treated as incomplete.
+Accounts suppress optional file-count summaries when inventory is incomplete.
+
 | Displayed evidence                  | Existing source                                            | Interpretation                                                |
 | ----------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------- |
 | Source filename, format, identifier | `ImportInfo` referenced by current records                 | Current provenance, not a complete import journal             |
@@ -126,7 +166,9 @@ Those timestamps would be generated by the application, not by bank exports.
 
 - `components/accounts/AccountFormDialog.tsx` owns account editor behavior;
   `pages/AccountsPage.tsx` owns list/navigation/lifecycle feedback.
-- `pages/ImportsPage.tsx` composes upload, source inventory, and receipt views.
+- `components/importing/StatementExplorer.tsx` owns read-only file navigation;
+  `services/statement-inventory-service.ts` owns bounded filesystem annotation.
+- `pages/ImportsPage.tsx` composes upload, file explorer, source inventory, and receipt views.
 - `lib/import-preflight.ts` owns deterministic local preflight rules.
 - `lib/import-evidence.ts` derives source inventory and explicitly qualified dates.
 - `components/importing/SourceInventory.tsx` renders 25 source entries per page;

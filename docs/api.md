@@ -5,6 +5,11 @@ Production API routes and the website share an origin. All endpoints are below
 multipart form data. There is currently no authentication, so network access to
 these endpoints must be restricted by deployment controls.
 
+UI consumers should apply [UX-10, UX-12, UX-13, and UX-14](UX_DESIGN_GUIDE.md):
+translate transport errors into actionable task guidance, preflight before
+submission, distinguish partial outcomes, and expose only supported provenance.
+An available endpoint alone does not complete the corresponding user workflow.
+
 Errors use an HTTP error status and normally return:
 
 ```json
@@ -17,6 +22,12 @@ Errors use an HTTP error status and normally return:
 Unexpected production errors do not expose internal exception details.
 Unknown `/api` routes return the same JSON shape with status 404; they never
 fall through to the website's HTML shell.
+
+All API responses use `Cache-Control: no-store`. Mutations from a browser must
+have a matching `Origin` host/port when supplied and must not carry cross-site
+or same-site `Sec-Fetch-Site` values; violations return 403 before body parsing.
+Proxies must preserve the public `Host`. CLI clients without browser-origin
+headers still work; these checks do not replace deployment authentication.
 
 ## Health
 
@@ -49,6 +60,35 @@ Accepts one or more of:
 path segment; port is 1–65535. The update is persisted for the next restart and
 does not rebind a running repository or listener.
 
+## Backups and restore
+
+The [backup guide](backup-and-restore.md) defines archive contents, trust, limits,
+same-location restore, and recovery. These routes require Python 3.9+ on the
+server and are as sensitive as all other data/configuration endpoints.
+
+| Endpoint                             | Request                                                                 | Result                                                                                                                                                |
+| ------------------------------------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/backups`                   | None                                                                    | Server home directory, active username/data destination, default filename pattern, archive size limit, matching ZIPs sorted newest filename first.    |
+| `POST /api/backups`                  | Empty JSON object                                                       | 201 with archive name/path, compressed size, creation time, file count and expanded bytes. Creates a new immutable ZIP; no rebuild.                   |
+| `GET /api/backups/download/:name`    | Listed basename                                                         | Attachment download; only matching regular files directly in the server home, not arbitrary paths.                                                    |
+| `POST /api/backups/preview`          | `{ "name": "<listed-backup>.zip" }`                                     | Validates and privately stages the saved ZIP. Returns token, expiry, archive summary, exact destination and port restart requirement. No replacement. |
+| `POST /api/backups/preview-upload`   | Multipart field `archive`, one ZIP                                      | Same preview response. Disk-backed temporary upload; 2 GiB maximum; no additional form fields.                                                        |
+| `DELETE /api/backups/preview/:token` | None                                                                    | Discards the matching private preview; does not mutate user data.                                                                                     |
+| `POST /api/backups/restore`          | `{ "token": "<preview-uuid>", "confirmUsername": "<active-username>" }` | Replaces the whole active data tree/config; returns `restored`, summary, `recoveryDirectory`, and `restartRequired`.                                  |
+
+Only one preview is retained per process; it expires after 15 minutes. Restore
+rechecks the token, exact username, destination and current file/config revision.
+A stale/replaced preview returns 409. Unsafe or damaged archives return 400;
+multipart limit violations return 413. While maintenance runs, data API requests
+return 423 with retry guidance; health remains available. Delayed JSON/multipart
+requests recheck the maintenance gate before writes. A failed rollback leaves
+data APIs blocked pending restart/recovery.
+
+Preview files and uploaded ZIPs are temporary; confirmation never merges them
+into existing data. Retained previous data is separate from the new active tree.
+The browser reloads after success to clear cached transaction state. No new
+financial fields or import/rule event history are created.
+
 ## Accounts
 
 ### `GET /api/accounts`
@@ -61,6 +101,9 @@ is not a reliable first-import timestamp.
 
 If any discovered `AccountConfig.json` is malformed or unsupported, discovery
 returns 422 with its path instead of returning an incomplete account list.
+Account configuration files must be regular files; symbolic links are rejected.
+Duplicate account IDs and configured folder names that differ only by case are
+also rejected with 422. Repair the named configs/folders before importing.
 
 ### `POST /api/accounts`
 
@@ -78,6 +121,8 @@ case-insensitive.
 Updates a config atomically. The account ID may change only before statement
 files and transactions exist. A safe rename moves the account directory; if
 the subsequent config replacement fails, the directory rename is rolled back.
+This endpoint does not rebuild. The website's **Save and rebuild** command
+calls it first, then `POST /api/import/rebuild`, reporting both outcomes.
 
 ### `DELETE /api/accounts/:id`
 
@@ -127,6 +172,28 @@ failure leaves the active graph unchanged. A stale exact transaction ID returns
 409; malformed input returns 400.
 
 ## Imports
+
+### `GET /api/import/files`
+
+Returns a read-only inventory of the active Statements directory:
+
+```json
+{ "entries": [], "truncated": false, "unreadableFolders": 0 }
+```
+
+Each entry has `path` (relative POSIX path), `name`, `kind` (`folder`, `file`,
+`symlink`), `accountId`, `status`, `reason`, nullable `sizeBytes`/`modifiedAt`,
+and descendant `fileCount`/`eligibleCount` for folders. Status is `eligible`,
+`ignored`, `unsupported`, `unconfigured`, `configuration`, `symlink`, or
+`unreadable`. Folder counts exclude `AccountConfig.json` and links.
+
+Uses only top-level account settings and filesystem metadata; does not read
+statement bodies, follow links, write files, or create import history.
+An eligible file has not necessarily been parsed or imported. Modified dates
+are filesystem dates. Missing Statements returns an empty inventory, while an
+invalid top-level account configuration returns 422. Traversal stops at 20,000
+entries or 40 levels and reports truncation. Partial counts are not complete
+inventory totals. This endpoint has no user-supplied filesystem path parameter.
 
 ### `POST /api/import/folder`
 

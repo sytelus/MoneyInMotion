@@ -134,6 +134,18 @@ function buildEmptyStats(): AccountStats {
   };
 }
 
+/** Creation/renaming must not introduce a folder ambiguous to upload matching. */
+function conflictingFolder(
+  statementsDir: string,
+  name: string,
+  currentName?: string,
+): string | undefined {
+  if (!fs.existsSync(statementsDir)) return undefined;
+  return fs
+    .readdirSync(statementsDir)
+    .find((entry) => entry !== currentName && entry.toLowerCase() === name.toLowerCase());
+}
+
 async function getAccountStats(cache: TransactionCache): Promise<Map<string, AccountStats>> {
   const statsByAccount = new Map<string, AccountStats>();
   const transactions = await cache.getTransactions();
@@ -143,7 +155,13 @@ async function getAccountStats(cache: TransactionCache): Promise<Map<string, Acc
     const createDate = transaction.auditInfo.createDate ?? null;
 
     existing.transactionCount += 1;
-    if (createDate && (!existing.lastImportedAt || createDate > existing.lastImportedAt)) {
+    // Legacy audit times use a space separator; new times use ISO's T. String
+    // ordering disagrees with time ordering when these formats or offsets mix.
+    if (
+      createDate &&
+      Number.isFinite(Date.parse(createDate)) &&
+      (!existing.lastImportedAt || Date.parse(createDate) > Date.parse(existing.lastImportedAt))
+    ) {
       existing.lastImportedAt = createDate;
     }
 
@@ -270,7 +288,7 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         const original = originalAccounts[0];
         if (original && original.id !== accountId) {
           res.status(409).json({
-            error: `This folder belongs to historical account ID "${original.id}". Reconnect with that exact ID to preserve transactions and rule targets.`,
+            error: `This folder belongs to historical account ID "${original.id}". Configure it with that exact ID to preserve transactions and rule targets.`,
             status: 409,
           });
           return;
@@ -298,14 +316,25 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
           fs.existsSync(configPath)
         ) {
           res.status(409).json({
-            error: 'Only an existing, unconfigured account folder can be reconnected.',
+            error: 'Only an existing folder without an AccountConfig.json can be configured here.',
             status: 409,
           });
           return;
         }
-      } else if (fs.existsSync(accountDir)) {
+      } else if (conflictingFolder(config.statementsDir, accountId)) {
         res.status(409).json({
-          error: `Folder "${accountId}" already exists. Use Reconnect folder to preserve and reconnect its statements.`,
+          error: `Folder "${accountId}" already exists. Use Configure account on that folder to preserve its statements.`,
+          status: 409,
+        });
+        return;
+      }
+      if (
+        reconnectFolder != null &&
+        conflictingFolder(config.statementsDir, reconnectFolder, reconnectFolder)
+      ) {
+        res.status(409).json({
+          error:
+            'Another folder has the same name ignoring letter case. Give account folders distinct names before configuring them.',
           status: 409,
         });
         return;
@@ -370,6 +399,10 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         return;
       }
 
+      // Await snapshot loading before checking disk identities. No await may
+      // separate those checks from the write: another request could delete or
+      // rename this account while the cache is loading.
+      const statsByAccount = await getAccountStats(cache);
       const discoveredAccounts = discoverAccountConfigs(config.statementsDir);
       const currentAccount = discoveredAccounts.find(
         (account) => account.config.accountInfo.id.toLowerCase() === currentId.toLowerCase(),
@@ -396,7 +429,6 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         return;
       }
 
-      const statsByAccount = await getAccountStats(cache);
       const currentStats =
         statsByAccount.get(currentAccount.config.accountInfo.id) ?? buildEmptyStats();
       const storedCurrentId = currentAccount.config.accountInfo.id;
@@ -424,7 +456,7 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         }
 
         const targetDir = path.join(path.dirname(currentAccount.accountDir), nextId);
-        if (targetDir !== currentAccount.accountDir && fs.existsSync(targetDir)) {
+        if (conflictingFolder(config.statementsDir, nextId, currentAccount.relativeDirectory)) {
           res.status(409).json({
             error: `Cannot rename account to "${nextId}" because that folder already exists.`,
             status: 409,

@@ -1,8 +1,9 @@
 /**
  * Browser folder upload staging and content-based promotion.
  *
- * Every supplied file is first written beneath a unique staging batch. The
- * service then maps it to an existing account directory, compares SHA-256
+ * Paths and account mappings are validated before any filesystem writes.
+ * Every accepted path is then written beneath a unique staging batch. The
+ * service compares SHA-256
  * content against that account's current statements, and promotes only new
  * content. A durable manifest records every decision for support and audit.
  *
@@ -119,16 +120,31 @@ function findAccountForPath(
   relativePath: string,
   accounts: DiscoveredAccountConfig[],
 ): DiscoveredAccountConfig | null {
-  const lower = relativePath.toLowerCase();
-  // Account configs are top-level; prefix matching also permits statement subfolders.
+  // Only the first segment identifies an account; nested configs are not
+  // supported. Discovery already enforces case-insensitive uniqueness.
+  const segments = relativePath.split('/');
+  if (segments.length < 2) return null;
   return (
-    [...accounts]
-      .sort((left, right) => right.relativeDirectory.length - left.relativeDirectory.length)
-      .find((account) => {
-        const accountPath = account.relativeDirectory.toLowerCase();
-        return lower.startsWith(`${accountPath}/`);
-      }) ?? null
+    accounts.find(
+      (account) => account.relativeDirectory.toLowerCase() === segments[0]!.toLowerCase(),
+    ) ?? null
   );
+}
+
+/** Lexical containment alone does not prevent writes through existing links. */
+function validateDestinationPath(account: DiscoveredAccountConfig, relativePath: string): void {
+  const parts = relativePath.split('/').slice(1);
+  let current = account.accountDir;
+  for (const [index, part] of parts.entries()) {
+    current = path.join(current, part);
+    const stat = fs.lstatSync(current, { throwIfNoEntry: false });
+    if (!stat) break;
+    if (stat.isSymbolicLink() || (index < parts.length - 1 && !stat.isDirectory())) {
+      throw new FolderUploadValidationError(
+        `Cannot import "${relativePath}": its destination contains a symbolic link or a non-directory parent. Choose a regular account subfolder; no files were staged or imported.`,
+      );
+    }
+  }
 }
 
 function listStatementHashes(account: DiscoveredAccountConfig): Map<string, string> {
@@ -207,6 +223,13 @@ export function stageAndPromoteFolder(
         'Fix the selected folder names and try again; no files were staged or imported.',
     );
   }
+  // Check the entire batch before staging, not just each file as it is written.
+  // The supported single writer performs these checks and promotions without
+  // yielding; external administrators must not change folders during imports.
+  for (const relativePath of accountRelativePaths) {
+    validateDestinationPath(findAccountForPath(relativePath, accounts)!, relativePath);
+  }
+
   const batchId = createBatchId();
   const batchDir = path.join(config.stagingDir, batchId);
   const stagedFilesDir = path.join(batchDir, 'files');

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Transactions } from '@moneyinmotion/core';
-import { ArrowUpRight, FileText, History, UploadCloud } from 'lucide-react';
+import { ArrowUpRight, FileText, FolderTree, History, UploadCloud } from 'lucide-react';
 import { useAccounts, useTransactions } from '../api/hooks.js';
 import { Header } from '../components/layout/Header.js';
 import { buttonClassName, Button } from '../components/ui/button.js';
@@ -10,6 +10,16 @@ import { ExistingStatements } from '../components/importing/ExistingStatements.j
 import { SourceInventory } from '../components/importing/SourceInventory.js';
 import { UploadHistory } from '../components/importing/UploadHistory.js';
 import { Notice } from '../components/ui/notice.js';
+import { StatementExplorer } from '../components/importing/StatementExplorer.js';
+import { Select } from '../components/ui/select.js';
+
+const workspaceTabs = [
+  { id: 'upload', label: 'Import statements', Icon: UploadCloud },
+  { id: 'files', label: 'Statement explorer', Icon: FolderTree },
+  { id: 'sources', label: 'Imported transactions by file', Icon: FileText },
+  { id: 'history', label: 'Upload history', Icon: History },
+] as const;
+type WorkspaceTab = (typeof workspaceTabs)[number]['id'];
 
 /** Separate import operations and traceable evidence from account configuration. */
 export function ImportsPage() {
@@ -21,22 +31,22 @@ export function ImportsPage() {
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const tab = requestedTab === 'sources' || requestedTab === 'history' ? requestedTab : 'upload';
-  const setTab = (next: 'upload' | 'sources' | 'history') => {
+  const tab =
+    requestedTab === 'sources' || requestedTab === 'history' || requestedTab === 'files'
+      ? requestedTab
+      : 'upload';
+  const setTab = (next: WorkspaceTab) => {
     setSearchParams(next === 'upload' ? {} : { tab: next });
   };
   return (
     <div className="min-h-screen bg-muted/20">
       <Header />
-      <main className="mx-auto max-w-7xl space-y-7 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <main className="workspace">
+        <div className="workspace-heading">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              Your data, traceable
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">Imports &amp; sources</h1>
+            <h1>Statements &amp; imports</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Bring in statements, check what happened, and trace any record back to its source.
+              Import statements, browse stored files and review previous uploads.
             </p>
           </div>
           <Link to="/accounts" className={buttonClassName({ variant: 'outline' })}>
@@ -44,17 +54,20 @@ export function ImportsPage() {
             <ArrowUpRight className="ml-2 h-4 w-4" />
           </Link>
         </div>
+        <label className="block text-xs font-medium sm:hidden">
+          Workspace view
+          <Select
+            className="mt-1"
+            value={tab}
+            onChange={(event) => setTab(event.target.value as WorkspaceTab)}
+            options={workspaceTabs.map((item) => ({ value: item.id, label: item.label }))}
+          />
+        </label>
         <nav
           aria-label="Import workspace"
-          className="flex flex-wrap gap-2 border-b border-border pb-3"
+          className="hidden flex-wrap gap-2 border-b border-border pb-3 sm:flex"
         >
-          {(
-            [
-              { id: 'upload', label: 'Import statements', Icon: UploadCloud },
-              { id: 'sources', label: 'Statement sources', Icon: FileText },
-              { id: 'history', label: 'Upload receipts', Icon: History },
-            ] as const
-          ).map(({ id, label, Icon }) => (
+          {workspaceTabs.map(({ id, label, Icon }) => (
             <Button
               key={id}
               variant={tab === id ? 'default' : 'ghost'}
@@ -66,6 +79,7 @@ export function ImportsPage() {
             </Button>
           ))}
         </nav>
+        {tab === 'files' && <StatementExplorer transactions={transactions} />}
         {tab === 'upload' && (
           <div className="space-y-5">
             {accounts.isLoading && <p role="status">Loading account folders…</p>}

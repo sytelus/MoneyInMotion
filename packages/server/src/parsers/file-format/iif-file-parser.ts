@@ -25,8 +25,9 @@ export class IifFileParser implements FileFormatParser {
     const lines = content.split(/\r?\n/);
     const results: ParsedRow[] = [];
 
-    // Map from section name to column headers
-    const sectionHeaders: Record<string, string[]> = {};
+    // Only TRNS records enter the financial model; other section headers do
+    // not need to be retained.
+    let columns: string[] | null = null;
 
     for (const line of lines) {
       const trimmedLine = line.trim();
@@ -37,15 +38,19 @@ export class IifFileParser implements FileFormatParser {
 
       // Header definition lines start with "!"
       if (sectionTag.startsWith('!')) {
-        const sectionName = sectionTag.substring(1);
-        sectionHeaders[sectionName] = fields.slice(1).map((f) => f.toLowerCase().trim());
+        if (sectionTag === '!TRNS') {
+          columns = fields.slice(1).map((f) => f.toLowerCase().trim());
+          const namedColumns = columns.filter(Boolean);
+          if (new Set(namedColumns).size !== namedColumns.length) {
+            throw new Error('IIF TRNS header contains duplicate column names.');
+          }
+        }
         continue;
       }
 
       // Only process TRNS data rows
       if (sectionTag !== 'TRNS') continue;
 
-      const columns = sectionHeaders['TRNS'];
       if (!columns) {
         throw new Error('IIF TRNS data appeared before its !TRNS header.');
       }
