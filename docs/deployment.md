@@ -1,9 +1,9 @@
-# Production deployment
+# Optional: deploy on a Linux VM
 
-MoneyInMotion is designed to run cheaply on one ordinary Linux VM. Production
-has three moving parts: one Node.js process, one data directory, and an optional
-HTTPS reverse proxy. There is no Docker, database, message queue, object store,
-or cluster to operate.
+The normal way to run MiM is on your own computer with `run.bat` or `run.sh`
+(see the [README](../README.md#quick-start)). This page covers the optional
+setup on a small Linux VM: one Node.js process, one data directory, an optional
+HTTPS reverse proxy, and systemd. There is no Docker, database, or cluster.
 
 ```text
 browser ──HTTPS──> reverse proxy (optional on a private network)
@@ -155,11 +155,8 @@ Before upgrading, back up the active user directory and configuration. CI
 should pass before the revision is deployed. After startup, inspect Accounts,
 the latest month, and Rules.
 
-For release handoff, follow [UX-19 and UX-20](UX_DESIGN_GUIDE.md): state which
-build is running, the production URL/command, active data location, restart or
-rebuild needs, checks performed, and remaining limitations. A successful build
-or Git push does not by itself establish that the running user-facing service
-has been upgraded.
+A successful build or `git push` does not upgrade the running service; check
+`/api/health` and the UI after restarting.
 
 ## Backup and recovery
 

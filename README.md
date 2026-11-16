@@ -1,196 +1,164 @@
 # MoneyInMotion
 
-MoneyInMotion (MiM) is a self-hosted personal-finance website. It imports
-statement exports from banks, cards, PayPal, Amazon, Etsy, and QuickBooks,
-reconciles related transactions, and presents one editable financial history.
-The person using MiM needs only a browser: source files, snapshots, rules, and
-all processing live on the web server.
+MoneyInMotion (MiM) is a personal-finance app for one person. You download
+statement exports from banks, cards, PayPal, Amazon, and Etsy. MiM imports
+them, connects related records into one history, lets you correct anything,
+and shows where the money went. It runs on your own computer and you use it
+in a browser.
 
-The current release intentionally serves one configured user at a time. The
-username folder is part of the existing data layout, not a multi-tenant service.
-Do not expose an unprotected instance to the public Internet; see
-[Security](SECURITY.md).
+## Goals
 
-## What the website does
+These goals decide what gets built and how. The behavior docs under
+[docs/](docs/) describe how the current code meets them.
 
-- Manages accounts represented by exactly one top-level folder beneath
-  `<data-root>/<username>/Statements`, each with one root `AccountConfig.json`.
-- Accepts a browser-selected directory containing one subfolder per account.
-- Stages every upload, identifies identical content with SHA-256, promotes only
-  new statements, and records every decision in a batch manifest.
-- Automatically rebuilds the financial snapshot after an upload. A parse error
-  preserves the last known-good snapshot and reports the affected file.
-- Reconciles order-history items and card charges, recognizes inter-account
-  transfers, normalizes merchant names, and builds monthly summaries.
-- Corrects amount, date, reason, merchant/payee, category, note, and flag fields.
-  A correction can target selected transactions or become a reusable rule.
-- Opens on a date-scoped Overview with recorded credits/debits, daily/monthly
-  activity, category/merchant breakdowns, review queues, and linked transfers.
-  Figures drill into filtered transactions; source-record inspection is kept
-  separate from non-duplicated reporting totals.
-- Supports all-date/year/custom periods, search, filters, sorting, single/batch
-  corrections, selected/filtered CSV export, aggregate reports, and print.
-- Explains each transaction's statement source and current correction chain;
-  rules have searchable matched-record inspection, account/purpose filters,
-  duplication, bulk editing, and JSON export.
-- Separates account management from Imports, including safe account-folder
-  configuration, save-and-rebuild, pre-upload checks, immediate outcomes, and
-  saved upload receipts. A read-only statement explorer shows folder hierarchies,
-  file counts, parsing eligibility, and links to existing transactions.
-- Uses responsive account workspaces and a compact, impact-sorted rule table,
-  with expandable detail, contextual help, and high-contrast status colors.
-- Preserves imported values. User intent is stored separately in
-  `LatestMergedEdits.json`. Rules can be created, edited, or deleted individually
-  or in bulk after previewing their effects; prior rule files are backed up.
-- Creates complete ZIP backups from Settings and restores the saved user data
-  and configuration after validation and confirmation, retaining the replaced
-  data for recovery. See [Backup and restore](docs/backup-and-restore.md).
+**Who and where**
+
+- **One user:** the project owner. There is no onboarding, multi-user support,
+  or login, and none is planned.
+- **Your own computer, Windows first.** `run.bat` is the primary way to run
+  it, and `run.sh` covers Linux and macOS. A Linux VM is an optional
+  deployment ([docs/deployment.md](docs/deployment.md)).
+- **Private.** Financial data stays on the machine. No machine learning and
+  no cloud services. Categorization, matching, and insights use deterministic
+  rules and heuristics.
+
+**Data**
+
+- **Source files are never modified.** Imported statements are kept as
+  received. Every correction is a separate edit layered on top of them.
+- **Every correction can be changed or removed.** Removing one replays the
+  rest, and everything can be rebuilt from the statements plus the saved edits.
+- **One folder per account:** `Statements/<account>/AccountConfig.json`,
+  which keeps the account mapping explicit and simple.
+- **Every number is traceable.** A total leads to the transactions behind it,
+  and each transaction leads to its statement file, row, and corrections.
+- **Nothing fails silently.** A bad file or invalid config is reported, and
+  the last good state is kept.
+
+**Meaning**
+
+- **Connect related records.** Transfers between accounts are not income or
+  spending, a card payment is not an expense, and Amazon or Etsy order lines
+  replace the card charge they explain. Duplicate statement rows are merged.
+- **Income, spending, savings.** The goal is to report earned **Income**,
+  **Spending** with refunds and discounts subtracted from the purchases they
+  offset, and the difference as **Savings / deficit**. Today the Overview
+  shows recorded credits, debits, and net activity instead, with refunds
+  counted as credits. See [docs/financial-reports.md](docs/financial-reports.md).
+- **USD, with foreign-currency support planned.** Amounts are USD. For a
+  foreign-currency transaction, the goal is to use the conversion the
+  institution supplied, or look up a rate for that date and let you confirm
+  it. The original amount, currency, and rate stay visible. This is not
+  implemented yet.
+
+**Engineering**
+
+- **Keep it simple:** one Node.js process, JSON files on disk, no database or
+  background services, until a measured need says otherwise.
+- **Legacy C# compatibility is temporary.** The original MoneyAI (C#) data
+  format is read and written only so the new code can be checked against the
+  old results ([docs/legacy-migration.md](docs/legacy-migration.md)). Once the
+  migration is confirmed, the legacy code paths will be removed.
 
 ## Quick start
 
-Server prerequisites are Git and Node.js 24 or newer. Browser users install
-nothing.
-Full-data backup and restore additionally require Python 3.9+ (`python3`) on
-the server, using only its standard library.
+You need Node.js 24 or newer and Git. Backup and restore also need Python
+3.9+, using only its standard library.
 
-```bash
+```bat
 git clone https://github.com/sytelus/MoneyInMotion.git
 cd MoneyInMotion
-./install.sh
-./run.sh
+run.bat
 ```
 
-Open the URL printed at startup (`http://localhost:3001` by default), or the
-HTTPS URL of the reverse proxy in front of the server. The default storage
-location is:
+On Linux or macOS, use `./run.sh` instead. The first run installs
+dependencies and builds; later runs rebuild only when the source changed.
+Open the URL the server prints (`http://localhost:3001` by default).
 
-```text
-~/mim_root/<operating-system-username>/
-```
+For development with hot reload, use `run.bat dev` (or `./run.sh dev`) and
+open `http://localhost:5173`.
 
-View or change the root, active username, and port in Settings. The single
-configuration source is `~/.moneyinmotion/config.json`; changes made in the
-website or directly in that file take effect after a restart.
+## Configuration and data
 
-For development with API and UI hot reload:
-
-```bash
-./install.sh --development
-./run.sh dev
-# website: http://localhost:5173
-# API:     port from ~/.moneyinmotion/config.json (default 3001)
-```
-
-## Statement import workflow
-
-1. Open Accounts and create or review an account. The displayed account folder
-   is the name MiM expects in an uploaded directory.
-2. Open Imports and select an account folder or a local directory containing
-   one subfolder per configured account.
-   Browsers send file bytes and relative paths; they never disclose or grant
-   the server access to an arbitrary local path.
-3. Review the detected folders. A misspelled or unknown account folder blocks
-   the upload until it is fixed; no file bytes are sent.
-4. Choose **Upload and rebuild**. MiM stores a staging copy of submitted files,
-   rejects configuration files and
-   unsafe paths, skips statement content already present for the account,
-   and promotes new files to `Statements`.
-5. The server rebuilds from every accepted statement and replays saved edits.
-   The new snapshot is committed only if every statement parses successfully.
-6. Review the new, duplicate, and rejected counts plus the expandable outcome
-   recorded for every selected file.
-
-See [Data and imports](docs/data-and-imports.md) for the precise storage and
-deduplication contract.
-
-For the complete user workflow and its limitations, see the
-[UX lifecycle review](docs/UX_LIFECYCLE_REVIEW.md),
-[financial reports](docs/financial-reports.md), and
-[rules/provenance guide](docs/rules-and-provenance-ux.md).
-First-ever import times and immutable rule history are not reconstructed from
-file timestamps; proposed history metadata is documented for separate review.
-
-## Repository layout
-
-```text
-packages/core/    Framework-independent TypeScript domain model, matching,
-                  aggregation, rules, and legacy-compatible serialization
-packages/server/  Express API, parsers, filesystem repositories, staging,
-                  snapshot lifecycle, and production static-file hosting
-packages/web/     React single-page website and accessible component UI
-scripts/          Build helpers and read-only legacy verification
-deploy/           One small systemd service definition for a Linux VM
-docs/             Architecture, operations, user behavior, and migration notes
-```
-
-This is an npm-workspaces monorepo. The production server serves the compiled
-React application and `/api` from one origin.
-
-## Technology
-
-- TypeScript 5 across all packages
-- React 19, React Router 7, TanStack Query, Zustand, Radix UI, Lucide,
-  and Tailwind CSS for the browser application
-- Express 5, Zod 4, Multer, Papa Parse, and Helmet for the server
-- Vite 8 for the web build and Vitest 4 with Testing Library for tests
-- Node.js 24 as the supported server and CI runtime
-
-## Commands
-
-| Command                                          | Purpose                                                             |
-| ------------------------------------------------ | ------------------------------------------------------------------- |
-| `./install.sh`                                   | Build a VM release and prune development-only packages              |
-| `./install.sh --development`                     | Install the compiler, test, lint, and hot-reload toolchain          |
-| `./run.sh`                                       | Production website and API; rebuild automatically when possible     |
-| `./run.sh dev`                                   | Development API and website with hot reload                         |
-| `./build.sh`                                     | Type check, lint, and build every package                           |
-| `./build.sh test`                                | Build, then run the full test suite                                 |
-| `./run.sh prod`                                  | Explicit equivalent of the default `./run.sh`                       |
-| `npm test`                                       | Run all unit, integration, route, storage, parser, and UI tests     |
-| `npm run test:coverage`                          | Run tests and generate a coverage report                            |
-| `npm run format:check`                           | Check repository formatting without changing files                  |
-| `npm run format`                                 | Apply the repository's Prettier formatting rules                    |
-| `npm run smoke:production`                       | Verify a built production server and restart in isolation           |
-| `npm run verify:legacy -- /absolute/legacy/root` | Read-only compatibility report using an isolated temporary copy     |
-| `npm run clean`                                  | Remove package build output while preserving installed dependencies |
-
-## Configuration
-
-`~/.moneyinmotion/config.json` is the only application configuration source:
+`~/.moneyinmotion/config.json` (on Windows, `%USERPROFILE%\.moneyinmotion\config.json`)
+is the only application setting source. It is created on first start and is
+editable in **Settings**. Changes take effect after a restart.
 
 ```json
 {
-  "dataRoot": "/home/you/mim_root",
+  "dataRoot": "E:/data/mim_root",
   "username": "you",
   "port": 3001
 }
 ```
 
-On first start the app creates this file with `~/mim_root`, the operating-system
-username, and port `3001`. A legacy `dataPath` inside the file is migrated once.
-Process environment variables do not override these settings. An invalid file
-stops startup and remains untouched so it can be repaired; move it aside only
-when intentionally returning to generated defaults.
+JSON treats a backslash as an escape character. Write Windows paths with
+forward slashes or doubled backslashes (`"E:\\data\\mim_root"`). The app
+reports this mistake if it can't read the file.
+
+All data lives under `<dataRoot>/<username>/`:
+
+```text
+Statements/<account>/AccountConfig.json   one top-level folder per account
+Statements/<account>/**/*.csv|json|iif    statement exports (never modified)
+Merged/LatestMerged.json                  rebuilt transaction snapshot
+Merged/LatestMergedEdits.json             your corrections and rules (precious)
+staging/<batch>/                          upload receipts and copies
+```
+
+See [docs/data-and-imports.md](docs/data-and-imports.md) for the full
+contract, and [docs/backup-and-restore.md](docs/backup-and-restore.md) for
+ZIP backups from Settings.
+
+## Using it
+
+1. **Accounts:** create one account per statement source. The account folder
+   name is what MiM expects in uploads.
+2. **Imports:** pick a folder that holds one subfolder per account. MiM checks
+   folder names before sending anything, stores only new content (deduplicated
+   by SHA-256), rebuilds, and reports exactly what happened to each file.
+3. **Overview:** a summary of the latest month, with every figure linking to
+   its transactions.
+4. **Transactions:** search, filter, and inspect records. Correct one, several,
+   or all filtered records, or turn a correction into a reusable rule.
+5. **Rules:** find, inspect, bulk-edit, or delete saved corrections and see
+   which records each one affects.
+6. **Settings:** configuration, rebuild, full backup, and restore.
+
+## Commands
+
+| Command                                  | Purpose                                                   |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `run.bat` / `./run.sh`                   | Install if needed, rebuild if stale, start production     |
+| `run.bat dev` / `./run.sh dev`           | API plus Vite website with hot reload                     |
+| `npm test`                               | Full test suite                                           |
+| `npm run typecheck` / `lint` / `format`  | Static checks                                             |
+| `npm run build`                          | Build core, server, and website                           |
+| `npm run smoke:production`               | Start the built server against a throwaway data root      |
+| `npm run verify:legacy -- <legacy-root>` | Read-only comparison with the legacy C# snapshot          |
+| `./install.sh` / `./build.sh`            | Linux VM install (prunes dev tools) / full verified build |
+
+## Repository layout
+
+```text
+packages/core/    Domain model, matching, aggregation, rules, legacy-compatible serialization
+packages/server/  Express API, parsers, filesystem storage, uploads, rebuilds, backups
+packages/web/     React website
+scripts/          run.mjs launcher, backup ZIP helper, smoke test, legacy verifier
+deploy/           Optional systemd unit for a Linux VM
+docs/             How the system works (see below)
+```
 
 ## Documentation
 
-- [UX design and self-review guide](docs/UX_DESIGN_GUIDE.md): reusable design
-  principles, review gates, and refinement process distilled from user feedback.
-- [UX feedback traceability](docs/UX_FEEDBACK_TRACEABILITY.md) and
-  [review template](docs/UX_REVIEW_TEMPLATE.md): concrete critiques and a repeatable
-  evidence-based checklist for future work.
-- [Documentation index](docs/README.md)
-- [Architecture](docs/architecture.md)
-- [Architecture and infrastructure simplicity review](docs/simplicity-review.md)
-- [Data and imports](docs/data-and-imports.md)
-- [Transaction edits and rules](docs/transaction-edits.md)
-- [Development](docs/development.md)
-- [Testing and legacy verification](docs/testing-and-verification.md)
-- [Production deployment](docs/deployment.md)
-- [HTTP API](docs/api.md)
-- [Legacy divergences](docs/legacy_divergence.md)
-- [Current migration limitations](docs/legacy_limitations.md)
-- [Suggested improvements](docs/legacy_suggested_improvements.md)
-- [Prioritized TODO backlog](todo.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security](SECURITY.md)
+- [Architecture](docs/architecture.md): packages, runtime, persistence, limits
+- [Data and imports](docs/data-and-imports.md): storage layout, accounts, uploads, rebuilds, parsers
+- [Domain rules](docs/domain-rules.md): parsing, matching, and aggregation invariants
+- [Edits and rules](docs/edits-and-rules.md): how corrections work and are explained
+- [Financial reports](docs/financial-reports.md): Overview calculations and exports
+- [Backup and restore](docs/backup-and-restore.md)
+- [Development](docs/development.md): setup, conventions, testing, common changes
+- [UX guidelines](docs/ux-guidelines.md): how the interface should behave
+- [Legacy migration](docs/legacy-migration.md): differences from the C# app and parity checks
+- [HTTP API](docs/api.md) and [optional VM deployment](docs/deployment.md)
+- [TODO](todo.md) and [Security](SECURITY.md)

@@ -5,10 +5,9 @@ not create a second ledger, change imported values, or persist a reporting
 schema. All drill-downs lead to the same transaction explorer through the shared
 `transaction-navigation.ts` URL contract.
 
-Use [UX-03, UX-04, UX-07, and UX-17](UX_DESIGN_GUIDE.md) to review summary-first
-entry, visible scope, meaningful categories, truthful measures, visualizations,
-drill-down agreement, and export behavior. Current calculations are specified
-below; a new design must not silently redefine them.
+This document describes the **current** calculations. The product goal
+(see [README goals](../README.md#goals)) changes the headline measures; see
+[Planned: income, spending, savings](#planned-income-spending-savings).
 
 ## Questions the overview answers
 
@@ -63,10 +62,9 @@ category, then `Uncategorized`. An order detail can belong to an Amazon/PayPal
 source account while the parent payment belongs to a card. Accordingly,
 source-account contribution is not a funding-account cash-flow statement.
 
-Amounts retain the existing application's USD display. The domain does not have
-currency metadata or exchange rates, and no currency conversion is performed.
-Different currencies must not be combined on the assumption that USD formatting
-normalizes them.
+Amounts are USD. The domain has no currency metadata yet, so a source amount in
+another currency would currently be summed as if it were USD. See the planned
+foreign-currency handling below.
 
 ## Trends and chart accessibility
 
@@ -139,8 +137,32 @@ aggregate CSV. Printing is not a second calculation implementation.
 
 Keep new calculations in the pure module. Reuse the shared reporting grain and
 navigation contract rather than reproducing financial filtering inside JSX.
-Changes to persistent data, history, currency, balances, or manual matching
-require a separate user-reviewed schema proposal.
+
+## Planned: income, spending, savings
+
+The owner's chosen headline measures (not implemented yet):
+
+- **Income**: earned income only (salary, interest, dividends, and other
+  income-type credits). It excludes refunds, discounts, and transfers.
+- **Spending**: purchases and fees **minus** the refunds, returns, and
+  discounts that offset them, so a returned item no longer looks like income.
+- **Savings / deficit**: income minus spending.
+
+Transfers stay outside all three, as they are today. Implementing this means
+classifying credits by corrected transaction reason (refund, discount, return,
+income) and, ideally, linking refunds to their original charges so category
+and merchant spending is reduced in the right place. Linking needs matching
+rules for refunds, which are not built yet. The current
+credits/debits/net-activity figures can remain as a secondary detail view.
+
+## Planned: foreign-currency transactions
+
+All reporting stays in USD. For a non-USD transaction, the import should use
+the converted amount when the institution supplies it. Otherwise it should
+look up a rate for the transaction date and ask the user to confirm it. The
+original amount, currency, rate, and rate source stay visible in the
+transaction details so every USD value can be explained. This needs new
+persisted fields, which is a schema change.
 
 ## Verification
 

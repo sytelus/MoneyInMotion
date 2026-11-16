@@ -5,9 +5,11 @@ data changes. A backup preserves the active user's stored files and application
 configuration. Restore replaces the complete user folder with those saved files;
 it does not import statements, merge old and new files, or rebuild transactions.
 
-This feature needs Node.js 24+ and **Python 3.9+**, available as `python3` on the
-server. Python's standard-library ZIP implementation streams archive contents;
-there are no Python packages to install. Browser users install nothing.
+This feature needs **Python 3.9+** on the machine running the server. The
+server tries `python` and then `py -3` on Windows, and `python3` and then
+`python` elsewhere. It deliberately skips the Microsoft Store `python3`
+placeholder. Only the standard-library ZIP module is used, so there are no
+Python packages to install.
 
 ## What is included
 
@@ -30,7 +32,7 @@ unsaved forms, and backup ZIPs outside the user folder are not included. File by
 relative paths, empty folders, and data-file modification times are preserved.
 Ownership, permissions, ACLs, creation/access times, and filesystem links are not
 portable backup state: restored files are private to the server user (files 0600,
-directories 0700). Symbolic links and special files reject a backup rather than silently
+directories 0700 on Linux/macOS; on Windows the user-profile ACLs apply). Symbolic links and special files reject a backup rather than silently
 omitting data or following paths outside its scope.
 
 ## Create a backup
@@ -50,10 +52,9 @@ The default server filename is:
 ```
 
 The alias is the configured `username`, not necessarily the operating-system
-account. `~` is the home of the OS account running the server, not the browser
-user's home. For example, username `alex` produces
-`/home/service/alex_mim_backup_2026-09-30T14-30-00-000Z_1234abcd.zip` when the
-service runs as `service`. The suffix prevents collisions. Existing archives
+account. `~` is the home folder of the OS account running the server (on
+Windows, `%USERPROFILE%`). For example:
+`C:\Users\alex\alex_mim_backup_2026-09-30T14-30-00-000Z_1234abcd.zip`. The suffix prevents collisions. Existing archives
 are never overwritten. A failed creation removes its `.partial` file and does
 not appear as a completed backup.
 
@@ -154,7 +155,5 @@ the saved state. Rebuild is a separate, intentional operation afterward.
   version. Different future application code can interpret the same saved bytes
   differently. Use a compatible code revision when exact historical behavior matters.
 
-See the [API contract](api.md#backups-and-restore),
-[security guidance](../SECURITY.md), and
-[verification record](BACKUP_RESTORE_REVIEW.md) for implementation boundaries and
-the tests actually performed.
+See the [API contract](api.md#backups-and-restore) and
+[security guidance](../SECURITY.md).

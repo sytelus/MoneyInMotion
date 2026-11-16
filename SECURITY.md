@@ -1,96 +1,40 @@
-# Security policy
+# Security
 
-MoneyInMotion processes bank statements and personal financial corrections.
-Treat its source inputs, generated snapshots, staging manifests, backups, logs,
-and configuration as highly sensitive data.
+MiM handles bank statements and personal financial corrections. Treat its
+statements, snapshots, edits, staging receipts, backups, logs, and config as
+sensitive.
 
-## Supported version
+## No login, so keep it local
 
-Security fixes are applied to the current default branch. This project does not
-currently maintain parallel long-term-support release lines.
+MiM has no authentication. Anyone who can reach its port can read everything,
+upload statements, change accounts and rules, and replace data through
+restore. By default, use it only on your own machine at `localhost`. If you
+deploy to a VM ([docs/deployment.md](docs/deployment.md)), keep it on a
+private network or VPN, or behind an authenticating HTTPS reverse proxy.
+Never expose the port directly to the Internet.
 
-## Important deployment status
+Defense in depth, which does **not** establish identity: Helmet headers;
+site and API on one origin; `Cache-Control: no-store`; browser mutations with
+a foreign `Origin` or cross-site Fetch Metadata are rejected before their
+bodies are read; bounded JSON and upload sizes; Zod validation; path
+containment; no symlink following below account folders; and generic error
+messages in production.
 
-The current application has no native authentication or authorization. Every
-person who can reach the website can read and change the configured user's data,
-upload statements, manage accounts, and change persisted Settings.
+## Data handling rules
 
-Until an authentication layer is implemented:
-
-- do not expose MiM directly to the public Internet;
-- bind it to a trusted private network or put every path behind an
-  authenticating access gateway/reverse proxy;
-- use HTTPS whenever traffic leaves the server host;
-- run one unprivileged service account with access only to its MiM data and
-  config directories;
-- do not run multiple writer instances against one filesystem root; and
-- encrypt server disks and backups and restrict their retention/access.
-
-Helmet headers, same-origin site/API serving, browser-origin mutation checks,
-non-cacheable API responses, upload bounds, runtime validation,
-path containment, and generic production error responses are defense in depth;
-they do not establish user identity.
-
-Mutation requests with foreign `Origin` or cross-site/same-site Fetch Metadata
-are rejected before decoding uploads. Reverse proxies must preserve the public
-`Host` header. Non-browser tools without those headers remain usable, so this
-guard is not an access-control layer. Account configs and upload destinations
-cannot follow symlinks beneath account folders. Do not modify the data tree
-externally while the app is writing it.
+- Never commit statements, snapshots, edits, staging batches, private config,
+  or screenshots with financial values. Reduce failures to sanitized fixtures.
+- Never write to the legacy reference folder (`D:\Dropbox\MoneyAI\`); only the
+  read-only verifier may read it.
+- Don't log request bodies, uploaded contents, corrected values, or full
+  paths.
+- Backups are **unencrypted** ZIPs in the server user's home folder. Keep an
+  encrypted copy on another device. Restore only archives you trust: the
+  checksums detect damage, not tampering.
+- Run only one MiM process per data folder, and keep sync tools from writing
+  into it while MiM is running.
 
 ## Reporting a vulnerability
 
-Do not open a public issue containing an exploit, statement content, user paths,
-credentials, tokens, or personal financial data. Use GitHub's private security
-advisory/reporting feature for this repository when available. Otherwise,
-contact the repository owner privately using the contact method on the GitHub
-profile and request a secure reporting channel before sending sensitive detail.
-
-Include, when safe:
-
-- affected revision and deployment mode;
-- reproducible steps using synthetic data;
-- impact and required attacker access;
-- relevant sanitized request/response details; and
-- a proposed mitigation if known.
-
-You should receive acknowledgement after the maintainer reviews the private
-report. Disclosure timing will be coordinated around validation, a fix, and a
-safe upgrade path. Never use real user data to demonstrate a report.
-
-## Sensitive-data rules for contributors
-
-The [UX review process](docs/UX_DESIGN_GUIDE.md#review-and-refinement-loop)
-requires evidence isolation before browser mutations. A usability review or an
-approval to use local Chromium does not authorize publication of financial
-screenshots, external uploads, or writes against the live dataset.
-
-- Never commit statements, snapshots, edits, staging batches, private config,
-  browser captures with financial values, or copied legacy data.
-- Reduce regressions to sanitized minimal fixtures.
-- Never write to `/mnt/d/Dropbox/MoneyAI/`; it is a read-only verification
-  source. Use the isolated verifier documented in
-  [Testing and legacy verification](docs/testing-and-verification.md).
-- Avoid logging request bodies, uploaded contents, corrected values, or full
-  server paths. Production unexpected errors should remain generic to clients.
-- Review dependency changes with `npm audit` and inspect release provenance for
-  security-critical packages.
-
-## Backup and incident response
-
-[Settings backup and restore](docs/backup-and-restore.md) writes private but
-**unencrypted** ZIPs into the server user's home. Anyone authorized to reach the
-app can create/download a complete backup or replace the active user's data;
-protect these endpoints with the same access gateway as the rest of the app.
-Checksums detect corruption, not a maliciously authored archive. Restore only
-trusted archives. Validation rejects traversal, links, duplicate paths and
-unsupported ZIPs, bounds entry count/expanded size, and checks saved data before
-replacement. Previous data and config are retained in a private sibling folder.
-Neither backups nor retained recovery folders are automatically expired.
-
-Keep encrypted, tested backups of `Statements`, `LatestMergedEdits.json`, and
-the remaining active user directory. If compromise is suspected, stop access,
-preserve relevant infrastructure logs without copying financial payloads,
-rotate proxy/session credentials, restore to a clean host, and verify data from
-known-good source exports plus edits. The generated snapshot alone is not a
-complete recovery source.
+Use GitHub's private vulnerability reporting for this repository. Don't open a
+public issue with exploit details or any real financial data.

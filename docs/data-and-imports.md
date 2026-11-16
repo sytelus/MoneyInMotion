@@ -1,204 +1,151 @@
 # Data and imports
 
-This is the current storage/import contract. The
-[UX design guide](UX_DESIGN_GUIDE.md) explains how to present configuration,
-preflight, outcomes, and provenance honestly; the
-[accounts/imports UX guide](accounts-and-imports-ux.md) maps those principles to
-the website. Schema proposals remain separate from this implemented contract.
+## Storage layout
 
-## Storage contract
-
-The `dataRoot` value in `~/.moneyinmotion/config.json` is the parent of username
-folders. The default is `~/mim_root`; the active username defaults to the server
-operating-system user.
+`dataRoot` in `~/.moneyinmotion/config.json` is the parent of username
+folders (default `~/mim_root`; the username defaults to the OS user). One
+server process serves one username.
 
 ```text
-~/mim_root/
-└── shitals/
-    ├── Statements/
-    │   ├── amex/
-    │   │   ├── AccountConfig.json
-    │   │   ├── 2025.csv
-    │   │   └── archive/2024.csv
-    │   └── amazon/
-    │       ├── AccountConfig.json
-    │       └── orders.csv
-    ├── staging/
-    │   └── 20260827...-12ab34cd/
-    │       ├── files/<uploaded relative tree>
-    │       └── manifest.json
-    └── Merged/
-        ├── LatestMerged.json
-        ├── LatestMergedEdits.json
-        └── <timestamped backup files>
+<dataRoot>/<username>/
+├── Statements/
+│   ├── Amex/
+│   │   ├── AccountConfig.json
+│   │   ├── 2025.csv
+│   │   └── archive/2024.csv
+│   └── Amazon-Orders/
+│       ├── AccountConfig.json
+│       └── orders.csv
+├── staging/<batch-id>/{files/…, manifest.json}
+└── Merged/
+    ├── LatestMerged.json          rebuildable snapshot
+    ├── LatestMergedEdits.json     corrections and rules: the precious file
+    └── <timestamped backups of the edits file>
 ```
 
-Only the server needs filesystem access. Browser users do not mount this path
-and do not install MiM.
+All JSON writes use a shared atomic write (temporary file, then rename).
 
-### Statements
+## Accounts
 
-Each immediate child directory containing `AccountConfig.json` is an account:
-`Statements/<account>/AccountConfig.json`. Account discovery does not search
-deeper directories for additional configs. The top-level account folder is the
-upload identity shown in the Accounts screen. An account config contains:
+An account is exactly one top-level folder `Statements/<folder>/` that
+contains `AccountConfig.json`. Subfolders may hold statements, scanned
+recursively unless `scanSubFolders` is false. A nested `AccountConfig.json` is
+ignored and never defines another account. The config holds:
 
-- stable account ID;
-- display title and institution/parser name;
-- account type and whether order lines require a financial parent;
-- transfer or parent-match name tags;
-- case-insensitive file filters (`*`, `*.extension`, or an exact filename); and
-- whether nested statement directories are scanned.
+- a stable **account ID** (letters, digits, `.`, `_`, `-`). It is part of
+  every transaction ID, so it is locked once files or transactions exist;
+- a display title, institution (which chooses the parser), and account type;
+- whether order lines require a parent charge. This is always true for order
+  history, which also needs at least one matching tag;
+- matching name tags for transfers and parent charges; and
+- case-insensitive file filters (`*`, `*.csv`, or an exact filename).
 
-The website writes a canonical camel-case JSON shape and reads both that shape
-and the legacy Pascal-case inner `AccountInfo`. Account IDs permit letters,
-numbers, dots, underscores, and hyphens only. Once files or transactions exist,
-the ID is locked because it participates in stable transaction identity.
-Order-history account types always require a financial parent; the server
-derives that invariant rather than trusting a contradictory browser value.
-Only Amazon and Etsy order-history parsers are currently implemented, and such
-accounts require at least one parent-charge match tag. Subdirectories inside an
-account may contain statement files but do not define another account; any
-`AccountConfig.json` below the account root is ignored.
+Account IDs and folder names must each be unique ignoring case. Config
+symlinks and duplicates fail discovery visibly. The website writes camelCase
+JSON and still reads the legacy PascalCase `AccountInfo` shape.
 
-Account IDs and configured top-level folder names must each be unique ignoring
-letter case. Duplicate hand-edited configurations and config symlinks (including
-broken links) fail discovery visibly rather than merging unrelated accounts.
+**Lifecycle in the Accounts page:**
 
-Deleting an account through the website removes its config only. The directory
-is removed only when it is empty; raw statements are never recursively deleted.
-Restore or recreate the config to rediscover preserved files.
+- **Add**, or **Duplicate**, which opens an unsaved copy with a blank ID and
+  never saves on its own.
+- **Edit** → **Save and rebuild**: saves the config, then rebuilds. If the
+  rebuild fails, the settings stay saved and the previous snapshot stays live.
+- **Remove account**: deletes only `AccountConfig.json`, and the folder only
+  if it is empty. Statements are never deleted. The next rebuild drops the
+  account's transactions; its rules remain, with unavailable targets.
+- **Configure account** for a folder that has statements but no config, such
+  as one just removed: the original account ID is recovered from the current
+  snapshot when it is unambiguous. If no ID or several IDs are found, you
+  must supply the original settings. MiM never guesses.
 
-### Staging
+## Uploading a folder
 
-Each folder upload gets a collision-resistant batch ID after path, account,
-and destination safety checks pass. Each remaining file is written below
-`staging/<batch>/files` before duplicate/filter classification. The final
-manifest records relative path, account ID, size, SHA-256, decision, destination
-or duplicate source, explanation, username, and timestamp.
+The browser can't hand the server a local path, so the Imports page uploads
+file bytes with their relative paths. The selection may include one wrapper
+folder (`MyStatements/Amex/…`), which is stripped when it isn't itself an
+account folder. Account folders match case-insensitively.
 
-Staging is an audit and recovery aid, not a temporary browser cache. MiM does
-not currently expire it automatically. Include it in retention planning or
-remove old batches through an administrator-controlled process after backups.
+**Preflight** (in the browser, `lib/import-preflight.ts`, then repeated on the
+server):
 
-### Merged
+1. Every path must sit under a configured account folder. One misspelled
+   folder blocks the whole upload and **no bytes are sent**.
+2. Config files, files outside the account's filters, and subfolders the
+   account doesn't scan are listed as excluded and are not sent.
+3. Limits: 200 files, 20 MiB per file, 100 MiB per request. Split larger
+   selections.
 
-`LatestMerged.json` is a replaceable materialized view: it can be regenerated
-from `Statements` plus saved edits. `LatestMergedEdits.json` is durable user
-intent and should receive the strongest backup treatment. The edit aggregate
-receives timestamped backups before replacement. Both JSON files, account
-configs, staging manifests, and persisted Settings use a shared atomic
-temporary-file/rename helper so readers do not observe partially written text.
+The server also rejects absolute, duplicate, empty, `..`, or NUL paths, and
+symlinked or non-directory destination parents, before creating a batch.
 
-For complete recovery, use [Settings backup and restore](backup-and-restore.md).
-It includes the entire user tree and canonical application config, restores
-saved files without a rebuild, and keeps replaced data outside the active tree.
-An ordinary statement upload is not a full-data restore.
+**Staging and promotion:** every accepted file is copied to
+`staging/<batch>/files`. The manifest records each file's path, account, size,
+SHA-256, decision (promoted, duplicate, or rejected), destination, and time. A
+file whose SHA-256 already exists in that account is a duplicate and is not
+promoted, whatever its name. New files keep their relative path. A name
+collision with different content becomes `name (1).ext`, so existing files
+are never overwritten. Deduplication is per account, so the same bytes in two
+accounts are kept for both.
 
-## Browser directory upload
+**Result:** the response separates file handling (received, new, duplicate,
+rejected) from the rebuild (previous and new record counts, failed sources,
+rules processed, unavailable rule targets). Record counts include order
+parents and children, so they are not spending totals. **Upload history**
+lists retained manifests, and each receipt can be downloaded as JSON.
 
-A hosted website cannot accept a user's local directory path and later read it
-from the server. The directory picker instead returns browser `File` objects
-and relative paths. The client sends both in one multipart request.
+## Rebuild
 
-The selected layout may include a picker root:
+Every upload is followed by a full, deterministic rebuild over all
+discoverable statements:
 
-```text
-MyStatements/
-├── amex/statement.csv
-└── amazon/orders.csv
-```
+1. Choose the institution parser, falling back to the generic parser.
+2. Parse rows, attaching account and import metadata. Merge identical content
+   across overlapping files.
+3. Match relationships (orders to charges, transfers) and synthesize small
+   adjustment children ([domain-rules.md](domain-rules.md)).
+4. Replay `LatestMergedEdits.json`.
+5. Commit both JSON files only if everything succeeded.
 
-If every path shares `MyStatements` and that is not an account directory, the
-server removes that first component. It then matches `amex` and `amazon`
-case-insensitively to configured top-level account directories.
+If any file fails, the previous snapshot stays live and the response names
+every failing path. Promotion never overwrites a file, so uploading a
+corrected export does not remove the bad one. Fix or move the bad file on
+disk, then use **Rebuild transactions** (Imports or Settings). The same
+button rebuilds after statements are copied in directly or a data folder is
+restored.
 
-Before upload, the website checks every selected relative path against the
-configured account directories. An unknown or misspelled folder disables the
-upload action and names the paths to fix, so no file bytes are sent. The server
-repeats this check before creating a staging batch or promoting any file, making
-the operation all-or-nothing with respect to account-folder recognition.
+## Supported sources
 
-The server rejects the request before creating a batch if paths are missing,
-duplicated, absolute, empty, contain dot segments, contain NULs, or could escape
-the storage root. Existing destination parents must be real directories; links
-and non-directory parents reject the whole batch before staging. Do not change
-the account tree externally during imports. One request accepts at most 200 files, 20 MiB per file, 203
-multipart parts, and 100 MiB when the browser supplies the request length.
-The server also checks the received file bytes after multipart decoding, so a
-missing or dishonest length header cannot bypass the aggregate limit. Split a
-larger folder into multiple selections. Unsupported files and uploaded
-`AccountConfig.json` files are staged but marked rejected in the manifest;
-account configuration is owned by the web editor. Nested files are likewise
-staged but rejected when their account has disabled subfolder scanning, because
-promoting an input that the rebuild deliberately ignores would be misleading.
+| Source                | Inputs     | Specialized behavior                              |
+| --------------------- | ---------- | ------------------------------------------------- |
+| Generic bank/card     | CSV        | Header/column discovery, debit/credit conversion  |
+| American Express      | CSV        | Amex columns, phone and category metadata         |
+| Barclaycard           | CSV        | Banner lines before the header                    |
+| PayPal                | CSV or IIF | Time zones; filters non-transaction activity rows |
+| Amazon orders         | CSV        | Order-line synthesis and charge matching          |
+| Etsy buyer history    | JSON       | Receipt and item reconciliation                   |
+| QuickBooks-compatible | IIF        | Transactions and splits                           |
 
-## Deduplication and promotion
+Excel files must be exported to CSV first. Parsing is strict: duplicate or
+ambiguous columns, non-empty overflow cells, numbers with trailing text, and
+impossible dates fail the rebuild instead of being silently truncated. One
+narrow recovery exists for legacy rows whose unquoted final amount contains a
+thousands separator. Add a sanitized fixture before changing any parser.
 
-For each account, MiM hashes current statement files whose names match the
-configured filters. A staged file with an existing SHA-256 is marked duplicate
-regardless of filename and is not promoted. Hashes are updated during the
-batch, so two identical new files in one upload cannot both be promoted.
+## What the stored evidence can and cannot prove
 
-A new file retains its path beneath the matching account. If its intended name
-already exists with different content, MiM creates `name (1).ext`, then the next
-available number. Existing files are never overwritten.
+The Imports page shows a **Statement explorer** (live folder tree with counts
+and parse eligibility), **Imported transactions by file**, and **Upload
+history**. Keep these distinctions in mind:
 
-Deduplication is account-local by design. The same bytes in two distinct
-accounts may be meaningful and are retained for both.
+| Shown                         | Comes from                                 | Means                                               |
+| ----------------------------- | ------------------------------------------ | --------------------------------------------------- |
+| Source file, format, row      | `ImportInfo` on current records            | Current provenance, not an import journal           |
+| Transaction-date coverage     | Earliest and latest record date per source | Record coverage, not the statement's billing period |
+| File created/modified         | `ImportInfo.createDate/updateDate`         | Filesystem times; copying a file changes them       |
+| Upload time, SHA-256, outcome | Staging manifest                           | That browser upload only; copied-in files have none |
+| `ImportInfo.contentHash`      | Derived from the path                      | **Not** a content checksum                          |
 
-## Automatic rebuild
-
-For a restored data folder with statements already on the server, use **Rebuild
-transactions** in Imports (also available in empty transaction
-history and Getting Started recovery flows). No upload is
-required. Saved rules remain visible in Rules even before the first build.
-Missing transaction-ID targets are reported and preserved; migration of old
-IDs requires a previous snapshot that identifies the original transactions.
-
-Promotion is immediately followed by a deterministic rebuild over every
-discoverable statement:
-
-1. Pick the institution-specific parser or the generic parser.
-2. Parse transactions and attach account/import metadata.
-3. Merge sources, match related transactions, and build the hierarchy.
-4. Load and replay all persisted edits.
-5. Commit `LatestMerged.json` and `LatestMergedEdits.json` only after the whole
-   candidate succeeds.
-
-If a file cannot parse, promoted source files and the staging manifest remain
-for diagnosis, but the last known-good financial snapshot is not replaced by a
-partial result. Fix or move the bad server-side input outside the scanned account
-folder and use **Rebuild transactions** in Settings or Imports. Uploading a corrected
-export alone does not remove the old failing file: promotion never overwrites
-existing statements. The response identifies
-every failed source path. Invalid account configuration is reported through the
-same failed-build result and also preserves the last known-good snapshot.
-
-The maintenance rebuild endpoint runs the same algorithm without uploading
-anything. It is useful after an administrator restores or changes server-side
-files; normal users do not need a separate scan or save step.
-
-## Supported source families
-
-| Source                       | Inputs     | Specialized behavior                                         |
-| ---------------------------- | ---------- | ------------------------------------------------------------ |
-| Generic bank/card            | CSV        | Header/column discovery and standard debit/credit conversion |
-| American Express             | CSV        | Amex columns and merchant metadata                           |
-| Barclaycard                  | CSV        | Banner/header variations                                     |
-| PayPal                       | CSV or IIF | Activity filtering and payment semantics                     |
-| Amazon orders                | CSV        | Order-line synthesis and charge matching                     |
-| Etsy buyer history           | JSON       | Receipt and item reconciliation                              |
-| QuickBooks-compatible export | IIF        | Transaction and split parsing                                |
-
-Institution export formats change. Add parser fixtures before modifying a
-parser, and treat a reported parse failure as safer than silently accepting
-ambiguous columns.
-
-CSV and IIF reject duplicate financial column names. CSV only discards empty
-overflow cells, never non-empty data before a trailing comma. The narrow legacy
-recovery for an unquoted thousands separator in a final amount field remains.
-
-Numeric fields reject trailing text instead of accepting a partial prefix, and
-date-only values must be real calendar dates. Etsy timestamps and account-config
-booleans are likewise validated without permissive coercion.
+First-import times and past rebuild outcomes were never recorded, and the UI
+says so rather than inventing them. The statement explorer lists at most
+20,000 entries and 40 folder levels, and says so when it is truncated.
+Staging batches are never expired automatically.

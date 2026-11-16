@@ -9,7 +9,7 @@
  *
  * Usage:
  *   npm run build
- *   node scripts/verify-legacy-data.mjs /mnt/d/Dropbox/MoneyAI
+ *   node scripts/verify-legacy-data.mjs D:/Dropbox/MoneyAI
  *
  * Add `--keep-temp` to retain the isolated copy for manual investigation.
  */

@@ -1,206 +1,118 @@
 # Architecture
 
-Whole-user maintenance is described in [Backup and restore](backup-and-restore.md).
-`BackupService` owns archive policy, preview validation, replacement, and rollback;
-`scripts/backup-archive.py` streams ZIP bytes with Python's standard library.
-An in-process maintenance gate blocks data requests and rechecks delayed request
-bodies before mutation. Restore stages beside the active tree, retains the
-previous tree/config, and invalidates the cache without rebuilding. Startup
-recovers an interrupted replacement before loading configuration. The temporary
-recovery marker is operational state, not a transaction/import history journal.
-
-MoneyInMotion is a hosted, same-origin web application with a transparent
-filesystem persistence model. One Node.js process serves the React site and its
-JSON API in production. A browser uploads statement bytes; only the server reads
-or writes the configured data root.
-
-The [UX design guide](UX_DESIGN_GUIDE.md) defines the review principles for these
-boundaries: complete journeys, one source per setting, truthful projections,
-explicit mutation outcomes, and schema discipline. Current screen contracts are
-in the [accounts/imports](accounts-and-imports-ux.md),
-[rules/provenance](rules-and-provenance-ux.md), and
-[reporting](financial-reports.md) guides; implementation history is not a substitute
-for those contracts or fresh acceptance evidence.
-
-## System boundaries
+## Shape
 
 ```text
-Browser
-  React website
-    │  HTTPS: JSON + multipart directory upload
-    ▼
-Express server
-  routes ── validation ── application services ── filesystem repositories
-                         │
-                         ▼
-                    core domain package
-                         │
-                         ▼
-<data-root>/<username>/{Statements,staging,Merged}
+browser (React SPA)
+   │  same-origin HTTP: JSON + multipart folder upload
+   ▼
+one Node.js/Express process      serves the compiled site and /api
+   │
+   ▼
+<dataRoot>/<username>/{Statements, staging, Merged}   plain files on disk
 ```
 
-The package dependency direction is deliberate:
+There is no database, queue, worker, cache server, container, or file
+watcher. One process is the only writer. This is deliberate: one user on one
+machine needs none of that, and plain JSON and source files are easy to back
+up, inspect, and compare with the legacy app. Add infrastructure only when a
+measured problem can't be solved within this model, and record the reason
+when you do.
 
-- `@moneyinmotion/core` is pure TypeScript. It owns transactions, account and
-  import metadata, rule scopes, effective edited values, matching,
-  normalization, aggregation, and compatible serialization. It has no Express,
-  React, or filesystem dependency.
-- `@moneyinmotion/server` adapts the domain to HTTP and disk. It owns server
-  configuration, account discovery, parsers, upload staging and promotion,
-  snapshot lifecycle, edit persistence, security middleware, and production
-  static hosting.
-- `@moneyinmotion/web` is a React single-page application. TanStack Query owns
-  server state; Zustand owns ephemeral transaction-navigation state. UI
-  components use native HTML first, with Radix only for accessible dialogs and
-  action menus and Tailwind for styling.
+## Packages
 
-This direction keeps business rules directly testable and avoids importing UI
-or transport concerns into parsers and models.
+The three npm workspaces are real runtime boundaries, not services:
 
-These three npm workspaces are compile-time boundaries, not three deployed
-services. The browser cannot use Node filesystem APIs, the server must not
-depend on React, and both need the same financial rules. Keeping those actual
-runtime boundaries visible is simpler than a single mixed source tree. In
-production they still produce one website served by one Node process.
-Browser libraries are build-time dependencies and are removed by the production
-installer after Vite emits static assets.
+- **`@moneyinmotion/core`**: pure TypeScript with no Node, React, or
+  filesystem imports. Transactions, account and import metadata, edit scopes,
+  effective (corrected) values, matching, normalization, aggregation, and
+  legacy-compatible serialization.
+- **`@moneyinmotion/server`**: configuration, account discovery, statement
+  parsers, upload staging and promotion, rebuilds, edit persistence, backups,
+  security middleware, and static hosting of the built site.
+- **`@moneyinmotion/web`**: the React SPA. TanStack Query holds server state;
+  Zustand holds view state (period, selection, expansion). Radix is used only
+  for dialogs and menus; Tailwind for styling.
 
-## Simplicity constraints
-
-The architecture is intentionally limited to what the current single-user
-product needs:
-
-- one configured username per process;
-- one Node process and one filesystem data root;
-- direct construction of repositories and services—no dependency-injection
-  framework;
-- JSON files—no database, ORM, migration service, or object store;
-- synchronous imports—no queue, worker, scheduler, or event bus;
-- same-origin browser/API traffic—no CORS layer; and
-- explicit maintenance rebuilds—no background filesystem watcher.
-
-Do not add infrastructure merely because it might help a future multiuser or
-high-scale version. Add it only when a measured requirement cannot be met by
-this model. Path validation, atomic file replacement, deterministic parsing,
-and accessible UI primitives remain because they protect current data and
-users, not because they are extension points.
+Dependencies point one way: web → core and server → core. Core never imports
+either. In production all three build into one website served by one process.
 
 ## Runtime lifecycle
 
 At startup the server:
 
-1. Loads `~/.moneyinmotion/config.json`, creating explicit defaults on first
-   start and failing closed without altering the file when it is invalid.
-2. Validates the absolute data root and safe single-segment username.
-3. Creates `Statements`, `staging`, and `Merged` beneath the active user path.
-4. Constructs one `FileRepository` and one `TransactionCache` for that user.
-5. Starts the API and, in production, serves `packages/web/dist`.
+1. Rolls back an interrupted restore if `~/.moneyinmotion/restore-pending.json`
+   exists ([backup-and-restore.md](backup-and-restore.md)).
+2. Loads `~/.moneyinmotion/config.json`, creating defaults on first start. An
+   invalid file stops startup and is left untouched for repair.
+3. Validates the absolute data root and the single-segment username, then
+   ensures `Statements`, `staging`, and `Merged` exist.
+4. Builds one `FileRepository` and one `TransactionCache`, then serves `/api`
+   and, in production, `packages/web/dist`.
 
-The cache loads `Merged/LatestMerged.json` lazily and loads saved rules from
-`LatestMergedEdits.json` even if there is no snapshot. New standalone rules are
-merged with embedded history; conflicting rule IDs fail visibly. Nothing is
-published into the cache until both inputs validate. When statements exist but
-history has not been built, Imports and the empty-history/Getting Started
-recovery flows offer **Rebuild transactions**, including results and
-source errors. Overview is a read-only, period-scoped reporting projection;
-source/rule drill-downs use a separate non-additive source-record inspection
-basis. See [UX lifecycle contracts](UX_LIFECYCLE_REVIEW.md) for the navigation,
-calculation, editing, and provenance module boundaries. The server is the sole supported
-writer and serializes edit/rebuild mutations through one process-local queue.
-It updates the cache through edits and rebuilds. If an administrator
-changes statement files directly, **Rebuild transactions** in Settings refreshes it.
+The cache loads `Merged/LatestMerged.json` lazily. It loads saved rules from
+`LatestMergedEdits.json` even when no snapshot exists, so Rules works before
+the first build. All edits and rebuilds go through one in-process queue.
+Changing the root, username, or port in Settings writes the config file. The
+running process keeps its startup configuration and reports `restartRequired`
+until restarted.
 
-Changing data root, username, or port in Settings writes
-`~/.moneyinmotion/config.json`. The current listener and repository remain
-attached to their startup configuration; the API explicitly returns
-`restartRequired` until the process restarts.
-
-## Import and snapshot transaction
-
-An upload passes through four distinct phases:
+## Import → rebuild → commit
 
 ```text
-directory selection → manifest validation → stage and promote → full rebuild
-                                                       │
-                        parse failure ─────────────────┤
-                        keeps last good snapshot       ▼
-                                              replay saved edits
-                                                       │
-                                                       ▼
-                                             atomic file replacement
+folder selection → preflight (browser) → validate paths/accounts (server)
+  → stage every file → SHA-256 dedupe per account → promote new files
+  → full rebuild: parse all statements → match relationships → replay edits
+  → atomically write snapshot + edits → swap into memory
 ```
 
-Paths, account identities, and existing destination parents are checked before
-creating a batch; symlinks beneath an account cannot redirect promotion.
-Every accepted path is copied to a unique staging batch before file classification.
-Paths are normalized and constrained beneath the batch, account mapping uses
-the configured top-level account directories, and identical content is detected
-per account with SHA-256. A statement subdirectory is rejected when that account
-is configured not to scan subfolders, preventing the upload flow from promoting
-a source the rebuild cannot see. New content is promoted using exclusive
-creation; name collisions receive a numbered suffix instead of overwriting a
-file.
-
-The rebuild constructs a new `Transactions` object off to the side, discovers
-statement inputs in deterministic order, parses all of them, runs parent-child
-and inter-account matching, then replays `LatestMergedEdits.json`. If any parser
-fails, the candidate is discarded and the previously committed snapshot stays
-active. On success, JSON storage writes a temporary file and atomically renames
-it into place before the candidate becomes the live in-memory graph.
+A rebuild builds a new candidate alongside the live one. If any statement
+fails to parse, the candidate is discarded and the last good snapshot stays
+live. Promoted files and staging receipts are kept so the problem can be
+diagnosed. See [data-and-imports.md](data-and-imports.md).
 
 ## Edit model
 
-Imported transaction facts are immutable. A `TransactionEditData` records:
+Imported facts never change. A correction (`TransactionEditData`) records its
+scope filters, only the fields it changes, and audit information. Rules are
+replayed in saved order against the imported baseline, and a later rule wins
+per field. The server validates a whole batch, applies it to a copy of the
+graph, writes `LatestMerged.json` and `LatestMergedEdits.json` atomically, and
+only then swaps the copy into memory. See [edits-and-rules.md](edits-and-rules.md).
 
-- an ID and audit information;
-- one or more scope filters;
-- only the fields being changed; and
-- the source identifier for the change.
+## Browser data flow
 
-An edit request is completely validated and preflighted before application.
-Persisted snapshots, transaction graphs, edit aggregates, metadata maps, and
-account configs are validated again when read from disk; malformed durable data
-fails visibly instead of being coerced or partially loaded.
-The server derives a candidate from the active graph, applies the full batch,
-persists the materialized snapshot plus the independent edit aggregate, and
-only then swaps the candidate into live memory. Rebuilding from statements
-replays the edit aggregate, so corrected
-behavior is reproducible without modifying source exports. Rule management
-previews and commits a validated replacement set, retaining existing rule order.
-Scopes match the imported baseline; later rules win for overlapping fields.
-Deleting a rule replays remaining rules, whereas restoring an imported field
-explicitly clears prior corrections. Previous aggregates are backed up. A
-preview includes a snapshot revision; a change after preview blocks its commit.
-
-The transaction explorer builds a reporting-item index (complete children
-replace parents), uses effective item dates, and opens on the latest available
-month. Search, filters, summaries, and exports share that index. The UI renders
-at most 100 transaction/group rows or 50 compact rule rows per page; rule match counts
-are indexed in one pass. This bounds DOM size, not network payload size: the
-full graph is still loaded once into the browser.
-
-## Why filesystem storage remains appropriate
-
-The present goal is a single-user personal-finance deployment without an
-authentication system or scalability requirement. JSON and source files make
-backup, inspection, migration, and legacy comparison straightforward and keep
-the system small enough to audit. A database would add installation, backup,
-migration, and recovery work without solving a current requirement.
-
-The tradeoffs are explicit: a single process is the supported writer, snapshot
-and edit files do not share a cross-file transaction, and large histories are
-rebuilt synchronously. These are tracked in
-[Legacy limitations](legacy_limitations.md).
+The browser loads the complete transaction graph once. It builds a reporting
+index (complete order details replace their parent payment), then search,
+filters, summaries, and exports all use that index. Rendering is paged at 100
+transaction rows and 50 rule rows. That bounds DOM size, not network payload.
 
 ## Security boundary
 
-Helmet supplies browser security headers, the site and API share one origin,
-API responses use `Cache-Control: no-store`, and browser mutation requests from
-other origins are rejected before body parsing,
-JSON and upload sizes are bounded, request bodies are validated with Zod, and
-all user-influenced paths are checked. Production error responses hide
-unexpected internal details.
+There is no login. Anyone who can reach the port can read and change
+everything, so by default the server should be reached only from the local
+machine. Defense in depth: Helmet headers, same-origin serving,
+`Cache-Control: no-store` on API responses, rejection of cross-origin browser
+mutations, bounded JSON and upload sizes, Zod validation, and path
+containment checks. See [SECURITY.md](../SECURITY.md).
 
-Those controls do not replace authentication. Until user identity and
-authorization exist, the trusted network or an authenticating reverse proxy is
-part of the security boundary. See [Security](../SECURITY.md).
+## Known limitations
+
+These are accepted for one user on one machine. Revisit one when it actually
+hurts.
+
+- **Scale:** every rebuild reparses all statements synchronously inside the
+  upload request, with no progress, cancellation, or resume. The browser
+  holds the full graph. Bulk actions are capped at 1,000 items per request.
+- **Uploads** are held in memory: at most 200 files, 20 MiB per file, and
+  100 MiB per request. A chunked request can use multipart memory before the
+  total-size check rejects it.
+- **Persistence:** each JSON write is atomic, but the snapshot and edits are
+  two files. A crash between the two writes may require replaying edits or a
+  restore. Promotion is file by file and is not rolled back if the later
+  rebuild fails.
+- **No history journal:** rules are current state, not a revision log.
+  First-import times are not recorded. Staging receipts are never expired.
+- **One writer:** never run two server processes against the same data root.
+- **Operations:** `/api/health` only checks that the process is alive. Logs go
+  to stdout, with no metrics.

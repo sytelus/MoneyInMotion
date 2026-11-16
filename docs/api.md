@@ -5,10 +5,9 @@ Production API routes and the website share an origin. All endpoints are below
 multipart form data. There is currently no authentication, so network access to
 these endpoints must be restricted by deployment controls.
 
-UI consumers should apply [UX-10, UX-12, UX-13, and UX-14](UX_DESIGN_GUIDE.md):
-translate transport errors into actionable task guidance, preflight before
-submission, distinguish partial outcomes, and expose only supported provenance.
-An available endpoint alone does not complete the corresponding user workflow.
+UI code should turn transport errors into plain guidance, preflight before
+submitting, and report partial outcomes honestly (see
+[UX guidelines](ux-guidelines.md)).
 
 Errors use an HTTP error status and normally return:
 

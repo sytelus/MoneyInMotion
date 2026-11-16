@@ -1,87 +1,39 @@
-# MoneyInMotion TODO
+# TODO
 
-This backlog is intentionally conservative. MiM is expected to serve one user
-from one inexpensive VM, so a task does not justify a database, queue, container,
-microservice, or new framework unless a current measured requirement needs it.
-The operating boundaries remain documented in
-[Current migration limitations](docs/legacy_limitations.md); optional product
-ideas live in [Suggested improvements](docs/legacy_suggested_improvements.md).
+A short list of known work, tied to the [README goals](README.md#goals). Not
+a schedule. Add items when real use shows a need.
 
-Apply the [UX design guide](docs/UX_DESIGN_GUIDE.md) to each relevant item and
-reference the originating [feedback IDs](docs/UX_FEEDBACK_TRACEABILITY.md).
-Use the [review template](docs/UX_REVIEW_TEMPLATE.md) to record acceptance evidence
-and remaining gaps. A guide entry is not proof that the current UI passes it.
+## Product goals not yet implemented
 
-## Near-term reliability and release confidence
+- [ ] **Income / Spending / Savings reporting.** Replace the Overview's
+      credits/debits/net-activity headline with earned income, spending net of
+      refunds and discounts, and savings ([plan](docs/financial-reports.md#planned-income-spending-savings)).
+- [ ] **Link refunds and returns to their original charges**, so net cost and
+      partial refunds show up. `Statements/Amazon-returns` currently has no
+      `AccountConfig.json`, so it isn't imported.
+- [ ] **Foreign-currency transactions:** keep the original amount, currency,
+      and rate; use the institution's conversion or a confirmed lookup by date
+      ([plan](docs/financial-reports.md#planned-foreign-currency-transactions)).
+      Decide on a rate source first.
+- [ ] **Confirm legacy parity, then drop legacy compatibility.** Check the
+      −27 / +$463.30 delta against the source statements for bugs, migrate
+      once, and remove the legacy codecs and verifier
+      ([details](docs/legacy-migration.md)).
 
-- [ ] **Add Playwright end-to-end coverage.** Cover first run, account CRUD,
-      directory upload, duplicate and parse-failure reporting, automatic rebuild,
-      every correction type, broad rules, exact-target field reset, restart,
-      backup, and restore.
-- [ ] **Complete backup operational acceptance.** Local ZIP creation and guided
-      replacement restore now have isolated service/UI regressions; complete
-      live production-browser verification from [the review](docs/BACKUP_RESTORE_REVIEW.md).
-      Separately restore encrypted off-VM
-      backups into an empty root and automatically compare account IDs, date range,
-      rule counts, and snapshot persistence before accepting the restore.
-- [ ] **Add staging retention controls.** Provide a simple administrator command
-      or UI action to list, download, and remove old completed batches without
-      touching promoted statements.
-- [ ] **Run ShellCheck in CI.** Check `install.sh`, `build.sh`, `run.sh`, and
-      `scripts/lib.sh`; the migration host did not have ShellCheck installed.
-- [ ] **Complete accessibility/browser verification.** Perform a WCAG 2.2 AA
-      audit, keyboard and assistive-technology testing, and a small supported
-      browser/device matrix for directory upload and mobile layouts.
-- [ ] **Expand hostile-input tests where evidence warrants it.** Prioritize path
-      manifests, parsers, persisted JSON codecs, and exact-ID rule migration.
-- [ ] **Bound aggregate upload memory during decoding.** Enforce the request
-      budget while consuming chunked multipart bodies, not only after parsing;
-      preserve per-file limits, useful errors, and staging preflight guarantees.
-      Keep an upstream request-size limit until this is implemented.
+## Known gaps
 
-## Useful single-user improvements
+- [ ] End-to-end browser tests (Playwright) for import, edit, rule, backup,
+      and restore journeys.
+- [ ] Explain reconciliation decisions (why an order or transfer was linked),
+      and allow durable manual link/unlink.
+- [ ] Staging retention: list and remove old upload batches.
+- [ ] Bound upload memory while decoding chunked multipart bodies.
+- [ ] Coverage gaps: flag missing months per account so incomplete totals are
+      visible.
+- [ ] Undo a mistaken import (remove a batch's promoted files and rebuild).
 
-- [ ] **Add a deep diagnostic command.** Keep `/api/health` as liveness; provide
-      a local administrator command that checks data-root ownership, free space,
-      snapshot/edit readability, source counts, and backup age without exposing
-      financial values over HTTP.
-- [ ] **Improve privacy-safe logs.** Use a small structured log format that never
-      records statement contents, transaction values, or edit payloads and remains
-      readable through `journalctl`.
-- [ ] **Explain reconciliation decisions.** Show why an order/charge or transfer
-      was linked and allow audited unlink/relink rules before changing matching
-      infrastructure.
-- [ ] **Add product features based on actual use.** Likely candidates are
-      category management, splits, duplicate review, budgets, server-indexed
-      saved views, and off-machine backup/retention controls. Full local ZIP
-      backup/restore is documented in [the guide](docs/backup-and-restore.md). Validate priority before
-      adding dependencies; browser search and scoped CSV/rule export already exist.
+## Ideas, only if real use calls for them
 
-## Add only when the requirement exists
-
-The following are not near-term architecture work:
-
-- **Native authentication and authorization:** needed only if a private network
-  or authenticating reverse proxy is no longer an acceptable boundary.
-- **Request-scoped multiuser tenancy:** needed only when one process must serve
-  independent users concurrently. The current username folder alone is not a
-  reason to build tenancy.
-- **Database or distributed locking:** needed only when file size, query latency,
-  transactional recovery, or multiple writers demonstrably exceed the current
-  filesystem model.
-- **Background queue and workers:** needed only when measured rebuild duration or
-  reliability makes a synchronous request unacceptable.
-- **Horizontal replicas, object storage, metrics pipelines, or orchestration:**
-  needed only after one VM is proven insufficient.
-- **Resumable/offline/PWA support and direct provider APIs:** independent product
-  projects that require a real use case and privacy review.
-
-Do not pre-install libraries or introduce abstraction layers for these deferred
-possibilities.
-
-## Completion policy
-
-When an item is implemented, add its tests and operating documentation in the
-same change, update or remove the corresponding entry in
-`docs/legacy_limitations.md`, and record any compatibility change in
-`docs/legacy_divergence.md`.
+Subscriptions and recurring-charge detection, anomaly and fee alerts,
+category management, split transactions, budgets, OFX/QFX import, dark theme,
+server-side queries for much larger histories.
