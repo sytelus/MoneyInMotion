@@ -8,8 +8,13 @@ when it disagrees with the code.
 ## Data safety
 
 - Live data is whatever `~/.moneyinmotion/config.json` points to (currently
-  `E:\data\mim_root\shitals`). It is a working copy: you may run the app
-  against it and change it. Create a Settings backup before risky changes.
+  `E:\data\mim_root\shitals`). **Only the app writes there.** Running the app
+  against it is fine, including normal in-app actions the user asked for.
+  Never edit its files by hand or from scripts or tests. Experiments that
+  write (rebuild comparisons, migrations, edit tests) run on a copy in a
+  temporary folder with its own config.
+- The user may add or delete statement files under `Statements/` directly and
+  then rebuild. Browser upload is only a bulk copy into those folders.
 - `D:\Dropbox\MoneyAI\` (formerly `/mnt/d/Dropbox/MoneyAI/` under WSL) holds
   the legacy C# app's data. It is **strictly read-only**: only
   `npm run verify:legacy` may read it, and that command copies what it needs

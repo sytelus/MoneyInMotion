@@ -147,6 +147,10 @@ The owner's chosen headline measures (not implemented yet):
 - **Spending**: purchases and fees **minus** the refunds, returns, and
   discounts that offset them, so a returned item no longer looks like income.
 - **Savings / deficit**: income minus spending.
+- **Unclear credits**: when a credit can't be classified confidently (for
+  example a person-to-person payment or a reimbursement), it appears in a
+  review queue. The user marks it as income or as an offset to spending, and
+  that decision is saved as an ordinary rule.
 
 Transfers stay outside all three, as they are today. Implementing this means
 classifying credits by corrected transaction reason (refund, discount, return,
@@ -159,7 +163,8 @@ credits/debits/net-activity figures can remain as a secondary detail view.
 
 All reporting stays in USD. For a non-USD transaction, the import should use
 the converted amount when the institution supplies it. Otherwise it should
-look up a rate for the transaction date and ask the user to confirm it. The
+look up the rate for the transaction date from a public exchange-rate service
+(only the currency pair and date are sent) and ask the user to confirm it. The
 original amount, currency, rate, and rate source stay visible in the
 transaction details so every USD value can be explained. This needs new
 persisted fields, which is a schema change.

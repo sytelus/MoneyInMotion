@@ -18,14 +18,22 @@ These goals decide what gets built and how. The behavior docs under
 - **Your own computer, Windows first.** `run.bat` is the primary way to run
   it, and `run.sh` covers Linux and macOS. A Linux VM is an optional
   deployment ([docs/deployment.md](docs/deployment.md)).
-- **Private.** Financial data stays on the machine. No machine learning and
-  no cloud services. Categorization, matching, and insights use deterministic
-  rules and heuristics.
+- **Private.** Financial data stays on the machine. No machine learning, and
+  no cloud service ever receives transactions. Categorization, matching, and
+  insights use deterministic rules and heuristics. Asking a public service
+  for a currency's exchange rate on a date is fine, because it reveals
+  nothing about your finances.
 
 **Data**
 
-- **Source files are never modified.** Imported statements are kept as
-  received. Every correction is a separate edit layered on top of them.
+- **The app owns its data folder.** Only MiM writes `Merged/` and `staging/`.
+  You manage the inputs: drop new statement files into
+  `Statements/<account>/` (or delete some) in Explorer, then choose
+  **Rebuild**. Uploading in the browser does exactly the same thing, adding
+  files to those folders, so it is just a convenient way to copy many files
+  at once.
+- **Source files are never modified.** MiM never edits a statement. Every
+  correction is a separate edit layered on top.
 - **Every correction can be changed or removed.** Removing one replays the
   rest, and everything can be rebuilt from the statements plus the saved edits.
 - **One folder per account:** `Statements/<account>/AccountConfig.json`,
@@ -42,14 +50,14 @@ These goals decide what gets built and how. The behavior docs under
   replace the card charge they explain. Duplicate statement rows are merged.
 - **Income, spending, savings.** The goal is to report earned **Income**,
   **Spending** with refunds and discounts subtracted from the purchases they
-  offset, and the difference as **Savings / deficit**. Today the Overview
-  shows recorded credits, debits, and net activity instead, with refunds
-  counted as credits. See [docs/financial-reports.md](docs/financial-reports.md).
+  offset, and the difference as **Savings / deficit**. When it isn't clear
+  whether a credit is income, MiM asks you to decide rather than guessing.
+  See [docs/financial-reports.md](docs/financial-reports.md).
 - **USD, with foreign-currency support planned.** Amounts are USD. For a
   foreign-currency transaction, the goal is to use the conversion the
-  institution supplied, or look up a rate for that date and let you confirm
-  it. The original amount, currency, and rate stay visible. This is not
-  implemented yet.
+  institution supplied, or look up the rate for that date from an online
+  service and let you confirm it. The original amount, currency, and rate
+  stay visible. This is not implemented yet.
 
 **Engineering**
 
