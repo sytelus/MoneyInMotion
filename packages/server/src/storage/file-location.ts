@@ -42,11 +42,13 @@ export class FileLocation {
       // These are filesystem times, not import events. If metadata cannot be
       // read, fail the scan; inventing "now" would misrepresent provenance.
       const stats = fs.statSync(this.address);
-      const importId = getMD5HashString(relativeFilePath, true);
+      // Hash the '/'-separated address so import IDs are identical on Windows
+      // and Linux; the OS-specific relative path would change every ID.
+      const importId = getMD5HashString(this.portableAddress, true);
 
       this.importInfo = {
         id: importId,
-        portableAddress: relativeFilePath,
+        portableAddress: this.portableAddress,
         updateDate: stats.mtime.toISOString(),
         createDate: stats.birthtime.toISOString(),
         contentHash: importId,
