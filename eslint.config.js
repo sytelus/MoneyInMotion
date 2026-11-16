@@ -59,6 +59,17 @@ export default [
     },
   },
   {
+    // End-to-end browser tests and their Playwright config run in Node.
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+      globals: globals.node,
+    },
+    plugins: { '@typescript-eslint': tsPlugin },
+    rules: { ...tsPlugin.configs.recommended.rules, 'no-undef': 'off' },
+  },
+  {
     files: ['packages/core/src/**/*.ts'],
     rules: {
       'no-restricted-globals': [

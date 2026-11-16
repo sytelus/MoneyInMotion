@@ -141,6 +141,7 @@ ZIP backups from Settings.
 | `run.bat` / `./run.sh`                   | Install if needed, rebuild if stale, start production     |
 | `run.bat dev` / `./run.sh dev`           | API plus Vite website with hot reload                     |
 | `npm test`                               | Full test suite                                           |
+| `npm run test:e2e`                       | Build, then Playwright browser journeys on synthetic data |
 | `npm run typecheck` / `lint` / `format`  | Static checks                                             |
 | `npm run build`                          | Build core, server, and website                           |
 | `npm run smoke:production`               | Start the built server against a throwaway data root      |

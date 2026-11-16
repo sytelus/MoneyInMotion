@@ -22,15 +22,17 @@
     "format:check": "prettier --check .",
     "verify:legacy": "node scripts/verify-legacy-data.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
-    "lint": "eslint \"packages/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" eslint.config.js",
+    "lint": "eslint \"packages/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" \"e2e/**/*.ts\" playwright.config.ts eslint.config.js",
     "typecheck": "tsc -b",
-    "clean": "node scripts/clean.mjs"
+    "clean": "node scripts/clean.mjs",
+    "test:e2e": "npm run build && playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@playwright/test": "^1.56.1",
     "@typescript-eslint/eslint-plugin": "^8.19.1",
     "@typescript-eslint/parser": "^8.19.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^10.0.5",
     "eslint": "^10.9.1",
     "eslint-plugin-react-hooks": "^7.0.1",

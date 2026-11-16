@@ -24,8 +24,8 @@ a schedule. Add items when real use shows a need.
 
 ## Known gaps
 
-- [ ] End-to-end browser tests (Playwright) for import, edit, rule, backup,
-      and restore journeys.
+- [ ] Extend the Playwright journeys (`e2e/`) to rule management, restore,
+      and account removal/reconfiguration.
 - [ ] Explain reconciliation decisions (why an order or transfer was linked),
       and allow durable manual link/unlink.
 - [ ] Staging retention: list and remove old upload batches.

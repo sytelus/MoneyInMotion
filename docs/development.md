@@ -38,6 +38,7 @@ npm test                   # all Vitest projects
 npm run test:coverage      # with V8 coverage
 npm run build              # core, server, then website
 npm run smoke:production   # built server against a throwaway root: health, deep links, restart
+npm run test:e2e           # build, then Playwright browser journeys on synthetic data
 npm run verify:legacy -- <legacy-root>   # read-only C# parity report (see legacy-migration.md)
 ```
 
@@ -88,6 +89,11 @@ build, or script changes, also run the build and the smoke test. CI
   (`__tests__/scripts`).
 - **Web:** API client, navigation state, pages and workflows, reports, and
   rule effects.
+- **End to end (`e2e/`, Playwright):** the built server in a fresh temporary
+  home and data root. It creates accounts, uploads `e2e/fixtures/statements`,
+  checks the Overview figures, saves an income decision and reloads, and
+  creates a backup. Run `npx playwright install chromium` once per machine.
+  Add a journey here when a workflow spans pages or depends on the real server.
 
 To add a regression for a real failure, reduce it to the smallest rows,
 header, or config that still fail, strip personal data, check that the test

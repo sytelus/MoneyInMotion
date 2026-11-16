@@ -29,7 +29,7 @@ when it disagrees with the code.
 - Commit and push often, straight to `master`, once tests and lint pass.
 - Before calling work done, run `npm run typecheck`, `npm run lint`,
   `npm run format:check`, and `npm test`. For server or build changes, also
-  run `npm run build` and `npm run smoke:production`. To check the real app,
+  run `npm run build`, `npm run smoke:production`, and `npx playwright test`. To check the real app,
   start `run.bat` and open `http://localhost:3001`.
 - Windows is the primary platform; keep Linux working too (CI runs both).
   Prefer Node scripts over shell-specific scripts.
