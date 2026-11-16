@@ -5,65 +5,82 @@ not create a second ledger, change imported values, or persist a reporting
 schema. All drill-downs lead to the same transaction explorer through the shared
 `transaction-navigation.ts` URL contract.
 
-This document describes the **current** calculations. The product goal
-(see [README goals](../README.md#goals)) changes the headline measures; see
-[Planned: income, spending, savings](#planned-income-spending-savings).
-
 ## Questions the overview answers
 
-- What credits and debits are recorded in a clearly stated period?
-- Which categories and merchants account for outgoing amounts?
-- Are incoming amounts payments, discounts, returns, or other credits?
-- Which records need a category, a review, or matching attention?
-- Which source accounts contributed the displayed items?
-- Which existing transfer records are linked to each other?
-- What transactions support each number, and how can I export the result?
+- How much did I earn, spend, and save in a clearly stated period?
+- Where did the money go, by category and merchant, after refunds?
+- Where did income come from?
+- Which credits can't be classified, and which records need review?
+- Which source accounts contributed, and which transfers are linked?
+- Which transactions support each number, and how can I export the result?
 
 The initial period is the **latest available month**, not the computer's current
-month. Users can select a recorded month, latest available year, all recorded
-dates, or inclusive custom dates. Every figure follows that scope and the source
-account filter. The available-record dates are shown separately from the selected
-period: neither proves that all statements for the interval have been imported.
-Period/account choices are URL view state, so drill-down, browser Back, reload,
-and bookmarking retain the chosen report scope without persisting new data.
+month. Users can pick a recorded month, the latest year, all dates, or custom
+dates. Every figure follows that scope and the account filter. Period and
+account are URL state, so drill-down, Back, reload, and bookmarks keep them.
+The available-record dates are shown separately and don't prove that every
+statement for the period was imported.
 
-## Accounting and date semantics
+## Reporting grain
 
-`lib/financial-reports.ts` contains pure calculations, with no filesystem, API,
-DOM, or mutable store dependency. It shares the explorer's accounting grain:
+`lib/financial-reports.ts` and `lib/cash-flow.ts` are pure: no filesystem, API,
+DOM, or store access. Both use the explorer's grain:
 
 1. Start with top-level records.
-2. For a complete payment/order hierarchy, recurse into children instead of
-   counting the parent again.
-3. For an incomplete hierarchy, count the parent payment once rather than its
-   incomplete children.
-4. Apply effective corrected dates, amounts, types, categories, and names.
-5. Compare UTC calendar days against the inclusive selected range.
-6. Filter by the reporting item's source `accountId`, if selected.
+2. For a complete payment/order hierarchy, use the children instead of the
+   parent, so nothing is counted twice. For an incomplete one, count the parent
+   payment once.
+3. Use corrected dates, amounts, types, categories, and names.
+4. Compare UTC calendar days against the inclusive selected range, and filter by
+   the item's source `accountId` if one is selected.
 
-The _net-activity population_ excludes items classified as account transfers and
-unmatched order details. For that population:
+## Income, spending, savings
 
-| Figure                            | Definition                                                                            |
-| --------------------------------- | ------------------------------------------------------------------------------------- |
-| Recorded credits                  | Sum of `max(correctedAmount, 0)`.                                                     |
-| Recorded debits                   | Sum of `-min(correctedAmount, 0)`, displayed as a positive magnitude.                 |
-| Net activity                      | Recorded credits minus recorded debits.                                               |
-| Category/merchant outgoing amount | Debits grouped by category/displayed merchant; before subtracting refunds or credits. |
-| Credit type                       | Positive amounts grouped by corrected transaction reason.                             |
-| Source-account activity           | The same population and measures, grouped by each item's source account.              |
+`cash-flow.ts` classifies each reporting item:
 
-Credits include refunds and discounts. **Net activity is not a bank balance,
-earned income, net worth, or verified savings.** Account transfers and unmatched
-details are explicitly counted separately from activity totals.
+| Kind      | Rule                                                                                                                                                                                                   |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Spending  | Any expense-type record: purchase, fee, check, ATM, loan payment, cash advance. Returns, discounts, and match-adjustment credits are expense types with positive amounts, so they **reduce** spending. |
+| Income    | Interest, plus deposits (other credit, check or payment received, credit adjustment) into a **checking or savings** account. Any income-type record whose type the user set explicitly.                |
+| Undecided | Other income-type credits, such as card statement credits, PayPal receipts, or reward points. They are excluded from both totals and listed for the user to decide.                                    |
+| Excluded  | Transfers and account payments (inter-account types), and unmatched order details.                                                                                                                     |
 
-Category grouping uses the user's category path first, then the provider's
-category, then `Uncategorized`. An order detail can belong to an Amazon/PayPal
-source account while the parent payment belongs to a card. Accordingly,
-source-account contribution is not a funding-account cash-flow statement.
+**Income** is the sum of income items. **Spending** is gross spending minus the
+offsets (refunds, returns, discounts). **Savings** (shown as **Deficit** when
+negative) is income minus spending. None of these is an account balance.
 
-Amounts are USD. The domain has no currency metadata yet, so a source amount in
-another currency would currently be summed as if it were USD. See the planned
+**Deciding unclear credits.** The Overview shows how many credits are undecided
+and links to them (`flow=undecided`). Selecting them shows **Count as income**
+(sets the type to _Other credit_) and **Count against spending** (sets the type
+to _Return_). Both open the normal preview-and-save edit flow, so a decision is
+an ordinary saved correction. It can be broadened into a rule (for example, all
+"AMEX STATEMENT CREDIT" rows) or deleted later. Any explicit type correction
+counts as a decision, even one that keeps the same type.
+
+**Refund links** (derived, never stored). Each spending credit is linked to the
+charge it most likely reverses: same merchant, on or before the refund, within
+180 days, with enough unrefunded amount left. An exact amount wins, then the
+nearest date, then the ID. Several partial refunds may share one charge but
+never exceed it, and order details already under a payment are skipped. The
+links are used to:
+
+- count an uncategorized refund against the **category of the charge**, so a
+  returned jacket reduces "Clothing"; and
+- show "Likely refund of …" on the refund and "Refunded … · net cost …" on the
+  charge in the transaction details.
+
+**Breakdowns.** Category and merchant panels show spending net of refunds;
+groups whose net spending is zero or negative are hidden. "Where income comes
+from" groups income by payer. Every figure links to the transaction list with
+the same population (`flow=income|spending|undecided|cashflow`), and a spending
+drill-down by category uses the same inherited refund category.
+
+**Recorded credits and debits.** The older measures remain available in the
+export, the account table, and the transaction filters (`flow=credits|debits|activity`).
+They cover everything except transfers and unmatched items, and they count
+refunds as credits.
+
+Amounts are USD. The domain has no currency metadata yet; see the planned
 foreign-currency handling below.
 
 ## Trends and chart accessibility
@@ -74,9 +91,9 @@ are drawn, with an explicit truncation notice. The exact-value table includes
 all active periods at the displayed granularity. The aggregate export includes
 both monthly and daily rows.
 
-Periods with no recorded activity are omitted, not presented as confirmed zero
-activity or missing imports. Bar sizes share one scale across credits and debits
-within the drawn chart. Color is supplemented by labeled legends, distinct bar
+The chart shows income and spending per period. Periods with neither are
+omitted, not presented as confirmed zero activity or missing imports. Bar sizes
+share one scale across income and spending within the drawn chart. Color is supplemented by labeled legends, distinct bar
 positions, exact accessible link names, hover hints, and a table alternative.
 Chart links retain the account scope and intersect their period with the custom
 range, so a partial-month view does not silently widen its dates.
@@ -103,8 +120,10 @@ the mere existence of a relationship. The transfer panel explains that condition
 
 ## Export and print
 
-`financialReportCsv()` exports clearly labeled sections for totals, months,
-days, outgoing categories, merchants, credit types, and source-account activity.
+`financialReportCsv()` exports clearly labeled sections: the cash-flow summary
+(income, spending with its gross and refund parts, savings, undecided credits),
+months and days (income, spending, savings), spending categories and merchants,
+income sources, credit types, and source-account activity.
 Each row includes the selected UTC dates and source-account scope. Rows in
 different sections are alternate breakdowns of the same population and must not
 be summed together. Text cells are quoted and spreadsheet-formula escaped;
@@ -137,27 +156,6 @@ aggregate CSV. Printing is not a second calculation implementation.
 
 Keep new calculations in the pure module. Reuse the shared reporting grain and
 navigation contract rather than reproducing financial filtering inside JSX.
-
-## Planned: income, spending, savings
-
-The owner's chosen headline measures (not implemented yet):
-
-- **Income**: earned income only (salary, interest, dividends, and other
-  income-type credits). It excludes refunds, discounts, and transfers.
-- **Spending**: purchases and fees **minus** the refunds, returns, and
-  discounts that offset them, so a returned item no longer looks like income.
-- **Savings / deficit**: income minus spending.
-- **Unclear credits**: when a credit can't be classified confidently (for
-  example a person-to-person payment or a reimbursement), it appears in a
-  review queue. The user marks it as income or as an offset to spending, and
-  that decision is saved as an ordinary rule.
-
-Transfers stay outside all three, as they are today. Implementing this means
-classifying credits by corrected transaction reason (refund, discount, return,
-income) and, ideally, linking refunds to their original charges so category
-and merchant spending is reduced in the right place. Linking needs matching
-rules for refunds, which are not built yet. The current
-credits/debits/net-activity figures can remain as a secondary detail view.
 
 ## Planned: foreign-currency transactions
 

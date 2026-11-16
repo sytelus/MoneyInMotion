@@ -11,13 +11,16 @@ export function BreakdownPanel({
   description,
   rows,
   measure,
+  of,
   href,
   color = 'bg-indigo-500',
 }: {
   title: string;
   description: string;
   rows: ReportBreakdown[];
-  measure: 'credits' | 'debits';
+  measure: 'credits' | 'debits' | 'spending';
+  /** What the percentages are a share of, e.g. "spending" or "income". */
+  of: string;
   href: (row: ReportBreakdown) => string;
   color?: string;
 }) {
@@ -55,8 +58,7 @@ export function BreakdownPanel({
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {row.count.toLocaleString()} items ·{' '}
-                {total ? ((row[measure] / total) * 100).toFixed(1) : 0}% of{' '}
-                {measure === 'debits' ? 'outgoing amounts' : 'credits'}
+                {total ? ((row[measure] / total) * 100).toFixed(1) : 0}% of {of}
               </p>
             </Link>
           ))}

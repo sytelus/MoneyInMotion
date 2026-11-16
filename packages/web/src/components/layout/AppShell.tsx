@@ -34,8 +34,10 @@ import { useTransactions, useApplyEdits, useAccounts } from '../../api/hooks.js'
 import { ExistingStatements } from '../importing/ExistingStatements.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
+import { IncomeDecisionBar } from '../transactions/IncomeDecisionBar.js';
+import { cashFlowContext } from '../../lib/financial-reports.js';
 
-type EditDialog = 'categoryPath' | 'note' | 'isFlagged' | 'attributes' | null;
+type EditDialog = 'categoryPath' | 'note' | 'isFlagged' | 'attributes' | 'transactionReason' | null;
 
 const EmptyTransactions: React.FC = () => {
   const accounts = useAccounts();
@@ -100,6 +102,17 @@ export const AppShell: React.FC = () => {
     return [...selectedIds].flatMap((id) => transactions.getTransaction(id) ?? []);
   }, [transactions, selectedIds]);
   const selectedTransaction = selectedTransactions.length === 1 ? selectedTransactions[0] : null;
+  const flowFilter = useTransactionsStore((s) => s.filters.flow);
+  const undecidedSelected = useMemo(() => {
+    if (!transactions) return [];
+    const { kindOf } = cashFlowContext(transactions);
+    return selectedTransactions.filter((tx) => kindOf(tx) === 'undecided');
+  }, [transactions, selectedTransactions]);
+  const decideIncome = useCallback((targets: Transaction[], reason: number) => {
+    setEditingTransactions(targets);
+    setEditDefaults({ transactionReason: editValue(reason) });
+    setActiveDialog('transactionReason');
+  }, []);
 
   // Edit dialog openers
   const openEditDialog = useCallback(
@@ -325,6 +338,11 @@ export const AppShell: React.FC = () => {
               </div>
             </div>
 
+            <IncomeDecisionBar
+              undecided={undecidedSelected}
+              showHint={flowFilter === 'undecided'}
+              onDecide={decideIncome}
+            />
             <div className="flex-1 min-h-0">
               <TransactionList
                 onEditCategory={handleRowEditCategory}

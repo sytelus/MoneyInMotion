@@ -1,11 +1,18 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Flag, Tags, Unlink, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Flag, Tags, Unlink, ArrowRight, HelpCircle } from 'lucide-react';
 import type { FinancialReport } from '../../lib/financial-reports.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { ReportPanel } from './ReportPanel.js';
 
 export function ReviewQueue({ report }: { report: FinancialReport }) {
   const items = [
+    {
+      key: 'undecided',
+      label: 'Income or refund?',
+      description: 'Credits MiM cannot classify; left out of income and spending until you decide.',
+      Icon: HelpCircle,
+      basis: 'reporting',
+    },
     {
       key: 'flagged',
       label: 'Marked for review',
@@ -44,7 +51,11 @@ export function ReviewQueue({ report }: { report: FinancialReport }) {
         {items.map(({ key, label, description, Icon, basis }) => (
           <Link
             key={key}
-            to={transactionsHref({ ...report.scope, review: key, basis, view: 'list' })}
+            to={transactionsHref(
+              key === 'undecided'
+                ? { ...report.scope, flow: 'undecided', basis, view: 'list' }
+                : { ...report.scope, review: key, basis, view: 'list' },
+            )}
             className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
             title={`${label}: ${report.review[key]}. ${description}`}
           >

@@ -162,30 +162,34 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
       `moneyinmotion-report-${scope.from || 'start'}-${scope.to || 'end'}.csv`,
     );
   };
+  const cash = report.cashFlow;
   const metricCards = [
     {
-      title: 'Recorded credits',
-      value: report.totals.credits,
-      help: 'Includes refunds, discounts, and other positive amounts.',
+      title: 'Income',
+      value: cash.income,
+      help: 'Paychecks, interest, and other deposits you earned. Excludes refunds and transfers.',
       Icon: ArrowDownLeft,
-      flow: 'credits',
+      flow: 'income',
       style: 'border-emerald-300 bg-emerald-50 text-emerald-900',
     },
     {
-      title: 'Recorded debits',
-      value: report.totals.debits,
-      help: 'Outgoing amounts, before subtracting credits or refunds.',
+      title: 'Spending',
+      value: cash.spending,
+      help: `${formatCurrency(cash.grossSpending)} spent minus ${formatCurrency(cash.offsets)} in refunds, returns, and discounts.`,
       Icon: ArrowUpRight,
-      flow: 'debits',
+      flow: 'spending',
       style: 'border-indigo-300 bg-indigo-50 text-indigo-900',
     },
     {
-      title: 'Net activity',
-      value: report.totals.net,
-      help: 'Credits minus debits. Not your balance or earned income.',
+      title: cash.savings < 0 ? 'Deficit' : 'Savings',
+      value: cash.savings,
+      help: 'Income minus spending. Not an account balance.',
       Icon: Wallet,
-      flow: 'activity',
-      style: 'border-sky-300 bg-sky-50 text-sky-900',
+      flow: 'cashflow',
+      style:
+        cash.savings < 0
+          ? 'border-amber-300 bg-amber-50 text-amber-900'
+          : 'border-sky-300 bg-sky-50 text-sky-900',
     },
   ] as const;
   return (
@@ -346,27 +350,46 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
               </Link>
             ))}
           </section>
+          {cash.undecidedCount > 0 && (
+            <Notice tone="warning" title="Some credits need your decision">
+              <p>
+                {cash.undecidedCount.toLocaleString()} credits totaling{' '}
+                {formatCurrency(cash.undecidedAmount)} could be income or could offset spending (for
+                example card statement credits, PayPal receipts, or reward points). They are left
+                out of the figures above until you decide.{' '}
+                <Link
+                  className="font-semibold underline"
+                  to={transactionsHref({ ...scope, flow: 'undecided', view: 'list' })}
+                >
+                  Review them
+                </Link>
+                , select one or more, and choose <strong>Count as income</strong> or{' '}
+                <strong>Count against spending</strong>.
+              </p>
+            </Notice>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Info aria-hidden className="h-4 w-4 shrink-0" />
             <span>
-              {report.totals.count.toLocaleString()} reporting items in net activity. Excludes{' '}
+              {(cash.incomeCount + cash.spendingCount).toLocaleString()} reporting items. Excludes{' '}
               {report.excluded.transfers.toLocaleString()} transfer records and{' '}
               {report.excluded.unmatched.toLocaleString()} unmatched items.
             </span>
             <HelpHint title="How these figures are calculated">
               <p>
+                <strong>Income</strong> is interest plus deposits into checking or savings accounts.{' '}
+                <strong>Spending</strong> is purchases, fees, checks, ATM withdrawals, and loan
+                payments, minus refunds, returns, and discounts. Account transfers and card payments
+                are neither.
+              </p>
+              <p>
+                Other credits, such as card statement credits or PayPal receipts, wait for your
+                decision. Setting a transaction&apos;s type yourself always settles it.
+              </p>
+              <p>
                 Completed order details replace their parent payment so it is not counted twice.
-                Incomplete orders use the payment amount. Dates, amounts, categories, and types
-                reflect your current saved corrections.
-              </p>
-              <p>
-                Credits include discounts and refunds, not just earnings. Source-account figures
-                describe where reporting items came from, not bank balances. Account transfers and
-                unmatched order details are excluded from net activity.
-              </p>
-              <p>
-                Amounts use the app’s existing USD display. The imported model has no currency field
-                or conversion rates; this overview must not be used to combine different currencies.
+                Dates, amounts, categories, and types reflect your saved corrections. Amounts are
+                USD.
               </p>
             </HelpHint>
           </div>
@@ -376,31 +399,34 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
           </div>
           <div className="grid items-start gap-5 lg:grid-cols-3">
             <BreakdownPanel
-              title="Where outgoing amounts go"
-              description="Category view of debits, before credits/refunds. User categories take precedence over statement categories."
+              title="Where the money goes"
+              description="Spending by category, net of refunds. An uncategorized refund counts against the category of the purchase it reverses."
               rows={report.categories}
-              measure="debits"
+              measure="spending"
+              of="spending"
               href={(row) =>
-                transactionsHref({ ...scope, category: row.key, flow: 'debits', view: 'list' })
+                transactionsHref({ ...scope, category: row.key, flow: 'spending', view: 'list' })
               }
             />
             <BreakdownPanel
               title="Top merchants"
-              description="Largest outgoing amounts by displayed merchant. Select a merchant to inspect the exact matching items."
+              description="Spending by merchant, net of refunds. Select a merchant to inspect the exact items."
               rows={report.merchants}
-              measure="debits"
+              measure="spending"
+              of="spending"
               href={(row) =>
-                transactionsHref({ ...scope, merchant: row.key, flow: 'debits', view: 'list' })
+                transactionsHref({ ...scope, merchant: row.key, flow: 'spending', view: 'list' })
               }
             />
             <BreakdownPanel
-              title="What the credits represent"
-              description="Separate refunds, discounts, payments, and other credits instead of treating them all as earnings."
-              rows={report.creditTypes}
+              title="Where income comes from"
+              description="Income by payer, such as an employer or bank interest."
+              rows={report.incomeSources}
               measure="credits"
+              of="income"
               color="bg-emerald-600"
               href={(row) =>
-                transactionsHref({ ...scope, reason: row.key, flow: 'credits', view: 'list' })
+                transactionsHref({ ...scope, merchant: row.key, flow: 'income', view: 'list' })
               }
             />
           </div>
@@ -408,8 +434,8 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
         </>
       )}
       <footer className="border-t border-slate-200 pt-4 text-xs leading-5 text-muted-foreground">
-        Read-only reports from the current saved snapshot · USD display, no currency conversion ·
-        Figures are recorded activity, not verified balances.{' '}
+        Read-only reports from the current saved snapshot · USD · Figures come from your statements,
+        not verified account balances.{' '}
         <Link to="/imports" className="text-indigo-700 underline">
           Review statement sources
         </Link>{' '}

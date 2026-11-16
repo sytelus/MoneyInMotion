@@ -48,11 +48,12 @@ These goals decide what gets built and how. The behavior docs under
 - **Connect related records.** Transfers between accounts are not income or
   spending, a card payment is not an expense, and Amazon or Etsy order lines
   replace the card charge they explain. Duplicate statement rows are merged.
-- **Income, spending, savings.** The goal is to report earned **Income**,
+- **Income, spending, savings.** The Overview reports earned **Income**,
   **Spending** with refunds and discounts subtracted from the purchases they
-  offset, and the difference as **Savings / deficit**. When it isn't clear
-  whether a credit is income, MiM asks you to decide rather than guessing.
-  See [docs/financial-reports.md](docs/financial-reports.md).
+  offset (refunds are linked to their original charge), and the difference as
+  **Savings / deficit**. When it isn't clear whether a credit is income, MiM
+  asks you to decide rather than guessing. See
+  [docs/financial-reports.md](docs/financial-reports.md).
 - **USD, with foreign-currency support planned.** Amounts are USD. For a
   foreign-currency transaction, the goal is to use the conversion the
   institution supplied, or look up the rate for that date from an online

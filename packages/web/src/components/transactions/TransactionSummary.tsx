@@ -19,6 +19,65 @@ import { Button } from '../ui/button.js';
 import { TransactionProvenance } from './TransactionProvenance.js';
 import { transactionProvenance } from '../../lib/transaction-provenance.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
+import { cashFlowContext } from '../../lib/financial-reports.js';
+
+const CASH_FLOW_LABELS = {
+  income: 'Income',
+  spending: 'Spending',
+  undecided: 'Needs your decision (income or refund?)',
+  transfer: 'Transfer between accounts (not counted)',
+  unmatched: 'Unmatched order detail (not counted)',
+} as const;
+
+/** Derived refund link: never stored, recalculated from the loaded history. */
+const RefundLinks: React.FC<{ transaction: Transaction }> = ({ transaction }) => {
+  const transactions = useTransactionsStore((s) => s.transactions);
+  if (!transactions) return null;
+  const { refunds } = cashFlowContext(transactions);
+  const chargeId = refunds.chargeOf.get(transaction.id);
+  const charge = chargeId ? transactions.getTransaction(chargeId) : undefined;
+  const refundIds = refunds.refundsOf.get(transaction.id) ?? [];
+  if (!charge && !refundIds.length) return null;
+  const link = (tx: Transaction) => (
+    <Link
+      className="text-primary underline underline-offset-2"
+      to={transactionsHref({ transaction: tx.id, basis: 'records', view: 'list' })}
+    >
+      {tx.displayEntityNameNormalized} · {formatDate(tx.correctedTransactionDate)}
+    </Link>
+  );
+  const refunded = refundIds.reduce(
+    (sum, id) => sum + (transactions.getTransaction(id)?.correctedAmount ?? 0),
+    0,
+  );
+  return (
+    <div className="space-y-1 border-t border-border pt-3 text-xs">
+      {charge && (
+        <p>
+          Likely refund of {link(charge)} (<AmountDisplay amount={charge.correctedAmount} />)
+        </p>
+      )}
+      {refundIds.length > 0 && (
+        <>
+          <p>
+            Refunded <AmountDisplay amount={refunded} /> · net cost{' '}
+            <AmountDisplay amount={transaction.correctedAmount + refunded} />
+          </p>
+          <ul className="space-y-1">
+            {refundIds.map((id) => {
+              const refund = transactions.getTransaction(id);
+              return refund ? <li key={id}>{link(refund)}</li> : null;
+            })}
+          </ul>
+        </>
+      )}
+      <p className="text-muted-foreground">
+        Matched by merchant, amount, and a date within 180 days. A suggestion for context; it
+        doesn&apos;t change totals beyond counting the refund against spending.
+      </p>
+    </div>
+  );
+};
 
 /**
  * Collapsible section for provider attributes (arbitrary key-value metadata
@@ -84,6 +143,11 @@ const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) =
           {transactions?.getAccountInfo(transaction.accountId).title || transaction.accountId}
         </DetailRow>
         <DetailRow label="Category">{transactionCategory(transaction)}</DetailRow>
+        {transactions && (
+          <DetailRow label="Counts as">
+            {CASH_FLOW_LABELS[cashFlowContext(transactions).kindOf(transaction)]}
+          </DetailRow>
+        )}
 
         {transaction.note && (
           <div className="text-sm">
@@ -108,6 +172,7 @@ const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) =
         </HelpHint>
       </div>
 
+      <RefundLinks transaction={transaction} />
       {related.length > 0 && (
         <details className="border-t border-border pt-3 text-xs">
           <summary className="cursor-pointer font-medium">

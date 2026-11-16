@@ -2,9 +2,11 @@
  * Read-only report projections. No financial object is changed by this module.
  *
  * Reports use the same grain as the transaction explorer: complete order
- * details replace their payment; incomplete payments are counted once. Credits
- * include refunds/discounts. Neither net activity nor account contributions are
- * account balances. Source accounts are not necessarily funding accounts.
+ * details replace their payment; incomplete payments are counted once. The
+ * headline measures are income, spending (net of refunds and discounts), and
+ * savings; see `cash-flow.ts` for the classification. Recorded credits/debits
+ * remain available for the export and account table. None of these are
+ * account balances, and source accounts are not necessarily funding accounts.
  */
 import {
   type Transaction,
@@ -17,6 +19,13 @@ import {
   transactionBucket,
   transactionCategory,
 } from './transaction-explorer.js';
+import {
+  cashFlowClassifier,
+  cashFlowTotals,
+  linkRefunds,
+  type CashFlowKind,
+  type RefundLinks,
+} from './cash-flow.js';
 
 export interface ReportScope {
   from: string;
@@ -32,6 +41,16 @@ export interface ActivityTotals {
 export interface ReportBreakdown extends ActivityTotals {
   key: string;
   label: string;
+  /** Debits minus credits: spending net of refunds and discounts. */
+  spending: number;
+}
+/** One chart period: income, net spending, and their difference. */
+export interface CashFlowPeriod {
+  key: string;
+  count: number;
+  income: number;
+  spending: number;
+  savings: number;
 }
 export interface TransferPair {
   id: string;
@@ -77,7 +96,69 @@ function groupRows(
     group.push(row);
     groups.set(value, group);
   }
-  return [...groups].map(([key, rows]) => ({ key, label: label(key), ...activityTotals(rows) }));
+  return [...groups].map(([key, rows]) => {
+    const totals = activityTotals(rows);
+    return { key, label: label(key), ...totals, spending: totals.debits - totals.credits };
+  });
+}
+
+/** Snapshot-wide derivations, cached per immutable Transactions object. */
+const derivedCache = new WeakMap<
+  Transactions,
+  { kindOf: (tx: Transaction) => CashFlowKind; refunds: RefundLinks }
+>();
+export function cashFlowContext(transactions: Transactions) {
+  let derived = derivedCache.get(transactions);
+  if (!derived) {
+    const kindOf = cashFlowClassifier(transactions);
+    derived = { kindOf, refunds: linkRefunds(reportingTransactions(transactions), kindOf) };
+    derivedCache.set(transactions, derived);
+  }
+  return derived;
+}
+
+/**
+ * Category used for spending: the user's or statement's category, except that
+ * an uncategorized refund inherits the category of the charge it reverses, so
+ * a returned jacket reduces "Clothing" rather than "Uncategorized".
+ */
+export function spendingCategory(
+  transactions: Transactions,
+  tx: Transaction,
+  refunds: RefundLinks = cashFlowContext(transactions).refunds,
+) {
+  const own = transactionCategory(tx);
+  if (own !== 'Uncategorized') return own;
+  const chargeId = refunds.chargeOf.get(tx.id);
+  const charge = chargeId ? transactions.getTransaction(chargeId) : undefined;
+  return charge ? transactionCategory(charge) : own;
+}
+
+function cashFlowPeriods(
+  rows: readonly Transaction[],
+  kindOf: (tx: Transaction) => CashFlowKind,
+  key: (tx: Transaction) => string,
+): CashFlowPeriod[] {
+  const groups = new Map<string, Transaction[]>();
+  for (const row of rows) {
+    const kind = kindOf(row);
+    if (kind !== 'income' && kind !== 'spending') continue;
+    const group = groups.get(key(row)) ?? [];
+    group.push(row);
+    groups.set(key(row), group);
+  }
+  return [...groups]
+    .map(([period, items]) => {
+      const totals = cashFlowTotals(items, kindOf);
+      return {
+        key: period,
+        count: items.length,
+        income: totals.income,
+        spending: totals.spending,
+        savings: totals.savings,
+      };
+    })
+    .sort((a, b) => a.key.localeCompare(b.key));
 }
 export function reportCoverage(transactions: Transactions) {
   const rows = reportingTransactions(transactions);
@@ -144,23 +225,30 @@ export function buildFinancialReport(transactions: Transactions, scope: ReportSc
   const activity = rows.filter(
     (row) => !['Transfers', 'Unmatched'].includes(transactionBucket(row)),
   );
-  const outgoing = activity.filter((row) => row.correctedAmount < 0);
-  const credits = activity.filter((row) => row.correctedAmount > 0);
+  const { kindOf, refunds } = cashFlowContext(transactions);
+  const spendingRows = rows.filter((row) => kindOf(row) === 'spending');
+  const incomeRows = rows.filter((row) => kindOf(row) === 'income');
   const accountTitle = (id: string) => transactions.getAccountInfo(id).title || id;
   const descending = (a: ReportBreakdown, b: ReportBreakdown) =>
     Math.max(b.credits, b.debits) - Math.max(a.credits, a.debits) || a.label.localeCompare(b.label);
+  const bySpending = (a: ReportBreakdown, b: ReportBreakdown) =>
+    b.spending - a.spending || a.label.localeCompare(b.label);
   return {
     scope,
     rows,
     totals: activityTotals(activity),
-    months: groupRows(activity, (row) => reportDay(row).slice(0, 7)).sort((a, b) =>
-      a.key.localeCompare(b.key),
-    ),
-    days: groupRows(activity, reportDay).sort((a, b) => a.key.localeCompare(b.key)),
-    categories: groupRows(outgoing, transactionCategory).sort(descending),
-    merchants: groupRows(outgoing, (row) => row.displayEntityNameNormalized).sort(descending),
+    cashFlow: cashFlowTotals(rows, kindOf),
+    months: cashFlowPeriods(rows, kindOf, (row) => reportDay(row).slice(0, 7)),
+    days: cashFlowPeriods(rows, kindOf, reportDay),
+    categories: groupRows(spendingRows, (row) => spendingCategory(transactions, row, refunds))
+      .filter((row) => row.spending > 0.004)
+      .sort(bySpending),
+    merchants: groupRows(spendingRows, (row) => row.displayEntityNameNormalized)
+      .filter((row) => row.spending > 0.004)
+      .sort(bySpending),
+    incomeSources: groupRows(incomeRows, (row) => row.displayEntityNameNormalized).sort(descending),
     creditTypes: groupRows(
-      credits,
+      activity.filter((row) => row.correctedAmount > 0),
       (row) => String(row.correctedTransactionReason),
       (key) => transactionReasonTitleLookup[key] ?? 'Other type',
     ).sort(descending),
@@ -178,6 +266,7 @@ export function buildFinancialReport(transactions: Transactions, scope: ReportSc
       unmatched: records.filter((row) => transactionBucket(row) === 'Unmatched').length,
       uncategorized: rows.filter((row) => !row.categoryPath.length && !row.providerCategoryName)
         .length,
+      undecided: rows.filter((row) => kindOf(row) === 'undecided').length,
     },
     transfers: transferPairs(transactions, scope),
   };
@@ -203,6 +292,9 @@ export function financialReportCsv(report: FinancialReport): string {
     Number(totals.debits.toFixed(2)),
     Number(totals.net.toFixed(2)),
   ];
+  const cash = report.cashFlow;
+  const cashRow = (label: string, count: number, credits: number, debits: number) =>
+    row('Cash flow', label, { count, credits, debits, net: credits - debits });
   return [
     [
       'Section',
@@ -215,11 +307,35 @@ export function financialReportCsv(report: FinancialReport): string {
       'Debits (USD display)',
       'Net activity (USD display)',
     ],
+    cashRow('Income', cash.incomeCount, cash.income, 0),
+    cashRow(
+      'Spending, net of refunds and discounts',
+      cash.spendingCount,
+      cash.offsets,
+      cash.grossSpending,
+    ),
+    cashRow(
+      'Savings (income minus spending)',
+      cash.incomeCount + cash.spendingCount,
+      cash.income,
+      cash.spending,
+    ),
+    cashRow(
+      'Credits awaiting an income decision (not in the figures above)',
+      cash.undecidedCount,
+      cash.undecidedAmount,
+      0,
+    ),
     row('Summary', 'Recorded activity; excludes transfers and unmatched items', report.totals),
-    ...report.months.map((item) => row('Month', item.key, item)),
-    ...report.days.map((item) => row('Day', item.key, item)),
-    ...report.categories.map((item) => row('Outgoing category', item.label, item)),
-    ...report.merchants.map((item) => row('Outgoing merchant', item.label, item)),
+    ...report.months.map((item) =>
+      cashRow(`Month ${item.key}`, item.count, item.income, item.spending),
+    ),
+    ...report.days.map((item) =>
+      cashRow(`Day ${item.key}`, item.count, item.income, item.spending),
+    ),
+    ...report.categories.map((item) => row('Spending category', item.label, item)),
+    ...report.merchants.map((item) => row('Spending merchant', item.label, item)),
+    ...report.incomeSources.map((item) => row('Income source', item.label, item)),
     ...report.creditTypes.map((item) => row('Credit type', item.label, item)),
     ...report.accounts.map((item) => row('Source account activity', item.label, item)),
   ]

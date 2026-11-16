@@ -12,6 +12,9 @@ vi.mock('../../src/components/layout/Header.js', () => ({
 }));
 
 function fixture() {
+  return fixtureCollection().serialize();
+}
+function fixtureCollection() {
   const collection = new Transactions('report');
   for (const [name, amount, date, reason] of [
     ['Market', -100, '2024-03-15', TransactionReason.Purchase],
@@ -38,7 +41,7 @@ function fixture() {
       false,
     );
   }
-  return collection.serialize();
+  return collection;
 }
 function renderPage() {
   return render(
@@ -61,16 +64,20 @@ describe('Reports overview', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
     expect(screen.getByTestId('report-scope')).toHaveTextContent('Mar 1, 2024 – Mar 31, 2024');
+    // A $100 purchase with a $10 discount: no income, $90 spending, $90 deficit.
     const totals = screen.getByRole('region', { name: 'Activity totals' });
-    expect(within(totals).getByText('$100.00')).toBeInTheDocument();
-    expect(within(totals).getByText('$10.00')).toBeInTheDocument();
+    expect(within(totals).getByText('$0.00')).toBeInTheDocument();
+    expect(within(totals).getByText('$90.00')).toBeInTheDocument();
     expect(within(totals).getByText('-$90.00')).toBeInTheDocument();
+    expect(within(totals).getByText('Deficit')).toBeInTheDocument();
+    expect(within(totals).getByText(/\$100\.00 spent minus \$10\.00/)).toBeInTheDocument();
+    expect(screen.queryByText('Some credits need your decision')).not.toBeInTheDocument();
     const merchant = within(screen.getByRole('region', { name: 'Top merchants' })).getByRole(
       'link',
       { name: /Market/ },
     );
     expect(merchant.getAttribute('href')).toContain('merchant=Market');
-    expect(merchant.getAttribute('href')).toContain('flow=debits');
+    expect(merchant.getAttribute('href')).toContain('flow=spending');
     const flagged = within(screen.getByRole('region', { name: 'Your review queue' })).getByRole(
       'link',
       { name: /Marked for review/ },
@@ -78,7 +85,7 @@ describe('Reports overview', () => {
     expect(flagged.getAttribute('href')).toContain('basis=records');
     expect(screen.queryByText(/Amounts use the app/)).not.toBeInTheDocument();
     expect(screen.getByText('Exact daily figures (1)')).toBeInTheDocument();
-    const dailyChart = screen.getByLabelText('Daily activity chart');
+    const dailyChart = screen.getByLabelText('Daily cash-flow chart');
     expect(within(dailyChart).getByRole('link').getAttribute('href')).toContain(
       'from=2024-03-15&to=2024-03-15',
     );
@@ -90,7 +97,9 @@ describe('Reports overview', () => {
     expect(screen.getByTestId('report-scope')).toHaveTextContent('Jan 1, 2023 – Mar 15, 2024');
     expect(screen.getByText('Exact monthly figures (2)')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Exact monthly figures (2)'));
-    expect(screen.getByRole('table', { name: /Monthly recorded activity/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('table', { name: /Monthly income, spending, and savings/ }),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Reporting period'), { target: { value: 'custom' } });
     fireEvent.change(screen.getByLabelText('From date'), { target: { value: '2025-01-01' } });
     expect(screen.getByRole('alert')).toHaveTextContent('start date is after the end date');
@@ -121,8 +130,44 @@ describe('Reports overview', () => {
   it('supports keyboard-usable calculation help', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: /How these figures are calculated/ }));
-    expect(screen.getByRole('dialog')).toHaveTextContent('no currency field or conversion rates');
-    expect(screen.getByRole('dialog')).toHaveTextContent('not bank balances');
+    expect(screen.getByRole('dialog')).toHaveTextContent('deposits into checking or savings');
+    expect(screen.getByRole('dialog')).toHaveTextContent('wait for your decision');
+  });
+
+  it('asks the user to decide credits it cannot classify and links to them', () => {
+    const collection = fixtureCollection();
+    collection.addNew(
+      Transaction.create('card-source', 'card', false, {
+        entityName: 'Statement credit',
+        entityNameNormalized: 'Statement credit',
+        amount: 25,
+        transactionDate: '2024-03-20',
+        transactionReason: TransactionReason.OtherCredit,
+      }),
+      {
+        id: 'card',
+        instituteName: 'Generic',
+        title: 'Card',
+        type: AccountType.CreditCard,
+        requiresParent: false,
+      },
+      { id: 'card-source', portableAddress: 'Statements/card.csv', contentHash: 'card-path' },
+      false,
+    );
+    useTransactionsMock.mockReturnValue({
+      data: collection.serialize(),
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPage();
+    expect(screen.getByText('Some credits need your decision')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Review them' }).getAttribute('href')).toContain(
+      'flow=undecided',
+    );
+    // Undecided credits stay out of income until the user decides.
+    const totals = screen.getByRole('region', { name: 'Activity totals' });
+    expect(within(totals).getByText('$0.00')).toBeInTheDocument();
   });
 
   it('downloads the scoped aggregate CSV and invokes the browser print workflow', () => {

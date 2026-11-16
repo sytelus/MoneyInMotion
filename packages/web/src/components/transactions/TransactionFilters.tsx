@@ -8,6 +8,17 @@ import { Button } from '../ui/button.js';
 import { transactionCategory } from '../../lib/transaction-explorer.js';
 import { ruleChangesLabel } from '../../lib/rules.js';
 
+const FLOW_OPTIONS = [
+  { value: '', label: 'All activity, including transfers' },
+  { value: 'cashflow', label: 'Income and spending' },
+  { value: 'income', label: 'Income' },
+  { value: 'spending', label: 'Spending (refunds reduce it)' },
+  { value: 'undecided', label: 'Credits awaiting an income decision' },
+  { value: 'activity', label: 'Recorded credits and debits (no transfers)' },
+  { value: 'credits', label: 'Recorded credits' },
+  { value: 'debits', label: 'Recorded debits' },
+];
+
 export function TransactionFilters() {
   const {
     transactions,
@@ -65,7 +76,7 @@ export function TransactionFilters() {
     source: `Source file: ${sourceLabel}`,
     rule: matchedRuleLabel,
     merchant: `Merchant: ${filters.merchant}`,
-    flow: `Activity: ${filters.flow}`,
+    flow: `Activity: ${FLOW_OPTIONS.find((option) => option.value === filters.flow)?.label ?? filters.flow}`,
     account: `Account: ${accounts.find((account) => account.value === filters.account)?.label ?? filters.account}`,
     category: `Category: ${filters.category}`,
     reason: `Type: ${transactionReasonTitleLookup[filters.reason] ?? filters.reason}`,
@@ -160,12 +171,7 @@ export function TransactionFilters() {
             <Select
               className="mt-1"
               value={filters.flow}
-              options={[
-                { value: '', label: 'All activity, including transfers' },
-                { value: 'activity', label: 'Credits and debits (excludes transfers/unmatched)' },
-                { value: 'credits', label: 'Recorded credits' },
-                { value: 'debits', label: 'Recorded debits' },
-              ]}
+              options={FLOW_OPTIONS}
               onChange={(e) => setFilters({ flow: e.target.value })}
             />
           </label>

@@ -15,6 +15,28 @@ import {
   transactionBucket,
 } from '../lib/transaction-explorer.js';
 import type { TransactionScope } from '../lib/transaction-navigation.js';
+import { cashFlowContext, spendingCategory } from '../lib/financial-reports.js';
+import type { CashFlowKind } from '../lib/cash-flow.js';
+
+/** Same populations as the Overview cards and chart, so drill-down counts agree. */
+function matchesFlow(tx: Transaction, flow: string, kindOf: (tx: Transaction) => CashFlowKind) {
+  const kind = kindOf(tx);
+  switch (flow) {
+    case 'income':
+    case 'spending':
+    case 'undecided':
+      return kind === flow;
+    case 'cashflow':
+      return kind === 'income' || kind === 'spending';
+    default:
+      // Recorded credits/debits/activity: everything except transfers and unmatched.
+      return (
+        !['Transfers', 'Unmatched'].includes(transactionBucket(tx)) &&
+        (flow === 'activity' ||
+          (flow === 'credits' ? tx.correctedAmount > 0 : tx.correctedAmount < 0))
+      );
+  }
+}
 
 export interface TransactionFilters {
   search: string;
@@ -270,6 +292,13 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     if (!transactions) return [];
 
     const words = filters.search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const kindOf = cashFlowContext(transactions).kindOf;
+    // Spending drill-downs use the report's category, where an uncategorized
+    // refund takes the category of the charge it reverses.
+    const categoryOf =
+      filters.flow === 'spending'
+        ? (tx: Transaction) => spendingCategory(transactions, tx)
+        : transactionCategory;
     return (basis === 'records' ? records : reporting).filter((tx) => {
       // Transaction dates are stored as UTC ISO-8601 strings, and the
       // YearMonthNav also partitions by UTC. Using UTC methods here keeps
@@ -288,14 +317,11 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
         (!filters.to || day <= filters.to) &&
         (!filters.account || tx.accountId === filters.account) &&
         (!filters.reason || String(tx.correctedTransactionReason) === filters.reason) &&
-        (!filters.category || transactionCategory(tx) === filters.category) &&
+        (!filters.category || categoryOf(tx) === filters.category) &&
         (!filters.merchant || tx.displayEntityNameNormalized === filters.merchant) &&
         (!filters.source || tx.importId === filters.source) &&
         (!filters.rule || tx.appliedEditIdsDescending?.includes(filters.rule)) &&
-        (!filters.flow ||
-          (!['Transfers', 'Unmatched'].includes(transactionBucket(tx)) &&
-            (filters.flow === 'activity' ||
-              (filters.flow === 'credits' ? tx.correctedAmount > 0 : tx.correctedAmount < 0)))) &&
+        (!filters.flow || matchesFlow(tx, filters.flow, kindOf)) &&
         (!filters.review ||
           (filters.review === 'flagged'
             ? tx.isUserFlagged

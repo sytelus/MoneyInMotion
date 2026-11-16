@@ -5,12 +5,14 @@ a schedule. Add items when real use shows a need.
 
 ## Product goals not yet implemented
 
-- [ ] **Income / Spending / Savings reporting.** Replace the Overview's
-      credits/debits/net-activity headline with earned income, spending net of
-      refunds and discounts, and savings ([plan](docs/financial-reports.md#planned-income-spending-savings)).
-- [ ] **Link refunds and returns to their original charges**, so net cost and
-      partial refunds show up. `Statements/Amazon-returns` currently has no
-      `AccountConfig.json`, so it isn't imported.
+- [ ] **Card payments typed as purchases.** Checking-account payments to the
+      cards (for example "Chase/autopay", "Amex Epayment") are typed as
+      purchases, so they count as spending on top of the card purchases they
+      pay for. Classify them as account payments, either with a rule or with
+      better transfer matching.
+- [ ] **Amazon refund/return reports.** `Statements/Amazon-returns` has no
+      `AccountConfig.json` and no parser, so those files aren't imported. Card
+      refunds are already linked to their charges.
 - [ ] **Foreign-currency transactions:** keep the original amount, currency,
       and rate; use the institution's conversion or a confirmed lookup by date
       ([plan](docs/financial-reports.md#planned-foreign-currency-transactions)).
