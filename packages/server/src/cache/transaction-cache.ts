@@ -319,7 +319,10 @@ export class TransactionCache {
           accountInfo.requiresParent,
           iv,
         );
-        txns.addNew(tx, accountInfo, loc.importInfo, false);
+        // Identical rows inside one statement are separate real purchases (two
+        // $2.16 bus fares on one day), so keep them all. Duplicates are only
+        // removed later, when overlapping files are merged (as the C# app did).
+        txns.addNew(tx, accountInfo, loc.importInfo, true);
       }
       return { transactions: txns, error: null };
     } catch (err) {

@@ -72,10 +72,13 @@ only one order candidate during a matching pass. More than one exact eligible
 parent is treated as ambiguous rather than attached arbitrarily, and a parent
 or child already participating in a relationship is not reused.
 
-For non-line-item order matches, the fallback tolerates an amount difference of
-at most one currency unit and a date difference of at most two days, rejects
-parents that already have children, and ranks amount difference before date
-distance with transaction ID as the deterministic final tie-breaker.
+For non-line-item order matches, exact amount-and-date pairs are settled
+first, for all orders. The fallback then tolerates an amount difference of at
+most one currency unit and a date difference of at most two days, and rejects
+parents that already have children. It ranks every candidate pair across all
+remaining orders by amount difference, then date distance, then IDs, and
+assigns the best pair first, so the order in which orders are seen never
+decides the match.
 
 Incomplete matched parents may receive synthetic discount, shipping, tax, or
 rounding-adjustment children. The residual is tolerable only when it is below

@@ -97,6 +97,10 @@ export class GenericOrderMatcher implements ParentChildMatch {
     // are not actually mutated until this method returns. Line-item parents
     // are deliberately not reserved: one order can contain many line items.
     const reservedNonLineitemParentIds = new Set<string>();
+    const isAvailable = (parent: Transaction) =>
+      !reservedNonLineitemParentIds.has(parent.id) &&
+      (parent.children == null || Object.keys(parent.children).length === 0);
+    const orders: Transaction[] = [];
 
     for (const child of children) {
       if (child.lineItemType !== LineItemType.None) {
@@ -111,59 +115,59 @@ export class GenericOrderMatcher implements ParentChildMatch {
           );
         }
       } else {
-        // Non-line-item: find parent by amount+date key, or fuzzy match
-        const exactKey = getNonLineItemKey(child);
-        let parents = (nonLineitemParents.get(exactKey) ?? []).filter(
-          (parent) =>
-            !reservedNonLineitemParentIds.has(parent.id) &&
-            (parent.children == null || Object.keys(parent.children).length === 0),
-        );
+        orders.push(child);
+      }
+    }
 
-        if (parents.length === 0) {
-          // Fuzzy match: amount +/- 1, date +/- 2 days.
-          // Rank lexicographically by amount difference and then date
-          // difference. Multiplying the two deltas made every exact-amount
-          // candidate score zero, regardless of how far apart its date was.
-          const childDate = parseDate(child.transactionDate);
-          const fuzzyMatches: Array<{
-            tx: Transaction;
-            amountDelta: number;
-            daysDelta: number;
-          }> = [];
+    // Pass 1: exact amount and date. These are settled before any fuzzy
+    // match so a nearby order can never take a charge that another order
+    // matches exactly.
+    const unmatchedOrders: Transaction[] = [];
+    for (const order of orders) {
+      const parent = (nonLineitemParents.get(getNonLineItemKey(order)) ?? []).find(isAvailable);
+      if (parent) {
+        reservedNonLineitemParentIds.add(parent.id);
+        results.push({ child: order, parent });
+      } else {
+        unmatchedOrders.push(order);
+      }
+    }
 
-          for (const txArray of nonLineitemParents.values()) {
-            for (const tx of txArray) {
-              if (reservedNonLineitemParentIds.has(tx.id)) continue;
-
-              const amountDelta = Math.abs(tx.amount - child.amount);
-              const daysDelta = daysBetween(parseDate(tx.transactionDate), childDate);
-              const hasChildren = tx.children != null && Object.keys(tx.children).length > 0;
-
-              if (amountDelta <= 1 && daysDelta <= 2 && !hasChildren) {
-                fuzzyMatches.push({
-                  tx,
-                  amountDelta,
-                  daysDelta,
-                });
-              }
-            }
+    // Pass 2: amount within 1 and date within 2 days, best pair first across
+    // all remaining orders: smallest amount difference, then nearest date,
+    // then IDs, so the result doesn't depend on which order is seen first.
+    const candidates: Array<{
+      order: Transaction;
+      parent: Transaction;
+      amountDelta: number;
+      daysDelta: number;
+    }> = [];
+    for (const order of unmatchedOrders) {
+      const orderDate = parseDate(order.transactionDate);
+      for (const txArray of nonLineitemParents.values()) {
+        for (const parent of txArray) {
+          if (!isAvailable(parent)) continue;
+          const amountDelta = Math.abs(parent.amount - order.amount);
+          const daysDelta = daysBetween(parseDate(parent.transactionDate), orderDate);
+          if (amountDelta <= 1 && daysDelta <= 2) {
+            candidates.push({ order, parent, amountDelta, daysDelta });
           }
-
-          fuzzyMatches.sort(
-            (a, b) =>
-              a.amountDelta - b.amountDelta ||
-              a.daysDelta - b.daysDelta ||
-              a.tx.id.localeCompare(b.tx.id),
-          );
-          parents = fuzzyMatches.map((m) => m.tx);
-        }
-
-        if (parents.length > 0) {
-          const parent = parents[0]!;
-          reservedNonLineitemParentIds.add(parent.id);
-          results.push({ child, parent });
         }
       }
+    }
+    candidates.sort(
+      (a, b) =>
+        a.amountDelta - b.amountDelta ||
+        a.daysDelta - b.daysDelta ||
+        a.order.id.localeCompare(b.order.id) ||
+        a.parent.id.localeCompare(b.parent.id),
+    );
+    const matchedOrderIds = new Set<string>();
+    for (const { order, parent } of candidates) {
+      if (matchedOrderIds.has(order.id) || reservedNonLineitemParentIds.has(parent.id)) continue;
+      matchedOrderIds.add(order.id);
+      reservedNonLineitemParentIds.add(parent.id);
+      results.push({ child: order, parent });
     }
 
     return results;

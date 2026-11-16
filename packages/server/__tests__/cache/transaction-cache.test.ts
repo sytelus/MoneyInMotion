@@ -75,6 +75,33 @@ describe('TransactionCache', () => {
     expect([...restored.topLevelTransactions][0]?.categoryPath).toEqual(['Existing rule']);
   });
 
+  it('keeps identical rows within one statement but merges overlapping statements', async () => {
+    const repo = new FileRepository(tempDir);
+    const accountDir = path.join(tempDir, 'Statements', 'Bank');
+    fs.mkdirSync(accountDir);
+    fs.writeFileSync(
+      path.join(accountDir, 'AccountConfig.json'),
+      JSON.stringify({
+        accountInfo: { id: 'bank', instituteName: 'Generic', type: 2, requiresParent: false },
+        fileFilters: ['*.csv'],
+        scanSubFolders: true,
+      }),
+    );
+    // Two bus fares on the same day are two real purchases.
+    const rows = 'Date,Description,Amount\n08/14/2014,Bus fare,-2.16\n08/14/2014,Bus fare,-2.16\n';
+    fs.writeFileSync(path.join(accountDir, 'august.csv'), rows);
+    // A later export covering the same days repeats them; they must not double.
+    fs.writeFileSync(
+      path.join(accountDir, 'august-and-september.csv'),
+      `${rows}09/01/2014,Coffee,-4.50\n`,
+    );
+    const cache = new TransactionCache(repo);
+    expect(await cache.rebuildFromStatements()).toMatchObject({
+      committed: true,
+      totalTransactions: 3,
+    });
+  });
+
   it('includes rules from both snapshot and separate aggregate', async () => {
     const repo = new FileRepository(tempDir);
     const embedded = new TransactionEdits('snapshot');

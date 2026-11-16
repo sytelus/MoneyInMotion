@@ -303,6 +303,70 @@ describe('GenericOrderMatcher.getParents — non-line items', () => {
     );
   });
 
+  it('gives a charge to the order that matches it exactly, even if a near match comes first', () => {
+    const orderAcct = makeOrderAccount();
+    const ccAcct = makeCreditCardAccount();
+    const imp = makeImportInfo();
+    const txns = new Transactions('test');
+    const charge = makeTransaction('acct-chase', 'import-001', {
+      amount: -5.85,
+      entityName: 'AMAZON MKTPLACE',
+      transactionDate: '2014-05-05',
+    });
+    // Seen first: one day and $0.31 away, within the fuzzy tolerance.
+    const nearOrder = makeTransaction('acct-amazon', 'import-001', {
+      amount: -6.16,
+      entityName: 'Amazon Order A',
+      transactionDate: '2014-05-04',
+      requiresParent: true,
+    });
+    const exactOrder = makeTransaction('acct-amazon', 'import-001', {
+      amount: -5.85,
+      entityName: 'Amazon Order B',
+      transactionDate: '2014-05-05',
+      requiresParent: true,
+    });
+    txns.addNew(charge, ccAcct, imp, false);
+    txns.addNew(nearOrder, orderAcct, imp, true);
+    txns.addNew(exactOrder, orderAcct, imp, true);
+
+    const matcher = new GenericOrderMatcher(orderAcct, 'shipping', 'tax', 'discount');
+    const results = matcher.getParents([nearOrder, exactOrder], txns);
+    expect(results).toEqual([{ child: exactOrder, parent: charge }]);
+  });
+
+  it('ranks fuzzy pairs across all orders, not in the order they are listed', () => {
+    const orderAcct = makeOrderAccount();
+    const ccAcct = makeCreditCardAccount();
+    const imp = makeImportInfo();
+    const txns = new Transactions('test');
+    const charge = makeTransaction('acct-chase', 'import-001', {
+      amount: -50,
+      entityName: 'AMAZON MKTPLACE',
+      transactionDate: '2024-03-15',
+    });
+    const fartherOrder = makeTransaction('acct-amazon', 'import-001', {
+      amount: -50.9,
+      entityName: 'Amazon Order A',
+      transactionDate: '2024-03-15',
+      requiresParent: true,
+    });
+    const closerOrder = makeTransaction('acct-amazon', 'import-001', {
+      amount: -50.2,
+      entityName: 'Amazon Order B',
+      transactionDate: '2024-03-16',
+      requiresParent: true,
+    });
+    txns.addNew(charge, ccAcct, imp, false);
+    txns.addNew(fartherOrder, orderAcct, imp, true);
+    txns.addNew(closerOrder, orderAcct, imp, true);
+
+    const matcher = new GenericOrderMatcher(orderAcct, 'shipping', 'tax', 'discount');
+    expect(matcher.getParents([fartherOrder, closerOrder], txns)).toEqual([
+      { child: closerOrder, parent: charge },
+    ]);
+  });
+
   it('should not match when amount difference exceeds 1', () => {
     const orderAcct = makeOrderAccount();
     const ccAcct = makeCreditCardAccount();

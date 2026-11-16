@@ -13,9 +13,11 @@ be compared with the legacy results. Once parity is understood and accepted,
 the plan is to migrate data once to a cleaner native format and delete the
 legacy codecs, the ID compatibility code, and the verifier.
 
-**Open item:** the remaining parity gap below has not yet been independently
-confirmed as correct. Before dropping compatibility, review each delta
-against the original statements and look for bugs.
+**Status (2026-11-16):** parity is explained (see below). Two porting bugs
+found during that review were fixed. Removing the legacy code now only needs
+the owner's go-ahead and a one-time rewrite of the account configs, which still
+use the legacy PascalCase `accountInfo` shape. The live snapshot and rules are
+already in the native format.
 
 ## The read-only verifier
 
@@ -38,27 +40,40 @@ Compare only the same source generation. The reference snapshot ends in
 April 2015, while its `Statements` tree also holds newer exports, which is
 why the script selects files from the snapshot's import metadata.
 
-## Parity result (2026-08-28 reference run)
+## Parity result (2026-11-16 reference run)
 
 - 103 legacy import sources (102 physical files plus one synthetic matcher
   source), 8 accounts, 2000-08-09 to 2015-04-08. Account and date coverage
   match.
 - All 431 rules replay. Of 162 exact-ID targets, 125 resolve and 37 were
-  already orphaned in the legacy snapshot. The rebuild keeps the same 125/37
-  split after migrating 107 changed target IDs.
-- Legacy: 5,287 top-level and 8,101 total nodes. MiM: 5,260 and 8,071, with
-  no drift on save and reload. **Delta: −27 top-level, −30 total.**
-- Explained so far:
-  - 31 top-level rows that legacy kept from overlapping exports are merged
-    into one occurrence: 29 Chase (−$397.19), 1 Barclay (−$5.46), and
-    1 Etsy (−$107.00), removing $509.65 of duplicated outflow.
-  - 4 Amazon order rows (−$46.35) stay top level, because one-to-one
-    matching no longer reuses a charge that already parents another order.
-  - Net top-level cash-flow change: +$463.30 (less negative). Amex,
-    checking, savings, and PayPal match exactly.
-  - All-node deltas (Amazon −2 nodes / $256.07, Chase −27 / $396.87,
-    Barclay −1 / $5.46) are not independent cash flow, because children
-    and parents overlap.
+  already orphaned in the legacy snapshot; the rebuild keeps the same 125/37.
+- **Every record and the all-record total match legacy exactly** (8,101
+  records), with no drift on save and reload.
+- The only remaining difference is where four records sit: +2 top-level rows,
+  +$65.23 top-level total.
+  - Legacy hung **two orders on one charge** in two places. One charge of
+    $5.85 on 2014-05-05 carried both the $5.85 order and a $6.16 order, and one
+    charge of $23.71 on 2015-01-22 carried two identical $24.71 orders.
+    One-to-one matching gives the charge to the best order and leaves the
+    other unmatched (three Amazon rows, −$41.77 at top level). This is correct.
+  - One $107 Etsy receipt that legacy left at top level is now matched under
+    its card charge.
+
+Bugs found by this review and fixed in the rebuild (they had made the earlier
+report show −27 rows and +$463.30):
+
+1. **Repeated purchases inside one statement were dropped.** Identical rows in
+   the same file, such as four $2.16 bus fares on one day, were merged into one.
+   The C# app kept them and only de-duplicated across overlapping files. Now
+   the same is true here, and on the owner's data it restores 55 purchases
+   (about $1,266).
+2. **Order matching was greedy.** An order seen first could take a charge
+   through a ±$1 / ±2-day near match, even when a later order matched that
+   charge exactly. Matching now settles exact amount-and-date pairs first,
+   then ranks near matches across all orders.
+
+The earlier explanation, "31 rows legacy kept from overlapping exports", was
+wrong: the 29 Chase and 1 Barclay rows were repeats within a single file.
 
 ## Intentional differences
 

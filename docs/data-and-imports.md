@@ -99,8 +99,9 @@ Every upload is followed by a full, deterministic rebuild over all
 discoverable statements:
 
 1. Choose the institution parser, falling back to the generic parser.
-2. Parse rows, attaching account and import metadata. Merge identical content
-   across overlapping files.
+2. Parse rows, attaching account and import metadata. Identical rows within
+   one file are kept, because they are separate purchases. Identical content
+   in a second, overlapping file is merged into the first.
 3. Match relationships (orders to charges, transfers) and synthesize small
    adjustment children ([domain-rules.md](domain-rules.md)).
 4. Replay `LatestMergedEdits.json`.
