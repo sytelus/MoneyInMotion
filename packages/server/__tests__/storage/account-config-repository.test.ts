@@ -4,6 +4,16 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { discoverAccountConfigs } from '../../src/storage/account-config-repository.js';
 
+/** Windows and macOS volumes usually cannot hold folders differing only by case. */
+function caseSensitiveFilesystem(): boolean {
+  const probe = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-Case-'));
+  try {
+    return !fs.existsSync(probe.toLowerCase()) || probe === probe.toLowerCase();
+  } finally {
+    fs.rmSync(probe, { recursive: true, force: true });
+  }
+}
+
 describe('account discovery identity boundaries', () => {
   let statements: string;
   beforeEach(() => {
@@ -33,13 +43,16 @@ describe('account discovery identity boundaries', () => {
     );
   });
 
-  it('rejects configured folder names that differ only in case', () => {
-    account('Bank', 'first');
-    account('bank', 'second');
-    expect(() => discoverAccountConfigs(statements)).toThrow(
-      /folder names must be unique ignoring case/,
-    );
-  });
+  it.runIf(caseSensitiveFilesystem())(
+    'rejects configured folder names that differ only in case',
+    () => {
+      account('Bank', 'first');
+      account('bank', 'second');
+      expect(() => discoverAccountConfigs(statements)).toThrow(
+        /folder names must be unique ignoring case/,
+      );
+    },
+  );
 
   it('does not silently ignore dangling config symlinks', () => {
     fs.mkdirSync(path.join(statements, 'Bank'));

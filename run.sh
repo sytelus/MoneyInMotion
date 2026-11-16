@@ -1,49 +1,17 @@
 #!/usr/bin/env bash
-# ============================================================================
-# MoneyInMotion — Run Script
+# MoneyInMotion: start the website and API on Linux or macOS.
 #
-# Usage:
-#   ./run.sh         Start the production server (default; builds if needed)
-#   ./run.sh dev     Start development mode (Vite + API server)
-# ============================================================================
+#   ./run.sh        production server (default; installs and builds when needed)
+#   ./run.sh dev    API and Vite website with hot reload
+#
+# All logic lives in scripts/run.mjs, shared with run.bat.
 
 set -euo pipefail
+cd "$(dirname "$0")"
 
-# shellcheck source=scripts/lib.sh
-source "$(dirname "$0")/scripts/lib.sh"
+command -v node >/dev/null 2>&1 || {
+    echo "[error] Node.js 24 or newer is required: https://nodejs.org/" >&2
+    exit 1
+}
 
-ensure_project_root
-ensure_node_version
-ensure_deps_installed
-
-MODE="${1:-prod}"
-
-case "$MODE" in
-    dev)
-        ensure_development_deps_installed
-        ensure_core_built
-
-        info "Starting development mode..."
-        echo -e "  ${C_BOLD}Open this URL in your browser:${C_NC}  http://localhost:5173"
-        echo "  (The website proxies API requests to the port in ~/.moneyinmotion/config.json.)"
-        echo ""
-
-        exec npm run dev --silent
-        ;;
-
-    prod)
-        ensure_production_built
-
-        export NODE_ENV=production
-
-        info "Starting production server..."
-        echo -e "  ${C_BOLD}Open the URL printed by the server (configured in ~/.moneyinmotion/config.json).${C_NC}"
-        echo ""
-
-        exec node packages/server/dist/index.js
-        ;;
-
-    *)
-        fail "usage: ./run.sh [prod|dev]"
-        ;;
-esac
+exec node scripts/run.mjs "$@"

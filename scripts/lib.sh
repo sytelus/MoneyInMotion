@@ -1,7 +1,7 @@
 # ============================================================================
 # Shared helpers for MoneyInMotion scripts.
 #
-# This file is meant to be SOURCED (not executed) by ./run.sh and ./build.sh.
+# This file is meant to be SOURCED (not executed) by ./install.sh and ./build.sh.
 # It assumes the caller has already enabled `set -euo pipefail` and is being
 # run from the project root.
 #
@@ -62,103 +62,4 @@ ensure_development_deps_installed() {
     if [ ! -x node_modules/.bin/tsc ] || [ ! -x node_modules/.bin/vite ]; then
         fail "development dependencies are not installed. Run ./install.sh --development."
     fi
-}
-
-# -- Build @moneyinmotion/core if its dist is missing or out of date ---------
-#
-# The server imports `@moneyinmotion/core` via Node's module resolver, which
-# reads `packages/core/dist/index.js` from the package's `main` field. The
-# web package uses a Vite alias to read source directly, but the server has
-# no such workaround and fails to start if dist is missing.
-#
-# With `composite: true` on the core tsconfig, `tsc` is incremental and
-# consults `tsconfig.tsbuildinfo` to decide what to emit. If dist is deleted
-# but tsbuildinfo remains, tsc will think nothing changed and skip emit
-# entirely. We clear tsbuildinfo whenever dist is missing to force a full
-# rebuild.
-# Compare each package with its own completion marker. Directory mtimes also
-# catch deleted/renamed source files. `-print -quit` avoids a SIGPIPE under the
-# caller's pipefail setting when many files have changed.
-build_inputs_current() {
-    local build_marker="$1" newer_input
-    shift
-    [ -f "$build_marker" ] || return 1
-    newer_input="$(find "$@" -newer "$build_marker" -print -quit)" || return 1
-    [ -z "$newer_input" ]
-}
-
-ensure_core_built() {
-    local core_index=packages/core/dist/index.js
-    local core_buildinfo=packages/core/tsconfig.tsbuildinfo
-
-    if [ -f "$core_index" ] && build_inputs_current "$core_buildinfo" \
-            tsconfig.base.json \
-            packages/core/package.json packages/core/tsconfig.json packages/core/src; then
-        return 0
-    fi
-
-    # Force emit even when an input outside TypeScript's dependency graph (or a
-    # missing output) caused the rebuild. This also refreshes the marker once.
-    rm -f "$core_buildinfo"
-    info "Building @moneyinmotion/core..."
-    npm run build:core --silent
-    ok "core built."
-    echo ""
-}
-
-# -- Ensure the complete production build exists and reflects source inputs --
-ensure_production_built() {
-    local artifacts_missing=false
-    local build_stale=false
-
-    if [ ! -f packages/core/dist/index.js ] \
-        || [ ! -f packages/server/dist/index.js ] \
-        || [ ! -f packages/web/dist/index.html ]; then
-        artifacts_missing=true
-    else
-        # tsc may not re-emit index.js when only a sibling module changes. Its
-        # buildinfo marks compilation completion; Vite's HTML marks the web
-        # build. A newer web build must not conceal a stale API or core build.
-        local package_name
-        for package_name in core server web; do
-            local build_marker="packages/$package_name/tsconfig.tsbuildinfo"
-            local inputs=(package.json package-lock.json tsconfig.json tsconfig.base.json
-                "packages/$package_name/package.json" "packages/$package_name/tsconfig.json"
-                "packages/$package_name/src")
-            if [ "$package_name" = web ]; then
-                build_marker=packages/web/dist/index.html
-                inputs+=(packages/web/vite.config.ts packages/web/index.html
-                    packages/web/postcss.config.js packages/web/tailwind.config.js)
-                # Vite compiles core source through an alias.
-                inputs+=(packages/core/src packages/core/package.json packages/core/tsconfig.json)
-                if [ -d packages/web/public ]; then inputs+=(packages/web/public); fi
-            elif [ "$package_name" = server ]; then
-                inputs+=(packages/core/src packages/core/package.json packages/core/tsconfig.json)
-            fi
-            if ! build_inputs_current "$build_marker" "${inputs[@]}"; then
-                build_stale=true
-            fi
-        done
-    fi
-
-    if [ "$artifacts_missing" = false ] && [ "$build_stale" = false ]; then
-        return 0
-    fi
-
-    if [ -x node_modules/.bin/tsc ] && [ -x node_modules/.bin/vite ]; then
-        if [ "$artifacts_missing" = true ]; then
-            info "Production build is missing; building it now..."
-        else
-            info "Production source is newer than the build; rebuilding now..."
-        fi
-        ./build.sh
-        return 0
-    fi
-
-    if [ "$artifacts_missing" = true ]; then
-        fail "production build artifacts are missing and build tools are not installed. Run ./install.sh."
-    fi
-
-    warn "Production source is newer than the installed build, but build tools were pruned."
-    warn "Run ./install.sh before relying on this instance; starting the existing build now."
 }

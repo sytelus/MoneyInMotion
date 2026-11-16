@@ -62,21 +62,62 @@ export function assertRealPath(target: string): void {
   }
 }
 
+/**
+ * Interpreter candidates in preference order. On Windows `python3` is usually
+ * a Microsoft Store placeholder that prints an install hint instead of running,
+ * so the real `python` and the `py -3` launcher are tried first.
+ */
+const PYTHON_CANDIDATES: ReadonlyArray<readonly [string, readonly string[]]> =
+  process.platform === 'win32'
+    ? [
+        ['python', []],
+        ['py', ['-3']],
+        ['python3', []],
+      ]
+    : [
+        ['python3', []],
+        ['python', []],
+      ];
+let resolvedPython: readonly [string, readonly string[]] | undefined;
+
+/** Find a working Python 3.9+ once; a failed probe is retried on the next request. */
+export async function findPythonCommand(): Promise<
+  readonly [string, readonly string[]] | undefined
+> {
+  if (resolvedPython) return resolvedPython;
+  for (const candidate of PYTHON_CANDIDATES) {
+    try {
+      await runFile(
+        candidate[0],
+        [...candidate[1], '-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'],
+        { timeout: 15_000, windowsHide: true },
+      );
+      resolvedPython = candidate;
+      return candidate;
+    } catch {
+      // Missing, a placeholder, or too old: try the next candidate.
+    }
+  }
+  return undefined;
+}
+
 async function archiveCommand(...args: string[]): Promise<BackupSummary> {
+  const python = await findPythonCommand();
+  if (!python) {
+    throw problem(
+      'Backup and restore require Python 3.9 or newer on the server. Install Python and try again.',
+      409,
+    );
+  }
   try {
-    const result = await runFile('python3', [archiveScript, ...args], {
+    const result = await runFile(python[0], [...python[1], archiveScript, ...args], {
+      windowsHide: true,
       timeout: 10 * 60 * 1000,
       maxBuffer: 64 * 1024,
     });
     return summarySchema.parse(JSON.parse(result.stdout));
   } catch (error) {
-    const failure = error as { code?: string; stderr?: string; killed?: boolean };
-    if (failure.code === 'ENOENT') {
-      throw problem(
-        'Backup and restore require Python 3 on the server. Install python3 and try again.',
-        409,
-      );
-    }
+    const failure = error as { stderr?: string; killed?: boolean };
     if (failure.killed)
       throw problem('Archive processing exceeded 10 minutes. No restore was committed.', 409);
     throw problem(
@@ -396,7 +437,10 @@ export class BackupService {
         0o600,
       );
       try {
-        fs.renameSync(this.config.userDataPath, path.join(workspace, 'previous'));
+        const previous = path.join(workspace, 'previous');
+        // Windows rename can replace an existing file, so refuse explicitly.
+        if (fs.existsSync(previous)) throw problem('Restore workspace is not clean.', 409);
+        fs.renameSync(this.config.userDataPath, previous);
         fs.renameSync(path.join(workspace, 'incoming', 'data'), this.config.userDataPath);
         writeTextFileAtomically(
           this.configFile,

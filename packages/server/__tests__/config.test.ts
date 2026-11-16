@@ -42,6 +42,19 @@ describe('server configuration', () => {
 
   it('rejects parent segments in directly edited configuration', () => {
     expect(() => buildConfig('/tmp/parent/../mim', 'user', 3001)).toThrow('".."');
+    // Backslash segments must be caught on every platform, not only Windows.
+    expect(() => buildConfig(path.resolve('/tmp/parent') + '\\..\\mim', 'user', 3001)).toThrow(
+      '".."',
+    );
+  });
+
+  it('explains how to write Windows paths when a backslash breaks the JSON', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-config-test-'));
+    temporaryDirectories.push(directory);
+    const configFile = path.join(directory, 'config.json');
+    fs.writeFileSync(configFile, String.raw`{ "dataRoot": "E:\data\mim_root" }`);
+
+    expect(() => loadConfig({ ensureDirectories: false, configFile })).toThrow('forward slashes');
   });
 
   it('uses only config.json and ignores former application environment variables', () => {
@@ -60,7 +73,7 @@ describe('server configuration', () => {
     const config = loadConfig({ ensureDirectories: false, configFile });
 
     expect(config).toMatchObject({
-      dataRoot: '/file-root',
+      dataRoot: path.normalize('/file-root'),
       username: 'file-user',
       port: 4123,
     });
@@ -109,12 +122,12 @@ describe('server configuration', () => {
     const config = loadConfig({ ensureDirectories: false, configFile });
 
     expect(config).toMatchObject({
-      dataRoot: '/srv/moneyinmotion',
+      dataRoot: path.normalize('/srv/moneyinmotion'),
       username: 'alex',
       port: 4100,
     });
     expect(JSON.parse(fs.readFileSync(configFile, 'utf-8'))).toEqual({
-      dataRoot: '/srv/moneyinmotion',
+      dataRoot: path.normalize('/srv/moneyinmotion'),
       username: 'alex',
       port: 4100,
     });

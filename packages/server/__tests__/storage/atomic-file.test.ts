@@ -33,9 +33,13 @@ describe('writeTextFileAtomically', () => {
     expect(fs.readdirSync(tempDir)).toEqual(['cannot-replace-directory']);
   });
 
-  it('creates recovery/configuration files privately when requested', () => {
-    const file = path.join(tempDir, 'private.json');
-    writeTextFileAtomically(file, '{}', 0o600);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
-  });
+  // Windows has no POSIX permission bits; the user profile ACL protects these files.
+  it.skipIf(process.platform === 'win32')(
+    'creates recovery/configuration files privately when requested',
+    () => {
+      const file = path.join(tempDir, 'private.json');
+      writeTextFileAtomically(file, '{}', 0o600);
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    },
+  );
 });

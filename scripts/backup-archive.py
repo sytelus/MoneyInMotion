@@ -19,6 +19,10 @@ MAX_BYTES = 2 * 1024**3
 MAX_FILE_BYTES = 512 * 1024**2
 MAX_MANIFEST_BYTES = 8 * 1024**2
 CHUNK = 1024 * 1024
+# Windows lacks O_NOFOLLOW (inventory() already rejects links there) and opens
+# descriptors in text mode unless O_BINARY is set.
+NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+BINARY = getattr(os, "O_BINARY", 0)
 
 
 def require(condition: bool, message: str) -> None:
@@ -88,7 +92,7 @@ def create(root: str, config_file: str, destination: str) -> dict:
         "directories": [],
     }
     # Exclusive creation and private permissions: a collision never overwrites a backup.
-    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL | BINARY, 0o600)
     with os.fdopen(fd, "wb") as output, zipfile.ZipFile(
         output, "w", zipfile.ZIP_DEFLATED, compresslevel=6
     ) as archive:
@@ -98,7 +102,7 @@ def create(root: str, config_file: str, destination: str) -> dict:
         for name, absolute, before in files + [("config.json", config_file, config_stat)]:
             digest = hashlib.sha256()
             size = 0
-            fd = os.open(absolute, os.O_RDONLY | os.O_NOFOLLOW)
+            fd = os.open(absolute, os.O_RDONLY | NOFOLLOW | BINARY)
             with os.fdopen(fd, "rb") as source, archive.open(name, "w", force_zip64=True) as target:
                 require(os.fstat(source.fileno()).st_ino == before.st_ino, "Data changed during backup; try again.")
                 while True:
@@ -198,7 +202,7 @@ def extract(source: str, destination: str) -> dict:
             require(name != "data", "Invalid file in backup.")
             digest, size = hashlib.sha256(), 0
             target = os.path.join(destination, name)
-            fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | BINARY, 0o600)
             with os.fdopen(fd, "wb") as output, archive.open(member) as content:
                 while True:
                     chunk = content.read(CHUNK)

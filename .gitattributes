@@ -10,3 +10,7 @@
 *.webp binary
 *.woff binary
 *.woff2 binary
+
+# Windows batch files need CRLF line endings.
+*.bat text eol=crlf
+*.cmd text eol=crlf

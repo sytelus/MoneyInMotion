@@ -70,7 +70,10 @@ async function startServer(port) {
     env: {
       ...process.env,
       NODE_ENV: 'production',
+      // os.homedir() reads HOME on POSIX but USERPROFILE on Windows. Set both
+      // so the smoke server can never pick up the real user's config.
       HOME: temporaryHome,
+      USERPROFILE: temporaryHome,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

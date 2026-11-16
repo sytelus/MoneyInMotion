@@ -9,7 +9,11 @@ import { buildConfig } from '../../src/config.js';
 import { FileRepository } from '../../src/storage/file-repository.js';
 import { TransactionEditsStorage } from '../../src/storage/transaction-edits-storage.js';
 import { TransactionCache } from '../../src/cache/transaction-cache.js';
-import { BackupService, recoverInterruptedRestore } from '../../src/services/backup-service.js';
+import {
+  BackupService,
+  findPythonCommand,
+  recoverInterruptedRestore,
+} from '../../src/services/backup-service.js';
 import { DataMaintenance } from '../../src/services/data-maintenance.js';
 import { createApp } from '../../src/app.js';
 import { inProcessRequest } from '../helpers/in-process-http.js';
@@ -40,9 +44,15 @@ function tree(root: string): Record<string, string> {
   visit('');
   return result;
 }
+/** Run Python with the same interpreter discovery the service uses (Windows has no python3). */
+async function python(args: string[]): Promise<void> {
+  const command = await findPythonCommand();
+  if (!command) throw new Error('Python 3.9+ is required for backup tests.');
+  await promisify(execFile)(command[0], [...command[1], ...args]);
+}
 /** Repack with the standard ZIP library so corruptions have valid ZIP CRCs. */
 async function alterZip(archive: string, code: string): Promise<void> {
-  await promisify(execFile)('python3', [
+  await python([
     '-c',
     `import zipfile,json,sys\np=sys.argv[1]\nwith zipfile.ZipFile(p) as z: entries={i.filename:z.read(i) for i in z.infolist()}\n${code}\nwith zipfile.ZipFile(p,'w',zipfile.ZIP_DEFLATED) as z:\n for n,b in entries.items(): z.writestr(n,b)`,
     archive,
@@ -105,9 +115,10 @@ describe('whole-user backup and restore', () => {
     const backup = await service.create();
     expect(backup.name).toMatch(/^test-user_mim_backup_.*\.zip$/);
     expect(backup.fileCount).toBeGreaterThan(5);
-    expect(fs.statSync(backup.path).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX permission bits; the profile ACL protects the file there.
+    if (process.platform !== 'win32') expect(fs.statSync(backup.path).mode & 0o777).toBe(0o600);
     expect(tree(config.userDataPath)).toEqual(original);
-    await promisify(execFile)('python3', ['-m', 'zipfile', '-t', backup.path]);
+    await python(['-m', 'zipfile', '-t', backup.path]);
     put('Statements/Bank/new.csv', 'later data');
     put('Merged/LatestMerged.json', '{corrupt');
     fs.writeFileSync(configFile, configBefore.replace('3001', '4010'));
@@ -241,7 +252,7 @@ describe('whole-user backup and restore', () => {
 
   it('checks the ZIP file type bits and rejects a symbolic-link member', async () => {
     const backup = await service.create();
-    await promisify(execFile)('python3', [
+    await python([
       '-c',
       `import zipfile,sys,stat\np=sys.argv[1]\nwith zipfile.ZipFile(p) as z: entries=[(i,z.read(i)) for i in z.infolist()]\nwith zipfile.ZipFile(p,'w') as z:\n for i,b in entries:\n  if i.filename=='data/staging/batch/files/raw.bin': i.create_system=3;i.external_attr=(stat.S_IFLNK|0o777)<<16\n  z.writestr(i,b)`,
       backup.path,

@@ -1,19 +1,27 @@
-/** Exercise real Bash helpers against synthetic files; never install or build here. */
+/** Exercise the launcher's build decisions and the installer against synthetic files. */
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+// @ts-expect-error -- plain JavaScript module without type declarations.
+import * as launcher from '../../../../scripts/run.mjs';
 
-const library = fileURLToPath(new URL('../../../../scripts/lib.sh', import.meta.url));
+const { clearBuildInfo, planCoreBuild, planDependencies, planProductionBuild } = launcher as {
+  clearBuildInfo: (root: string, names: string[]) => void;
+  planCoreBuild: (root: string) => string;
+  planDependencies: (root: string) => string;
+  planProductionBuild: (root: string) => string;
+};
+
 const installer = fileURLToPath(new URL('../../../../install.sh', import.meta.url));
 const old = new Date('2020-01-01T00:00:00Z');
 const built = new Date('2020-01-02T00:00:00Z');
 const changed = new Date('2020-01-03T00:00:00Z');
 const webBuilt = new Date('2020-01-04T00:00:00Z');
 
-describe('build and install scripts', () => {
+describe('launcher and install scripts', () => {
   let root: string;
   function write(file: string, contents = '', executable = false) {
     const target = path.join(root, file);
@@ -23,37 +31,20 @@ describe('build and install scripts', () => {
   function date(file: string, value: Date) {
     fs.utimesSync(path.join(root, file), value, value);
   }
-  function run(command: string): string {
-    return execFileSync(
-      'bash',
-      ['-c', `set -euo pipefail; source "$1"; ${command}`, 'test', library],
-      {
-        cwd: root,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, PATH: `${root}/bin:${process.env.PATH}` },
-      },
-    );
-  }
   function toolsAvailable() {
-    write('node_modules/.bin/tsc', '#!/bin/sh\nexit 0\n', true);
-    write('node_modules/.bin/vite', '#!/bin/sh\nexit 0\n', true);
+    write('node_modules/typescript/package.json', '{}');
+    write('node_modules/vite/package.json', '{}');
   }
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-build-scripts-'));
     write('package.json', '{"name":"moneyinmotion"}');
     for (const file of ['package-lock.json', 'tsconfig.json', 'tsconfig.base.json']) write(file);
     for (const name of ['core', 'server', 'web']) {
-      for (const file of [
-        'package.json',
-        'tsconfig.json',
-        'src/index.ts',
-        'tsconfig.tsbuildinfo',
-        'dist/index.js',
-      ]) {
+      for (const file of ['package.json', 'tsconfig.json', 'src/index.ts', 'dist/index.js']) {
         write(`packages/${name}/${file}`);
       }
     }
+    write('packages/core/tsconfig.tsbuildinfo');
     for (const file of [
       'dist/index.html',
       'vite.config.ts',
@@ -63,7 +54,7 @@ describe('build and install scripts', () => {
     ]) {
       write(`packages/web/${file}`);
     }
-    write('build.sh', '#!/bin/sh\nprintf built > build.called\n', true);
+    write('node_modules/.package-lock.json', '{}');
     write('bin/npm', '#!/bin/sh\nprintf "%s\\n" "$*" >> npm.calls\n', true);
     function age(directory: string) {
       for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -73,55 +64,58 @@ describe('build and install scripts', () => {
       }
     }
     age(root);
+    date('node_modules/.package-lock.json', built);
     date('packages/core/tsconfig.tsbuildinfo', built);
-    date('packages/server/tsconfig.tsbuildinfo', built);
+    date('packages/server/dist/index.js', built);
     date('packages/web/dist/index.html', webBuilt);
   });
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it('allows a current production build with pruned development tools', () => {
-    expect(run('ensure_production_built')).toBe('');
-    expect(fs.existsSync(path.join(root, 'build.called'))).toBe(false);
+  it('starts a current production build even with pruned development tools', () => {
+    expect(planProductionBuild(root)).toBe('current');
   });
   it.each(['core', 'server'])('a newer web build cannot hide stale %s source', (name) => {
     toolsAvailable();
     date(`packages/${name}/src/index.ts`, changed);
-    expect(run('ensure_production_built')).toContain('rebuilding now');
-    expect(fs.existsSync(path.join(root, 'build.called'))).toBe(true);
+    expect(planProductionBuild(root)).toBe('rebuild');
   });
   it('detects a deleted source through its parent directory mtime', () => {
     toolsAvailable();
     fs.unlinkSync(path.join(root, 'packages/server/src/index.ts'));
     date('packages/server/src', changed);
-    run('ensure_production_built');
-    expect(fs.existsSync(path.join(root, 'build.called'))).toBe(true);
+    expect(planProductionBuild(root)).toBe('rebuild');
   });
   it('warns when source is stale and compilers have been pruned', () => {
     date('packages/server/src/index.ts', changed);
-    expect(run('ensure_production_built')).toContain('Run ./install.sh');
+    expect(planProductionBuild(root)).toBe('warn-stale');
   });
   it('fails when runtime artifacts are missing and cannot be rebuilt', () => {
     fs.unlinkSync(path.join(root, 'packages/server/dist/index.js'));
-    expect(() => run('ensure_production_built')).toThrow(/build artifacts are missing/);
+    expect(planProductionBuild(root)).toBe('fail-missing');
   });
-  it('rebuilds missing runtime artifacts when compilers exist', () => {
+  it('builds missing runtime artifacts when compilers exist', () => {
     toolsAvailable();
     fs.unlinkSync(path.join(root, 'packages/server/dist/index.js'));
-    expect(run('ensure_production_built')).toContain('build is missing');
-    expect(fs.existsSync(path.join(root, 'build.called'))).toBe(true);
+    expect(planProductionBuild(root)).toBe('build');
   });
   it('does not rebuild core just because incremental tsc left its index unchanged', () => {
     date('packages/core/src/index.ts', new Date('2020-01-01T12:00:00Z'));
-    expect(run('ensure_core_built')).toBe('');
-    expect(fs.existsSync(path.join(root, 'npm.calls'))).toBe(false);
+    expect(planCoreBuild(root)).toBe('current');
   });
-  it('clears incremental state when rebuilding a missing core output', () => {
+  it('rebuilds a missing core output after clearing its incremental state', () => {
     fs.unlinkSync(path.join(root, 'packages/core/dist/index.js'));
-    run('ensure_core_built');
+    expect(planCoreBuild(root)).toBe('build');
+    clearBuildInfo(root, ['core']);
     expect(fs.existsSync(path.join(root, 'packages/core/tsconfig.tsbuildinfo'))).toBe(false);
-    expect(fs.readFileSync(path.join(root, 'npm.calls'), 'utf8')).toContain('build:core');
+  });
+  it('installs dependencies when missing or when the lockfile changes', () => {
+    expect(planDependencies(root)).toBe('current');
+    date('package-lock.json', changed);
+    expect(planDependencies(root)).toBe('reinstall');
+    fs.rmSync(path.join(root, 'node_modules'), { recursive: true });
+    expect(planDependencies(root)).toBe('install');
   });
   it('installs build dependencies even under NODE_ENV=production before pruning them', () => {
     execFileSync('bash', [installer], {
@@ -129,7 +123,7 @@ describe('build and install scripts', () => {
       env: {
         ...process.env,
         NODE_ENV: 'production',
-        PATH: `${root}/bin:${process.env.PATH}`,
+        PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`,
       },
     });
     expect(fs.readFileSync(path.join(root, 'npm.calls'), 'utf8').trim().split('\n')).toEqual([

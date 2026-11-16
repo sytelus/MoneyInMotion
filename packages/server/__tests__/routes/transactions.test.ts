@@ -363,7 +363,8 @@ describe('accounts routes', () => {
         scanSubFolders: true,
       });
     expect(response.status).toBe(409);
-    expect(fs.existsSync(path.join(tempDir, 'Statements', 'exports'))).toBe(false);
+    // Listing (not existsSync) also works on case-insensitive filesystems.
+    expect(fs.readdirSync(path.join(tempDir, 'Statements'))).toEqual(['Exports']);
   });
 
   it('GET /api/accounts reports a corrupt config instead of returning a partial list', async () => {

@@ -62,7 +62,8 @@ export function buildConfig(dataRoot: string, username: string, port: number): S
   if (!path.isAbsolute(dataRoot)) {
     throw new Error(`MoneyInMotion data root must be absolute: "${dataRoot}"`);
   }
-  if (dataRoot.split(path.sep).includes('..')) {
+  // Windows accepts both separators, so check both on every platform.
+  if (dataRoot.split(/[\\/]/).includes('..')) {
     throw new Error('MoneyInMotion data root must not contain ".." path segments.');
   }
   if (!isValidUsername(username)) {
@@ -128,11 +129,17 @@ function loadPersistedConfig(configFile = CONFIG_FILE): PersistedConfig {
     return config;
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
+    // A hand-typed Windows path such as "E:\data" is the most common mistake:
+    // JSON treats a single backslash as an escape character.
+    const windowsPathHint =
+      err instanceof SyntaxError && /escape/i.test(reason)
+        ? ' Write Windows paths with forward slashes ("E:/data/mim_root") or doubled backslashes ("E:\\\\data\\\\mim_root").'
+        : '';
     // Fail closed instead of silently serving the default data directory.
     // Selecting a different financial history is more dangerous than refusing
     // to start, and preserving the original file lets the user repair it.
     throw new Error(
-      `MoneyInMotion config "${configFile}" is invalid: ${reason}. ` +
+      `MoneyInMotion config "${configFile}" is invalid: ${reason}.${windowsPathHint} ` +
         'Fix the file or move it aside to recreate safe defaults.',
       { cause: err },
     );
