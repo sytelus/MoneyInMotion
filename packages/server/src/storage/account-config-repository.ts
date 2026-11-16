@@ -14,6 +14,11 @@ import { decodeAccountConfig } from './account-config-codec.js';
 
 export const ACCOUNT_CONFIG_FILE_NAME = 'AccountConfig.json';
 
+/** Windows matches file names without regard to case, so every check must too. */
+export function isAccountConfigFileName(name: string): boolean {
+  return name.toLowerCase() === ACCOUNT_CONFIG_FILE_NAME.toLowerCase();
+}
+
 /** A top-level AccountConfig cannot be trusted or safely ignored. */
 export class InvalidAccountConfigError extends Error {
   readonly status = 422;
@@ -127,7 +132,7 @@ export function accountDirectoryHasStatements(dirPath: string): boolean {
   while (stack.length > 0) {
     const current = stack.pop()!;
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (entry.name === ACCOUNT_CONFIG_FILE_NAME) continue;
+      if (isAccountConfigFileName(entry.name)) continue;
       if (entry.isFile()) return true;
       if (entry.isDirectory()) stack.push(path.join(current, entry.name));
     }

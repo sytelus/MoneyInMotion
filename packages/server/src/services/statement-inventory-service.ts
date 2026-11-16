@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ServerConfig } from '../config.js';
 import {
-  ACCOUNT_CONFIG_FILE_NAME,
+  isAccountConfigFileName,
   discoverAccountConfigs,
   matchesFileFilters,
 } from '../storage/account-config-repository.js';
@@ -136,7 +136,7 @@ export function readStatementInventory(
         entry.status = 'unreadable';
         entry.reason = 'The server cannot read this file’s metadata. Refresh or check permissions.';
       }
-      if (child.name === ACCOUNT_CONFIG_FILE_NAME) {
+      if (isAccountConfigFileName(child.name)) {
         entry.status = 'configuration';
         entry.reason =
           depth === 1

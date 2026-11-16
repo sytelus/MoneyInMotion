@@ -12,6 +12,7 @@ import * as path from 'node:path';
 import { Router } from 'express';
 import { z } from 'zod';
 import { isValidUsername, loadConfig, saveConfig, type ServerConfig } from '../config.js';
+import { hasParentSegment } from '../storage/path-names.js';
 
 const configUpdateSchema = z
   .object({
@@ -76,10 +77,7 @@ export function createConfigRouter(activeConfig: ServerConfig, configFile?: stri
     }
 
     const { dataRoot, username, port } = result.data;
-    if (
-      dataRoot != null &&
-      (!path.isAbsolute(dataRoot) || dataRoot.split(path.sep).includes('..'))
-    ) {
+    if (dataRoot != null && (!path.isAbsolute(dataRoot) || hasParentSegment(dataRoot))) {
       res.status(400).json({
         error: 'dataRoot must be an absolute path without ".." segments',
         status: 400,

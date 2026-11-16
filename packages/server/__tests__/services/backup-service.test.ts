@@ -226,6 +226,21 @@ describe('whole-user backup and restore', () => {
     await expect(service.preview({ name })).rejects.toThrow('symbolic links');
   });
 
+  it.runIf(process.platform === 'win32')(
+    'rejects directory junctions in the live tree',
+    async () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-junction-target-'));
+      try {
+        fs.writeFileSync(path.join(outside, 'secret.txt'), 'outside the data folder');
+        fs.symlinkSync(outside, path.join(config.userDataPath, 'junction'), 'junction');
+        await expect(service.create()).rejects.toThrow('Symbolic links');
+      } finally {
+        fs.rmSync(path.join(config.userDataPath, 'junction'), { force: true, recursive: false });
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    },
+  );
+
   it('does not overwrite archives when two backups are requested close together', async () => {
     const first = await service.create();
     const second = await service.create();

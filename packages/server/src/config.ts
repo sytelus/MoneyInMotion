@@ -11,6 +11,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { writeTextFileAtomically } from './storage/atomic-file.js';
+import { hasParentSegment, isPortableName } from './storage/path-names.js';
 import * as os from 'node:os';
 
 export interface ServerConfig {
@@ -50,7 +51,26 @@ export function getConfigFilePath(): string {
 
 /** Restrict usernames to a single safe path segment. */
 export function isValidUsername(username: string): boolean {
-  return username !== '.' && /^[a-zA-Z0-9._-]+$/.test(username) && !username.includes('..');
+  return (
+    username !== '.' &&
+    /^[a-zA-Z0-9._-]+$/.test(username) &&
+    !username.includes('..') &&
+    isPortableName(username)
+  );
+}
+
+/**
+ * Default username from the OS account. Windows names may contain spaces or
+ * other characters a folder name must not, so replace them instead of
+ * refusing to start on first run.
+ */
+export function defaultUsername(): string {
+  const cleaned = os
+    .userInfo()
+    .username.replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/\.{2,}/g, '.')
+    .replace(/[._]+$/, '');
+  return isValidUsername(cleaned) ? cleaned : 'user';
 }
 
 function ensureDirExists(dirPath: string): void {
@@ -63,7 +83,7 @@ export function buildConfig(dataRoot: string, username: string, port: number): S
     throw new Error(`MoneyInMotion data root must be absolute: "${dataRoot}"`);
   }
   // Windows accepts both separators, so check both on every platform.
-  if (dataRoot.split(/[\\/]/).includes('..')) {
+  if (hasParentSegment(dataRoot)) {
     throw new Error('MoneyInMotion data root must not contain ".." path segments.');
   }
   if (!isValidUsername(username)) {
@@ -75,7 +95,12 @@ export function buildConfig(dataRoot: string, username: string, port: number): S
     throw new Error('MoneyInMotion port must be an integer between 1 and 65535.');
   }
 
-  const normalizedDataRoot = path.normalize(dataRoot);
+  // Drop a trailing separator ("E:\data\") so derived paths compare cleanly.
+  const normalized = path.normalize(dataRoot);
+  const normalizedDataRoot =
+    normalized.length > path.parse(normalized).root.length
+      ? normalized.replace(/[\\/]+$/, '')
+      : normalized;
   const userDataPath = path.join(normalizedDataRoot, username);
   return {
     port,
@@ -180,7 +205,7 @@ export function loadConfig(
   const migrated = migrateLegacyDataPath(fileConfig);
 
   const dataRoot = fileConfig.dataRoot ?? migrated.dataRoot ?? DEFAULT_DATA_ROOT;
-  const username = fileConfig.username ?? migrated.username ?? os.userInfo().username;
+  const username = fileConfig.username ?? migrated.username ?? defaultUsername();
   const port = parseConfiguredPort(fileConfig.port) ?? DEFAULT_PORT;
 
   const config = buildConfig(dataRoot, username, port);
@@ -229,7 +254,7 @@ export function saveConfig(
   const persisted: PersistedConfig = {
     port: partial.port ?? existing.port ?? DEFAULT_PORT,
     dataRoot: partial.dataRoot ?? existing.dataRoot ?? migrated.dataRoot ?? DEFAULT_DATA_ROOT,
-    username: partial.username ?? existing.username ?? migrated.username ?? os.userInfo().username,
+    username: partial.username ?? existing.username ?? migrated.username ?? defaultUsername(),
   };
 
   // Validate before replacing a known-good file.

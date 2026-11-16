@@ -17,6 +17,7 @@ import type { ServerConfig } from '../config.js';
 import { writeTextFileAtomically } from '../storage/atomic-file.js';
 import {
   ACCOUNT_CONFIG_FILE_NAME,
+  isAccountConfigFileName,
   discoverAccountConfigs,
   matchesFileFilters,
   type DiscoveredAccountConfig,
@@ -163,7 +164,7 @@ function listStatementHashes(account: DiscoveredAccountConfig): Map<string, stri
       }
       if (
         !entry.isFile() ||
-        entry.name === ACCOUNT_CONFIG_FILE_NAME ||
+        isAccountConfigFileName(entry.name) ||
         !matchesFileFilters(entry.name, account.config.fileFilters)
       ) {
         continue;

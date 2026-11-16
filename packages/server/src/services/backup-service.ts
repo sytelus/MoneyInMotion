@@ -15,7 +15,8 @@ import { buildConfig, getConfigFilePath, type ServerConfig } from '../config.js'
 import { TransactionCache } from '../cache/transaction-cache.js';
 import { FileRepository } from '../storage/file-repository.js';
 import { discoverAccountConfigs } from '../storage/account-config-repository.js';
-import { writeTextFileAtomically } from '../storage/atomic-file.js';
+import { renameWithRetry, writeTextFileAtomically } from '../storage/atomic-file.js';
+import { isWithinOrEqual } from '../storage/path-names.js';
 import { DataMaintenance } from './data-maintenance.js';
 
 const runFile = promisify(execFile);
@@ -225,9 +226,8 @@ export class BackupService {
     assertRealPath(this.config.userDataPath);
     assertRealPath(this.configFile);
     if (
-      this.homeDirectory === this.config.userDataPath ||
-      this.homeDirectory.startsWith(this.config.userDataPath + path.sep) ||
-      this.configFile.startsWith(this.config.userDataPath + path.sep)
+      isWithinOrEqual(this.config.userDataPath, this.homeDirectory) ||
+      isWithinOrEqual(this.config.userDataPath, this.configFile)
     ) {
       throw problem(
         'Backups and the application config must be outside the active data folder. Choose a dedicated data root in Settings first.',
@@ -440,8 +440,10 @@ export class BackupService {
         const previous = path.join(workspace, 'previous');
         // Windows rename can replace an existing file, so refuse explicitly.
         if (fs.existsSync(previous)) throw problem('Restore workspace is not clean.', 409);
-        fs.renameSync(this.config.userDataPath, previous);
-        fs.renameSync(path.join(workspace, 'incoming', 'data'), this.config.userDataPath);
+        // Windows refuses to rename a folder while anything holds a handle in
+        // it (Explorer, a terminal, antivirus); retry briefly before failing.
+        renameWithRetry(this.config.userDataPath, previous);
+        renameWithRetry(path.join(workspace, 'incoming', 'data'), this.config.userDataPath);
         writeTextFileAtomically(
           this.configFile,
           fs.readFileSync(path.join(workspace, 'incoming', 'config.json'), 'utf8'),

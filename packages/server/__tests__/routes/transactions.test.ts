@@ -367,6 +367,24 @@ describe('accounts routes', () => {
     expect(fs.readdirSync(path.join(tempDir, 'Statements'))).toEqual(['Exports']);
   });
 
+  it('POST rejects IDs that Windows would map onto another folder or a device', async () => {
+    const accountDir = writeAccountConfig(tempDir, 'bank');
+    const before = fs.readFileSync(path.join(accountDir, 'AccountConfig.json'), 'utf8');
+    const app = createTestApp(createTestConfig(tempDir), createMockCache());
+    for (const id of ['bank.', 'nul']) {
+      const response = await request(app)
+        .post('/api/accounts')
+        .send({
+          accountInfo: { id, instituteName: 'Generic', type: 2, requiresParent: false },
+          fileFilters: ['*.csv'],
+          scanSubFolders: true,
+        });
+      expect(response.status, id).toBe(400);
+    }
+    // "bank." opens "bank" on Windows; its config must be untouched.
+    expect(fs.readFileSync(path.join(accountDir, 'AccountConfig.json'), 'utf8')).toBe(before);
+  });
+
   it('GET /api/accounts reports a corrupt config instead of returning a partial list', async () => {
     writeAccountConfig(tempDir, 'valid-account');
     const corruptDir = path.join(tempDir, 'Statements', 'corrupt-account');

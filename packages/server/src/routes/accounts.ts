@@ -35,6 +35,7 @@ import {
   disconnectedAccountFolder,
   isSafeAccountFolder,
 } from '../services/account-reconnection-service.js';
+import { isPortableName } from '../storage/path-names.js';
 
 interface AccountStats {
   transactionCount: number;
@@ -87,6 +88,7 @@ function isValidAccountId(accountId: string): boolean {
   return (
     !!accountId &&
     accountId !== '.' &&
+    isPortableName(accountId) &&
     !/[/\\]/.test(accountId) &&
     !accountId.includes('..') &&
     /^[a-zA-Z0-9._-]+$/.test(accountId)
@@ -339,15 +341,15 @@ export function createAccountsRouter(config: ServerConfig, cache: TransactionCac
         });
         return;
       }
-      if (reconnectFolder == null) fs.mkdirSync(accountDir, { recursive: true });
+      const createdFolder = reconnectFolder == null && !fs.existsSync(accountDir);
+      if (createdFolder) fs.mkdirSync(accountDir, { recursive: true });
 
       try {
         writeAccountConfig(configPath, accountConfig);
       } catch (err) {
-        // The directory was created by this request and no asynchronous work
-        // can add user files before this synchronous write completes. Remove a
-        // failed partial creation so a corrected retry is not blocked forever.
-        if (reconnectFolder == null) fs.rmSync(accountDir, { recursive: true, force: true });
+        // Only a folder this request created (and that therefore holds no user
+        // files yet) is removed, so a corrected retry is not blocked forever.
+        if (createdFolder) fs.rmSync(accountDir, { recursive: true, force: true });
         throw err;
       }
 

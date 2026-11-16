@@ -52,3 +52,6 @@ function shutdown(): void {
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+// Windows: Ctrl+Break and closing the console window.
+process.on('SIGBREAK', shutdown);
+process.on('SIGHUP', shutdown);

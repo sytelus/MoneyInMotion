@@ -1,5 +1,6 @@
 /** Resolve preserved account identity from existing snapshot provenance, never folder guesses. */
 import type { AccountInfo, Transactions } from '@moneyinmotion/core';
+import { isPortableName } from '../storage/path-names.js';
 
 export interface DisconnectedAccountFolder {
   relativeDirectory: string;
@@ -14,7 +15,8 @@ export function isSafeAccountFolder(value: string): boolean {
     value.length <= 255 &&
     value !== '.' &&
     value !== '..' &&
-    !/[/\\\0]/.test(value)
+    !/[/\\\0]/.test(value) &&
+    isPortableName(value)
   );
 }
 

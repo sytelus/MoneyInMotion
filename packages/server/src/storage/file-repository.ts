@@ -12,7 +12,7 @@ import * as path from 'node:path';
 import type { AccountConfig } from '@moneyinmotion/core';
 import { FileLocation } from './file-location.js';
 import {
-  ACCOUNT_CONFIG_FILE_NAME,
+  isAccountConfigFileName,
   discoverAccountConfigs,
   matchesFileFilters,
 } from './account-config-repository.js';
@@ -52,7 +52,7 @@ export class FileRepository {
     for (const entry of entries) {
       if (
         !entry.isFile() ||
-        entry.name === ACCOUNT_CONFIG_FILE_NAME ||
+        isAccountConfigFileName(entry.name) ||
         !matchesFileFilters(entry.name, accountConfig.fileFilters)
       ) {
         continue;

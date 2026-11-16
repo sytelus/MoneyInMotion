@@ -33,6 +33,10 @@ messages in production.
   checksums detect damage, not tampering.
 - Run only one MiM process per data folder, and keep sync tools from writing
   into it while MiM is running.
+- On Windows, file permission bits don't apply. A data folder directly under a
+  drive root (for example `E:\data`) inherits that drive's permissions, which
+  often let every local user read it. Restrict the folder's permissions to your
+  account if others use the machine.
 
 ## Reporting a vulnerability
 

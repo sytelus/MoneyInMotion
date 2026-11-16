@@ -48,7 +48,13 @@ def inventory(root: str):
     def visit(absolute, relative, depth):
         require(depth <= 40, "Data folders exceed the 40-level backup limit.")
         info = os.lstat(absolute)
-        require(not stat.S_ISLNK(info.st_mode), "Symbolic links cannot be backed up: " + relative)
+        # Windows junctions and other reparse points are links too, even though
+        # S_ISLNK is false for them; never follow them out of the data folder.
+        reparse = getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        require(
+            not stat.S_ISLNK(info.st_mode) and not reparse,
+            "Symbolic links cannot be backed up: " + relative,
+        )
         safe_name(relative)
         if stat.S_ISDIR(info.st_mode):
             directories.append((relative, absolute, info))
