@@ -10,14 +10,7 @@ export interface DisconnectedAccountFolder {
 
 /** Folder names need only be a safe single path segment, not an account ID. */
 export function isSafeAccountFolder(value: string): boolean {
-  return (
-    value.length > 0 &&
-    value.length <= 255 &&
-    value !== '.' &&
-    value !== '..' &&
-    !/[/\\\0]/.test(value) &&
-    isPortableName(value)
-  );
+  return value.length <= 255 && !/[/\\]/.test(value) && isPortableName(value);
 }
 
 export function accountIdentitiesByFolder(transactions: Transactions): Map<string, AccountInfo[]> {

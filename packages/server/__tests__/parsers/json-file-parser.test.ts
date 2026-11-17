@@ -25,6 +25,10 @@ describe('JsonFileParser', () => {
     });
   });
 
+  it('accepts a UTF-8 byte-order mark, as Windows editors write', () => {
+    expect(parser.parse('\uFEFF[{"Name":"Shop"}]')).toEqual([{ Name: 'Shop' }]);
+  });
+
   it('returns empty array for empty JSON array', () => {
     const rows = parser.parse('[]');
     expect(rows).toHaveLength(0);

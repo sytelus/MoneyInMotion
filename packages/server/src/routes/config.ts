@@ -11,49 +11,49 @@
 import * as path from 'node:path';
 import { Router } from 'express';
 import { z } from 'zod';
-import { isValidUsername, loadConfig, saveConfig, type ServerConfig } from '../config.js';
-import { hasParentSegment } from '../storage/path-names.js';
+import { isValidHost, loadConfig, saveConfig, type ServerConfig } from '../config.js';
+import { SAFE_IDENTIFIER_RULE, hasParentSegment, isSafeIdentifier } from '../storage/path-names.js';
+import { parseRequest } from './request-validation.js';
 
 const configUpdateSchema = z
   .object({
-    dataRoot: z.string().trim().min(1, 'dataRoot is required').optional(),
-    username: z.string().trim().min(1, 'username is required').optional(),
+    dataRoot: z
+      .string()
+      .trim()
+      .min(1, 'dataRoot is required')
+      .refine(
+        (value) => path.isAbsolute(value) && !hasParentSegment(value),
+        'dataRoot must be an absolute path without ".." segments',
+      )
+      .optional(),
+    username: z
+      .string()
+      .trim()
+      .refine(isSafeIdentifier, `username ${SAFE_IDENTIFIER_RULE}`)
+      .optional(),
     port: z.number().int().min(1).max(65535).optional(),
+    host: z
+      .string()
+      .trim()
+      .refine(isValidHost, 'host must be an IP address or hostname such as 127.0.0.1')
+      .optional(),
   })
-  .refine((value) => value.dataRoot != null || value.username != null || value.port != null, {
+  .refine((value) => Object.values(value).some((field) => field != null), {
     message: 'At least one configuration field must be provided',
   });
 
-interface ConfigResponse {
-  port: number;
-  dataRoot: string;
-  username: string;
-  userDataPath: string;
-  statementsDir: string;
-  mergedDir: string;
-  stagingDir: string;
-  activePort: number;
-  activeDataRoot: string;
-  activeUsername: string;
-  activeUserDataPath: string;
-  restartRequired: boolean;
-}
-
-function buildResponse(saved: ServerConfig, active: ServerConfig): ConfigResponse {
+/** Saved settings (used after restart) alongside the ones this process runs with. */
+function buildResponse(saved: ServerConfig, active: ServerConfig) {
   return {
-    port: saved.port,
-    dataRoot: saved.dataRoot,
-    username: saved.username,
-    userDataPath: saved.userDataPath,
-    statementsDir: saved.statementsDir,
-    mergedDir: saved.mergedDir,
-    stagingDir: saved.stagingDir,
+    ...saved,
     activePort: active.port,
+    activeHost: active.host,
     activeDataRoot: active.dataRoot,
     activeUsername: active.username,
     activeUserDataPath: active.userDataPath,
     restartRequired:
       saved.port !== active.port ||
+      saved.host !== active.host ||
       saved.dataRoot !== active.dataRoot ||
       saved.username !== active.username,
   };
@@ -67,33 +67,7 @@ export function createConfigRouter(activeConfig: ServerConfig, configFile?: stri
   });
 
   router.put('/', (req, res) => {
-    const result = configUpdateSchema.safeParse(req.body);
-    if (!result.success) {
-      res.status(400).json({
-        error: result.error.issues.map((issue) => issue.message).join('; '),
-        status: 400,
-      });
-      return;
-    }
-
-    const { dataRoot, username, port } = result.data;
-    if (dataRoot != null && (!path.isAbsolute(dataRoot) || hasParentSegment(dataRoot))) {
-      res.status(400).json({
-        error: 'dataRoot must be an absolute path without ".." segments',
-        status: 400,
-      });
-      return;
-    }
-    if (username != null && !isValidUsername(username)) {
-      res.status(400).json({
-        error:
-          'username may contain only letters, numbers, dots, hyphens, and underscores, and must not be "."',
-        status: 400,
-      });
-      return;
-    }
-
-    saveConfig({ dataRoot, username, port }, configFile);
+    saveConfig(parseRequest(configUpdateSchema, req.body), configFile);
     res.json(buildResponse(loadConfig({ ensureDirectories: false, configFile }), activeConfig));
   });
 

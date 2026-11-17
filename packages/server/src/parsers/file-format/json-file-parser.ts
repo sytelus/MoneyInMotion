@@ -20,7 +20,8 @@ export class JsonFileParser implements FileFormatParser {
     const ignoreColumns = settings?.ignoreColumns;
     let parsed: unknown;
     try {
-      parsed = JSON.parse(content) as unknown;
+      // JSON.parse rejects the byte-order mark that Windows editors often write.
+      parsed = JSON.parse(content.replace(/^\uFEFF/, '')) as unknown;
     } catch (err) {
       throw new Error(
         `Failed to parse JSON content: ${err instanceof Error ? err.message : String(err)}`,

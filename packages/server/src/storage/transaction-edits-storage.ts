@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { TransactionEdits } from '@moneyinmotion/core';
 import { parsePersistedTransactionEdits } from '../validation/transaction-edit-schema.js';
 import { writeTextFileAtomically } from './atomic-file.js';
+import { loadFailure } from './stored-data-error.js';
 
 export class TransactionEditsStorage {
   /**
@@ -55,49 +56,29 @@ export class TransactionEditsStorage {
       }
       return edits;
     } catch (err) {
-      throw new Error(
-        `Failed to load transaction edits JSON from "${path.basename(filePath)}": ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
-      );
+      throw loadFailure(filePath, 'transaction edits JSON', err);
     }
   }
 
   /**
-   * Save transaction edits to a JSON file with timestamped backup.
-   *
-   * If the file already exists, creates a backup copy with a timestamp
-   * suffix before overwriting.
-   *
-   * @param filePath - The path to write the file to.
-   * @param edits    - The TransactionEdits instance to save.
+   * Save the rules, first copying a changed existing file to
+   * `LatestMergedEdits.<mtime>.json`. Unchanged rules (as after most
+   * rebuilds) are neither rewritten nor backed up again.
    */
   save(filePath: string, edits: TransactionEdits): void {
-    if (this.exists(filePath)) {
-      // Create backup
-      const stats = fs.statSync(filePath);
-      const existingFileDateTime = stats.mtime;
-      const timestamp = formatTimestamp(existingFileDateTime);
+    const serializedData = JSON.stringify(edits.serialize(), null, 2);
+    if (fs.existsSync(filePath)) {
+      if (fs.readFileSync(filePath, 'utf-8') === serializedData) return;
+      const timestamp = formatTimestamp(fs.statSync(filePath).mtime);
       const ext = path.extname(filePath);
       const baseName = filePath.slice(0, filePath.length - ext.length);
       let archiveFilePath = `${baseName}.${timestamp}${ext}`;
-      let suffix = 1;
-      while (fs.existsSync(archiveFilePath)) {
+      for (let suffix = 1; fs.existsSync(archiveFilePath); suffix += 1) {
         archiveFilePath = `${baseName}.${timestamp}.${suffix}${ext}`;
-        suffix += 1;
       }
       fs.copyFileSync(filePath, archiveFilePath);
     }
-
-    // Atomic write: temp file + rename (see TransactionsStorage.save).
-    const serializedData = JSON.stringify(edits.serialize(), null, 2);
     writeTextFileAtomically(filePath, serializedData);
-  }
-
-  /**
-   * Check if an edits file exists.
-   */
-  exists(filePath: string): boolean {
-    return fs.existsSync(filePath);
   }
 }
 

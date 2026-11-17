@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { FileRepository } from '../../src/storage/file-repository.js';
 import { TransactionCache } from '../../src/cache/transaction-cache.js';
+import { RuleConflictError } from '../../src/cache/rule-management.js';
 import {
   ScopeType,
   Transactions,
@@ -176,6 +177,57 @@ describe('TransactionCache', () => {
     expect(result.failedFiles).toHaveLength(1);
     expect(result.failedFiles[0]).toMatchObject({ path: 'MyBank/bad.csv' });
     expect(result.failedFiles[0]!.error).toMatch(/CSV parsing failed/i);
+  });
+
+  it('names every statement with an unreadable format instead of failing discovery', async () => {
+    const accountDir = path.join(tempDir, 'Statements', 'MyBank');
+    fs.mkdirSync(accountDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(accountDir, 'AccountConfig.json'),
+      JSON.stringify({
+        accountInfo: { id: 'my-bank', instituteName: 'TestBank', type: 1, requiresParent: false },
+        fileFilters: ['*'],
+        scanSubFolders: true,
+      }),
+    );
+    fs.writeFileSync(
+      path.join(accountDir, 'good.csv'),
+      'Date,Description,Amount\n01/01/2024,A,-1\n',
+    );
+    fs.writeFileSync(path.join(accountDir, 'notes.txt'), 'notes');
+    fs.writeFileSync(path.join(accountDir, 'scan.pdf'), 'pdf');
+
+    const result = await new TransactionCache(new FileRepository(tempDir)).rebuildFromStatements();
+
+    expect(result.committed).toBe(false);
+    expect(result.importedFiles).toEqual(['MyBank/good.csv']);
+    expect(result.failedFiles.map((failure) => failure.path)).toEqual([
+      'MyBank/notes.txt',
+      'MyBank/scan.pdf',
+    ]);
+    expect(result.failedFiles[0]!.error).toMatch(/not supported/);
+  });
+
+  it('rejects an edit that reuses a saved rule ID with different content as a conflict', async () => {
+    const cache = new TransactionCache(new FileRepository(tempDir));
+    const edits = new TransactionEdits('test');
+    const saved = edits.createEditCategory([createScopeFilter(ScopeType.All, [])], ['First']);
+    await cache.applyEdits([saved]);
+    const changed = { ...saved, values: { note: editValue('different') } };
+
+    await expect(cache.applyEdits([changed])).rejects.toBeInstanceOf(RuleConflictError);
+    await expect(cache.applyEdits([changed, { ...changed, sourceId: 'x' }])).rejects.toBeInstanceOf(
+      RuleConflictError,
+    );
+    expect(await cache.applyEdits([saved])).toEqual({ affectedTransactionsCount: 0 });
+  });
+
+  it('reports unreadable saved data with a client-visible status', async () => {
+    const repo = new FileRepository(tempDir);
+    fs.writeFileSync(repo.latestMergedPath, '{broken');
+    await expect(new TransactionCache(repo).getTransactions()).rejects.toMatchObject({
+      status: 422,
+    });
   });
 
   it('keeps the previous snapshot when statement discovery finds a corrupt account config', async () => {

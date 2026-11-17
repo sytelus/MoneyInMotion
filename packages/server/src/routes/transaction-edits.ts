@@ -1,71 +1,37 @@
 /**
- * Transaction-edit API boundary.
+ * Transaction-edit (rule) API.
  *
- * Financial edits are persisted and replayed indefinitely, so this route
- * validates the complete domain shape instead of trusting TypeScript types
- * supplied by a browser. Invalid batches never reach the transaction cache.
+ * POST /api/transaction-edits        - add new rules
+ * POST /api/transaction-edits/manage - preview or commit edits/deletions of saved rules
+ *
+ * Rules are persisted and replayed indefinitely, so each request is validated
+ * against the complete domain shape instead of trusting browser-side types.
+ * Invalid batches never reach the transaction cache; conflicts return 409.
  *
  * @module
  */
 
 import { Router } from 'express';
-import { TransactionEditTargetError, type TransactionEditData } from '@moneyinmotion/core';
+import type { TransactionEditData } from '@moneyinmotion/core';
 import type { TransactionCache } from '../cache/transaction-cache.js';
+import type { RuleChange } from '../cache/rule-management.js';
 import {
   transactionEditsRequestSchema,
   ruleChangesRequestSchema,
 } from '../validation/transaction-edit-schema.js';
-import { RuleConflictError, type RuleChange } from '../cache/rule-management.js';
+import { parseRequest } from './request-validation.js';
 
 export function createTransactionEditsRouter(cache: TransactionCache): Router {
   const router = Router();
 
-  router.post('/manage', async (req, res, next) => {
-    const parsed = ruleChangesRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({
-        error: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '),
-        status: 400,
-      });
-      return;
-    }
-    try {
-      res.json(
-        await cache.manageRules(
-          parsed.data.changes as RuleChange[],
-          parsed.data.preview,
-          parsed.data.expectedRevision,
-        ),
-      );
-    } catch (err) {
-      if (err instanceof RuleConflictError)
-        res.status(409).json({ error: err.message, status: 409 });
-      else next(err);
-    }
+  router.post('/manage', async (req, res) => {
+    const { changes, preview, expectedRevision } = parseRequest(ruleChangesRequestSchema, req.body);
+    res.json(await cache.manageRules(changes as RuleChange[], preview, expectedRevision));
   });
 
-  router.post('/', async (req, res, next) => {
-    try {
-      const result = transactionEditsRequestSchema.safeParse(req.body);
-      if (!result.success) {
-        res.status(400).json({
-          error: result.error.issues
-            .map((issue) => `${issue.path.join('.') || 'request'}: ${issue.message}`)
-            .join('; '),
-          status: 400,
-        });
-        return;
-      }
-
-      const response = await cache.applyEdits(result.data as TransactionEditData[]);
-      res.json(response);
-    } catch (err) {
-      if (err instanceof TransactionEditTargetError || err instanceof RuleConflictError) {
-        res.status(409).json({ error: err.message, status: 409 });
-        return;
-      }
-      next(err);
-    }
+  router.post('/', async (req, res) => {
+    const edits = parseRequest(transactionEditsRequestSchema, req.body);
+    res.json(await cache.applyEdits(edits as TransactionEditData[]));
   });
 
   return router;

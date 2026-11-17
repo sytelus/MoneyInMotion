@@ -131,14 +131,13 @@ function buildTransactionEditSchema(allowEmptyValues: boolean) {
     .strict();
 }
 
-/** Strict schema for new browser-submitted edits. */
-export const transactionEditsRequestSchema = z
-  .array(buildTransactionEditSchema(false))
-  .min(1)
-  .max(100);
-
-/** Schema for one saved edit. */
+/** A new rule must set at least one field to a non-empty value. */
+const newTransactionEditSchema = buildTransactionEditSchema(false);
+/** A saved rule may also clear a field (an empty value). */
 const persistedTransactionEditSchema = buildTransactionEditSchema(true);
+
+/** Strict schema for new browser-submitted edits. */
+export const transactionEditsRequestSchema = z.array(newTransactionEditSchema).min(1).max(100);
 
 export const ruleChangesRequestSchema = z
   .object({
@@ -152,7 +151,7 @@ export const ruleChangesRequestSchema = z
         z
           .object({
             previous: persistedTransactionEditSchema.nullable(),
-            next: buildTransactionEditSchema(true).nullable(),
+            next: persistedTransactionEditSchema.nullable(),
           })
           .strict()
           .refine(
@@ -163,7 +162,7 @@ export const ruleChangesRequestSchema = z
             // A saved rule may clear a field (empty value). Keep that when
             // another field is edited; new rules remain strict.
             if (change.previous == null && change.next != null) {
-              const result = buildTransactionEditSchema(false).safeParse(change.next);
+              const result = newTransactionEditSchema.safeParse(change.next);
               if (!result.success)
                 for (const issue of result.error.issues) {
                   context.addIssue({

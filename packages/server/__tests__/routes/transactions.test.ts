@@ -28,12 +28,13 @@ import {
   editValue,
   createAuditInfo,
   voidedEditValue,
-  TransactionEditTargetError,
 } from '@moneyinmotion/core';
+import { RuleConflictError } from '../../src/cache/rule-management.js';
 
 function createTestConfig(rootDir: string = '/tmp/test-moneyinmotion'): ServerConfig {
   return {
     port: 3001,
+    host: '127.0.0.1',
     dataRoot: path.dirname(rootDir),
     username: path.basename(rootDir),
     userDataPath: rootDir,
@@ -145,6 +146,7 @@ describe('config routes', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       port: config.port,
+      host: config.host,
       dataRoot: config.dataRoot,
       username: config.username,
       userDataPath: config.userDataPath,
@@ -152,6 +154,7 @@ describe('config routes', () => {
       mergedDir: config.mergedDir,
       stagingDir: config.stagingDir,
       activePort: config.port,
+      activeHost: config.host,
       activeDataRoot: config.dataRoot,
       activeUsername: config.username,
       activeUserDataPath: config.userDataPath,
@@ -874,7 +877,7 @@ describe('transaction edit routes', () => {
   it('returns 409 when an exact transaction target is stale', async () => {
     const cache = createMockCache();
     (cache.applyEdits as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new TransactionEditTargetError(1, 0),
+      new RuleConflictError('A selected transaction no longer exists.'),
     );
     const app = createTestApp(createTestConfig(), cache);
     const edit = {
@@ -888,7 +891,7 @@ describe('transaction edit routes', () => {
     const res = await request(app).post('/api/transaction-edits').send([edit]);
 
     expect(res.status).toBe(409);
-    expect(res.body.error).toContain('only 0 were found');
+    expect(res.body.error).toContain('no longer exists');
   });
 });
 

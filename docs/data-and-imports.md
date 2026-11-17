@@ -75,8 +75,10 @@ server):
 3. Limits: 200 files, 20 MiB per file, 100 MiB per request. Split larger
    selections.
 
-The server also rejects absolute, duplicate, empty, `..`, or NUL paths, and
-symlinked or non-directory destination parents, before creating a batch.
+The server also rejects absolute, duplicate, empty, `..`, or control-character
+paths, names Windows would store differently (reserved characters such as
+`:`, device names such as `CON`, a trailing dot or space), and symlinked or
+non-directory destination parents, before creating a batch.
 
 **Staging and promotion:** every accepted file is copied to
 `staging/<batch>/files`. The manifest records each file's path, account, size,
@@ -108,7 +110,8 @@ discoverable statements:
 5. Commit both JSON files only if everything succeeded.
 
 If any file fails, the previous snapshot stays live and the response names
-every failing path. Promotion never overwrites a file, so uploading a
+every failing path, including a file that matches the account's filters but
+has an extension other than `.csv`, `.json`, or `.iif`. Promotion never overwrites a file, so uploading a
 corrected export does not remove the bad one. Fix or move the bad file on
 disk, then use **Rebuild transactions** (Imports or Settings). The same
 button rebuilds after statements are copied in directly or a data folder is

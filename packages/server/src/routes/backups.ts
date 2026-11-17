@@ -6,6 +6,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { z } from 'zod';
 import { BackupService, MAX_BACKUP_BYTES } from '../services/backup-service.js';
+import { parseRequest } from './request-validation.js';
+
+const previewSchema = z.object({ name: z.string().min(1).max(255) }).strict();
+const restoreSchema = z
+  .object({ token: z.string().uuid(), confirmUsername: z.string().min(1) })
+  .strict();
 
 export function createBackupsRouter(service: BackupService): Router {
   const router = Router();
@@ -15,11 +21,7 @@ export function createBackupsRouter(service: BackupService): Router {
     res.download(service.downloadPath(String(req.params.name)));
   });
   router.post('/preview', async (req, res) => {
-    const body = z
-      .object({ name: z.string().min(1).max(255) })
-      .strict()
-      .parse(req.body);
-    res.json(await service.preview(body));
+    res.json(await service.preview(parseRequest(previewSchema, req.body)));
   });
   router.post('/preview-upload', (req, res, next) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-backup-upload-'));
@@ -62,31 +64,13 @@ export function createBackupsRouter(service: BackupService): Router {
     });
   });
   router.post('/restore', async (req, res) => {
-    const body = z
-      .object({ token: z.string().uuid(), confirmUsername: z.string().min(1) })
-      .strict()
-      .parse(req.body);
-    res.json(await service.restore(body.token, body.confirmUsername));
+    const { token, confirmUsername } = parseRequest(restoreSchema, req.body);
+    res.json(await service.restore(token, confirmUsername));
   });
   router.delete('/preview/:token', (req, res) => {
     service.maintenance.assertAvailable();
     service.cancel(String(req.params.token));
     res.json({ cancelled: true });
   });
-  // Zod errors are request validation, not unexpected production server faults.
-  router.use(
-    (
-      error: unknown,
-      _req: import('express').Request,
-      _res: import('express').Response,
-      next: import('express').NextFunction,
-    ) => {
-      next(
-        error instanceof z.ZodError
-          ? Object.assign(new Error('Invalid backup or restore request.'), { status: 400 })
-          : error,
-      );
-    },
-  );
   return router;
 }

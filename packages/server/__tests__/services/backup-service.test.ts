@@ -426,6 +426,14 @@ describe('in-process backup HTTP boundary', () => {
         })
       ).status,
     ).toBe(400);
+    const missing = `${config.username}_mim_backup_missing.zip`;
+    expect((await inProcessRequest(app, 'GET', `/api/backups/download/${missing}`)).status).toBe(
+      404,
+    );
+    expect(
+      (await inProcessRequest(app, 'POST', '/api/backups/preview', { body: { name: missing } }))
+        .status,
+    ).toBe(404);
     expect(service.list().backups).toHaveLength(0);
   });
 

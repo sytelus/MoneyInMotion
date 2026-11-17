@@ -69,20 +69,26 @@ describe('TransactionEditsStorage', () => {
     expect(() => storage.load(filePath)).toThrow(/edits\[0\] is invalid/i);
   });
 
-  it('keeps distinct backups when consecutive saves share a timestamp', () => {
+  it('backs up changed rules, keeping distinct backups when saves share a timestamp', () => {
+    const backups = () =>
+      fs
+        .readdirSync(tempDir)
+        .filter(
+          (name) => name.startsWith('LatestMergedEdits.') && name !== 'LatestMergedEdits.json',
+        );
     const edits = new TransactionEdits('test');
     storage.save(filePath, edits);
     const fixedTime = new Date('2024-01-02T03:04:05.006Z');
-    fs.utimesSync(filePath, fixedTime, fixedTime);
-    storage.save(filePath, edits);
+    for (const category of ['First', 'Second']) {
+      fs.utimesSync(filePath, fixedTime, fixedTime);
+      edits.createEditCategory([createScopeFilter(ScopeType.All, [])], [category]);
+      storage.save(filePath, edits);
+    }
+    expect(backups()).toHaveLength(2);
+    expect(new Set(backups()).size).toBe(2);
 
-    fs.utimesSync(filePath, fixedTime, fixedTime);
+    // A rebuild that leaves the rules unchanged must not add another copy.
     storage.save(filePath, edits);
-
-    const backups = fs
-      .readdirSync(tempDir)
-      .filter((name) => name.startsWith('LatestMergedEdits.') && name !== 'LatestMergedEdits.json');
-    expect(backups).toHaveLength(2);
-    expect(new Set(backups).size).toBe(2);
+    expect(backups()).toHaveLength(2);
   });
 });

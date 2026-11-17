@@ -157,6 +157,17 @@ describe('stageAndPromoteFolder', () => {
     expect(fs.readdirSync(config.stagingDir)).toHaveLength(0);
   });
 
+  it.each(['Amex/statement.csv:hidden', 'Amex/CON.csv', 'Amex/statement.csv.', 'Amex/sub /x.csv'])(
+    'rejects %s, which Windows would write somewhere else, before staging',
+    (unsafePath) => {
+      const config = arrangeAccount();
+      expect(() =>
+        stageAndPromoteFolder(config, [{ buffer: Buffer.from('x') }], [unsafePath]),
+      ).toThrow(/Unsafe upload path/);
+      expect(fs.readdirSync(config.stagingDir)).toHaveLength(0);
+    },
+  );
+
   it('stages but does not promote nested files an account is configured not to scan', () => {
     const config = arrangeAccount(false);
 

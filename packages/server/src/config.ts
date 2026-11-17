@@ -9,14 +9,18 @@
  */
 
 import * as fs from 'node:fs';
+import * as net from 'node:net';
 import * as path from 'node:path';
 import { writeTextFileAtomically } from './storage/atomic-file.js';
-import { hasParentSegment, isPortableName } from './storage/path-names.js';
+import { StoredDataError } from './storage/stored-data-error.js';
+import { SAFE_IDENTIFIER_RULE, hasParentSegment, isSafeIdentifier } from './storage/path-names.js';
 import * as os from 'node:os';
 
 export interface ServerConfig {
   /** Port to listen on. Default: 3001. */
   port: number;
+  /** Interface to listen on. Default 127.0.0.1: with no login, only this machine. */
+  host: string;
   /** Parent folder containing one directory per MoneyInMotion user. */
   dataRoot: string;
   /** Username whose data is served by this process. */
@@ -33,6 +37,7 @@ export interface ServerConfig {
 
 interface PersistedConfig {
   port?: number;
+  host?: string;
   dataRoot?: string;
   username?: string;
 }
@@ -41,20 +46,11 @@ const CONFIG_DIR = path.join(os.homedir(), '.moneyinmotion');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const DEFAULT_DATA_ROOT = path.join(os.homedir(), 'mim_root');
 const DEFAULT_PORT = 3001;
+const DEFAULT_HOST = '127.0.0.1';
 
 /** Canonical path shared by Settings and full-data recovery. No environment override. */
 export function getConfigFilePath(): string {
   return CONFIG_FILE;
-}
-
-/** Restrict usernames to a single safe path segment. */
-export function isValidUsername(username: string): boolean {
-  return (
-    username !== '.' &&
-    /^[a-zA-Z0-9._-]+$/.test(username) &&
-    !username.includes('..') &&
-    isPortableName(username)
-  );
 }
 
 /**
@@ -68,15 +64,29 @@ export function defaultUsername(): string {
     .username.replace(/[^a-zA-Z0-9._-]+/g, '_')
     .replace(/\.{2,}/g, '.')
     .replace(/[._]+$/, '');
-  return isValidUsername(cleaned) ? cleaned : 'user';
+  return isSafeIdentifier(cleaned) ? cleaned : 'user';
 }
 
 function ensureDirExists(dirPath: string): void {
   fs.mkdirSync(dirPath, { recursive: true });
 }
 
-/** Build all derived paths from the two configurable storage coordinates. */
-export function buildConfig(dataRoot: string, username: string, port: number): ServerConfig {
+/** An IP address or DNS hostname, as `server.listen` accepts it (no scheme or port). */
+export function isValidHost(host: string): boolean {
+  return (
+    net.isIP(host) !== 0 ||
+    (host.length <= 253 &&
+      host.split('.').every((label) => /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(label)))
+  );
+}
+
+/** Validate the settings and derive every storage path from the data root and username. */
+export function buildConfig(
+  dataRoot: string,
+  username: string,
+  port: number,
+  host = DEFAULT_HOST,
+): ServerConfig {
   if (!path.isAbsolute(dataRoot)) {
     throw new Error(`MoneyInMotion data root must be absolute: "${dataRoot}"`);
   }
@@ -84,13 +94,16 @@ export function buildConfig(dataRoot: string, username: string, port: number): S
   if (hasParentSegment(dataRoot)) {
     throw new Error('MoneyInMotion data root must not contain ".." path segments.');
   }
-  if (!isValidUsername(username)) {
-    throw new Error(
-      'MoneyInMotion username may contain only letters, numbers, dots, hyphens, and underscores, and must not be ".".',
-    );
+  if (!isSafeIdentifier(username)) {
+    throw new Error(`MoneyInMotion username ${SAFE_IDENTIFIER_RULE}.`);
   }
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('MoneyInMotion port must be an integer between 1 and 65535.');
+  }
+  if (!isValidHost(host)) {
+    throw new Error(
+      `MoneyInMotion host must be an IP address or hostname such as 127.0.0.1: "${host}"`,
+    );
   }
 
   // Drop a trailing separator ("E:\data\") so derived paths compare cleanly.
@@ -102,6 +115,7 @@ export function buildConfig(dataRoot: string, username: string, port: number): S
   const userDataPath = path.join(normalizedDataRoot, username);
   return {
     port,
+    host,
     dataRoot: normalizedDataRoot,
     username,
     userDataPath,
@@ -144,7 +158,7 @@ function loadPersistedConfig(configFile = CONFIG_FILE): PersistedConfig {
     if (raw.dataPath != null) {
       throw new Error('dataPath is no longer supported; set dataRoot and username instead');
     }
-    for (const key of ['dataRoot', 'username'] as const) {
+    for (const key of ['dataRoot', 'username', 'host'] as const) {
       const value = raw[key];
       if (value == null) continue;
       if (typeof value !== 'string' || !value.trim()) {
@@ -164,7 +178,7 @@ function loadPersistedConfig(configFile = CONFIG_FILE): PersistedConfig {
     // Fail closed instead of silently serving the default data directory.
     // Selecting a different financial history is more dangerous than refusing
     // to start, and preserving the original file lets the user repair it.
-    throw new Error(
+    throw new StoredDataError(
       `MoneyInMotion config "${configFile}" is invalid: ${reason}.${windowsPathHint} ` +
         'Fix the file or move it aside to recreate safe defaults.',
       { cause: err },
@@ -184,8 +198,9 @@ export function loadConfig(
   const dataRoot = fileConfig.dataRoot ?? DEFAULT_DATA_ROOT;
   const username = fileConfig.username ?? defaultUsername();
   const port = parseConfiguredPort(fileConfig.port) ?? DEFAULT_PORT;
+  const host = fileConfig.host ?? DEFAULT_HOST;
 
-  const config = buildConfig(dataRoot, username, port);
+  const config = buildConfig(dataRoot, username, port, host);
 
   // Materialize defaults so every subsequent read has exactly one explicit,
   // human-editable source.
@@ -193,17 +208,11 @@ export function loadConfig(
     !fs.existsSync(configFile) ||
     fileConfig.dataRoot !== config.dataRoot ||
     fileConfig.username !== config.username ||
-    fileConfig.port !== config.port
+    fileConfig.port !== config.port ||
+    fileConfig.host !== config.host
   ) {
     ensureDirExists(path.dirname(configFile));
-    writeTextFileAtomically(
-      configFile,
-      JSON.stringify(
-        { dataRoot: config.dataRoot, username: config.username, port: config.port },
-        null,
-        2,
-      ),
-    );
+    writeTextFileAtomically(configFile, serializeConfig(config));
   }
 
   if (options.ensureDirectories !== false) {
@@ -219,21 +228,22 @@ export function loadConfig(
   return config;
 }
 
-/** Persist only configurable fields; derived paths are recalculated at load. */
-export function saveConfig(
-  partial: Partial<Pick<ServerConfig, 'dataRoot' | 'username' | 'port'>>,
-  configFile = CONFIG_FILE,
-): void {
+/** The configurable fields, in the file's canonical order; derived paths are not stored. */
+function serializeConfig(config: Required<PersistedConfig>): string {
+  const { dataRoot, username, port, host } = config;
+  return JSON.stringify({ dataRoot, username, port, host }, null, 2);
+}
+
+/** Validate and persist changed settings for the next start. */
+export function saveConfig(partial: PersistedConfig, configFile = CONFIG_FILE): void {
   ensureDirExists(path.dirname(configFile));
   const existing = loadPersistedConfig(configFile);
-  const persisted: PersistedConfig = {
-    port: partial.port ?? existing.port ?? DEFAULT_PORT,
-    dataRoot: partial.dataRoot ?? existing.dataRoot ?? DEFAULT_DATA_ROOT,
-    username: partial.username ?? existing.username ?? defaultUsername(),
-  };
-
-  // Validate before replacing a known-good file.
-  buildConfig(persisted.dataRoot!, persisted.username!, persisted.port!);
-
-  writeTextFileAtomically(configFile, JSON.stringify(persisted, null, 2));
+  // buildConfig validates before a known-good file is replaced.
+  const next = buildConfig(
+    partial.dataRoot ?? existing.dataRoot ?? DEFAULT_DATA_ROOT,
+    partial.username ?? existing.username ?? defaultUsername(),
+    partial.port ?? existing.port ?? DEFAULT_PORT,
+    partial.host ?? existing.host ?? DEFAULT_HOST,
+  );
+  writeTextFileAtomically(configFile, serializeConfig(next));
 }

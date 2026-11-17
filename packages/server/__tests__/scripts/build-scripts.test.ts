@@ -8,9 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error -- plain JavaScript module without type declarations.
 import * as launcher from '../../../../scripts/run.mjs';
 
-const { clearBuildInfo, planCoreBuild, planDependencies, planProductionBuild } = launcher as {
+const { clearBuildInfo, planDependencies, planProductionBuild } = launcher as {
   clearBuildInfo: (root: string, names: string[]) => void;
-  planCoreBuild: (root: string) => string;
   planDependencies: (root: string) => string;
   planProductionBuild: (root: string) => string;
 };
@@ -100,13 +99,7 @@ describe('launcher and install scripts', () => {
     fs.unlinkSync(path.join(root, 'packages/server/dist/index.js'));
     expect(planProductionBuild(root)).toBe('build');
   });
-  it('does not rebuild core just because incremental tsc left its index unchanged', () => {
-    date('packages/core/src/index.ts', new Date('2020-01-01T12:00:00Z'));
-    expect(planCoreBuild(root)).toBe('current');
-  });
-  it('rebuilds a missing core output after clearing its incremental state', () => {
-    fs.unlinkSync(path.join(root, 'packages/core/dist/index.js'));
-    expect(planCoreBuild(root)).toBe('build');
+  it('clears incremental tsc state so a rebuild re-emits', () => {
     clearBuildInfo(root, ['core']);
     expect(fs.existsSync(path.join(root, 'packages/core/tsconfig.tsbuildinfo'))).toBe(false);
   });

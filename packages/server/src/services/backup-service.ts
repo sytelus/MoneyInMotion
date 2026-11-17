@@ -259,6 +259,7 @@ export class BackupService {
       throw problem('Choose a backup from the list or browse for a MoneyInMotion ZIP.');
     }
     const file = path.join(this.homeDirectory, name);
+    if (!fs.existsSync(file)) throw problem(`Backup "${name}" was not found.`, 404);
     assertRealPath(file);
     if (!fs.statSync(file).isFile()) throw problem('The selected backup is not a regular file.');
     return file;

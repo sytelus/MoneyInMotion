@@ -7,11 +7,11 @@
  */
 
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { Transactions } from '@moneyinmotion/core';
 import type { TransactionsData } from '@moneyinmotion/core';
 import { parsePersistedTransactionEdits } from '../validation/transaction-edit-schema.js';
 import { writeTextFileAtomically } from './atomic-file.js';
+import { loadFailure } from './stored-data-error.js';
 
 export class TransactionsStorage {
   /**
@@ -47,34 +47,12 @@ export class TransactionsStorage {
       }
       return Transactions.fromData(data as TransactionsData);
     } catch (err) {
-      throw new Error(
-        `Failed to load transactions JSON from "${path.basename(filePath)}": ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
-      );
+      throw loadFailure(filePath, 'transactions JSON', err);
     }
   }
 
-  /**
-   * Save transactions to a JSON file.
-   *
-   * Writes to a sibling `.tmp` file first, then renames it into place so
-   * that a crash or full disk mid-write cannot leave a half-written
-   * `LatestMerged.json` on disk. The rename is atomic on POSIX; on
-   * Windows the pre-existing target is replaced.
-   *
-   * @param filePath     - The path to write the file to.
-   * @param transactions - The Transactions instance to save.
-   */
+  /** Atomically replace the snapshot so a crash never leaves partial JSON. */
   save(filePath: string, transactions: Transactions): void {
-    const data = transactions.serialize();
-    const serializedData = JSON.stringify(data, null, 2);
-    writeTextFileAtomically(filePath, serializedData);
-  }
-
-  /**
-   * Check if a transactions file exists.
-   */
-  exists(filePath: string): boolean {
-    return fs.existsSync(filePath);
+    writeTextFileAtomically(filePath, JSON.stringify(transactions.serialize(), null, 2));
   }
 }

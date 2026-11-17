@@ -90,13 +90,4 @@ describe('TransactionsStorage', () => {
 
     expect(() => storage.load(filePath)).toThrow(/snapshot edits\[0\] is invalid/i);
   });
-
-  it('exists() reflects filesystem state', () => {
-    const storage = new TransactionsStorage();
-    const filePath = path.join(tempDir, 'LatestMerged.json');
-
-    expect(storage.exists(filePath)).toBe(false);
-    fs.writeFileSync(filePath, '{}');
-    expect(storage.exists(filePath)).toBe(true);
-  });
 });

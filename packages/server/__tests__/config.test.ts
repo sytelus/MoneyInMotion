@@ -91,8 +91,26 @@ describe('server configuration', () => {
       dataRoot: config.dataRoot,
       username: config.username,
       port: config.port,
+      host: '127.0.0.1',
     });
     expect(config.dataRoot).toBe(path.join(os.homedir(), 'mim_root'));
+  });
+
+  it('listens only on this machine unless a valid host is configured', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-config-test-'));
+    temporaryDirectories.push(directory);
+    const configFile = path.join(directory, 'config.json');
+    const settings = { dataRoot: path.resolve('/srv/mim'), username: 'alex', port: 3001 };
+    fs.writeFileSync(configFile, JSON.stringify(settings));
+    expect(loadConfig({ ensureDirectories: false, configFile }).host).toBe('127.0.0.1');
+
+    fs.writeFileSync(configFile, JSON.stringify({ ...settings, host: '0.0.0.0' }));
+    expect(loadConfig({ ensureDirectories: false, configFile }).host).toBe('0.0.0.0');
+
+    for (const host of ['', 'http://x', 'a b', '::1]']) {
+      fs.writeFileSync(configFile, JSON.stringify({ ...settings, host }));
+      expect(() => loadConfig({ ensureDirectories: false, configFile })).toThrow('host');
+    }
   });
 
   it('fails closed and preserves a malformed config file', () => {

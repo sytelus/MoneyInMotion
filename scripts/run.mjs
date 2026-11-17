@@ -1,13 +1,10 @@
 /**
- * Cross-platform launcher behind ./run.sh and run.bat.
- *
- *   node scripts/run.mjs          production website + API (default)
- *   node scripts/run.mjs dev      API and Vite website with hot reload
+ * Cross-platform launcher behind ./run.sh and run.bat (see usage below).
  *
  * It installs dependencies when they are missing or older than the lockfile,
  * rebuilds stale or missing output, then starts the server, which prints the
  * URL to open. Only Node built-ins are used so it still works after the
- * production installer prunes development packages.
+ * VM installer (install.sh) prunes development packages.
  *
  * The plan* functions only inspect files, so tests can run them against a
  * synthetic tree; main() performs the installs, builds, and server start.
@@ -113,13 +110,6 @@ export function planProductionBuild(root) {
   return missing ? 'fail-missing' : 'warn-stale';
 }
 
-/** Development mode only needs core compiled; Vite and tsx handle the rest. */
-export function planCoreBuild(root) {
-  return fs.existsSync(path.join(root, 'packages/core/dist/index.js')) && !isStale(root, 'core')
-    ? 'current'
-    : 'build';
-}
-
 /** Remove incremental metadata so tsc re-emits instead of trusting old output. */
 export function clearBuildInfo(root, names) {
   for (const name of names) {
@@ -130,7 +120,17 @@ export function clearBuildInfo(root, names) {
 // ---------------------------------------------------------------------------
 // Side effects
 
+const usage = `Usage: run.bat [prod|dev]   (./run.sh [prod|dev] on Linux and macOS)
+
+  prod (default)  Install dependencies if needed, rebuild if the source changed,
+                  then start the website and API. The server prints the URL.
+  dev             API and Vite website with hot reload: http://localhost:5173
+
+Settings come from ~/.moneyinmotion/config.json (created on first start).
+Docs: README.md and docs/development.md.`;
+
 const info = (message) => console.log(`[info]  ${message}`);
+const warn = (message) => console.warn(`[warn]  ${message}`);
 function fail(message) {
   console.error(`[error] ${message}`);
   process.exit(1);
@@ -148,25 +148,49 @@ function npmCommand(args) {
 function npm(args) {
   const [command, argv, options] = npmCommand(args);
   const result = spawnSync(command, argv, { cwd: repositoryRoot, stdio: 'inherit', ...options });
-  if (result.status !== 0) fail(`npm ${args.join(' ')} failed.`);
+  if (result.error) fail(`Could not run npm (${result.error.message}). Is npm on PATH?`);
+  if (result.status !== 0) fail(`npm ${args.join(' ')} failed; see the output above.`);
 }
 
+const installAll = () => npm(['ci', '--include=dev', '--no-audit', '--no-fund']);
+
 /** Start a long-running child, forward Ctrl+C/termination, and exit with it. */
-function runForeground([command, args, options], env = {}) {
+function runForeground([command, args, options], { env = {}, onFailure }) {
+  let stopping = false;
   const child = spawn(command, args, {
     cwd: repositoryRoot,
     stdio: 'inherit',
     env: { ...process.env, ...env },
     ...options,
   });
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
-  child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)));
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+      stopping = true;
+      child.kill(signal);
+    });
+  }
+  child.on('error', (error) => fail(`Could not start ${command}: ${error.message}`));
+  child.on('exit', (code, signal) => {
+    if (!stopping && code) console.error(`[error] ${onFailure} (exit code ${code}).`);
+    process.exit(code ?? (signal ? 1 : 0));
+  });
 }
 
+const startupHint = (ports) =>
+  `Check the message above. Common causes: ${ports} is already in use, ` +
+  'or ~/.moneyinmotion/config.json is invalid';
+
 function main(mode = 'prod') {
-  if (!['prod', 'dev'].includes(mode)) fail('usage: run [prod|dev]');
+  if (['help', '--help', '-h', '/?'].includes(mode)) {
+    console.log(usage);
+    return;
+  }
+  if (!['prod', 'dev'].includes(mode)) {
+    console.error(`[error] Unknown mode "${mode}".\n\n${usage}`);
+    process.exit(1);
+  }
   const major = Number(process.versions.node.split('.')[0]);
-  if (major < 24) fail(`Node.js ${process.version} detected; Node.js 24 or newer is required.`);
+  if (major < 24) fail(`Node.js ${process.version} found; Node.js 24 or newer is required.`);
 
   const dependencies = planDependencies(repositoryRoot);
   if (dependencies !== 'current') {
@@ -175,30 +199,33 @@ function main(mode = 'prod') {
         ? 'Installing dependencies (first run)...'
         : 'package-lock.json changed; reinstalling dependencies...',
     );
-    npm(['ci', '--include=dev', '--no-audit', '--no-fund']);
+    installAll();
   }
 
   if (mode === 'dev') {
     if (!buildToolsInstalled(repositoryRoot)) {
-      fail('Development tools are not installed. Run ./install.sh --development.');
+      info('Development tools were removed (npm prune); reinstalling them...');
+      installAll();
     }
-    if (planCoreBuild(repositoryRoot) === 'build') {
-      info('Building @moneyinmotion/core...');
-      clearBuildInfo(repositoryRoot, ['core']);
-      npm(['run', 'build:core', '--silent']);
-    }
-    info('Starting development mode. Open http://localhost:5173 once Vite is ready.');
-    info('The website proxies /api to the port in ~/.moneyinmotion/config.json.');
-    runForeground(npmCommand(['run', 'dev', '--silent']));
+    info('Starting the API and Vite. Open http://localhost:5173 once Vite is ready.');
+    info('Vite proxies /api to the port in ~/.moneyinmotion/config.json.');
+    runForeground(npmCommand(['run', 'dev', '--silent']), {
+      onFailure: `Development mode stopped. ${startupHint('port 5173 or the configured port')}`,
+    });
     return;
   }
 
-  const build = planProductionBuild(repositoryRoot);
+  let build = planProductionBuild(repositoryRoot);
   if (build === 'fail-missing') {
-    fail('The production build is missing and build tools are not installed. Run ./install.sh.');
-  } else if (build === 'warn-stale') {
-    console.warn('[warn]  Source is newer than the build, but build tools were pruned.');
-    console.warn('[warn]  Run ./install.sh to rebuild; starting the existing build now.');
+    info('The build is missing and build tools were removed (npm prune); reinstalling them...');
+    installAll();
+    build = 'build';
+  }
+  if (build === 'warn-stale') {
+    // Only after ./install.sh pruned the tools on a VM: keep serving rather
+    // than silently reinstalling compilers there.
+    warn('Source is newer than the build, but build tools were removed by ./install.sh.');
+    warn('Starting the existing build. Run ./install.sh again to rebuild.');
   } else if (build !== 'current') {
     info(build === 'build' ? 'Building the website and API...' : 'Source changed; rebuilding...');
     clearBuildInfo(repositoryRoot, Object.keys(builds));
@@ -206,7 +233,8 @@ function main(mode = 'prod') {
   }
   info('Starting the production server; it prints the URL to open.');
   runForeground([process.execPath, [path.join(repositoryRoot, builds.server.marker)], {}], {
-    NODE_ENV: 'production',
+    env: { NODE_ENV: 'production' },
+    onFailure: `The server stopped. ${startupHint('the configured port')}`,
   });
 }
 

@@ -24,6 +24,15 @@ export function isPortableName(name: string): boolean {
   );
 }
 
+/** How {@link isSafeIdentifier} names are described in error messages. */
+export const SAFE_IDENTIFIER_RULE =
+  'may contain only letters, numbers, dots, hyphens, and underscores, must not be "." or contain "..", and must not end with a dot or be a device name such as CON';
+
+/** A username or account ID: one portable path segment from a small character set. */
+export function isSafeIdentifier(value: string): boolean {
+  return /^[a-zA-Z0-9._-]+$/.test(value) && !value.includes('..') && isPortableName(value);
+}
+
 /** True when any segment is "..", whichever separator the platform uses. */
 export function hasParentSegment(value: string): boolean {
   return value.split(/[\\/]/).includes('..');

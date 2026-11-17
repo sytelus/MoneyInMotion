@@ -12,6 +12,13 @@ import type { AccountConfig, ImportInfo } from '@moneyinmotion/core';
 import { getMD5HashString } from '@moneyinmotion/core';
 import { ContentType } from '../parsers/file-format/types.js';
 
+const CONTENT_TYPES: Record<string, ContentType> = {
+  '.CSV': ContentType.Csv,
+  '.JSON': ContentType.Json,
+  '.IIF': ContentType.QuickBooksIif,
+  '': ContentType.None,
+};
+
 export interface FileLocationOptions {
   accountConfig?: AccountConfig | null;
   isImportInfo?: boolean;
@@ -20,7 +27,8 @@ export interface FileLocationOptions {
 export class FileLocation {
   readonly address: string;
   readonly portableAddress: string;
-  readonly contentType: ContentType;
+  /** Null for an extension no parser reads; the rebuild reports that file. */
+  readonly contentType: ContentType | null;
   readonly accountConfig: AccountConfig | null;
   readonly importInfo: ImportInfo | null;
 
@@ -58,24 +66,6 @@ export class FileLocation {
       this.importInfo = null;
     }
 
-    switch (extension) {
-      case '.CSV':
-        this.contentType = ContentType.Csv;
-        break;
-      case '.JSON':
-        this.contentType = ContentType.Json;
-        break;
-      case '.IIF':
-        this.contentType = ContentType.QuickBooksIif;
-        break;
-      case '':
-      case '.':
-        this.contentType = ContentType.None;
-        break;
-      default:
-        throw new Error(
-          `File extension "${extension}" is not supported for statement "${this.portableAddress}"`,
-        );
-    }
+    this.contentType = CONTENT_TYPES[extension] ?? null;
   }
 }

@@ -21,6 +21,7 @@ import {
 import { readImportHistory } from '../services/import-history-service.js';
 import { readStatementInventory } from '../services/statement-inventory-service.js';
 import type { DataMaintenance } from '../services/data-maintenance.js';
+import { parseRequest } from './request-validation.js';
 
 const folderUpload = multer({
   storage: multer.memoryStorage(),
@@ -33,6 +34,18 @@ const folderUpload = multer({
 });
 
 const MAX_FOLDER_REQUEST_BYTES = 100 * 1024 * 1024;
+const FOLDER_REQUEST_TOO_LARGE = {
+  error:
+    'Folder uploads are limited to 100 MiB per request. Split larger folders into smaller uploads.',
+  status: 413,
+};
+
+const historyQuerySchema = z.object({
+  page: z.coerce.number().int().min(0).max(100000).default(0),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+  search: z.string().max(300).default(''),
+  status: z.enum(['all', 'promoted', 'duplicate', 'rejected']).default('all'),
+});
 
 function parseRelativePaths(raw: unknown): string[] {
   if (typeof raw !== 'string') {
@@ -57,42 +70,18 @@ export function createImportRouter(
 ): Router {
   const router = Router();
 
-  router.get('/files', (_req, res, next) => {
-    try {
-      res.json(readStatementInventory(config));
-    } catch (error) {
-      next(error);
-    }
+  router.get('/files', (_req, res) => {
+    res.json(readStatementInventory(config));
   });
 
-  router.get('/history', (req, res, next) => {
-    const query = z
-      .object({
-        page: z.coerce.number().int().min(0).max(100000).default(0),
-        pageSize: z.coerce.number().int().min(1).max(50).default(10),
-        search: z.string().max(300).default(''),
-        status: z.enum(['all', 'promoted', 'duplicate', 'rejected']).default('all'),
-      })
-      .safeParse(req.query);
-    if (!query.success) {
-      res.status(400).json({ error: 'Invalid upload history filters or page.', status: 400 });
-      return;
-    }
-    try {
-      res.json(readImportHistory(config, query.data));
-    } catch (err) {
-      next(err);
-    }
+  router.get('/history', (req, res) => {
+    res.json(readImportHistory(config, parseRequest(historyQuerySchema, req.query)));
   });
 
   router.post('/folder', (req, res, next) => {
     const declaredBytes = Number(req.headers['content-length']);
     if (Number.isFinite(declaredBytes) && declaredBytes > MAX_FOLDER_REQUEST_BYTES) {
-      res.status(413).json({
-        error:
-          'Folder uploads are limited to 100 MiB per request. Split larger folders into smaller uploads.',
-        status: 413,
-      });
+      res.status(413).json(FOLDER_REQUEST_TOO_LARGE);
       return;
     }
 
@@ -121,11 +110,7 @@ export function createImportRouter(
         }));
         const uploadedBytes = files.reduce((total, file) => total + file.buffer.byteLength, 0);
         if (uploadedBytes > MAX_FOLDER_REQUEST_BYTES) {
-          res.status(413).json({
-            error:
-              'Folder uploads are limited to 100 MiB per request. Split larger folders into smaller uploads.',
-            status: 413,
-          });
+          res.status(413).json(FOLDER_REQUEST_TOO_LARGE);
           return;
         }
         const relativePaths = parseRelativePaths(req.body?.relativePaths);
@@ -138,12 +123,8 @@ export function createImportRouter(
     });
   });
 
-  router.post('/rebuild', async (_req, res, next) => {
-    try {
-      res.json(await cache.rebuildFromStatements());
-    } catch (err) {
-      next(err);
-    }
+  router.post('/rebuild', async (_req, res) => {
+    res.json(await cache.rebuildFromStatements());
   });
 
   return router;

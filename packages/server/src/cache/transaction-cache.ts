@@ -9,6 +9,7 @@
  */
 
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import {
   Transactions,
@@ -25,6 +26,7 @@ import { TransactionEditsStorage } from '../storage/transaction-edits-storage.js
 import { getStatementParser } from '../parsers/statement/index.js';
 import { FileLocation } from '../storage/file-location.js';
 import { writeTextFileAtomically } from '../storage/atomic-file.js';
+import { StoredDataError } from '../storage/stored-data-error.js';
 import {
   prepareRuleChanges,
   snapshotRevision,
@@ -87,29 +89,28 @@ export class TransactionCache {
   }
 
   /**
-   * Apply an array of edits to the cached transactions.
-   *
-   * @returns The number of transactions affected.
+   * Add new rules. Resubmitting a saved rule unchanged is a no-op; reusing its
+   * ID with different content, or targeting a missing transaction, is a conflict.
    */
   async applyEdits(edits: TransactionEditData[]): Promise<{ affectedTransactionsCount: number }> {
     return this.enqueueMutation(async () => {
       const current = await this.getTransactions();
-      const preflight = Transactions.fromData(structuredClone(current.serialize()));
-      const batch = new TransactionEdits('web-api');
-      for (const edit of edits) batch.add(edit);
-
-      // Keep the old API's strict target validation, but use the same imported
-      // baseline and precedence as rule management and statement rebuilds.
-      preflight.applyEdits(batch, false);
-      const previousEdits = current.getClonedEdits();
-      const changes = [...batch]
-        .filter((edit) => !previousEdits.get(edit.id))
-        .map((next) => ({ previous: null, next }));
-      if (!changes.length) return { affectedTransactionsCount: 0 };
+      const saved = current.getClonedEdits();
+      const added = new Map<string, TransactionEditData>();
+      for (const edit of edits) {
+        const existing = added.get(edit.id) ?? saved.get(edit.id);
+        if (existing == null) added.set(edit.id, edit);
+        else if (!isDeepStrictEqual(existing, edit)) {
+          throw new RuleConflictError(
+            `Rule "${edit.id}" already exists with different content. Refresh and try again.`,
+          );
+        }
+      }
+      if (added.size === 0) return { affectedTransactionsCount: 0 };
+      const changes = [...added.values()].map((next) => ({ previous: null, next }));
       const { candidate, result } = prepareRuleChanges(current, changes);
       await this.saveSnapshot(candidate);
       this.transactions = candidate;
-
       return { affectedTransactionsCount: result.affectedTransactionsCount };
     });
   }
@@ -118,7 +119,8 @@ export class TransactionCache {
   async manageRules(changes: RuleChange[], preview: boolean, expectedRevision?: string) {
     return this.enqueueMutation(async () => {
       const current = await this.getTransactions();
-      if (expectedRevision && snapshotRevision(current) !== expectedRevision) {
+      const revision = snapshotRevision(current);
+      if (expectedRevision && revision !== expectedRevision) {
         throw new RuleConflictError(
           'Transactions or rules changed after this preview. Cancel and preview again before saving.',
         );
@@ -128,7 +130,7 @@ export class TransactionCache {
         await this.saveSnapshot(candidate);
         this.transactions = candidate;
       }
-      return result;
+      return { revision, ...result };
     });
   }
 
@@ -181,63 +183,46 @@ export class TransactionCache {
   private async rebuildFromStatementsInternal(): Promise<SnapshotBuildResult> {
     const previous = await this.getTransactions();
     const previousTransactionCount = previous.allTransactionCount;
-    const txns = new Transactions('LatestMerged');
-    let statementLocations;
+    const notCommitted = (
+      importedFiles: string[],
+      failedFiles: SnapshotBuildResult['failedFiles'],
+    ): SnapshotBuildResult => ({
+      committed: false,
+      previousTransactionCount,
+      newTransactions: 0,
+      totalTransactions: previousTransactionCount,
+      importedFiles,
+      failedFiles,
+      appliedEdits: 0,
+      migratedEditTargets: 0,
+      unresolvedEditTargets: 0,
+    });
+
+    let statementLocations: FileLocation[];
     try {
       statementLocations = this.repo
         .getStatementLocations()
         .sort((left, right) => left.portableAddress.localeCompare(right.portableAddress));
     } catch (err) {
-      return {
-        committed: false,
-        previousTransactionCount,
-        newTransactions: 0,
-        totalTransactions: previousTransactionCount,
-        importedFiles: [],
-        failedFiles: [
-          {
-            path: err instanceof InvalidAccountConfigError ? err.portablePath : 'Statements',
-            error: err instanceof Error ? err.message : String(err),
-          },
-        ],
-        appliedEdits: 0,
-        migratedEditTargets: 0,
-        unresolvedEditTargets: 0,
-      };
+      const failedPath = err instanceof InvalidAccountConfigError ? err.portablePath : 'Statements';
+      return notCommitted([], [{ path: failedPath, error: errorMessage(err) }]);
     }
+
+    // Parse every file even after a failure, so one rebuild names them all.
+    const txns = new Transactions('LatestMerged');
     const importedFiles: string[] = [];
-    const failedFiles: Array<{ path: string; error: string }> = [];
-
+    const failedFiles: SnapshotBuildResult['failedFiles'] = [];
     for (const loc of statementLocations) {
-      if (loc.importInfo == null) continue;
-      const parseResult = this.loadStatementFile(loc);
-      if (parseResult.error != null) {
-        failedFiles.push({
-          path: loc.portableAddress,
-          error: parseResult.error,
-        });
-        continue;
+      try {
+        txns.merge(this.loadStatementFile(loc), false);
+        importedFiles.push(loc.portableAddress);
+      } catch (err) {
+        const error = errorMessage(err).split(loc.address).join(loc.portableAddress);
+        console.error(`Error parsing statement "${loc.portableAddress}": ${error}`);
+        failedFiles.push({ path: loc.portableAddress, error });
       }
-
-      if (parseResult.transactions == null) continue;
-
-      txns.merge(parseResult.transactions, false);
-      importedFiles.push(loc.portableAddress);
     }
-
-    if (failedFiles.length > 0) {
-      return {
-        committed: false,
-        previousTransactionCount,
-        newTransactions: 0,
-        totalTransactions: previousTransactionCount,
-        importedFiles,
-        failedFiles,
-        appliedEdits: 0,
-        migratedEditTargets: 0,
-        unresolvedEditTargets: 0,
-      };
-    }
+    if (failedFiles.length > 0) return notCommitted(importedFiles, failedFiles);
 
     txns.matchTransactions();
     const edits = previous.getClonedEdits();
@@ -284,54 +269,40 @@ export class TransactionCache {
     this.transactions = candidate;
   }
 
-  /**
-   * Parse a single statement file into a Transactions collection.
-   *
-   * Returns an object with either `transactions` (on success) or `error`
-   * (on parse failure). Callers use the error field to surface per-file
-   * failures to the UI instead of dropping them silently.
-   */
-  private loadStatementFile(loc: FileLocation): {
-    transactions: Transactions | null;
-    error: string | null;
-  } {
-    if (loc.accountConfig == null || loc.importInfo == null) {
-      return { transactions: null, error: null };
+  /** Parse one statement file into its own collection; throws on any problem. */
+  private loadStatementFile(loc: FileLocation): Transactions {
+    const { accountConfig, importInfo, contentType } = loc;
+    if (accountConfig == null || importInfo == null) {
+      throw new Error('Statement location is missing its account or import metadata.');
     }
-
-    try {
-      const content = fs.readFileSync(loc.address, 'utf-8');
-      const parser = getStatementParser(
-        loc.accountConfig.accountInfo.instituteName,
-        loc.accountConfig.accountInfo.type,
-        content,
-        loc.contentType,
+    if (contentType == null) {
+      throw new Error(
+        `File extension "${path.extname(loc.address)}" is not supported. Export the statement as CSV, JSON or IIF.`,
       );
-
-      const importedValuesList = parser.getTransactionImportedValues();
-      const accountInfo: AccountInfo = loc.accountConfig.accountInfo;
-
-      const txns = new Transactions(loc.portableAddress);
-      for (const iv of importedValuesList) {
-        const tx = Transaction.create(
-          loc.importInfo.id,
-          accountInfo.id,
-          accountInfo.requiresParent,
-          iv,
-        );
-        // Identical rows inside one statement are separate real purchases (two
-        // $2.16 bus fares on one day), so keep them all. Duplicates are only
-        // removed later, when overlapping files are merged (as the C# app did).
-        txns.addNew(tx, accountInfo, loc.importInfo, true);
-      }
-      return { transactions: txns, error: null };
-    } catch (err) {
-      const rawMessage = err instanceof Error ? err.message : String(err);
-      const message = rawMessage.split(loc.address).join(loc.portableAddress);
-      console.error(`Error parsing statement "${loc.portableAddress}": ${message}`);
-      return { transactions: null, error: message };
     }
+    const accountInfo: AccountInfo = accountConfig.accountInfo;
+    const parser = getStatementParser(
+      accountInfo.instituteName,
+      accountInfo.type,
+      fs.readFileSync(loc.address, 'utf-8'),
+      contentType,
+    );
+    const txns = new Transactions(loc.portableAddress);
+    for (const importedValues of parser.getTransactionImportedValues()) {
+      const tx = Transaction.create(
+        importInfo.id,
+        accountInfo.id,
+        accountInfo.requiresParent,
+        importedValues,
+      );
+      // Identical rows inside one statement are separate real purchases (two
+      // $2.16 bus fares on one day), so keep them all. Duplicates are only
+      // removed later, when overlapping files are merged (as the C# app did).
+      txns.addNew(tx, accountInfo, importInfo, true);
+    }
+    return txns;
   }
+
   /** Merge histories by rule identity, independent of JSON object key order. */
   private loadAdditionalEdits(embedded: TransactionEdits): TransactionEdits {
     const missing = new TransactionEdits('saved-rules');
@@ -341,9 +312,15 @@ export class TransactionCache {
       const existing = embedded.get(edit.id);
       if (existing == null) missing.add(edit);
       else if (!isDeepStrictEqual(existing, edit)) {
-        throw new Error(`Conflicting saved rule "${edit.id}" in snapshot and rules file.`);
+        throw new StoredDataError(
+          `Conflicting saved rule "${edit.id}" in snapshot and rules file.`,
+        );
       }
     }
     return missing;
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

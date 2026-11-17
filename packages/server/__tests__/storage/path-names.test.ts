@@ -1,7 +1,12 @@
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { hasParentSegment, isPortableName, isWithinOrEqual } from '../../src/storage/path-names.js';
-import { buildConfig, isValidUsername } from '../../src/config.js';
+import {
+  hasParentSegment,
+  isPortableName,
+  isWithinOrEqual,
+  isSafeIdentifier,
+} from '../../src/storage/path-names.js';
+import { buildConfig } from '../../src/config.js';
 
 describe('portable path names', () => {
   it('rejects names Windows would silently change or treat as devices', () => {
@@ -43,9 +48,11 @@ describe('portable path names', () => {
   });
 
   it('applies the same rules to usernames and strips a trailing data-root separator', () => {
-    expect(isValidUsername('alex.')).toBe(false);
-    expect(isValidUsername('aux')).toBe(false);
-    expect(isValidUsername('alex')).toBe(true);
+    expect(isSafeIdentifier('alex.')).toBe(false);
+    expect(isSafeIdentifier('aux')).toBe(false);
+    expect(isSafeIdentifier('a..b')).toBe(false);
+    expect(isSafeIdentifier('.')).toBe(false);
+    expect(isSafeIdentifier('alex')).toBe(true);
     const root = path.resolve('/srv/mim_root');
     expect(buildConfig(`${root}${path.sep}`, 'alex', 3001).dataRoot).toBe(root);
   });

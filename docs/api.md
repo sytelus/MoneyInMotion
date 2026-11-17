@@ -18,7 +18,11 @@ Errors use an HTTP error status and normally return:
 }
 ```
 
-Unexpected production errors do not expose internal exception details.
+Invalid request fields return 400 with each failing field named
+(`values.note: ...`). A saved file the server cannot read (the config,
+`LatestMerged.json`, `LatestMergedEdits.json`, or an `AccountConfig.json`)
+returns 422 naming the file. Other unexpected production errors do not expose
+internal exception details.
 Unknown `/api` routes return the same JSON shape with status 404; they never
 fall through to the website's HTML shell.
 
@@ -32,16 +36,16 @@ headers still work; these checks do not replace deployment authentication.
 
 ### `GET /api/health`
 
-Returns service status, version information, and timestamp. Use it for liveness
-checks; it does not deeply parse all financial files.
+Returns `status`, `environment`, `timestamp`, and `uptimeSeconds`. Use it for
+liveness checks; it does not read any financial files.
 
 ## Configuration
 
 ### `GET /api/config`
 
 Returns persisted values and derived paths together with `active*` startup
-values. `restartRequired` is true when the saved port, root, or username differs
-from the running process.
+values. `restartRequired` is true when the saved port, host, root, or username
+differs from the running process.
 
 ### `PUT /api/config`
 
@@ -50,13 +54,15 @@ Accepts one or more of:
 ```json
 {
   "dataRoot": "/srv/moneyinmotion",
-  "username": "shitals",
-  "port": 3001
+  "username": "alex",
+  "port": 3001,
+  "host": "127.0.0.1"
 }
 ```
 
 `dataRoot` must be absolute and free of parent segments; `username` is one safe
-path segment; port is 1–65535. The update is persisted for the next restart and
+path segment; port is 1–65535; `host` (default `127.0.0.1`, this machine only)
+is an IP address or hostname to listen on. The update is persisted for the next restart and
 does not rebind a running repository or listener.
 
 ## Backups and restore
@@ -69,7 +75,7 @@ server and are as sensitive as all other data/configuration endpoints.
 | ------------------------------------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/backups`                   | None                                                                    | Server home directory, active username/data destination, default filename pattern, archive size limit, matching ZIPs sorted newest filename first.    |
 | `POST /api/backups`                  | Empty JSON object                                                       | 201 with archive name/path, compressed size, creation time, file count and expanded bytes. Creates a new immutable ZIP; no rebuild.                   |
-| `GET /api/backups/download/:name`    | Listed basename                                                         | Attachment download; only matching regular files directly in the server home, not arbitrary paths.                                                    |
+| `GET /api/backups/download/:name`    | Listed basename                                                         | Attachment download; only matching regular files directly in the server home, not arbitrary paths. A missing name returns 404.                        |
 | `POST /api/backups/preview`          | `{ "name": "<listed-backup>.zip" }`                                     | Validates and privately stages the saved ZIP. Returns token, expiry, archive summary, exact destination and port restart requirement. No replacement. |
 | `POST /api/backups/preview-upload`   | Multipart field `archive`, one ZIP                                      | Same preview response. Disk-backed temporary upload; 2 GiB maximum; no additional form fields.                                                        |
 | `DELETE /api/backups/preview/:token` | None                                                                    | Discards the matching private preview; does not mutate user data.                                                                                     |
@@ -167,8 +173,32 @@ range, and scope content hash. A request must have 1–100 edits, each with at
 least one scope and one changed or voided field. The complete batch is
 preflighted before any transaction changes. It is applied to a candidate graph,
 persisted, and only then swapped into the live cache, so validation or disk
-failure leaves the active graph unchanged. A stale exact transaction ID returns
-409; malformed input returns 400.
+failure leaves the active graph unchanged. Resubmitting a saved rule unchanged
+is a no-op. A stale exact transaction ID, or a saved rule ID reused with
+different content, returns 409; malformed input returns 400.
+
+### `POST /api/transaction-edits/manage`
+
+Changes or deletes saved rules, or adds new ones, as one batch:
+
+```json
+{
+  "preview": true,
+  "expectedRevision": "<64 hex chars from an earlier preview>",
+  "changes": [{ "previous": {}, "next": null }]
+}
+```
+
+Each change (1–1,000) names the saved rule exactly as last read (`previous`,
+or `null` to add) and its replacement (`next`, or `null` to delete). A rule
+may clear a field it previously set. The whole set is replayed against the
+imported baseline on a copy of the graph. The response has `revision`,
+`affectedTransactionsCount`, `totalRules`, up to 10 `samples` of before/after
+effective values, and `missingTargets` (exact-ID targets not in the graph).
+With `preview: true` nothing is saved. A commit with `expectedRevision`
+returns 409 if transactions or rules changed since that preview; a stale
+`previous`, a repeated rule ID, or a newly selected transaction that no
+longer exists also returns 409.
 
 ## Imports
 

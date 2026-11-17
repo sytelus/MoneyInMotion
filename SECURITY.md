@@ -8,8 +8,10 @@ sensitive.
 
 MiM has no authentication. Anyone who can reach its port can read everything,
 upload statements, change accounts and rules, and replace data through
-restore. By default, use it only on your own machine at `localhost`. If you
-deploy to a VM ([docs/deployment.md](docs/deployment.md)), keep it on a
+restore. By default the server listens only on `127.0.0.1`, so only your own
+machine can reach it. Setting `host` in `~/.moneyinmotion/config.json` (for
+example `"0.0.0.0"`) exposes it to the network; then keep the port closed in
+the firewall on shared networks. If you deploy to a VM ([docs/deployment.md](docs/deployment.md)), keep it on a
 private network or VPN, or behind an authenticating HTTPS reverse proxy.
 Never expose the port directly to the Internet.
 

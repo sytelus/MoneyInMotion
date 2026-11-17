@@ -16,12 +16,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { ServerConfig } from '../config.js';
 import { writeTextFileAtomically } from '../storage/atomic-file.js';
 import {
-  ACCOUNT_CONFIG_FILE_NAME,
   isAccountConfigFileName,
   discoverAccountConfigs,
   matchesFileFilters,
   type DiscoveredAccountConfig,
 } from '../storage/account-config-repository.js';
+import { isPortableName } from '../storage/path-names.js';
 
 export interface FolderUploadFile {
   buffer: Buffer;
@@ -64,14 +64,13 @@ function portable(relativePath: string): string {
   return relativePath.split(path.sep).join('/');
 }
 
+/**
+ * Reject absolute, empty, "." and ".." segments, and names Windows would write
+ * somewhere other than the recorded path ("a.csv:x", "CON.csv", "a.csv.").
+ */
 function normalizeRelativePath(value: string): string {
-  const normalized = value.replaceAll('\\', '/').replace(/^\.\//, '');
-  const parts = normalized.split('/');
-  if (
-    !normalized ||
-    normalized.startsWith('/') ||
-    parts.some((part) => !part || part === '.' || part === '..' || part.includes('\0'))
-  ) {
+  const parts = value.replaceAll('\\', '/').replace(/^\.\//, '').split('/');
+  if (!parts.every(isPortableName)) {
     throw new FolderUploadValidationError(`Unsafe upload path: "${value}"`);
   }
   return parts.join('/');
@@ -112,7 +111,7 @@ function stripPickerRoot(paths: string[], accounts: DiscoveredAccountConfig[]): 
   }
 
   const firstIsAccount = accounts.some(
-    (account) => account.relativeDirectory.split('/')[0]?.toLowerCase() === first.toLowerCase(),
+    (account) => account.relativeDirectory.toLowerCase() === first.toLowerCase(),
   );
   return firstIsAccount ? paths : splitPaths.map((parts) => parts.slice(1).join('/'));
 }
@@ -212,10 +211,12 @@ export function stageAndPromoteFolder(
       'The selected folder contains duplicate relative file paths.',
     );
   }
-  const accountRelativePaths = stripPickerRoot(normalizedPaths, accounts);
-  const unmatchedPaths = accountRelativePaths.filter(
-    (relativePath) => findAccountForPath(relativePath, accounts) == null,
-  );
+  const uploads = stripPickerRoot(normalizedPaths, accounts).map((relativePath, index) => ({
+    relativePath,
+    buffer: files[index]!.buffer,
+    account: findAccountForPath(relativePath, accounts),
+  }));
+  const unmatchedPaths = uploads.filter((upload) => !upload.account).map((u) => u.relativePath);
   if (unmatchedPaths.length > 0) {
     const expected = accounts.map((account) => account.relativeDirectory).sort();
     throw new FolderUploadValidationError(
@@ -227,9 +228,7 @@ export function stageAndPromoteFolder(
   // Check the entire batch before staging, not just each file as it is written.
   // The supported single writer performs these checks and promotions without
   // yielding; external administrators must not change folders during imports.
-  for (const relativePath of accountRelativePaths) {
-    validateDestinationPath(findAccountForPath(relativePath, accounts)!, relativePath);
-  }
+  for (const { relativePath, account } of uploads) validateDestinationPath(account!, relativePath);
 
   const batchId = createBatchId();
   const batchDir = path.join(config.stagingDir, batchId);
@@ -237,106 +236,75 @@ export function stageAndPromoteFolder(
   fs.mkdirSync(stagedFilesDir, { recursive: true });
 
   const hashesByAccount = new Map<string, Map<string, string>>();
-  const getHashes = (account: DiscoveredAccountConfig): Map<string, string> => {
-    let hashes = hashesByAccount.get(account.accountDir);
-    if (!hashes) {
-      hashes = listStatementHashes(account);
-      hashesByAccount.set(account.accountDir, hashes);
-    }
-    return hashes;
-  };
-
   const results: StagedFileResult[] = [];
-  for (let index = 0; index < files.length; index += 1) {
-    const file = files[index]!;
-    const relativePath = accountRelativePaths[index]!;
-    const digest = sha256(file.buffer);
+  for (const { relativePath, buffer, account: matchedAccount } of uploads) {
+    const account = matchedAccount!;
     const stagePath = safeJoin(stagedFilesDir, relativePath);
     fs.mkdirSync(path.dirname(stagePath), { recursive: true });
-    fs.writeFileSync(stagePath, file.buffer, { flag: 'wx' });
+    fs.writeFileSync(stagePath, buffer, { flag: 'wx' });
 
-    const account = findAccountForPath(relativePath, accounts);
-    const baseResult = {
-      relativePath,
-      sha256: digest,
-      // The received bytes are authoritative; multipart metadata is
-      // supplied by the client and must not affect the audit manifest.
-      sizeBytes: file.buffer.byteLength,
+    const digest = sha256(buffer);
+    const record = (
+      status: StagedFileStatus,
+      message: string,
+      destinationPath: string | null = null,
+      duplicateOf: string | null = null,
+    ): void => {
+      results.push({
+        relativePath,
+        accountId: account.config.accountInfo.id,
+        status,
+        sha256: digest,
+        destinationPath,
+        duplicateOf,
+        message,
+        // The received bytes are authoritative; multipart metadata is
+        // supplied by the client and must not affect the audit manifest.
+        sizeBytes: buffer.byteLength,
+      });
     };
-    if (!account) {
-      results.push({
-        ...baseResult,
-        accountId: null,
-        status: 'rejected',
-        destinationPath: null,
-        duplicateOf: null,
-        message: 'No configured account folder matches this path.',
-      });
-      continue;
-    }
 
-    const accountPrefix = account.relativeDirectory.split('/');
-    const tailParts = relativePath.split('/').slice(accountPrefix.length);
-    const fileName = tailParts.at(-1);
-    if (!fileName) {
-      throw new FolderUploadValidationError(
-        `Upload path does not name a file below account "${account.config.accountInfo.id}".`,
-      );
-    }
+    // Account folders are one top-level segment, so the rest is the path inside it.
+    const tailParts = relativePath.split('/').slice(1);
+    const fileName = tailParts.at(-1)!;
     if (!account.config.scanSubFolders && tailParts.length > 1) {
-      results.push({
-        ...baseResult,
-        accountId: account.config.accountInfo.id,
-        status: 'rejected',
-        destinationPath: null,
-        duplicateOf: null,
-        message: 'This account is configured not to scan statement subfolders.',
-      });
+      record('rejected', 'This account is configured not to scan statement subfolders.');
       continue;
     }
-    const isAccountConfig = fileName.toLowerCase() === ACCOUNT_CONFIG_FILE_NAME.toLowerCase();
-    if (isAccountConfig || !matchesFileFilters(fileName, account.config.fileFilters)) {
-      results.push({
-        ...baseResult,
-        accountId: account.config.accountInfo.id,
-        status: 'rejected',
-        destinationPath: null,
-        duplicateOf: null,
-        message: isAccountConfig
-          ? 'AccountConfig.json is managed in the web account editor.'
-          : `File does not match ${account.config.fileFilters.join(', ')}.`,
-      });
+    if (isAccountConfigFileName(fileName)) {
+      record('rejected', 'AccountConfig.json is managed in the web account editor.');
+      continue;
+    }
+    if (!matchesFileFilters(fileName, account.config.fileFilters)) {
+      record('rejected', `File does not match ${account.config.fileFilters.join(', ')}.`);
       continue;
     }
 
-    const existingHashes = getHashes(account);
+    let existingHashes = hashesByAccount.get(account.accountDir);
+    if (!existingHashes) {
+      existingHashes = listStatementHashes(account);
+      hashesByAccount.set(account.accountDir, existingHashes);
+    }
     const duplicateOf = existingHashes.get(digest);
     if (duplicateOf) {
-      results.push({
-        ...baseResult,
-        accountId: account.config.accountInfo.id,
-        status: 'duplicate',
-        destinationPath: null,
-        duplicateOf: portable(path.join(account.relativeDirectory, duplicateOf)),
-        message: 'Identical statement content is already present.',
-      });
+      record(
+        'duplicate',
+        'Identical statement content is already present.',
+        null,
+        portable(path.join(account.relativeDirectory, duplicateOf)),
+      );
       continue;
     }
 
-    const requestedDestination = safeJoin(account.accountDir, tailParts.join('/'));
-    const destination = uniqueDestination(requestedDestination);
+    const destination = uniqueDestination(safeJoin(account.accountDir, tailParts.join('/')));
     fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.writeFileSync(destination, file.buffer, { flag: 'wx' });
-    const destinationRelative = portable(path.relative(config.statementsDir, destination));
+    fs.writeFileSync(destination, buffer, { flag: 'wx' });
     existingHashes.set(digest, portable(path.relative(account.accountDir, destination)));
-    results.push({
-      ...baseResult,
-      accountId: account.config.accountInfo.id,
-      status: 'promoted',
-      destinationPath: destinationRelative,
-      duplicateOf: null,
-      message: 'New statement promoted and ready for snapshot rebuild.',
-    });
+    record(
+      'promoted',
+      'New statement promoted and ready for snapshot rebuild.',
+      portable(path.relative(config.statementsDir, destination)),
+    );
   }
 
   const stagedAt = new Date().toISOString();

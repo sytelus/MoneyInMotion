@@ -11,6 +11,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { AccountConfig } from '@moneyinmotion/core';
 import { decodeAccountConfig } from './account-config-codec.js';
+import { StoredDataError } from './stored-data-error.js';
 
 export const ACCOUNT_CONFIG_FILE_NAME = 'AccountConfig.json';
 
@@ -20,9 +21,7 @@ export function isAccountConfigFileName(name: string): boolean {
 }
 
 /** A top-level AccountConfig cannot be trusted or safely ignored. */
-export class InvalidAccountConfigError extends Error {
-  readonly status = 422;
-
+export class InvalidAccountConfigError extends StoredDataError {
   constructor(
     readonly portablePath: string,
     message: string,

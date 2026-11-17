@@ -1,3 +1,9 @@
+/**
+ * Rule changes are validated as a batch and replayed against the imported
+ * baseline on a copy of the graph, so previews and commits share one path.
+ *
+ * @module
+ */
 import {
   ScopeType,
   TransactionEdits,
@@ -13,8 +19,12 @@ export interface RuleChange {
   next: TransactionEditData | null;
 }
 
-export class RuleConflictError extends Error {}
+/** The request conflicts with the saved rules or transactions (HTTP 409). */
+export class RuleConflictError extends Error {
+  readonly status = 409;
+}
 
+/** Fingerprint of the whole graph; a rule preview is committed only if it still matches. */
 export function snapshotRevision(current: Transactions): string {
   return createHash('sha256').update(JSON.stringify(current.serialize())).digest('hex');
 }
@@ -97,7 +107,6 @@ export function prepareRuleChanges(current: Transactions, changes: RuleChange[])
   return {
     candidate,
     result: {
-      revision: snapshotRevision(current),
       affectedTransactionsCount,
       totalRules: edits.count,
       samples,
