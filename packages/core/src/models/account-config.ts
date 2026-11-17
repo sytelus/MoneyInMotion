@@ -23,7 +23,7 @@ export function isSupportedAccountType(value: number): value is AccountType {
 /**
  * Configuration for importing statement files for a specific account.
  *
- * Matches the JSON shape produced by the legacy C# serializer:
+ * Persisted JSON shape:
  * ```json
  * {
  *   "accountInfo": { ... },

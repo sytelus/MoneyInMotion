@@ -36,7 +36,7 @@ export enum AccountType {
 /**
  * Describes a financial account that transactions belong to.
  *
- * Matches the JSON shape produced by the legacy C# serializer:
+ * Persisted JSON shape:
  * ```json
  * {
  *   "id": "amex-plat",

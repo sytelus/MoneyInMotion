@@ -10,7 +10,7 @@
 /**
  * Describes an imported statement file and its provenance.
  *
- * Matches the JSON shape produced by the legacy C# serializer:
+ * Persisted JSON shape:
  * ```json
  * {
  *   "id": "abc123",

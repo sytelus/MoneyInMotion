@@ -95,8 +95,8 @@ financial fields or import/rule event history are created.
 Returns account configs found exactly at `Statements/<account>/AccountConfig.json`,
 with graph-record count, latest record-creation/rebuild timestamp, statement-file
 presence, and the top-level directory expected in browser uploads.
-The legacy wire field `lastImportedAt` is retained for compatibility, but it
-is not a reliable first-import timestamp.
+`lastImportedAt` is the newest record-creation time, not a reliable
+first-import timestamp.
 
 If any discovered `AccountConfig.json` is malformed or unsupported, discovery
 returns 422 with its path instead of returning an incomplete account list.
@@ -241,8 +241,8 @@ The Imports page presents promoted, duplicate, and rejected counts after every
 processed import, plus an expandable result for every file showing its decision,
 message, and destination or existing duplicate where applicable.
 
-`migratedEditTargets` counts legacy exact-ID rule parameters safely retargeted
-to one uniquely equivalent rebuilt transaction. `unresolvedEditTargets` counts
+`migratedEditTargets` counts exact-ID rule parameters whose transaction got a
+new ID in this rebuild and were retargeted to its one equivalent record. `unresolvedEditTargets` counts
 missing or ambiguous parameters preserved unchanged for review; MiM never
 broadens or drops them silently.
 
@@ -267,6 +267,6 @@ They do not retain the later rebuild outcome or establish first-ever import time
 
 The API is currently internal to the shipped website and is not versioned.
 Persisted data compatibility has higher priority: enum numbers, account config
-decoding, legacy dictionary shapes, and `LatestMergedEdits.json` replay are
+decoding, dictionary shapes, and `LatestMergedEdits.json` replay are
 covered by tests. Introduce explicit `/api/v2` routes before making a breaking
 contract available to third-party clients.

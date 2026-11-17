@@ -405,11 +405,11 @@ describe('Transaction.fromData', () => {
     expect(restored.contentHash).toBe(tx.contentHash);
   });
 
-  it('rejects malformed legacy dictionaries instead of silently dropping entries', () => {
+  it('rejects C# Key/Value dictionary arrays instead of silently dropping entries', () => {
     const data = makeTransaction().toData();
-    data.providerAttributes = [{ Key: '', Value: 'value' }] as unknown as Record<string, string>;
+    data.providerAttributes = [{ Key: 'a', Value: 'value' }] as unknown as Record<string, string>;
 
-    expect(() => Transaction.fromData(data)).toThrow(/malformed legacy dictionary/i);
+    expect(() => Transaction.fromData(data)).toThrow(/dictionary value/i);
   });
 
   it('rejects invalid persisted transaction and posted dates', () => {

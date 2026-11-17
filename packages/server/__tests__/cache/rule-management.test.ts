@@ -196,7 +196,7 @@ describe('rule management', () => {
     const transactions = fixture();
     const missing = {
       ...rule('old', 'Food'),
-      scopeFilters: [createScopeFilter(ScopeType.TransactionId, ['legacy-missing'])],
+      scopeFilters: [createScopeFilter(ScopeType.TransactionId, ['missing-id'])],
     };
     const edits = new TransactionEdits();
     edits.add(missing);
@@ -309,21 +309,24 @@ describe('rule management', () => {
     expect((await cache.getTransactions()).editsCount).toBe(0);
   });
 
-  it('lets users edit legacy rules without erasing unchanged empty values', async () => {
-    const legacy = {
-      ...rule('legacy', 'Food'),
+  it('lets users edit a rule that clears a field without erasing that value', async () => {
+    const clearing = {
+      ...rule('clearing', 'Food'),
       values: { categoryPath: editValue(['Food']), note: editValue('') },
     };
-    await cache.manageRules([{ previous: null, next: legacy }], false);
+    await cache.manageRules([{ previous: null, next: clearing }], false);
     const app = express();
     app.use(express.json());
     app.use('/rules', createTransactionEditsRouter(cache));
-    const next = { ...legacy, values: { ...legacy.values, categoryPath: editValue(['Updated']) } };
+    const next = {
+      ...clearing,
+      values: { ...clearing.values, categoryPath: editValue(['Updated']) },
+    };
     expect(
       (
         await request(app)
           .post('/rules/manage')
-          .send({ preview: true, changes: [{ previous: legacy, next }] })
+          .send({ preview: true, changes: [{ previous: clearing, next }] })
       ).status,
     ).toBe(200);
     expect(

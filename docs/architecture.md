@@ -15,7 +15,7 @@ one Node.js/Express process      serves the compiled site and /api
 There is no database, queue, worker, cache server, container, or file
 watcher. One process is the only writer. This is deliberate: one user on one
 machine needs none of that, and plain JSON and source files are easy to back
-up, inspect, and compare with the legacy app. Add infrastructure only when a
+up and inspect. Add infrastructure only when a
 measured problem can't be solved within this model, and record the reason
 when you do.
 
@@ -26,7 +26,7 @@ The three npm workspaces are real runtime boundaries, not services:
 - **`@moneyinmotion/core`**: pure TypeScript with no Node, React, or
   filesystem imports. Transactions, account and import metadata, edit scopes,
   effective (corrected) values, matching, normalization, aggregation, and
-  legacy-compatible serialization.
+  serialization.
 - **`@moneyinmotion/server`**: configuration, account discovery, statement
   parsers, upload staging and promotion, rebuilds, edit persistence, backups,
   security middleware, and static hosting of the built site.

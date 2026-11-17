@@ -1,9 +1,5 @@
 /**
- * AccountConfig JSON compatibility boundary.
- *
- * Legacy DataContract JSON used lower camel case for AccountConfig fields but
- * PascalCase for AccountInfo fields. The web application writes one canonical
- * lower-camel shape while continuing to read both representations.
+ * Reads and writes `AccountConfig.json`, which uses camelCase field names.
  *
  * @module
  */
@@ -24,8 +20,14 @@ function asObject(value: unknown, label: string): JsonObject {
   return value as JsonObject;
 }
 
-function pick(object: JsonObject, camel: string, pascal: string): unknown {
-  return object[camel] ?? object[pascal];
+/** The C# app wrote PascalCase fields; say so instead of "id is missing". */
+function rejectPascalCase(object: JsonObject, label: string): void {
+  const key = Object.keys(object).find((name) => /^[A-Z]/.test(name));
+  if (key) {
+    throw new Error(
+      `${label} field "${key}" must be camelCase ("${key[0]!.toLowerCase()}${key.slice(1)}").`,
+    );
+  }
 }
 
 function requiredString(value: unknown, label: string): string {
@@ -55,12 +57,13 @@ function optionalBoolean(value: unknown, fallback: boolean, label: string): bool
   return value;
 }
 
-/** Parse canonical or original C# AccountConfig JSON. */
+/** Parse and validate AccountConfig JSON. */
 export function decodeAccountConfig(value: unknown): AccountConfig {
   const root = asObject(value, 'AccountConfig');
-  const accountInfoRaw = pick(root, 'accountInfo', 'AccountInfo');
-  const info = asObject(accountInfoRaw, 'AccountConfig.accountInfo');
-  const rawType = pick(info, 'type', 'Type');
+  rejectPascalCase(root, 'AccountConfig');
+  const info = asObject(root['accountInfo'], 'AccountConfig.accountInfo');
+  rejectPascalCase(info, 'AccountConfig.accountInfo');
+  const rawType = info['type'];
 
   if (typeof rawType !== 'number' || !Number.isInteger(rawType)) {
     throw new Error('AccountConfig.accountInfo.type must be an integer.');
@@ -70,37 +73,30 @@ export function decodeAccountConfig(value: unknown): AccountConfig {
   }
 
   const accountInfo: AccountInfo = {
-    id: requiredString(pick(info, 'id', 'Id'), 'AccountConfig.accountInfo.id'),
-    instituteName: requiredString(
-      pick(info, 'instituteName', 'InstituteName'),
-      'AccountConfig.accountInfo.instituteName',
-    ),
-    title: optionalString(pick(info, 'title', 'Title')),
+    id: requiredString(info['id'], 'AccountConfig.accountInfo.id'),
+    instituteName: requiredString(info['instituteName'], 'AccountConfig.accountInfo.instituteName'),
+    title: optionalString(info['title']),
     type: rawType,
     requiresParent: optionalBoolean(
-      pick(info, 'requiresParent', 'RequiresParent'),
+      info['requiresParent'],
       false,
       'AccountConfig.accountInfo.requiresParent',
     ),
-    interAccountNameTags: stringArray(pick(info, 'interAccountNameTags', 'InterAccountNameTags')),
+    interAccountNameTags: stringArray(info['interAccountNameTags']),
   };
-  const filters = stringArray(pick(root, 'fileFilters', 'FileFilters'), ['*.csv']);
+  const filters = stringArray(root['fileFilters'], ['*.csv']);
 
   const config: AccountConfig = {
     accountInfo,
     fileFilters: filters.length > 0 ? filters : ['*.csv'],
-    scanSubFolders: optionalBoolean(
-      pick(root, 'scanSubFolders', 'ScanSubFolders'),
-      true,
-      'AccountConfig.scanSubFolders',
-    ),
+    scanSubFolders: optionalBoolean(root['scanSubFolders'], true, 'AccountConfig.scanSubFolders'),
   };
   const supportError = validateAccountConfigSupport(config);
   if (supportError) throw new Error(supportError);
   return config;
 }
 
-/** Serialize in the canonical web representation. */
+/** Serialize as written by the app. */
 export function encodeAccountConfig(config: AccountConfig): string {
   return JSON.stringify(config, null, 2);
 }

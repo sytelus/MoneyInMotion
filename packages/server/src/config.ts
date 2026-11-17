@@ -35,8 +35,6 @@ interface PersistedConfig {
   port?: number;
   dataRoot?: string;
   username?: string;
-  /** Legacy single-user setting retained only for automatic migration. */
-  dataPath?: string;
 }
 
 const CONFIG_DIR = path.join(os.homedir(), '.moneyinmotion');
@@ -143,7 +141,10 @@ function loadPersistedConfig(configFile = CONFIG_FILE): PersistedConfig {
       if (port == null) throw new Error('port must be an integer from 1 to 65535');
       config.port = port;
     }
-    for (const key of ['dataRoot', 'username', 'dataPath'] as const) {
+    if (raw.dataPath != null) {
+      throw new Error('dataPath is no longer supported; set dataRoot and username instead');
+    }
+    for (const key of ['dataRoot', 'username'] as const) {
       const value = raw[key];
       if (value == null) continue;
       if (typeof value !== 'string' || !value.trim()) {
@@ -172,52 +173,27 @@ function loadPersistedConfig(configFile = CONFIG_FILE): PersistedConfig {
 }
 
 /**
- * Translate the old per-user `dataPath` into the new root + username pair.
- * This lets existing deployments keep working without nesting another user
- * directory underneath their former data folder.
- */
-function migrateLegacyDataPath(fileConfig: PersistedConfig): {
-  dataRoot?: string;
-  username?: string;
-} {
-  if (fileConfig.dataRoot || !fileConfig.dataPath) {
-    return {};
-  }
-
-  const normalized = path.normalize(fileConfig.dataPath);
-  return {
-    dataRoot: path.dirname(normalized),
-    username: path.basename(normalized),
-  };
-}
-
-/**
  * Load the single canonical configuration file, creating it with safe defaults
- * on first start. A legacy `dataPath` inside that file is migrated once to the
- * current root + username shape; process environment variables are deliberately
- * ignored so Settings and the file can never disagree about the source of truth.
+ * on first start. Process environment variables are deliberately ignored so Settings and the file can never disagree about the source of truth.
  */
 export function loadConfig(
   options: { ensureDirectories?: boolean; configFile?: string } = {},
 ): ServerConfig {
   const configFile = options.configFile ?? CONFIG_FILE;
   const fileConfig = loadPersistedConfig(configFile);
-  const migrated = migrateLegacyDataPath(fileConfig);
-
-  const dataRoot = fileConfig.dataRoot ?? migrated.dataRoot ?? DEFAULT_DATA_ROOT;
-  const username = fileConfig.username ?? migrated.username ?? defaultUsername();
+  const dataRoot = fileConfig.dataRoot ?? DEFAULT_DATA_ROOT;
+  const username = fileConfig.username ?? defaultUsername();
   const port = parseConfiguredPort(fileConfig.port) ?? DEFAULT_PORT;
 
   const config = buildConfig(dataRoot, username, port);
 
-  // Materialize defaults and complete one-time legacy migration so every
-  // subsequent read has exactly one explicit, human-editable source.
+  // Materialize defaults so every subsequent read has exactly one explicit,
+  // human-editable source.
   if (
     !fs.existsSync(configFile) ||
     fileConfig.dataRoot !== config.dataRoot ||
     fileConfig.username !== config.username ||
-    fileConfig.port !== config.port ||
-    fileConfig.dataPath != null
+    fileConfig.port !== config.port
   ) {
     ensureDirExists(path.dirname(configFile));
     writeTextFileAtomically(
@@ -250,11 +226,10 @@ export function saveConfig(
 ): void {
   ensureDirExists(path.dirname(configFile));
   const existing = loadPersistedConfig(configFile);
-  const migrated = migrateLegacyDataPath(existing);
   const persisted: PersistedConfig = {
     port: partial.port ?? existing.port ?? DEFAULT_PORT,
-    dataRoot: partial.dataRoot ?? existing.dataRoot ?? migrated.dataRoot ?? DEFAULT_DATA_ROOT,
-    username: partial.username ?? existing.username ?? migrated.username ?? defaultUsername(),
+    dataRoot: partial.dataRoot ?? existing.dataRoot ?? DEFAULT_DATA_ROOT,
+    username: partial.username ?? existing.username ?? defaultUsername(),
   };
 
   // Validate before replacing a known-good file.

@@ -39,7 +39,6 @@ npm run test:coverage      # with V8 coverage
 npm run build              # core, server, then website
 npm run smoke:production   # built server against a throwaway root: health, deep links, restart
 npm run test:e2e           # build, then Playwright browser journeys on synthetic data
-npm run verify:legacy -- <legacy-root>   # read-only C# parity report (see legacy-migration.md)
 ```
 
 Before committing: typecheck, lint, format check, and tests. For server,
@@ -83,7 +82,7 @@ build, or script changes, also run the build and the smoke test. CI
 
 - **Core:** serialization, effective values, edit merge and restore, matching,
   normalization, aggregation.
-- **Server:** every parser, CSV ambiguity, account discovery, legacy codecs,
+- **Server:** every parser, CSV ambiguity, account discovery, storage codecs,
   cache replay and save, all-or-nothing rebuilds, upload path safety, staging,
   dedupe, routes, config, backups, and the launcher's build decisions
   (`__tests__/scripts`).
@@ -114,5 +113,5 @@ copy of real data to check it.
 **Add an editable field:** see [edits-and-rules.md](edits-and-rules.md#adding-an-editable-field).
 
 **Change the storage layout:** treat it as a migration. Update `ServerConfig`,
-the repositories, Settings, backups, fixtures, and the legacy verifier. Never
+the repositories, Settings, backups, and fixtures. Never
 silently move user files at startup.

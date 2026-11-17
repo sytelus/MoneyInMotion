@@ -6,7 +6,7 @@ import { Button } from '../ui/button.js';
 import { Pagination } from '../ui/pagination.js';
 import { formatCurrency, formatDate } from '../../lib/utils.js';
 
-/** Human-readable exact-record targeting. Unavailable legacy IDs are retained until removed. */
+/** Human-readable exact-record targeting. Unavailable IDs are retained until removed. */
 export function RuleTargetPicker({
   transactions,
   ids,

@@ -1,8 +1,7 @@
 /**
  * Transactions storage, ported from C# TransactionsStorage.
  *
- * Loads LatestMerged.json (using deserializeDictionary from core for
- * C# wire format compatibility) and saves with JSON.stringify.
+ * Loads and saves LatestMerged.json.
  *
  * @module
  */
@@ -35,7 +34,7 @@ export class TransactionsStorage {
       for (const key of ['topItems', 'accountInfos', 'importInfos'] as const) {
         const value = data[key];
         if (value == null || typeof value !== 'object') {
-          throw new Error(`snapshot ${key} must be an object or legacy dictionary array`);
+          throw new Error(`snapshot ${key} must be an object`);
         }
       }
       if (data.edits != null) {

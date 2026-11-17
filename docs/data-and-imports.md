@@ -41,8 +41,8 @@ ignored and never defines another account. The config holds:
 - case-insensitive file filters (`*`, `*.csv`, or an exact filename).
 
 Account IDs and folder names must each be unique ignoring case. Config
-symlinks and duplicates fail discovery visibly. The website writes camelCase
-JSON and still reads the legacy PascalCase `AccountInfo` shape.
+symlinks and duplicates fail discovery visibly. Fields are camelCase; a
+PascalCase field, as the old C# app wrote, is reported as an error.
 
 **Lifecycle in the Accounts page:**
 

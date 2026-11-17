@@ -109,27 +109,16 @@ describe('server configuration', () => {
     expect(fs.readdirSync(directory)).toEqual(['config.json']);
   });
 
-  it('migrates the legacy dataPath setting to the canonical shape', () => {
+  it('rejects the old dataPath setting instead of ignoring it', () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-config-test-'));
     temporaryDirectories.push(directory);
     const configFile = path.join(directory, 'config.json');
-    fs.writeFileSync(
-      configFile,
-      JSON.stringify({ dataPath: '/srv/moneyinmotion/alex', port: 4100 }),
-      'utf-8',
+    const original = JSON.stringify({ dataPath: '/srv/moneyinmotion/alex', port: 4100 });
+    fs.writeFileSync(configFile, original, 'utf-8');
+
+    expect(() => loadConfig({ ensureDirectories: false, configFile })).toThrow(
+      'dataPath is no longer supported',
     );
-
-    const config = loadConfig({ ensureDirectories: false, configFile });
-
-    expect(config).toMatchObject({
-      dataRoot: path.normalize('/srv/moneyinmotion'),
-      username: 'alex',
-      port: 4100,
-    });
-    expect(JSON.parse(fs.readFileSync(configFile, 'utf-8'))).toEqual({
-      dataRoot: path.normalize('/srv/moneyinmotion'),
-      username: 'alex',
-      port: 4100,
-    });
+    expect(fs.readFileSync(configFile, 'utf-8')).toBe(original);
   });
 });

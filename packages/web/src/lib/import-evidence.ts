@@ -28,7 +28,7 @@ export function sourceInventory(transactions: Transactions): SourceInventoryItem
     if (!item.accountIds.includes(transaction.accountId))
       item.accountIds.push(transaction.accountId);
     // Use the same UTC reporting day as the transaction explorer, including
-    // edited dates with offsets and legacy date strings.
+    // edited dates with offsets and other date strings.
     const date = parseDate(transaction.correctedTransactionDate).toISOString().slice(0, 10);
     if (item.from == null || date < item.from) item.from = date;
     if (item.to == null || date > item.to) item.to = date;

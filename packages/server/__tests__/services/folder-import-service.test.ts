@@ -23,17 +23,15 @@ describe('stageAndPromoteFolder', () => {
     fs.mkdirSync(config.stagingDir, { recursive: true });
     const accountDir = path.join(config.statementsDir, 'Amex');
     fs.mkdirSync(accountDir, { recursive: true });
-    // Original C# casing is intentional: upload discovery must be
-    // compatible with existing MoneyAI data.
     fs.writeFileSync(
       path.join(accountDir, 'AccountConfig.json'),
       JSON.stringify({
         accountInfo: {
-          Id: 'Amex-Gold',
-          InstituteName: 'AmericanExpress',
-          Title: 'Amex',
-          Type: 1,
-          InterAccountNameTags: ['amex'],
+          id: 'Amex-Gold',
+          instituteName: 'AmericanExpress',
+          title: 'Amex',
+          type: 1,
+          interAccountNameTags: ['amex'],
         },
         fileFilters: ['*.csv'],
         scanSubFolders,

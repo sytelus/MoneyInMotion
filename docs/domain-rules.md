@@ -13,19 +13,19 @@ does not accidentally change financial meaning.
   differences do not reorder the model.
 - Transaction identity is derived from imported content and source metadata;
   it is not a database sequence or UI row index.
-- Legacy-compatible MD5 output is lowercase hexadecimal where the C# helper's
-  `hexStringOutput` flag was true. Transaction content hashes use symbolic
+- Persisted IDs and rule scope hashes are lowercase hexadecimal MD5.
+  Transaction content hashes use symbolic
   reason names, and transaction IDs hash the canonical content fields plus line
   number and provider reference—not the already-derived content hash.
-- Account, import, children, and provider-attribute maps decode both native
-  objects and legacy C# key/value-array dictionary representations.
+- Account, import, children, and provider-attribute maps are plain JSON
+  objects. The old C# key/value-array form is rejected.
 - Dictionary keys must agree with the IDs of their values, referenced account
   and import metadata must exist, and transaction IDs must be unique across the
   whole parent/child graph. Invalid runtime field types are rejected at load.
 
 ## Sign and reason semantics
 
-`TransactionReason` is a legacy-compatible numeric flag set. `Purchase` is
+`TransactionReason` is a numeric flag set with the C# enum's values. `Purchase` is
 zero and is nevertheless an outgoing reason by convention. Other values group
 into outgoing, incoming, and inter-account masks. Preserve the numeric values,
 including historically misspelled member names, because they are persisted.

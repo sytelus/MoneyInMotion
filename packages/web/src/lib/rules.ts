@@ -61,7 +61,7 @@ export function ruleChangesLabel(values: EditedValues | null): string {
       .join(' · ') || 'No field changes'
   );
 }
-/** Upgrade legacy hash encodings at the write boundary, not on load. */
+/** Recompute scope hashes and stamp the update when a rule is edited. */
 export function editableRule(rule: TransactionEditData): TransactionEditData {
   return {
     ...rule,

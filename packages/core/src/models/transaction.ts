@@ -103,35 +103,11 @@ export interface TransactionData {
   relatedTransferId?: string | null;
 }
 
-/**
- * Convert a dictionary emitted by the legacy C# data-contract serializer to
- * a normal JavaScript object. The old serializer represented dictionaries as
- * `[{ "Key": "...", "Value": ... }]`; modern snapshots use JSON objects.
- */
+/** Copy a persisted dictionary into a null-prototype object. */
 function normalizeDictionary<T>(value: unknown): Record<string, T> | null {
   if (value == null) return null;
-  if (Array.isArray(value)) {
-    const normalized = Object.create(null) as Record<string, T>;
-    for (const [index, entry] of value.entries()) {
-      if (
-        entry == null ||
-        typeof entry !== 'object' ||
-        !('Key' in entry) ||
-        !('Value' in entry) ||
-        typeof entry.Key !== 'string' ||
-        entry.Key.length === 0
-      ) {
-        throw new Error(`Malformed legacy dictionary entry at index ${index}`);
-      }
-      if (Object.hasOwn(normalized, entry.Key)) {
-        throw new Error(`Duplicate legacy dictionary key: ${entry.Key}`);
-      }
-      normalized[entry.Key] = entry.Value as T;
-    }
-    return normalized;
-  }
-  if (typeof value !== 'object') {
-    throw new Error('Dictionary value must be an object, an array of Key/Value pairs, or null');
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Dictionary value must be an object or null');
   }
   return Object.assign(Object.create(null) as Record<string, T>, value);
 }

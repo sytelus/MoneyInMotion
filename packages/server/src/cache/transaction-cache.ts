@@ -14,7 +14,7 @@ import {
   Transactions,
   Transaction,
   TransactionEdits,
-  migrateLegacyEditTargets,
+  migrateEditTargets,
   type TransactionEditData,
   type AccountInfo,
 } from '@moneyinmotion/core';
@@ -41,7 +41,7 @@ export interface SnapshotBuildResult {
   importedFiles: string[];
   failedFiles: Array<{ path: string; error: string }>;
   appliedEdits: number;
-  /** Legacy exact-ID edit targets safely retargeted to rebuilt identities. */
+  /** Exact-ID rule targets retargeted after their transaction ID changed. */
   migratedEditTargets: number;
   /** Missing/ambiguous exact-ID targets retained for manual investigation. */
   unresolvedEditTargets: number;
@@ -242,7 +242,7 @@ export class TransactionCache {
     txns.matchTransactions();
     const edits = previous.getClonedEdits();
     edits.merge(this.loadAdditionalEdits(edits));
-    const editMigration = migrateLegacyEditTargets(edits, previous, txns);
+    const editMigration = migrateEditTargets(edits, previous, txns);
     txns.applyEdits(editMigration.edits, true);
 
     // Persist the candidate before swapping it into live memory. A disk error

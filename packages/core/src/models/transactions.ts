@@ -35,56 +35,23 @@ export class TransactionEditTargetError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: deserialize C# Dictionary format
+// Helper: read a persisted dictionary
 // ---------------------------------------------------------------------------
 
 /**
- * Deserialize data that may be in the C# `DataContractJsonSerializer` format
- * for `Dictionary<string, T>`, which serializes as:
- * ```json
- * [{"Key": "abc", "Value": {...}}, {"Key": "def", "Value": {...}}]
- * ```
+ * Copy a persisted `Record<string, T>` into a null-prototype object, so even
+ * special keys such as "__proto__" stay ordinary data.
  *
- * Also accepts a plain `Record<string, T>` object and passes it through.
- *
- * @param data - Either an array of `{Key, Value}` pairs or a plain object.
- * @returns A plain `Record<string, T>`.
+ * @param data - A plain object, or `null`/`undefined` for an empty dictionary.
  */
 export function deserializeDictionary<T>(data: unknown): Record<string, T> {
   if (data == null) {
     return {};
   }
-
-  // C# legacy format: array of {Key, Value}
-  if (Array.isArray(data)) {
-    // A null prototype makes even special keys such as "__proto__" ordinary
-    // data and prevents legacy dictionary input from mutating object state.
-    const result = Object.create(null) as Record<string, T>;
-    for (const [index, item] of data.entries()) {
-      if (
-        item == null ||
-        typeof item !== 'object' ||
-        !('Key' in item) ||
-        !('Value' in item) ||
-        typeof item.Key !== 'string' ||
-        item.Key.length === 0
-      ) {
-        throw new Error(`Malformed legacy dictionary entry at index ${index}`);
-      }
-      if (Object.hasOwn(result, item.Key)) {
-        throw new Error(`Duplicate legacy dictionary key: ${item.Key}`);
-      }
-      result[item.Key] = item.Value as T;
-    }
-    return result;
+  if (typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Dictionary value must be an object or null');
   }
-
-  // Normal object format
-  if (typeof data === 'object') {
-    return Object.assign(Object.create(null) as Record<string, T>, data);
-  }
-
-  throw new Error('Dictionary value must be an object, an array of Key/Value pairs, or null');
+  return Object.assign(Object.create(null) as Record<string, T>, data);
 }
 
 // ---------------------------------------------------------------------------
@@ -131,12 +98,10 @@ function optionalString(value: unknown, label: string): string | null {
   return value;
 }
 
-/** Decode both current camelCase and historical PascalCase account metadata. */
+/** Validate persisted account metadata. */
 function normalizeAccountInfo(value: unknown): AccountInfo {
   const raw = asRecord(value, 'AccountInfo');
-  const type = raw.type ?? raw.Type;
-  const requiresParent = raw.requiresParent ?? raw.RequiresParent;
-  const tags = raw.interAccountNameTags ?? raw.InterAccountNameTags;
+  const { type, requiresParent, interAccountNameTags: tags } = raw;
   const validAccountTypes = new Set<number>([
     AccountType.CreditCard,
     AccountType.BankChecking,
@@ -156,31 +121,23 @@ function normalizeAccountInfo(value: unknown): AccountInfo {
   }
 
   return {
-    id: requiredString(raw.id ?? raw.Id, 'AccountInfo.id'),
-    instituteName: requiredString(
-      raw.instituteName ?? raw.InstituteName,
-      'AccountInfo.instituteName',
-    ),
-    title: optionalString(raw.title ?? raw.Title, 'AccountInfo.title'),
+    id: requiredString(raw.id, 'AccountInfo.id'),
+    instituteName: requiredString(raw.instituteName, 'AccountInfo.instituteName'),
+    title: optionalString(raw.title, 'AccountInfo.title'),
     type,
     requiresParent,
     interAccountNameTags: tags == null ? null : [...(tags as string[])],
   };
 }
 
-/** Decode both current camelCase and historical PascalCase import metadata. */
+/** Validate persisted import metadata. */
 function normalizeImportInfo(value: unknown): ImportInfo {
   const raw = asRecord(value, 'ImportInfo');
-  const updateDate = raw.updateDate ?? raw.UpdateDate;
-  const createDate = raw.createDate ?? raw.CreateDate;
-  const format = raw.format ?? raw.Format;
+  const { updateDate, createDate, format } = raw;
   const result: ImportInfo = {
-    id: requiredString(raw.id ?? raw.Id, 'ImportInfo.id'),
-    portableAddress: requiredString(
-      raw.portableAddress ?? raw.PortableAddress,
-      'ImportInfo.portableAddress',
-    ),
-    contentHash: requiredString(raw.contentHash ?? raw.ContentHash, 'ImportInfo.contentHash'),
+    id: requiredString(raw.id, 'ImportInfo.id'),
+    portableAddress: requiredString(raw.portableAddress, 'ImportInfo.portableAddress'),
+    contentHash: requiredString(raw.contentHash, 'ImportInfo.contentHash'),
   };
   if (updateDate != null) {
     Object.assign(result, { updateDate: optionalString(updateDate, 'ImportInfo.updateDate') });
@@ -272,8 +229,7 @@ export class Transactions {
   /**
    * Deserialize from a {@link TransactionsData} JSON payload.
    *
-   * Handles both the C# legacy `[{Key,Value}]` array format and
-   * normal `Record<string, T>` for dictionary fields.
+   * Dictionary fields are plain `Record<string, T>` objects.
    */
   static fromData(data: TransactionsData): Transactions {
     if (typeof data.name !== 'string' || data.name.trim().length === 0) {
@@ -281,7 +237,6 @@ export class Transactions {
     }
     const txns = new Transactions(data.name);
 
-    // Deserialize dictionaries (handle legacy format)
     const topItemsRaw = deserializeDictionary<TransactionData>(data.topItems);
     const accountInfosRaw = deserializeDictionary<AccountInfo>(data.accountInfos);
     const importInfosRaw = deserializeDictionary<ImportInfo>(data.importInfos);

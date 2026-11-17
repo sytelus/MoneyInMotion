@@ -125,7 +125,7 @@ describe('createScopeFilter', () => {
     expect(f1.contentHash).not.toBe(f2.contentHash);
   });
 
-  it('should produce a legacy-compatible lowercase hexadecimal MD5 hash', () => {
+  it('should produce a lowercase hexadecimal MD5 hash', () => {
     const filter = createScopeFilter(ScopeType.EntityName, ['Walmart']);
     expect(filter.contentHash).toHaveLength(32);
     expect(filter.contentHash).toMatch(/^[0-9a-f]+$/);

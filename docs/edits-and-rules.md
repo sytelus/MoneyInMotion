@@ -84,7 +84,7 @@ selection, or all filtered records. Targets are picked by merchant, date,
 account, and amount instead of opaque IDs. **Back to editing** keeps the
 draft. **Cancel** saves nothing.
 
-## Legacy targets
+## Targets after an ID change
 
 After a rebuild changes transaction IDs, an exact-ID rule is retargeted only
 when exactly one equivalent record exists in both the old and the new graph.
@@ -92,7 +92,7 @@ Otherwise the reference stays as it was and is reported as unavailable.
 
 ## Adding an editable field
 
-The core effective-value logic, rule replay, the server Zod schema, the editor
-UI, and the legacy codec must all change together. Test create, update,
+The core effective-value logic, rule replay, the server Zod schema, and the
+editor UI must all change together. Test create, update,
 delete, narrowing scopes, precedence, missing targets, parent completeness,
 concurrent requests, a failed save, and reload.

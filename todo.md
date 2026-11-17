@@ -17,10 +17,6 @@ a schedule. Add items when real use shows a need.
       and rate; use the institution's conversion or a confirmed lookup by date
       ([plan](docs/financial-reports.md#planned-foreign-currency-transactions)).
       Decide on a rate source first.
-- [ ] **Drop legacy compatibility.** Parity is explained and two bugs it
-      exposed are fixed ([details](docs/legacy-migration.md)). Waiting on the
-      owner's go-ahead: rewrite the 8 PascalCase account configs once, then
-      remove the legacy codecs and the verifier.
 
 ## Known gaps
 

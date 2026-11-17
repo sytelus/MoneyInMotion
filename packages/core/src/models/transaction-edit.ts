@@ -122,7 +122,7 @@ export function validateScopeFilter(type: ScopeType, params: readonly string[]):
 /**
  * A single filter that determines which transactions an edit applies to.
  *
- * Matches the JSON shape produced by the legacy C# serializer:
+ * Persisted JSON shape:
  * ```json
  * {
  *   "type": 2,
@@ -196,7 +196,7 @@ export function createScopeFilter(
  * | `null` / `undefined` | Leave the target field unchanged        |
  * | Present, voided      | Revert the target field to `null`       |
  *
- * Matches the JSON shape produced by the legacy C# serializer:
+ * Persisted JSON shape:
  * ```json
  * { "value": "Groceries", "isVoided": false }
  * ```
@@ -235,7 +235,7 @@ export function voidedEditValue<T>(): EditValue<T> {
  * A non-null field carries an {@link EditValue} whose `isVoided` flag
  * determines whether to apply or revert.
  *
- * Matches the JSON shape produced by the legacy C# serializer.
+ * Persisted JSON shape.
  */
 export interface EditedValues {
   /** Override for the transaction reason. */
@@ -315,8 +315,7 @@ export function mergeEditedValues(
 /**
  * The full persisted representation of a transaction edit.
  *
- * Matches the JSON shape produced by the legacy C# `TransactionEdit`
- * serializer:
+ * Persisted JSON shape:
  * ```json
  * {
  *   "id": "base64-guid",

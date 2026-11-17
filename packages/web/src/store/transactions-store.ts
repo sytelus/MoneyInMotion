@@ -140,7 +140,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     const transactions = Transactions.fromData(data);
     const reporting = reportingTransactions(transactions);
     const records = [...transactions.allParentChildTransactions];
-    // Normalize once per snapshot. This also handles supported legacy formats
+    // Normalize once per snapshot. This also handles date-only values
     // and offset timestamps without doing date parsing on every search keystroke.
     const dateIndex = new Map(
       records.map((tx) => [tx.id, parseDate(tx.correctedTransactionDate).toISOString()]),

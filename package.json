@@ -20,7 +20,6 @@
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify:legacy": "node scripts/verify-legacy-data.mjs",
     "smoke:production": "node scripts/smoke-production.mjs",
     "lint": "eslint \"packages/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" \"e2e/**/*.ts\" playwright.config.ts eslint.config.js",
     "typecheck": "tsc -b",

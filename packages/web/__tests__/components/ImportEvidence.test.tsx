@@ -122,7 +122,7 @@ function collection(dates = ['2024-03-03', '2023-01-01']) {
 }
 
 describe('source evidence', () => {
-  it('uses the same UTC reporting day for offset dates and legacy date strings', () => {
+  it('uses the same UTC reporting day for offset dates and other date strings', () => {
     const result = sourceInventory(collection(['2024-01-01T23:30:00-08:00', '12/31/2023']));
     expect(result[0]).toMatchObject({ from: '2023-12-31', to: '2024-01-02' });
   });
@@ -136,7 +136,7 @@ describe('source evidence', () => {
       to: '2024-03-03',
     });
   });
-  it('links source records, labels filesystem times and never presents the legacy path hash as a checksum', () => {
+  it('links source records, labels filesystem times and never presents the path hash as a checksum', () => {
     render(
       <MemoryRouter>
         <SourceInventory transactions={collection()} />

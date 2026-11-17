@@ -61,10 +61,7 @@ export { type ImportedValues, type TransactionData, Transaction } from './transa
 
 export { TransactionEdits } from './transaction-edits.js';
 
-export {
-  migrateLegacyEditTargets,
-  type LegacyEditTargetMigrationResult,
-} from './legacy-edit-migration.js';
+export { migrateEditTargets, type EditTargetMigrationResult } from './edit-target-migration.js';
 
 export {
   Transactions,

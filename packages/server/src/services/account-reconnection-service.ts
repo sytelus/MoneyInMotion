@@ -28,8 +28,6 @@ export function accountIdentitiesByFolder(transactions: Transactions): Map<strin
       .portableAddress.replaceAll('\\', '/')
       .replace(/^\.\//, '');
     const parts = source.split('/');
-    // Current imports are Statements-relative; some legacy sources retain the prefix.
-    if (parts[0]?.toLowerCase() === 'statements') parts.shift();
     const folder = parts[0];
     if (!folder || parts.length < 2 || !isSafeAccountFolder(folder)) continue;
     const key = folder.toLowerCase();

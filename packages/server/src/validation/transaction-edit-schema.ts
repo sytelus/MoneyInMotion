@@ -1,10 +1,9 @@
 /**
  * Runtime schemas for transaction edits at HTTP and persistence boundaries.
  *
- * The browser API requires the current hexadecimal scope hash and verifies it
- * against the scope contents. Persisted data additionally accepts the base64
- * MD5 representation written by the legacy C# application, while retaining
- * the same structural and value validation for every other field.
+ * Every scope hash must be the hex MD5 of its type and parameters. New rules
+ * must change at least one field to a non-empty value; saved rules may also
+ * clear a field (an empty value) and are kept even when they change nothing.
  *
  * @module
  */
@@ -48,60 +47,49 @@ function editValueSchema<T extends z.ZodType>(valueSchema: T) {
 const knownScopeTypes = new Set<number>(
   Object.values(ScopeType).filter((value): value is number => typeof value === 'number'),
 );
-const legacyBase64Md5 = /^[A-Za-z0-9+/]{22}==$/;
-const currentHexMd5 = /^[0-9a-f]{32}$/i;
+const hexMd5 = /^[0-9a-f]{32}$/i;
 
-function buildScopeFilterSchema(allowLegacyHash: boolean) {
-  return z
-    .object({
-      type: z
-        .number()
-        .int()
-        .refine((value) => knownScopeTypes.has(value), {
-          message: 'Unknown scope-filter type.',
-        }),
-      parameters: z.array(z.string().max(1_000)).max(1_000),
-      referenceParameters: z.array(z.string().max(1_000)).max(1_000).nullable().optional(),
-      contentHash: z
-        .string()
-        .refine(
-          (value) => currentHexMd5.test(value) || (allowLegacyHash && legacyBase64Md5.test(value)),
-          'Invalid scope content hash.',
-        ),
-    })
-    .strict()
-    .superRefine((scope, context) => {
-      const type = scope.type as ScopeType;
-      const parameterError = validateScopeFilter(type, scope.parameters);
-      if (parameterError) {
-        context.addIssue({ code: 'custom', path: ['parameters'], message: parameterError });
-        return;
+const scopeFilterSchema = z
+  .object({
+    type: z
+      .number()
+      .int()
+      .refine((value) => knownScopeTypes.has(value), {
+        message: 'Unknown scope-filter type.',
+      }),
+    parameters: z.array(z.string().max(1_000)).max(1_000),
+    referenceParameters: z.array(z.string().max(1_000)).max(1_000).nullable().optional(),
+    contentHash: z.string().refine((value) => hexMd5.test(value), 'Invalid scope content hash.'),
+  })
+  .strict()
+  .superRefine((scope, context) => {
+    const type = scope.type as ScopeType;
+    const parameterError = validateScopeFilter(type, scope.parameters);
+    if (parameterError) {
+      context.addIssue({ code: 'custom', path: ['parameters'], message: parameterError });
+      return;
+    }
+
+    if (hexMd5.test(scope.contentHash)) {
+      const expectedHash = createScopeFilter(
+        type,
+        [...scope.parameters],
+        scope.referenceParameters == null ? null : [...scope.referenceParameters],
+      ).contentHash;
+      if (scope.contentHash.toLowerCase() !== expectedHash) {
+        context.addIssue({
+          code: 'custom',
+          path: ['contentHash'],
+          message: 'Scope content hash does not match its type and parameters.',
+        });
       }
+    }
+  });
 
-      // Legacy base64 hashes were calculated by the C# implementation and
-      // use a different output encoding. Current hex hashes can be fully
-      // recomputed and must match their declared scope contents.
-      if (currentHexMd5.test(scope.contentHash)) {
-        const expectedHash = createScopeFilter(
-          type,
-          [...scope.parameters],
-          scope.referenceParameters == null ? null : [...scope.referenceParameters],
-        ).contentHash;
-        if (scope.contentHash.toLowerCase() !== expectedHash) {
-          context.addIssue({
-            code: 'custom',
-            path: ['contentHash'],
-            message: 'Scope content hash does not match its type and parameters.',
-          });
-        }
-      }
-    });
-}
-
-function buildEditedValuesSchema(allowLegacyEmptyValues: boolean) {
-  const editableString = allowLegacyEmptyValues ? z.string().max(10_000) : nonEmptyString;
-  const categorySegment = allowLegacyEmptyValues ? z.string().max(10_000) : nonEmptyString;
-  const categoryPath = allowLegacyEmptyValues
+function buildEditedValuesSchema(allowEmptyValues: boolean) {
+  const editableString = allowEmptyValues ? z.string().max(10_000) : nonEmptyString;
+  const categorySegment = allowEmptyValues ? z.string().max(10_000) : nonEmptyString;
+  const categoryPath = allowEmptyValues
     ? z.array(categorySegment).max(20)
     : z.array(categorySegment).min(1).max(20);
 
@@ -117,17 +105,14 @@ function buildEditedValuesSchema(allowLegacyEmptyValues: boolean) {
     })
     .strict();
 
-  return allowLegacyEmptyValues
+  return allowEmptyValues
     ? schema
     : schema.refine((values) => Object.values(values).some((value) => value != null), {
         message: 'At least one edited field is required.',
       });
 }
 
-function buildTransactionEditSchema(
-  allowLegacyHash: boolean,
-  allowLegacyEmptyValues = allowLegacyHash,
-) {
+function buildTransactionEditSchema(allowEmptyValues: boolean) {
   return z
     .object({
       id: z.string().trim().min(1).max(200),
@@ -139,8 +124,8 @@ function buildTransactionEditSchema(
           updatedBy: z.string().trim().min(1).max(200).nullable().optional(),
         })
         .strict(),
-      scopeFilters: z.array(buildScopeFilterSchema(allowLegacyHash)).min(1).max(20),
-      values: buildEditedValuesSchema(allowLegacyEmptyValues),
+      scopeFilters: z.array(scopeFilterSchema).min(1).max(20),
+      values: buildEditedValuesSchema(allowEmptyValues),
       sourceId: z.string().trim().min(1).max(200),
     })
     .strict();
@@ -152,7 +137,7 @@ export const transactionEditsRequestSchema = z
   .min(1)
   .max(100);
 
-/** Compatibility schema for one edit loaded from durable JSON. */
+/** Schema for one saved edit. */
 const persistedTransactionEditSchema = buildTransactionEditSchema(true);
 
 export const ruleChangesRequestSchema = z
@@ -167,7 +152,7 @@ export const ruleChangesRequestSchema = z
         z
           .object({
             previous: persistedTransactionEditSchema.nullable(),
-            next: buildTransactionEditSchema(false, true).nullable(),
+            next: buildTransactionEditSchema(true).nullable(),
           })
           .strict()
           .refine(
@@ -175,8 +160,8 @@ export const ruleChangesRequestSchema = z
             'A rule change is required.',
           )
           .superRefine((change, context) => {
-            // Existing legacy rules may legitimately contain empty field values.
-            // Preserve those when editing another field; new rules remain strict.
+            // A saved rule may clear a field (empty value). Keep that when
+            // another field is edited; new rules remain strict.
             if (change.previous == null && change.next != null) {
               const result = buildTransactionEditSchema(false).safeParse(change.next);
               if (!result.success)

@@ -64,10 +64,10 @@ These goals decide what gets built and how. The behavior docs under
 
 - **Keep it simple:** one Node.js process, JSON files on disk, no database or
   background services, until a measured need says otherwise.
-- **Legacy C# compatibility is temporary.** The original MoneyAI (C#) data
-  format is read and written only so the new code can be checked against the
-  old results ([docs/legacy-migration.md](docs/legacy-migration.md)). Once the
-  migration is confirmed, the legacy code paths will be removed.
+- **One data format, no compatibility layers.** MiM began as a port of the
+  C# MoneyAI app. That app's data was checked against the C# results and
+  converted once; MiM now reads only its own format and reports anything else
+  as an error.
 
 ## Quick start
 
@@ -136,25 +136,24 @@ ZIP backups from Settings.
 
 ## Commands
 
-| Command                                  | Purpose                                                   |
-| ---------------------------------------- | --------------------------------------------------------- |
-| `run.bat` / `./run.sh`                   | Install if needed, rebuild if stale, start production     |
-| `run.bat dev` / `./run.sh dev`           | API plus Vite website with hot reload                     |
-| `npm test`                               | Full test suite                                           |
-| `npm run test:e2e`                       | Build, then Playwright browser journeys on synthetic data |
-| `npm run typecheck` / `lint` / `format`  | Static checks                                             |
-| `npm run build`                          | Build core, server, and website                           |
-| `npm run smoke:production`               | Start the built server against a throwaway data root      |
-| `npm run verify:legacy -- <legacy-root>` | Read-only comparison with the legacy C# snapshot          |
-| `./install.sh` / `./build.sh`            | Linux VM install (prunes dev tools) / full verified build |
+| Command                                 | Purpose                                                   |
+| --------------------------------------- | --------------------------------------------------------- |
+| `run.bat` / `./run.sh`                  | Install if needed, rebuild if stale, start production     |
+| `run.bat dev` / `./run.sh dev`          | API plus Vite website with hot reload                     |
+| `npm test`                              | Full test suite                                           |
+| `npm run test:e2e`                      | Build, then Playwright browser journeys on synthetic data |
+| `npm run typecheck` / `lint` / `format` | Static checks                                             |
+| `npm run build`                         | Build core, server, and website                           |
+| `npm run smoke:production`              | Start the built server against a throwaway data root      |
+| `./install.sh` / `./build.sh`           | Linux VM install (prunes dev tools) / full verified build |
 
 ## Repository layout
 
 ```text
-packages/core/    Domain model, matching, aggregation, rules, legacy-compatible serialization
+packages/core/    Domain model, matching, aggregation, rules, serialization
 packages/server/  Express API, parsers, filesystem storage, uploads, rebuilds, backups
 packages/web/     React website
-scripts/          run.mjs launcher, backup ZIP helper, smoke test, legacy verifier
+scripts/          run.mjs launcher, backup ZIP helper, smoke test
 deploy/           Optional systemd unit for a Linux VM
 docs/             How the system works (see below)
 ```
@@ -169,6 +168,5 @@ docs/             How the system works (see below)
 - [Backup and restore](docs/backup-and-restore.md)
 - [Development](docs/development.md): setup, conventions, testing, common changes
 - [UX guidelines](docs/ux-guidelines.md): how the interface should behave
-- [Legacy migration](docs/legacy-migration.md): differences from the C# app and parity checks
 - [HTTP API](docs/api.md) and [optional VM deployment](docs/deployment.md)
 - [TODO](todo.md) and [Security](SECURITY.md)

@@ -409,10 +409,9 @@ export const SettingsPage: React.FC = () => {
                     </p>
                     {rebuildMutation.data.migratedEditTargets > 0 && (
                       <p className="text-xs text-emerald-900/80 dark:text-emerald-200/80">
-                        Migrated {rebuildMutation.data.migratedEditTargets} legacy exact-ID rule
-                        target
-                        {rebuildMutation.data.migratedEditTargets === 1 ? '' : 's'} to stable
-                        rebuilt transactions.
+                        Kept {rebuildMutation.data.migratedEditTargets} rule target
+                        {rebuildMutation.data.migratedEditTargets === 1 ? '' : 's'} attached to
+                        records whose ID changed.
                       </p>
                     )}
                     {rebuildMutation.data.unresolvedEditTargets > 0 && (

@@ -277,9 +277,9 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
               </p>
               {result.rebuild.migratedEditTargets > 0 && (
                 <p className="mt-1 text-xs opacity-75">
-                  Preserved {result.rebuild.migratedEditTargets} legacy rule target
-                  {result.rebuild.migratedEditTargets === 1 ? '' : 's'} by migrating transaction
-                  IDs.
+                  Kept {result.rebuild.migratedEditTargets} rule target
+                  {result.rebuild.migratedEditTargets === 1 ? '' : 's'} attached to records whose ID
+                  changed.
                 </p>
               )}
             </div>

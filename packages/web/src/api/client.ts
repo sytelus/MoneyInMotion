@@ -235,7 +235,7 @@ export interface SnapshotBuildResponse {
   /** Files that were found but could not be parsed; user-visible. */
   failedFiles: Array<{ path: string; error: string }>;
   appliedEdits: number;
-  /** Legacy exact-ID rule targets safely migrated during this rebuild. */
+  /** Exact-ID rule targets moved to a transaction whose ID changed in this rebuild. */
   migratedEditTargets: number;
   /** Exact-ID targets retained because no unique rebuilt equivalent exists. */
   unresolvedEditTargets: number;

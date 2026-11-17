@@ -640,19 +640,10 @@ describe('setCategory, setNote, setIsUserFlagged', () => {
 });
 
 // ---------------------------------------------------------------------------
-// fromData with legacy C# dictionary format
+// deserializeDictionary and fromData
 // ---------------------------------------------------------------------------
 
 describe('deserializeDictionary', () => {
-  it('should handle C# legacy [{Key, Value}] format', () => {
-    const legacy = [
-      { Key: 'a', Value: { x: 1 } },
-      { Key: 'b', Value: { x: 2 } },
-    ];
-    const result = deserializeDictionary<{ x: number }>(legacy);
-    expect(result).toEqual({ a: { x: 1 }, b: { x: 2 } });
-  });
-
   it('should handle normal object format', () => {
     const normal = { a: { x: 1 }, b: { x: 2 } };
     const result = deserializeDictionary<{ x: number }>(normal);
@@ -664,19 +655,13 @@ describe('deserializeDictionary', () => {
     expect(deserializeDictionary(undefined)).toEqual({});
   });
 
-  it('rejects malformed or duplicate legacy dictionary entries', () => {
-    expect(() => deserializeDictionary([{ Key: 'missing-value' }])).toThrow(/malformed/i);
-    expect(() =>
-      deserializeDictionary([
-        { Key: 'duplicate', Value: 1 },
-        { Key: 'duplicate', Value: 2 },
-      ]),
-    ).toThrow(/duplicate legacy dictionary key/i);
+  it('rejects arrays, including the C# Key/Value form, and other non-objects', () => {
+    expect(() => deserializeDictionary([{ Key: 'a', Value: 1 }])).toThrow(/dictionary value/i);
     expect(() => deserializeDictionary('not-a-dictionary')).toThrow(/dictionary value/i);
   });
 
-  it('treats prototype-shaped legacy keys as inert dictionary data', () => {
-    const result = deserializeDictionary<string>([{ Key: '__proto__', Value: 'safe' }]);
+  it('treats prototype-shaped keys as inert dictionary data', () => {
+    const result = deserializeDictionary<string>(JSON.parse('{"__proto__":"safe"}'));
 
     expect(Object.getPrototypeOf(result)).toBeNull();
     expect(result['__proto__']).toBe('safe');
@@ -699,30 +684,34 @@ describe('Transactions.fromData', () => {
     expect(restoredTx1!.entityName).toBe(tx1.entityName);
   });
 
-  it('should deserialize from legacy C# dictionary format', () => {
+  it('rejects the C# Key/Value dictionary arrays and PascalCase metadata', () => {
     const tx = makeTransaction();
-    const txData = tx.toData();
     const acct = makeAccountInfo();
     const imp = makeImportInfo();
-
-    // Simulate legacy format where topItems, accountInfos, importInfos
-    // are [{Key, Value}] arrays
-    const legacyData = {
-      name: 'legacy-test',
-      topItems: [{ Key: tx.id, Value: txData }],
-      accountInfos: [{ Key: acct.id, Value: acct }],
-      importInfos: [{ Key: imp.id, Value: imp }],
+    const native = {
+      name: 'test',
+      topItems: { [tx.id]: tx.toData() },
+      accountInfos: { [acct.id]: acct },
+      importInfos: { [imp.id]: imp },
       edits: [],
-    } as unknown as TransactionsData;
+    };
 
-    const restored = Transactions.fromData(legacyData);
-    expect([...restored.topLevelTransactions]).toHaveLength(1);
-    expect(restored.getTransaction(tx.id)).toBeTruthy();
-    expect(restored.getAccountInfo(acct.id)).toEqual(acct);
-    expect(restored.getImportInfo(imp.id)).toEqual(imp);
+    const keyValueArrays = {
+      ...native,
+      topItems: [{ Key: tx.id, Value: tx.toData() }],
+    } as unknown as TransactionsData;
+    expect(() => Transactions.fromData(keyValueArrays)).toThrow(/dictionary value/i);
+
+    const pascalCase = {
+      ...native,
+      accountInfos: {
+        [acct.id]: { Id: acct.id, InstituteName: acct.instituteName, Type: acct.type },
+      },
+    } as unknown as TransactionsData;
+    expect(() => Transactions.fromData(pascalCase)).toThrow(/AccountInfo/);
   });
 
-  it('should normalize nested C# dictionaries and embedded edit aggregates', () => {
+  it('reads nested dictionaries and an embedded edit aggregate', () => {
     const parent = makeTransaction({
       entityName: 'Parent',
       amount: -10,
@@ -733,50 +722,38 @@ describe('Transactions.fromData', () => {
       lineNumber: 2,
     }).toData();
     child.parentId = parent.id;
-    parent.children = [
-      {
-        Key: child.id,
-        Value: {
-          ...child,
-          providerAttributes: [{ Key: 'legacy field', Value: 'legacy value' }],
+    parent.children = {
+      [child.id]: { ...child, providerAttributes: { 'provider field': 'provider value' } },
+    };
+    const embeddedEdit = makeEdit({
+      id: 'embedded-edit',
+      scopeFilters: [createScopeFilter(ScopeType.All, [])],
+      values: { note: editValue('Loaded from snapshot') },
+    });
+    const data = {
+      name: 'LatestMerged.json',
+      topItems: { [parent.id]: parent },
+      accountInfos: {
+        'acct-amex': {
+          id: 'acct-amex',
+          instituteName: 'AmericanExpress',
+          title: 'Amex',
+          type: 1,
+          requiresParent: false,
         },
       },
-    ] as unknown as typeof parent.children;
-    const legacyEdit = makeEdit({
-      id: 'legacy-edit',
-      scopeFilters: [createScopeFilter(ScopeType.All, [])],
-      values: { note: editValue('Loaded from legacy') },
-    });
-    const legacyData = {
-      name: 'LatestMerged.json',
-      topItems: [{ Key: parent.id, Value: parent }],
-      accountInfos: [
-        {
-          Key: 'acct-amex',
-          Value: {
-            Id: 'acct-amex',
-            InstituteName: 'AmericanExpress',
-            Title: 'Amex',
-            Type: 1,
-            RequiresParent: false,
-          },
+      importInfos: {
+        'import-001': {
+          id: 'import-001',
+          portableAddress: 'statement.CSV',
+          contentHash: 'import-hash',
+          format: '.CSV',
         },
-      ],
-      importInfos: [
-        {
-          Key: 'import-001',
-          Value: {
-            Id: 'import-001',
-            PortableAddress: 'statement.CSV',
-            ContentHash: 'legacy-hash',
-            Format: '.CSV',
-          },
-        },
-      ],
-      edits: { sourceId: 'LatestMerged.json', edits: [legacyEdit] },
+      },
+      edits: { sourceId: 'LatestMerged.json', edits: [embeddedEdit] },
     } as unknown as TransactionsData;
 
-    const restored = Transactions.fromData(legacyData);
+    const restored = Transactions.fromData(data);
 
     expect(restored.allTransactionCount).toBe(2);
     expect(restored.editsCount).toBe(1);
@@ -791,7 +768,7 @@ describe('Transactions.fromData', () => {
       format: '.CSV',
     });
     expect(restored.getTransaction(child.id)?.providerAttributes).toEqual({
-      'legacy field': 'legacy value',
+      'provider field': 'provider value',
     });
   });
 

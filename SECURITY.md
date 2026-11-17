@@ -24,8 +24,8 @@ messages in production.
 
 - Never commit statements, snapshots, edits, staging batches, private config,
   or screenshots with financial values. Reduce failures to sanitized fixtures.
-- Never write to the legacy reference folder (`D:\Dropbox\MoneyAI\`); only the
-  read-only verifier may read it.
+- Never write to the old C# app's folder (`D:\Dropbox\MoneyAI\`); it is
+  strictly read-only.
 - Don't log request bodies, uploaded contents, corrected values, or full
   paths.
 - Backups are **unencrypted** ZIPs in the server user's home folder. Keep an

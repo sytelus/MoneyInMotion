@@ -34,7 +34,7 @@ describe('getMD5HashString', () => {
     expect(hash).toContain('=');
   });
 
-  it('should return the legacy lowercase hexadecimal form when requested', () => {
+  it('should return the lowercase hexadecimal form when requested', () => {
     const hash = getMD5HashString('Hello World', true);
     expect(hash).toBe('b10a8db164e0754105b7a99be72e3fe5');
     expect(hash).toMatch(/^[0-9a-f]{32}$/);

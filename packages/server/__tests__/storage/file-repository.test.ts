@@ -83,48 +83,32 @@ describe('FileRepository', () => {
     }
   });
 
-  it('reads the original C# PascalCase AccountInfo representation', () => {
-    const accountDir = path.join(tempDir, 'Statements', 'Legacy-Amex');
+  it('rejects the C# PascalCase AccountInfo fields with a clear message', () => {
+    const accountDir = path.join(tempDir, 'Statements', 'Amex');
     fs.mkdirSync(accountDir, { recursive: true });
     fs.writeFileSync(
       path.join(accountDir, 'AccountConfig.json'),
       JSON.stringify({
-        accountInfo: {
-          Id: 'Amex-GoldRewards',
-          InstituteName: 'AmericanExpress',
-          Title: 'Amex',
-          Type: 1,
-          InterAccountNameTags: ['amex'],
-        },
+        accountInfo: { Id: 'Amex-GoldRewards', InstituteName: 'AmericanExpress', Type: 1 },
         fileFilters: ['*.csv'],
         scanSubFolders: true,
       }),
     );
-    fs.writeFileSync(
-      path.join(accountDir, 'statement.csv'),
-      'Date,Description,Amount\n01/01/2024,Example,-10\n',
-    );
 
-    const [location] = new FileRepository(tempDir).getStatementLocations();
-    expect(location?.accountConfig?.accountInfo).toMatchObject({
-      id: 'Amex-GoldRewards',
-      instituteName: 'AmericanExpress',
-      title: 'Amex',
-      type: 1,
-      requiresParent: false,
-      interAccountNameTags: ['amex'],
-    });
+    expect(() => new FileRepository(tempDir).getStatementLocations()).toThrow(
+      'field "Id" must be camelCase ("id")',
+    );
   });
 
   it('matches statement extensions case-insensitively', () => {
-    const accountDir = path.join(tempDir, 'Statements', 'Legacy-Bank');
+    const accountDir = path.join(tempDir, 'Statements', 'Bank');
     fs.mkdirSync(accountDir, { recursive: true });
     fs.writeFileSync(
       path.join(accountDir, 'AccountConfig.json'),
       JSON.stringify({
         accountInfo: {
-          id: 'legacy-bank',
-          instituteName: 'LegacyBank',
+          id: 'bank',
+          instituteName: 'Bank',
           type: 2,
           requiresParent: false,
         },

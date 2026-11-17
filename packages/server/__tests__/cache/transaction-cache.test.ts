@@ -40,7 +40,7 @@ describe('TransactionCache', () => {
 
   it('loads standalone rules without a snapshot and replays them when existing statements are built', async () => {
     const repo = new FileRepository(tempDir);
-    const edits = new TransactionEdits('legacy');
+    const edits = new TransactionEdits('test');
     edits.createEditCategory([createScopeFilter(ScopeType.All, [])], ['Existing rule']);
     new TransactionEditsStorage().save(repo.latestMergedEditsPath, edits);
     const originalRules = fs.readFileSync(repo.latestMergedEditsPath, 'utf-8');

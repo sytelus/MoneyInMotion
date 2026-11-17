@@ -43,27 +43,27 @@ describe('TransactionEditsStorage', () => {
     expect(() => storage.load(filePath)).toThrow('edit aggregate root');
   });
 
-  it('validates every persisted edit while accepting legacy base64 scope hashes', () => {
-    const legacyScope = {
+  it('validates every persisted edit and rejects the C# base64 scope hashes', () => {
+    const base64Scope = {
       ...createScopeFilter(ScopeType.All, []),
       contentHash: 'QjoA4VlkAWavNQgVyBr6TA==',
     };
     fs.writeFileSync(
       filePath,
       JSON.stringify({
-        sourceId: 'legacy',
+        sourceId: 'test',
         edits: [
           {
-            id: 'legacy-edit',
+            id: 'base64-edit',
             auditInfo: createAuditInfo(),
-            scopeFilters: [legacyScope],
-            values: { note: editValue('legacy note') },
-            sourceId: 'legacy',
+            scopeFilters: [base64Scope],
+            values: { note: editValue('note') },
+            sourceId: 'test',
           },
         ],
       }),
     );
-    expect(storage.load(filePath).count).toBe(1);
+    expect(() => storage.load(filePath)).toThrow(/Invalid scope content hash/);
 
     fs.writeFileSync(filePath, JSON.stringify({ sourceId: 'bad', edits: [{ id: 42 }] }));
     expect(() => storage.load(filePath)).toThrow(/edits\[0\] is invalid/i);

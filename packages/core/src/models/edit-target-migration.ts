@@ -1,13 +1,11 @@
 /**
- * Deterministic migration for legacy transaction-ID edit scopes.
+ * Keep exact-record rules attached when a rebuild changes transaction IDs.
  *
- * Legacy transaction IDs included .NET enum names and decimal formatting.
- * Modern parsers preserve the financial values but cannot always reproduce a
- * decimal's original textual scale or provider-specific identity metadata.
- * When a legacy materialized snapshot is available, this utility retargets an
- * otherwise-orphaned exact-ID rule to one uniquely equivalent rebuilt
- * transaction. The migrated edit remains an ordinary persisted edit; no hidden
- * runtime alias table is required on later rebuilds.
+ * A transaction ID hashes its imported fields, so a parser fix can give the
+ * same purchase a new ID. During a rebuild, a rule target that no longer
+ * exists is matched against the previous snapshot: if exactly one rebuilt
+ * transaction has the same account, reason, amount, date, and name, the rule
+ * is retargeted to it and saved as an ordinary edit.
  *
  * @module
  */
@@ -18,7 +16,7 @@ import type { Transaction } from './transaction.js';
 import type { Transactions } from './transactions.js';
 import { parseDate } from '../utils/date-utils.js';
 
-export interface LegacyEditTargetMigrationResult {
+export interface EditTargetMigrationResult {
   /** Deep-cloned edits with safely migrated exact-ID targets. */
   edits: TransactionEdits;
   /** Number of old target parameters replaced by a unique rebuilt ID. */
@@ -76,16 +74,16 @@ function addToIndex(
 }
 
 /**
- * Retarget missing legacy exact-ID edit scopes when equivalence is unique.
+ * Retarget missing exact-ID edit scopes when equivalence is unique.
  *
  * Ambiguous or unavailable targets are never broadened or dropped; their old
  * IDs remain in the edit and contribute to `unresolvedTargetCount`.
  */
-export function migrateLegacyEditTargets(
+export function migrateEditTargets(
   edits: TransactionEdits,
   previous: Transactions,
   rebuilt: Transactions,
-): LegacyEditTargetMigrationResult {
+): EditTargetMigrationResult {
   const rebuiltIds = new Set(
     [...rebuilt.allParentChildTransactions].map((transaction) => transaction.id),
   );

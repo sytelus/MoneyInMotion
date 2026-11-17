@@ -15,10 +15,8 @@ when it disagrees with the code.
   temporary folder with its own config.
 - The user may add or delete statement files under `Statements/` directly and
   then rebuild. Browser upload is only a bulk copy into those folders.
-- `D:\Dropbox\MoneyAI\` (formerly `/mnt/d/Dropbox/MoneyAI/` under WSL) holds
-  the legacy C# app's data. It is **strictly read-only**: only
-  `npm run verify:legacy` may read it, and that command copies what it needs
-  to a temporary folder.
+- `D:\Dropbox\MoneyAI\` holds the old C# app's data. It is **strictly
+  read-only**, and nothing in this repo reads it any more.
 - Never commit statements, snapshots, edits, private config, or screenshots
   with financial values. Tests use small synthetic fixtures.
 - Tests and scripts must never touch the real config. On Windows,

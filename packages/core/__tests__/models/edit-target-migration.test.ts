@@ -9,7 +9,7 @@ import {
   createAuditInfo,
   createScopeFilter,
   editValue,
-  migrateLegacyEditTargets,
+  migrateEditTargets,
   type AccountInfo,
   type ImportInfo,
   type TransactionEditData,
@@ -53,26 +53,26 @@ function addTransaction(
 }
 
 function oneEdit(targetId: string): TransactionEdits {
-  const edits = new TransactionEdits('legacy');
+  const edits = new TransactionEdits('test');
   const edit: TransactionEditData = {
     id: 'edit-1',
-    auditInfo: createAuditInfo('legacy-user'),
+    auditInfo: createAuditInfo('owner'),
     scopeFilters: [createScopeFilter(ScopeType.TransactionId, [targetId])],
     values: { categoryPath: editValue(['Dining']) },
-    sourceId: 'legacy',
+    sourceId: 'test',
   };
   edits.add(edit);
   return edits;
 }
 
-describe('migrateLegacyEditTargets', () => {
+describe('migrateEditTargets', () => {
   it('retargets one missing ID to one semantically equivalent transaction', () => {
     const previous = new Transactions('old');
     const rebuilt = new Transactions('new');
-    addTransaction(previous, 'legacy-id');
+    addTransaction(previous, 'old-id');
     const replacement = addTransaction(rebuilt, 'modern-id');
 
-    const result = migrateLegacyEditTargets(oneEdit('legacy-id'), previous, rebuilt);
+    const result = migrateEditTargets(oneEdit('old-id'), previous, rebuilt);
     const migrated = [...result.edits][0]!;
 
     expect(migrated.scopeFilters[0]?.parameters).toEqual(['modern-id']);
@@ -85,13 +85,13 @@ describe('migrateLegacyEditTargets', () => {
   it('retains an ambiguous old ID instead of broadening the edit', () => {
     const previous = new Transactions('old');
     const rebuilt = new Transactions('new');
-    addTransaction(previous, 'legacy-id');
+    addTransaction(previous, 'old-id');
     addTransaction(rebuilt, 'modern-id-1');
     addTransaction(rebuilt, 'modern-id-2');
 
-    const result = migrateLegacyEditTargets(oneEdit('legacy-id'), previous, rebuilt);
+    const result = migrateEditTargets(oneEdit('old-id'), previous, rebuilt);
 
-    expect([...result.edits][0]?.scopeFilters[0]?.parameters).toEqual(['legacy-id']);
+    expect([...result.edits][0]?.scopeFilters[0]?.parameters).toEqual(['old-id']);
     expect(result.migratedTargetCount).toBe(0);
     expect(result.unresolvedTargetCount).toBe(1);
   });
@@ -102,7 +102,7 @@ describe('migrateLegacyEditTargets', () => {
     addTransaction(previous, 'stable-id');
     addTransaction(rebuilt, 'stable-id');
 
-    const result = migrateLegacyEditTargets(oneEdit('stable-id'), previous, rebuilt);
+    const result = migrateEditTargets(oneEdit('stable-id'), previous, rebuilt);
 
     expect([...result.edits][0]?.scopeFilters[0]?.parameters).toEqual(['stable-id']);
     expect(result.migratedTargetCount).toBe(0);
@@ -112,7 +112,7 @@ describe('migrateLegacyEditTargets', () => {
   it('retargets a date-only transaction whose midnight timezone representation changed', () => {
     const previous = new Transactions('old');
     const rebuilt = new Transactions('new');
-    addTransaction(previous, 'legacy-id', 'Coffee Shop', '2024-01-02T08:00:00.000Z');
+    addTransaction(previous, 'old-id', 'Coffee Shop', '2024-01-02T08:00:00.000Z');
     const replacement = addTransaction(
       rebuilt,
       'modern-id',
@@ -120,7 +120,7 @@ describe('migrateLegacyEditTargets', () => {
       '2024-01-02T00:00:00.000Z',
     );
 
-    const result = migrateLegacyEditTargets(oneEdit('legacy-id'), previous, rebuilt);
+    const result = migrateEditTargets(oneEdit('old-id'), previous, rebuilt);
 
     expect([...result.edits][0]?.scopeFilters[0]?.parameters).toEqual([replacement.id]);
     expect(result.migratedTargetCount).toBe(1);
@@ -130,13 +130,13 @@ describe('migrateLegacyEditTargets', () => {
   it('does not broaden a calendar fallback when multiple candidates exist', () => {
     const previous = new Transactions('old');
     const rebuilt = new Transactions('new');
-    addTransaction(previous, 'legacy-id', 'Coffee Shop', '2024-01-02T08:00:00.000Z');
+    addTransaction(previous, 'old-id', 'Coffee Shop', '2024-01-02T08:00:00.000Z');
     addTransaction(rebuilt, 'modern-id-1', 'Coffee Shop', '2024-01-02T00:00:00.000Z');
     addTransaction(rebuilt, 'modern-id-2', 'Coffee Shop', '2024-01-02T05:00:00.000Z');
 
-    const result = migrateLegacyEditTargets(oneEdit('legacy-id'), previous, rebuilt);
+    const result = migrateEditTargets(oneEdit('old-id'), previous, rebuilt);
 
-    expect([...result.edits][0]?.scopeFilters[0]?.parameters).toEqual(['legacy-id']);
+    expect([...result.edits][0]?.scopeFilters[0]?.parameters).toEqual(['old-id']);
     expect(result.migratedTargetCount).toBe(0);
     expect(result.unresolvedTargetCount).toBe(1);
   });

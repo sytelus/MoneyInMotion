@@ -14,7 +14,7 @@
 /**
  * Immutable audit trail attached to transactions, edits, and other entities.
  *
- * Matches the JSON shape produced by the legacy C# serializer:
+ * Persisted JSON shape:
  * ```json
  * {
  *   "createDate": "2024-01-15T08:30:00.000Z",

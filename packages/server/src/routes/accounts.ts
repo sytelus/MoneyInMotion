@@ -157,8 +157,7 @@ async function getAccountStats(cache: TransactionCache): Promise<Map<string, Acc
     const createDate = transaction.auditInfo.createDate ?? null;
 
     existing.transactionCount += 1;
-    // Legacy audit times use a space separator; new times use ISO's T. String
-    // ordering disagrees with time ordering when these formats or offsets mix.
+    // Compare as times: string ordering disagrees when offsets differ.
     if (
       createDate &&
       Number.isFinite(Date.parse(createDate)) &&
