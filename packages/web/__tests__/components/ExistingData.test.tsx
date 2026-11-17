@@ -27,7 +27,7 @@ const account: AccountSummary = {
 vi.mock('../../src/api/hooks.js', () => ({
   useTransactions: () => state.transactions(),
   useAccounts: () => ({ data: [account], isLoading: false, error: null }),
-  useApplyEdits: () => ({ mutate: state.quickEdit }),
+  useManageRules: () => ({ mutate: state.quickEdit, mutateAsync: vi.fn(), isPending: false }),
   useRebuildSnapshot: () => state.rebuild(),
 }));
 vi.mock('../../src/components/editing/TransactionEditWorkflow.js', () => ({

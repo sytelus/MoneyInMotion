@@ -1,6 +1,6 @@
 /** Read-only import evidence and explicit reconnection of preserved account folders. */
 import type { AccountConfig, AccountInfo } from '@moneyinmotion/core';
-import type { AccountSummary, StagedFileResult } from './client.js';
+import { ApiError, type AccountSummary, type StagedFileResult } from './client.js';
 
 export interface UploadBatch {
   batchId: string;
@@ -26,21 +26,17 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new ImportApiError(response.status, body.error ?? `Request failed (${response.status}).`);
+    throw new ApiError(
+      response.status,
+      body.error ?? `The server could not finish this request (${response.status}).`,
+      url,
+    );
   }
   return response.json() as Promise<T>;
 }
 
-/** Preserves HTTP status for useful recovery guidance without exposing raw API copy. */
-export class ImportApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ImportApiError';
-  }
-}
+/** Kept under this name for the import screens; the same error as every API call. */
+export { ApiError as ImportApiError };
 
 export function getUploadHistory(filters: UploadHistoryFilters): Promise<UploadHistory> {
   return request(

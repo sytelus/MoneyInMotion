@@ -47,7 +47,12 @@ not a review process.
 
 - Use direct task labels: "View transactions", "Configure account",
   "Mark for review", "Save and rebuild". Avoid internal terms such as
-  "reconnect", "resettable", "parent-charge", or endpoint names.
+  "reconnect", "resettable", "parent-charge", or endpoint names; server
+  errors are shown as the server's plain message, never as "API POST … failed".
+- Write for people: "October 2026", "Oct 8, 2026", "1 item", "3.4 KB", not
+  "2026-10", "1 items" or "0.00 MiB". Name things so different figures can't
+  be confused: the Overview's net **Income/Spending** versus the Transactions
+  page's recorded **Money in/Money out**.
 - Explain inputs with concrete, truthful examples. For instance: "file
   filters are comma-separated patterns such as `*.csv`; other files are
   ignored." Never advertise an unsupported format such as Excel.
@@ -73,9 +78,16 @@ not a review process.
 - **Name the real removal boundary.** Removing an account removes its
   configuration, not its statements. Say what happens on the next rebuild,
   and don't imply an undo that doesn't exist.
-- **Bulk and single edits use the same safe flow**: an explicit count, mixed
-  values shown, a preview, Back keeping the draft, and stale previews
-  rejected.
+- **The everyday edit is one step.** Setting a category takes one dialog with
+  suggestions and a clear "this merchant, now and in future imports" choice,
+  then offers Undo. Primary actions sit on the screen (the selection panel),
+  never only in a menu or a keyboard shortcut.
+- **Other bulk and single edits use the same safe flow**: an explicit count,
+  mixed values left empty rather than guessed, a preview, Back keeping the
+  draft, and stale previews refreshed.
+- **Lead to the next step.** After creating an account, offer the import;
+  after an import, offer the Overview; when spending is mostly uncategorized,
+  offer categorizing. Empty pages say what to do and have the button for it.
 - **Rules are explainable**: conditions, matched records, fields this rule
   controls, fields that later rules override, and unavailable targets
   explained with the next steps.

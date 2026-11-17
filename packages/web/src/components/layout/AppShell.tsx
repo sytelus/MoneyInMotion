@@ -21,23 +21,33 @@ import {
   voidedEditValue,
   type TransactionEditData,
   type EditedValues,
+  type EditValue,
 } from '@moneyinmotion/core';
 import { Header } from './Header.js';
 import { YearMonthNav } from '../navigation/YearMonthNav.js';
 import { TransactionList } from '../transactions/TransactionList.js';
 import { TransactionSummary } from '../transactions/TransactionSummary.js';
 import { TransactionEditWorkflow } from '../editing/TransactionEditWorkflow.js';
+import { QuickCategoryDialog } from '../editing/QuickCategoryDialog.js';
 import { useTransactionNavigation } from '../../hooks/useTransactionNavigation.js';
 import { AlertCircle, CalendarRange, PanelRight, Sparkles, X } from 'lucide-react';
 import { buttonClassName } from '../ui/button.js';
-import { useTransactions, useApplyEdits, useAccounts } from '../../api/hooks.js';
+import { useTransactions, useAccounts, useManageRules } from '../../api/hooks.js';
 import { ExistingStatements } from '../importing/ExistingStatements.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 import { IncomeDecisionBar } from '../transactions/IncomeDecisionBar.js';
 import { cashFlowContext } from '../../lib/financial-reports.js';
 
-type EditDialog = 'categoryPath' | 'note' | 'isFlagged' | 'attributes' | 'transactionReason' | null;
+/** `categoryPath` opens the quick category dialog; `categoryAdvanced` the full rule editor. */
+type EditDialog =
+  | 'categoryPath'
+  | 'categoryAdvanced'
+  | 'note'
+  | 'isFlagged'
+  | 'attributes'
+  | 'transactionReason'
+  | null;
 
 const EmptyTransactions: React.FC = () => {
   const accounts = useAccounts();
@@ -88,13 +98,29 @@ export const AppShell: React.FC = () => {
   const selectedYear = useTransactionsStore((s) => s.selectedYear);
   const selectedMonth = useTransactionsStore((s) => s.selectedMonth);
 
-  const applyEdits = useApplyEdits();
-
   const [activeDialog, setActiveDialog] = useState<EditDialog>(null);
   const [editingTransactions, setEditingTransactions] = useState<Transaction[]>([]);
   const [editDefaults, setEditDefaults] = useState<EditedValues | undefined>(undefined);
   const [quickEditError, setQuickEditError] = useState<string | null>(null);
   const [success, setSuccess] = useState('');
+  /** The rule behind the latest quick category change, offered for undo. */
+  const [undoableRule, setUndoableRule] = useState<TransactionEditData | null>(null);
+  const manageRules = useManageRules();
+  const showSuccess = useCallback((message: string, rule: TransactionEditData | null = null) => {
+    setSuccess(message);
+    setUndoableRule(rule);
+  }, []);
+  const undoRule = useCallback(async () => {
+    if (!undoableRule) return;
+    setUndoableRule(null);
+    try {
+      await manageRules.mutateAsync([{ previous: undoableRule, next: null }]);
+      setSuccess('Undone. The previous categories are back.');
+    } catch (error) {
+      setSuccess('');
+      setQuickEditError(error instanceof Error ? error.message : 'Could not undo the change.');
+    }
+  }, [undoableRule, manageRules]);
   const [compactPanel, setCompactPanel] = useState<'period' | 'details' | null>(null);
 
   const selectedTransactions = useMemo(() => {
@@ -131,7 +157,44 @@ export const AppShell: React.FC = () => {
     setEditingTransactions([]);
   }, []);
 
-  // Flag toggle handler
+  /**
+   * Set or clear one transaction's review mark. An earlier rule that only
+   * flags this one transaction is replaced, so toggling never piles up rules.
+   */
+  const saveFlag = useCallback(
+    (target: Transaction, value: EditValue<boolean>, message: string) => {
+      if (manageRules.isPending) return;
+      const saved = Array.isArray(data?.edits) ? data.edits : (data?.edits?.edits ?? []);
+      const previous =
+        saved.find(
+          (rule) =>
+            rule.scopeFilters.length === 1 &&
+            rule.scopeFilters[0]!.type === ScopeType.TransactionId &&
+            rule.scopeFilters[0]!.parameters.length === 1 &&
+            rule.scopeFilters[0]!.parameters[0] === target.id &&
+            Object.keys(rule.values ?? {}).every((key) => key === 'isFlagged'),
+        ) ?? null;
+      // A replacement keeps the rule's ID (and so its place in rule order).
+      const next: TransactionEditData = {
+        id: previous?.id ?? createUUID(),
+        auditInfo: createAuditInfo('web-ui'),
+        scopeFilters: [createScopeFilter(ScopeType.TransactionId, [target.id])],
+        values: { isFlagged: value },
+        sourceId: 'web-ui',
+      };
+      setQuickEditError(null);
+      manageRules.mutate([{ previous, next }], {
+        onSuccess: () => showSuccess(message),
+        onError: (error) => {
+          setQuickEditError(
+            error instanceof Error ? error.message : 'Could not update the review mark.',
+          );
+        },
+      });
+    },
+    [data, manageRules, showSuccess],
+  );
+
   const handleToggleFlag = useCallback(
     (tx?: Transaction) => {
       if (!tx && selectedTransactions.length > 1) {
@@ -139,35 +202,18 @@ export const AppShell: React.FC = () => {
         return;
       }
       const target = tx ?? selectedTransaction;
-      if (!target || applyEdits.isPending) return;
-
-      const edit: TransactionEditData = {
-        id: createUUID(),
-        auditInfo: createAuditInfo('web-ui'),
-        scopeFilters: [createScopeFilter(ScopeType.TransactionId, [target.id])],
-        values: {
-          isFlagged: editValue(!target.isUserFlagged),
-        },
-        sourceId: 'web-ui',
-      };
-
-      setQuickEditError(null);
-      applyEdits.mutate([edit], {
-        onSuccess: () =>
-          setSuccess(
-            target.isUserFlagged
-              ? 'Review mark cleared. Original statement values are unchanged.'
-              : 'Transaction marked for review. This does not exclude it from totals.',
-          ),
-        onError: (error) => {
-          setQuickEditError(error instanceof Error ? error.message : 'Failed to update the flag.');
-        },
-      });
+      if (!target) return;
+      saveFlag(
+        target,
+        editValue(!target.isUserFlagged),
+        target.isUserFlagged
+          ? 'Review mark cleared. Original statement values are unchanged.'
+          : 'Transaction marked for review. This does not exclude it from totals.',
+      );
     },
-    [selectedTransaction, selectedTransactions.length, openEditDialog, applyEdits],
+    [selectedTransaction, selectedTransactions.length, openEditDialog, saveFlag],
   );
 
-  // Flag remove handler
   const handleRemoveFlag = useCallback(
     (tx?: Transaction) => {
       if (!tx && selectedTransactions.length > 1) {
@@ -176,27 +222,10 @@ export const AppShell: React.FC = () => {
         return;
       }
       const target = tx ?? selectedTransaction;
-      if (!target || applyEdits.isPending) return;
-
-      const edit: TransactionEditData = {
-        id: createUUID(),
-        auditInfo: createAuditInfo('web-ui'),
-        scopeFilters: [createScopeFilter(ScopeType.TransactionId, [target.id])],
-        values: {
-          isFlagged: voidedEditValue<boolean>(),
-        },
-        sourceId: 'web-ui',
-      };
-
-      setQuickEditError(null);
-      applyEdits.mutate([edit], {
-        onSuccess: () => setSuccess('Review mark restored to its imported state.'),
-        onError: (error) => {
-          setQuickEditError(error instanceof Error ? error.message : 'Failed to remove the flag.');
-        },
-      });
+      if (!target) return;
+      saveFlag(target, voidedEditValue<boolean>(), 'Review mark restored to its imported state.');
     },
-    [selectedTransaction, selectedTransactions.length, openEditDialog, applyEdits],
+    [selectedTransaction, selectedTransactions.length, openEditDialog, saveFlag],
   );
 
   // Register keyboard shortcuts
@@ -234,13 +263,22 @@ export const AppShell: React.FC = () => {
   return (
     <div className="flex flex-col h-dvh">
       <Header />
-      {(success || applyEdits.isPending) && (
+      {(success || manageRules.isPending) && (
         <div
           role="status"
           className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900"
         >
-          <span className="flex-1">{applyEdits.isPending ? 'Saving review mark…' : success}</span>
-          <button type="button" aria-label="Dismiss update message" onClick={() => setSuccess('')}>
+          <span className="flex-1">{manageRules.isPending ? 'Saving…' : success}</span>
+          {undoableRule && (
+            <button
+              type="button"
+              onClick={() => void undoRule()}
+              className="rounded-md border border-emerald-300 px-2 py-0.5 font-medium hover:bg-emerald-100"
+            >
+              Undo
+            </button>
+          )}
+          <button type="button" aria-label="Dismiss update message" onClick={() => showSuccess('')}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -334,7 +372,7 @@ export const AppShell: React.FC = () => {
                 hidden={compactPanel !== 'details'}
                 className="col-span-full max-h-[35dvh] overflow-y-auto border-t border-border bg-background"
               >
-                <TransactionSummary />
+                <TransactionSummary onEdit={(field) => openEditDialog(field)} />
               </div>
             </div>
 
@@ -371,24 +409,40 @@ export const AppShell: React.FC = () => {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <TransactionSummary />
+              <TransactionSummary onEdit={(field) => openEditDialog(field)} />
             </aside>
           )}
         </div>
       )}
 
       {/* Edit Dialogs */}
-      {editingTransactions.length > 0 && activeDialog && (
+      {editingTransactions.length > 0 && activeDialog === 'categoryPath' && (
+        <QuickCategoryDialog
+          transactions={editingTransactions}
+          onOpenChange={(open) => {
+            if (!open) closeDialogs();
+          }}
+          onMoreOptions={() => setActiveDialog('categoryAdvanced')}
+          onSaved={({ summary, rule }) => showSuccess(summary, rule)}
+        />
+      )}
+      {editingTransactions.length > 0 && activeDialog && activeDialog !== 'categoryPath' && (
         <TransactionEditWorkflow
           transactions={editingTransactions}
           open
-          initialField={activeDialog === 'attributes' ? undefined : activeDialog}
+          initialField={
+            activeDialog === 'attributes'
+              ? undefined
+              : activeDialog === 'categoryAdvanced'
+                ? 'categoryPath'
+                : activeDialog
+          }
           initialValues={editDefaults}
           onOpenChange={(open) => {
             if (!open) closeDialogs();
           }}
           onSaved={(result) =>
-            setSuccess(
+            showSuccess(
               `Saved correction. ${result.affectedTransactionsCount.toLocaleString()} records changed; original statements are preserved.`,
             )
           }

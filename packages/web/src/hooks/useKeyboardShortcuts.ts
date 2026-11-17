@@ -40,8 +40,11 @@ function isInputFocused(event: KeyboardEvent): boolean {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return false;
   const tagName = target.tagName.toLowerCase();
+  // A focused checkbox (a just-selected row) does not take typing.
+  const typesText =
+    tagName === 'input' && !['checkbox', 'radio'].includes((target as HTMLInputElement).type);
   return (
-    tagName === 'input' ||
+    typesText ||
     tagName === 'textarea' ||
     tagName === 'select' ||
     target.isContentEditable ||
@@ -79,7 +82,11 @@ export function useKeyboardShortcuts(actions: KeyboardShortcutActions): void {
 
     // Alt+key shortcuts
     if (event.altKey) {
-      switch (event.key.toLowerCase()) {
+      // macOS turns Option+T into "†", so prefer the physical key.
+      const letter = event.code?.startsWith('Key')
+        ? event.code.slice(3).toLowerCase()
+        : event.key.toLowerCase();
+      switch (letter) {
         case 't':
           if (!a.onEditCategory) return;
           event.preventDefault();

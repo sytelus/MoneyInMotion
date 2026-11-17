@@ -18,8 +18,8 @@ import { Input } from '../components/ui/input.js';
 import { Select } from '../components/ui/select.js';
 import { Dialog, DialogContent, DialogFooter } from '../components/ui/dialog.js';
 import { Notice } from '../components/ui/notice.js';
-import { useAccounts } from '../api/hooks.js';
-import { deleteAccount, getConfig, type AccountSummary } from '../api/client.js';
+import { useAccounts, useConfig } from '../api/hooks.js';
+import { deleteAccount, type AccountSummary } from '../api/client.js';
 import {
   getDisconnectedFolders,
   getStatementInventory,
@@ -39,6 +39,8 @@ interface Feedback {
   title: string;
   description: string;
   rebuild: boolean;
+  /** A new account with no statements yet: offer the import as the next step. */
+  importNext?: boolean;
   tone?: 'success' | 'warning';
   failedFiles?: Array<{ path: string; error: string }>;
   unresolvedTargets?: number;
@@ -71,7 +73,10 @@ export function AccountsPage() {
   const [folderError, setFolderError] = useState<FolderCheckFailure | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [dataPath, setDataPath] = useState<string | null>(null);
+  const config = useConfig();
+  const dataPath = config.data?.activeUserDataPath ?? null;
+  /** Why per-account folder details are missing, if they are. */
+  const [inventoryProblem, setInventoryProblem] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [showTasks, setShowTasks] = useState(false);
   const [inventory, setInventory] = useState<StatementEntry[]>([]);
@@ -98,15 +103,18 @@ export function AccountsPage() {
     let cancelled = false;
     getStatementInventory()
       .then((result) => {
-        if (!cancelled)
-          setInventory(result.truncated || result.unreadableFolders ? [] : result.entries);
+        if (cancelled) return;
+        const incomplete = result.truncated || !!result.unreadableFolders;
+        setInventory(incomplete ? [] : result.entries);
+        setInventoryProblem(
+          incomplete
+            ? 'Some statement folders are too large or cannot be read, so file details are hidden. The statement explorer lists what it can.'
+            : null,
+        );
       })
-      .catch(() => {});
-    getConfig()
-      .then((config) => {
-        if (!cancelled) setDataPath(config.activeUserDataPath);
-      })
-      .catch(() => {});
+      .catch((e: unknown) => {
+        if (!cancelled) setInventoryProblem(e instanceof Error ? e.message : String(e));
+      });
     getDisconnectedFolders()
       .then((folders) => {
         if (!cancelled) {
@@ -145,6 +153,7 @@ export function AccountsPage() {
           : `Ready to import statements into ${savedAccount.relativeDirectory}.`,
       tone: failed ? 'warning' : 'success',
       rebuild: failed,
+      importNext: !outcome.rebuild && !failed,
       unresolvedTargets: outcome.rebuild?.unresolvedEditTargets,
       failedFiles:
         outcome.rebuild?.failedFiles ??
@@ -298,6 +307,11 @@ export function AccountsPage() {
                   title={feedback.title}
                   actions={
                     <>
+                      {feedback.importNext && (
+                        <Link to="/imports" className={buttonClassName({ size: 'sm' })}>
+                          Import statements
+                        </Link>
+                      )}
                       {feedback.rebuild && (
                         <Link
                           to="/imports"
@@ -422,6 +436,11 @@ export function AccountsPage() {
             </div>
           </aside>
           <section className="accounts-content space-y-4" aria-label="Configured accounts">
+            {inventoryProblem && (
+              <Notice tone="warning" title="Statement folder details are unavailable">
+                {inventoryProblem}
+              </Notice>
+            )}
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px_200px]">
               <label className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -508,6 +527,12 @@ export function AccountsPage() {
                     ? 'Try another search or account type.'
                     : 'Add your bank account, card, order history, or payment service, then import its statements.'}
                 </p>
+                {accounts.length === 0 && (
+                  <Button className="mt-4" onClick={() => setShowAddDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add your first account
+                  </Button>
+                )}
               </div>
             )}
           </section>

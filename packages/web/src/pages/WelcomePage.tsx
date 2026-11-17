@@ -8,7 +8,7 @@
  * @module
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FolderOpen,
@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import { Button, buttonClassName } from '../components/ui/button.js';
 import { Header } from '../components/layout/Header.js';
-import { getConfig, getAccounts, type AccountSummary } from '../api/client.js';
+import type { AccountSummary } from '../api/client.js';
+import { useAccounts, useConfig } from '../api/hooks.js';
 import { cn } from '../lib/utils.js';
 import { KEYBOARD_SHORTCUTS } from '../lib/shortcuts.js';
 import { ExistingStatements } from '../components/importing/ExistingStatements.js';
@@ -41,70 +42,24 @@ interface StepStatus {
   error: string | null;
 }
 
-function useStepStatus(): StepStatus & { refresh: () => void } {
-  const [dataPath, setDataPath] = useState<string | null>(null);
-  const [activeDataPath, setActiveDataPath] = useState<string | null>(null);
-  const [restartRequired, setRestartRequired] = useState(false);
-  const [dataPathConfigured, setDataPathConfigured] = useState(false);
-  const [accounts, setAccounts] = useState<AccountSummary[]>([]);
-  const [accountsLoaded, setAccountsLoaded] = useState(false);
-  const [tick, setTick] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = () => setTick((t) => t + 1);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      setError(null);
-      try {
-        const config = await getConfig();
-        if (!cancelled) {
-          setDataPath(config.userDataPath);
-          setActiveDataPath(config.activeUserDataPath);
-          setRestartRequired(config.restartRequired);
-          setDataPathConfigured(!!config.dataRoot && !!config.username);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not load configuration');
-          setDataPath(null);
-          setActiveDataPath(null);
-          setRestartRequired(false);
-          setDataPathConfigured(false);
-        }
-      }
-
-      try {
-        const accts = await getAccounts();
-        if (!cancelled) {
-          setAccounts(accts);
-          setAccountsLoaded(true);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not load accounts');
-          setAccounts([]);
-          setAccountsLoaded(true);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tick]);
-
+/**
+ * Setup progress from the shared queries, so a rebuild or account change made
+ * on this page (or elsewhere) updates the steps. A failed read is reported as
+ * an error, never shown as "nothing configured".
+ */
+function useStepStatus(): StepStatus {
+  const config = useConfig();
+  const accounts = useAccounts();
+  const c = config.data;
+  const errors = [config.error, accounts.error].filter((e): e is Error => e != null);
   return {
-    dataPath,
-    activeDataPath,
-    restartRequired,
-    dataPathConfigured,
-    accounts,
-    accountsLoaded,
-    refresh,
-    error,
+    dataPath: c?.userDataPath ?? null,
+    activeDataPath: c?.activeUserDataPath ?? null,
+    restartRequired: c?.restartRequired ?? false,
+    dataPathConfigured: !!c?.dataRoot && !!c?.username,
+    accounts: accounts.data ?? [],
+    accountsLoaded: accounts.isSuccess,
+    error: errors.length ? errors.map((e) => e.message).join(' ') : null,
   };
 }
 
@@ -187,12 +142,12 @@ export const WelcomePage: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       {/* Header */}
-      <header className="flex items-center gap-4 h-14 px-4 border-b border-border">
+      <div className="flex items-center gap-4 h-14 px-4 border-b border-border">
         <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="font-bold text-lg">Getting Started</h1>
-      </header>
+      </div>
 
       <main className="p-6 max-w-2xl mx-auto">
         {error && (
@@ -200,7 +155,28 @@ export const WelcomePage: React.FC = () => {
             Could not check setup: {error}
           </p>
         )}
-        <ExistingStatements accounts={accounts} />
+        {hasImportedTransactions ? (
+          <div className="mb-8 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
+            <p className="font-semibold">You’re all set.</p>
+            <p className="mt-1 text-sm">
+              Your history is built. Next, see where your money goes, or give your purchases
+              categories so the Overview can group them.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link to="/" className={buttonClassName({ size: 'sm' })}>
+                See your overview
+              </Link>
+              <Link
+                to="/transactions?review=uncategorized&view=list"
+                className={buttonClassName({ size: 'sm', variant: 'outline' })}
+              >
+                Categorize transactions
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <ExistingStatements accounts={accounts} />
+        )}
         {/* Welcome hero */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Welcome to MoneyInMotion</h2>
@@ -274,7 +250,7 @@ export const WelcomePage: React.FC = () => {
             complete={hasImportedTransactions}
           >
             <p>
-              From Accounts, choose the local folder containing one subfolder per account.
+              In Imports, choose the local folder containing one subfolder per account.
               MoneyInMotion uploads it, skips statements already present by content, and builds the
               snapshot automatically.
             </p>

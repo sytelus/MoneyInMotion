@@ -103,6 +103,14 @@ export function formatRecordBuildDate(value: string | null): string {
   return date.toISOString().replace('T', ' ').replace('.000Z', ' UTC');
 }
 
+/** Suggest an account ID (and folder name) from a title: "Visa Card" → "Visa-Card". */
+export function accountIdFromTitle(title: string): string {
+  return title
+    .trim()
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '');
+}
+
 function buildAccountConfig(form: {
   accountId: string;
   title: string;
@@ -161,6 +169,8 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
   const templateConfig = mode === 'create' ? templateAccount?.config : undefined;
   const initialInfo = editedConfig?.accountInfo ?? originalAccount ?? templateConfig?.accountInfo;
   const [accountId, setAccountId] = useState(templateConfig ? '' : (initialInfo?.id ?? ''));
+  // Until the user types an ID, a new account's ID follows its title.
+  const [idTouched, setIdTouched] = useState(accountId !== '');
   const [title, setTitle] = useState(initialInfo?.title ?? initialInfo?.id ?? '');
   const [instituteName, setInstituteName] = useState(initialInfo?.instituteName ?? 'Generic');
   const [accountType, setAccountType] = useState<AccountType>(
@@ -319,15 +329,34 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
               </div>
             )}
             <div className="space-y-1.5">
+              <label htmlFor={`${mode}-account-title`} className="text-sm font-medium">
+                Account Title
+              </label>
+              <Input
+                id={`${mode}-account-title`}
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (!idTouched && canEditId) setAccountId(accountIdFromTitle(e.target.value));
+                }}
+                placeholder="e.g. Platinum Card"
+                autoFocus={mode === 'create' && !reconnectFolder}
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <label htmlFor={`${mode}-account-id`} className="text-sm font-medium">
                 Account ID
               </label>
               <Input
                 id={`${mode}-account-id`}
                 value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
+                onChange={(e) => {
+                  setAccountId(e.target.value);
+                  setIdTouched(true);
+                }}
                 placeholder="e.g. amex-plat"
-                autoFocus={mode === 'create'}
+                autoFocus={!!reconnectFolder}
                 disabled={!canEditId}
               />
               <p className="text-xs text-muted-foreground">
@@ -342,18 +371,6 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
                   </>
                 )}
               </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor={`${mode}-account-title`} className="text-sm font-medium">
-                Account Title
-              </label>
-              <Input
-                id={`${mode}-account-title`}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Platinum Card"
-              />
             </div>
 
             <div className="space-y-1.5">
@@ -402,54 +419,67 @@ export const AccountFormDialog: React.FC<AccountFormDialogProps> = ({
               )}
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor={`${mode}-match-tags`} className="text-sm font-medium">
-                Transaction matching names
-              </label>
-              <Input
-                id={`${mode}-match-tags`}
-                value={interAccountNameTags}
-                onChange={(e) => setInterAccountNameTags(e.target.value)}
-                placeholder="e.g. AMEX, AMERICAN EXPRESS"
-              />
-              <p className="text-xs text-muted-foreground">
-                Comma-separated text to look for in other statements, such as{' '}
-                <strong>ETSY, PAYPAL</strong> or <strong>AMEX</strong>. Used to match purchases to
-                payments and transfers between accounts.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor={`${mode}-file-filters`} className="text-sm font-medium">
-                Statement files to process
-              </label>
-              <Input
-                id={`${mode}-file-filters`}
-                value={fileFilters}
-                onChange={(e) => setFileFilters(e.target.value)}
-                placeholder="*.csv"
-              />
-              <p className="text-xs text-muted-foreground">
-                Comma-separated filename patterns, for example <code>*.csv, *.json</code>. Other
-                files are ignored. Supported formats: CSV, JSON and IIF; Excel files must be
-                exported as CSV.
-              </p>
-            </div>
-
-            <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
-              <input
-                type="checkbox"
-                checked={scanSubFolders}
-                onChange={(e) => setScanSubFolders(e.target.checked)}
-                className="mt-0.5 accent-primary"
-              />
-              <span>
-                <span className="font-medium">Include subfolders</span>
-                <span className="block text-xs text-muted-foreground">
-                  Read statements in year, month or other folders inside this account.
+            <details
+              className="group sm:col-span-2"
+              open={isOrderHistory || mode === 'edit' || !!reconnectFolder || !!templateAccount}
+            >
+              <summary className="cursor-pointer text-sm font-medium text-primary">
+                More settings
+                <span className="ml-2 font-normal text-muted-foreground">
+                  matching names, file types, subfolders
                 </span>
-              </span>
-            </label>
+              </summary>
+              <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label htmlFor={`${mode}-match-tags`} className="text-sm font-medium">
+                    Transaction matching names
+                  </label>
+                  <Input
+                    id={`${mode}-match-tags`}
+                    value={interAccountNameTags}
+                    onChange={(e) => setInterAccountNameTags(e.target.value)}
+                    placeholder="e.g. AMEX, AMERICAN EXPRESS"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Comma-separated text to look for in other statements, such as{' '}
+                    <strong>ETSY, PAYPAL</strong> or <strong>AMEX</strong>. Used to match purchases
+                    to payments and transfers between accounts.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor={`${mode}-file-filters`} className="text-sm font-medium">
+                    Statement files to process
+                  </label>
+                  <Input
+                    id={`${mode}-file-filters`}
+                    value={fileFilters}
+                    onChange={(e) => setFileFilters(e.target.value)}
+                    placeholder="*.csv"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Comma-separated filename patterns, for example <code>*.csv, *.json</code>. Other
+                    files are ignored. Supported formats: CSV, JSON and IIF; Excel files must be
+                    exported as CSV.
+                  </p>
+                </div>
+
+                <label className="flex items-start gap-3 rounded-md border border-border p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={scanSubFolders}
+                    onChange={(e) => setScanSubFolders(e.target.checked)}
+                    className="mt-0.5 accent-primary"
+                  />
+                  <span>
+                    <span className="font-medium">Include subfolders</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Read statements in year, month or other folders inside this account.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </details>
           </fieldset>
         </form>
 

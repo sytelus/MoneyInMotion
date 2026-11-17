@@ -20,7 +20,7 @@ export function reportingTransactions(transactions: Transactions): Transaction[]
   return result;
 }
 export function transactionCategory(tx: Transaction): string {
-  return tx.categoryPath.join(' / ') || tx.toData().providerCategoryName || 'Uncategorized';
+  return tx.categoryPath.join(' / ') || tx.providerCategoryName || 'Uncategorized';
 }
 export function transactionBucket(tx: Transaction): string {
   if (tx.requiresParent && !tx.parentId) return 'Unmatched';
@@ -28,6 +28,16 @@ export function transactionBucket(tx: Transaction): string {
   if (isInterAccount(tx.correctedTransactionReason)) return 'Transfers';
   return 'Expenses';
 }
+/**
+ * What the top-level buckets are called on screen. "Income" and "Expenses"
+ * are recorded credits and debits, which include refunds and credits awaiting
+ * a decision; calling them "Money in/out" keeps them from looking like the
+ * Overview's Income and Spending, which are net figures.
+ */
+export function bucketTitle(bucket: string): string {
+  return bucket === 'Income' ? 'Money in' : bucket === 'Expenses' ? 'Money out' : bucket;
+}
+
 export interface ExplorerGroup {
   id: string;
   label: string;
@@ -133,36 +143,39 @@ export function transactionsCsv(
           ]
         : []),
     ],
-    ...transactions.map((t) => [
-      parseDate(t.correctedTransactionDate).toISOString().slice(0, 10),
-      t.displayEntityNameNormalized,
-      t.correctedAmount,
-      t.accountId,
-      transactionCategory(t),
-      t.note ?? '',
-      t.isUserFlagged ? 'Yes' : 'No',
-      t.id,
-      ...(options
-        ? [
-            options.basis === 'records' ? 'Source records (not additive)' : 'Reporting items',
-            transactionReasonTitleLookup[String(t.correctedTransactionReason)] ??
-              String(t.correctedTransactionReason),
-          ]
-        : []),
-      ...(options?.provenance
-        ? [
-            options.collection?.getImportInfo(t.importId)?.portableAddress ?? t.importId,
-            t.toData().lineNumber ?? '',
-            t.toData().instituteReference ?? '',
-            t.toData().transactionDate,
-            t.toData().entityName,
-            t.toData().amount,
-            (t.appliedEditIdsDescending ?? []).join(' | '),
-            t.parentId ?? '',
-            t.relatedTransferId ?? '',
-          ]
-        : []),
-    ]),
+    ...transactions.map((t) => {
+      const source = options?.provenance ? t.toData() : null;
+      return [
+        parseDate(t.correctedTransactionDate).toISOString().slice(0, 10),
+        t.displayEntityNameNormalized,
+        t.correctedAmount,
+        t.accountId,
+        transactionCategory(t),
+        t.note ?? '',
+        t.isUserFlagged ? 'Yes' : 'No',
+        t.id,
+        ...(options
+          ? [
+              options.basis === 'records' ? 'Source records (not additive)' : 'Reporting items',
+              transactionReasonTitleLookup[String(t.correctedTransactionReason)] ??
+                String(t.correctedTransactionReason),
+            ]
+          : []),
+        ...(options?.provenance
+          ? [
+              options.collection?.getImportInfo(t.importId)?.portableAddress ?? t.importId,
+              source?.lineNumber ?? '',
+              source?.instituteReference ?? '',
+              source?.transactionDate ?? '',
+              source?.entityName ?? '',
+              source?.amount ?? '',
+              (t.appliedEditIdsDescending ?? []).join(' | '),
+              t.parentId ?? '',
+              t.relatedTransferId ?? '',
+            ]
+          : []),
+      ];
+    }),
   ]
     .map((row) => row.map(cell).join(','))
     .join('\r\n');

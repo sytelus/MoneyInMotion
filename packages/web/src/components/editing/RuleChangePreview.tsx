@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { manageRules, type RuleChange, type RuleChangeResult } from '../../api/client.js';
+import { ApiError, manageRules, type RuleChange, type RuleChangeResult } from '../../api/client.js';
 import { queryKeys } from '../../api/hooks.js';
 import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { Button } from '../ui/button.js';
@@ -43,6 +43,8 @@ export function RuleChangePreview({
   const [preview, setPreview] = useState<RuleChangeResult | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  /** Bumped to fetch a fresh preview after the saved rules changed elsewhere. */
+  const [previewRun, setPreviewRun] = useState(0);
   useEffect(() => {
     let active = true;
     manageRules(changes, true)
@@ -55,7 +57,7 @@ export function RuleChangePreview({
     return () => {
       active = false;
     };
-  }, [changes]);
+  }, [changes, previewRun]);
   const deleting = changes.every((c) => c.next === null);
   const save = async () => {
     setSaving(true);
@@ -65,7 +67,17 @@ export function RuleChangePreview({
       await client.invalidateQueries({ queryKey: queryKeys.transactions });
       onSaved(result);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (e instanceof ApiError && e.status === 409) {
+        // Rules changed since this preview (another tab or an undo): show the
+        // current effect before letting the user save again.
+        setPreview(null);
+        setPreviewRun((run) => run + 1);
+        setError(
+          'Your rules changed since this preview. Review the updated preview and save again.',
+        );
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setSaving(false);
     }

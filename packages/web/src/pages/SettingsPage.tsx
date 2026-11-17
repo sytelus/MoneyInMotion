@@ -215,7 +215,7 @@ export const SettingsPage: React.FC = () => {
                       setUsername(e.target.value);
                       setSavedDimensions('');
                     }}
-                    placeholder="shitals"
+                    placeholder="alex"
                   />
                   <p className="text-xs text-muted-foreground">
                     This server instance reads and writes{' '}

@@ -12,19 +12,42 @@ import { useTransactionsStore } from '../../store/transactions-store.js';
 import { RuleEditor } from './RuleEditor.js';
 import { RuleChangePreview } from './RuleChangePreview.js';
 
+/**
+ * Start the chosen field from the selection's current value. When the
+ * selected records disagree, start empty rather than proposing one record's
+ * value for all of them.
+ */
 function defaultValues(transactions: Transaction[], field?: keyof EditedValues): EditedValues {
   if (!field) return {};
-  const first = transactions[0];
-  const defaults: Record<keyof EditedValues, string | number | boolean | string[]> = {
-    categoryPath: first?.categoryPath ?? [''],
-    note: first?.note ?? '',
-    isFlagged: true,
-    entityName: first?.displayEntityNameNormalized ?? '',
-    amount: first?.correctedAmount ?? 0,
-    transactionDate: first?.correctedTransactionDate ?? '',
-    transactionReason: first?.correctedTransactionReason ?? 0,
+  const current = (tx: Transaction): string | number | boolean | string[] => {
+    switch (field) {
+      case 'categoryPath':
+        return tx.categoryPath;
+      case 'note':
+        return tx.note ?? '';
+      case 'isFlagged':
+        return true;
+      case 'entityName':
+        return tx.displayEntityNameNormalized;
+      case 'amount':
+        return tx.correctedAmount;
+      case 'transactionDate':
+        return tx.correctedTransactionDate;
+      case 'transactionReason':
+        return tx.correctedTransactionReason;
+    }
   };
-  return { [field]: editValue(defaults[field]) };
+  const values = transactions.map(current);
+  const same = values.every((value) => JSON.stringify(value) === JSON.stringify(values[0]));
+  const empty =
+    field === 'categoryPath'
+      ? ['']
+      : field === 'amount'
+        ? 0
+        : field === 'transactionReason'
+          ? values[0]!
+          : '';
+  return { [field]: editValue(same ? values[0]! : empty) };
 }
 
 export function TransactionEditWorkflow({

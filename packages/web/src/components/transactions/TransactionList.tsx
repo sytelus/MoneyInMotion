@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 import type { Transaction } from '@moneyinmotion/core';
 import { useTransactionsStore } from '../../store/transactions-store.js';
-import { explorerGroups, flattenExplorer } from '../../lib/transaction-explorer.js';
-import { formatCurrency, formatDate, getMonthName } from '../../lib/utils.js';
+import { bucketTitle, explorerGroups, flattenExplorer } from '../../lib/transaction-explorer.js';
+import { countLabel, formatCurrency, formatDate, getMonthName } from '../../lib/utils.js';
 import { TransactionRow } from './TransactionRow.js';
 import { TransactionFilters } from './TransactionFilters.js';
 import { Button } from '../ui/button.js';
@@ -252,7 +252,7 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
               <button
                 key={label}
                 type="button"
-                aria-label={`Explore ${label}`}
+                aria-label={`Explore ${bucketTitle(label)}`}
                 disabled={!group}
                 className={`rounded-lg border p-3 text-left transition-shadow hover:shadow-sm disabled:opacity-60 ${background}`}
                 onClick={() => {
@@ -262,17 +262,13 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
               >
                 <span className={`flex items-center gap-1.5 text-xs font-semibold ${color}`}>
                   <Icon className="h-4 w-4" />
-                  {label === 'Income'
-                    ? 'Incoming amounts'
-                    : label === 'Expenses'
-                      ? 'Outgoing amounts'
-                      : label}
+                  {bucketTitle(label)}
                 </span>
                 <span className="mt-2 block text-lg font-semibold tabular-nums">
                   {formatCurrency(group?.sum ?? 0)}
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  {group?.count.toLocaleString() ?? 0} items
+                  {countLabel(group?.count ?? 0, 'item')}
                 </span>
               </button>
             );
@@ -453,7 +449,7 @@ export const TransactionList: React.FC<TransactionListProps> = (props) => {
                           <ChevronRight className="h-4 w-4 shrink-0" />
                         )}
                         <span className="min-w-0 flex-1 break-words text-sm">
-                          {row.group.label}
+                          {row.group.depth === 0 ? bucketTitle(row.group.label) : row.group.label}
                         </span>
                         <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
                           {row.group.count.toLocaleString()}

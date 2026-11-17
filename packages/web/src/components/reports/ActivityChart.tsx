@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import type { CashFlowPeriod, ReportScope } from '../../lib/financial-reports.js';
 import { monthBounds } from '../../lib/financial-reports.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
-import { formatCurrency } from '../../lib/utils.js';
+import { formatCurrency, formatPeriodKey } from '../../lib/utils.js';
 import { ReportPanel } from './ReportPanel.js';
 
 export function ActivityChart({
@@ -62,12 +62,12 @@ export function ActivityChart({
               <Link
                 key={period.key}
                 to={href(period.key)}
-                title={`${period.key}: income ${formatCurrency(period.income)}, spending ${formatCurrency(period.spending)}, savings ${formatCurrency(period.savings)}. View transactions.`}
-                aria-label={`${period.key}: income ${formatCurrency(period.income)}, spending ${formatCurrency(period.spending)}. View transactions`}
-                className="group grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-3 rounded-md p-1 hover:bg-slate-50"
+                title={`${formatPeriodKey(period.key)}: income ${formatCurrency(period.income)}, spending ${formatCurrency(period.spending)}, savings ${formatCurrency(period.savings)}. View transactions.`}
+                aria-label={`${formatPeriodKey(period.key)}: income ${formatCurrency(period.income)}, spending ${formatCurrency(period.spending)}. View transactions`}
+                className="group grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-3 rounded-md p-1 hover:bg-slate-50"
               >
                 <span className="text-xs font-medium text-slate-600 group-hover:text-indigo-700">
-                  {period.key}
+                  {formatPeriodKey(period.key)}
                 </span>
                 <span aria-hidden className="space-y-1">
                   <span
@@ -123,7 +123,7 @@ export function ActivityChart({
                     <tr key={period.key} className="border-b border-border/60 last:border-0">
                       <th scope="row" className="whitespace-nowrap p-2 text-left font-medium">
                         <Link className="text-indigo-700 underline" to={href(period.key)}>
-                          {period.key}
+                          {formatPeriodKey(period.key)}
                         </Link>
                       </th>
                       <td className="whitespace-nowrap p-2 text-right">

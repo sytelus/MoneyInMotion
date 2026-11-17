@@ -242,11 +242,31 @@ const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) =
   );
 };
 
+/** The everyday edits for the selection, so they never depend on finding a menu. */
+const EditActions: React.FC<{
+  onEdit: (field: 'categoryPath' | 'note' | 'attributes') => void;
+}> = ({ onEdit }) => (
+  <div className="mb-4 flex flex-wrap gap-2">
+    <Button size="sm" onClick={() => onEdit('categoryPath')}>
+      Set category
+    </Button>
+    <Button size="sm" variant="outline" onClick={() => onEdit('note')}>
+      Add note
+    </Button>
+    <Button size="sm" variant="outline" onClick={() => onEdit('attributes')}>
+      Change other details
+    </Button>
+  </div>
+);
+
 /**
  * Right sidebar component. Shows transaction details when one or more
  * transactions are selected, or a non-duplicated activity summary otherwise.
  */
-export const TransactionSummary: React.FC = () => {
+export const TransactionSummary: React.FC<{
+  /** Opens an editor for the current selection; omitted where editing is unavailable. */
+  onEdit?: (field: 'categoryPath' | 'note' | 'attributes') => void;
+}> = ({ onEdit }) => {
   const transactions = useTransactionsStore((s) => s.transactions);
   const selectedIds = useTransactionsStore((s) => s.selectedTransactionIds);
   const basis = useTransactionsStore((s) => s.basis);
@@ -289,6 +309,7 @@ export const TransactionSummary: React.FC = () => {
         >
           Back to results
         </Button>
+        {onEdit && <EditActions onEdit={onEdit} />}
         <SingleDetail transaction={selectedTransactions[0]!} />
         <p className="mt-4 text-xs text-muted-foreground">
           Tip: Press Alt+T to categorize, Alt+N to add a note.
@@ -317,9 +338,9 @@ export const TransactionSummary: React.FC = () => {
               : 'A selected record is outside the reporting view. Clear this selection and select reporting items again for a non-duplicated amount.'}
           </p>
         )}
+        {onEdit && <EditActions onEdit={onEdit} />}
         <p className="text-xs text-muted-foreground">
-          Use Edit selected items to preview a correction to this batch. Keyboard edit shortcuts
-          apply to all selected records.
+          Changes apply to every selected record. Keyboard edit shortcuts do the same.
         </p>
       </div>
     );
@@ -361,12 +382,12 @@ export const TransactionSummary: React.FC = () => {
           <AmountDisplay amount={netIncome.netIncomeAmount} />
         </DetailRow>
         {incomeSub && (
-          <DetailRow label="Incoming amounts">
+          <DetailRow label="Money in">
             <AmountDisplay amount={incomeSub.sum} />
           </DetailRow>
         )}
         {expenseSub && (
-          <DetailRow label="Outgoing amounts">
+          <DetailRow label="Money out">
             <AmountDisplay amount={expenseSub.sum} />
           </DetailRow>
         )}
@@ -387,8 +408,9 @@ export const TransactionSummary: React.FC = () => {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Incoming amounts include returns and discounts, not only earnings. Transfers and unmatched
-        records are excluded from net recorded activity; this is not an account balance.
+        Money in includes refunds, discounts and credits awaiting a decision, not only earnings.
+        Transfers and unmatched records are excluded from net recorded activity; this is not an
+        account balance.
       </p>
       <p className="text-xs text-muted-foreground">
         Click a transaction to see details. Use its actions menu to edit; use checkboxes for bulk

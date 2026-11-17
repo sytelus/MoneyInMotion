@@ -25,6 +25,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import type { RuleChange } from '../api/client.js';
 import { Header } from '../components/layout/Header.js';
 import { Button, buttonClassName } from '../components/ui/button.js';
+import { transactionsHref } from '../lib/transaction-navigation.js';
 import { Input } from '../components/ui/input.js';
 import { Select } from '../components/ui/select.js';
 import { Badge } from '../components/ui/badge.js';
@@ -40,6 +41,9 @@ import { RuleInspectionDialog } from '../components/editing/RuleInspectionDialog
 import { downloadText } from '../lib/download.js';
 
 const PAGE_SIZE = 50;
+/** The server accepts at most this many rule changes in one request. */
+const MAX_RULE_CHANGES = 1000;
+
 export const RulesPage: React.FC = () => {
   const showActions = useMediaQuery('(min-width: 640px)');
   const showScope = useMediaQuery('(min-width: 768px)');
@@ -210,20 +214,22 @@ export const RulesPage: React.FC = () => {
           <span>
             <strong>{rules.length.toLocaleString()}</strong> saved rules
           </span>
-          <button
-            className="inline-flex items-center gap-1 text-amber-800 underline underline-offset-4"
-            onClick={() => {
-              setStatus('attention');
-              setQuery('');
-              setField('all');
-              setKind('all');
-              setAccount('all');
-              resetSelection();
-            }}
-          >
-            <AlertTriangle className="h-4 w-4" />
-            {rules.filter((r) => r.missing).length} need attention
-          </button>
+          {rules.some((r) => r.missing) && (
+            <button
+              className="inline-flex items-center gap-1 text-amber-800 underline underline-offset-4"
+              onClick={() => {
+                setStatus('attention');
+                setQuery('');
+                setField('all');
+                setKind('all');
+                setAccount('all');
+                resetSelection();
+              }}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              {rules.filter((r) => r.missing).length} need attention
+            </button>
+          )}
           <span className="inline-flex items-center">
             How rules work
             <HelpHint title="Rule order and review marks">
@@ -271,7 +277,24 @@ export const RulesPage: React.FC = () => {
             </Button>
           </div>
         )}
-        {!isLoading && !error && (
+        {!isLoading && !error && rules.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border p-8 text-center">
+            <ListFilter className="mx-auto mb-2 h-7 w-7 text-muted-foreground" />
+            <h2 className="font-semibold">No rules yet</h2>
+            <p className="mx-auto mt-1 max-w-xl text-sm text-muted-foreground">
+              Rules are your saved corrections. The quickest way to make one is to pick a
+              transaction and choose <strong>Set category</strong>: one choice can sort every
+              purchase from that merchant, now and in future imports.
+            </p>
+            <Link
+              className={buttonClassName({ className: 'mt-4' })}
+              to={transactionsHref({ review: 'uncategorized', view: 'list' })}
+            >
+              Categorize transactions
+            </Link>
+          </div>
+        )}
+        {!isLoading && !error && rules.length > 0 && (
           <>
             <nav aria-label="Rule types" className="flex flex-wrap gap-2">
               {[
@@ -434,7 +457,7 @@ export const RulesPage: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={!filtered.length || filtered.length > 1000}
+                disabled={!filtered.length || filtered.length > MAX_RULE_CHANGES}
                 onClick={() => setSelected(new Set(filtered.map((r) => r.edit.id)))}
               >
                 Select all {filtered.length} results
@@ -444,13 +467,24 @@ export const RulesPage: React.FC = () => {
               </span>
               {selectedRules.length > 0 && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => openEditor(selectedRules)}>
+                  {selectedRules.length > MAX_RULE_CHANGES && (
+                    <span className="text-amber-800">
+                      Select at most {MAX_RULE_CHANGES.toLocaleString()} rules per change.
+                    </span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={selectedRules.length > MAX_RULE_CHANGES}
+                    onClick={() => openEditor(selectedRules)}
+                  >
                     <Pencil className="mr-1 h-3.5 w-3.5" />
                     Edit selected
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={selectedRules.length > MAX_RULE_CHANGES}
                     onClick={() =>
                       setChanges(selectedRules.map((previous) => ({ previous, next: null })))
                     }

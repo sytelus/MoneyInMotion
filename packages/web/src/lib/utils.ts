@@ -22,20 +22,51 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
+ * A count with its noun in the right number: `countLabel(1, 'item')` is
+ * "1 item", `countLabel(1200, 'item')` is "1,200 items".
+ */
+export function countLabel(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
+}
+
+/** Format a byte count for people: "512 B", "3.4 KB", "12.5 MB". */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+/**
  * Format a numeric amount as a US-dollar currency string.
  *
  * @param amount - The numeric amount to format.
  * @returns A string like `"$1,234.56"` or `"-$42.00"`.
  */
 export function formatCurrency(amount: number): string {
-  const formatted = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Math.abs(amount));
+  const cents = roundToCents(amount);
+  const formatted = usd.format(Math.abs(cents));
+  return cents < 0 ? `-${formatted}` : formatted;
+}
 
-  return amount < 0 ? `-${formatted}` : formatted;
+const usd = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/**
+ * Round to whole cents, so floating-point leftovers such as -5.5e-17 count as
+ * zero (never "-$0.00"), and -0 becomes 0.
+ */
+export function roundToCents(amount: number): number {
+  return Math.round(amount * 100) / 100 || 0;
 }
 
 /**
@@ -57,6 +88,18 @@ export function formatDate(dateStr: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   });
+}
+
+/**
+ * Label a report period key for people: `"2026-10"` is "October 2026" and
+ * `"2026-10-08"` is "Oct 8, 2026". Other strings are returned unchanged.
+ */
+export function formatPeriodKey(key: string): string {
+  const match = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(key);
+  if (!match) return key;
+  const [, year, month, day] = match;
+  if (day) return formatDate(key);
+  return `${getMonthName(Number(month))} ${year}`;
 }
 
 /**

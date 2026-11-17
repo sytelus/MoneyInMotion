@@ -1,6 +1,7 @@
 /**
  * The core journey on synthetic data: configure accounts, upload a statement
- * folder, read the Overview, settle an unclear credit, reload, and back up.
+ * folder, read the Overview, settle an unclear credit, reload, categorize a
+ * merchant and undo it, and back up.
  * Tests run in order and share one temporary data root.
  */
 import * as path from 'node:path';
@@ -68,6 +69,28 @@ test('a decision is saved as a correction and survives a reload', async ({ page 
   await page.reload();
   await expect(totals(page).getByText('$3,025.00', { exact: true })).toBeVisible();
   await expect(page.getByText('Some credits need your decision')).toBeHidden();
+});
+
+test('categorizes a merchant in one step, including future imports, and can undo it', async ({
+  page,
+}) => {
+  await page.goto('/transactions?view=list');
+  await page
+    .getByRole('checkbox', { name: /Select Grocery Mart/i })
+    .first()
+    .check();
+  await page.getByRole('button', { name: 'Set category' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Everything from Grocery Mart')).toBeVisible();
+  await expect(dialog.getByText(/2 records now, plus future imports/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Groceries', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save category' }).click();
+  await expect(page.getByText(/Grocery Mart is now “Groceries”: 2 records updated/)).toBeVisible();
+  await expect(page.getByText('Groceries · Purchase')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText(/Undone/)).toBeVisible();
+  await expect(page.getByText('Groceries · Purchase')).toHaveCount(0);
 });
 
 test('creates a full backup', async ({ page }) => {

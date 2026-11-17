@@ -76,6 +76,22 @@ export interface DeleteAccountResponse {
   keptStatementFiles: boolean;
 }
 
+/**
+ * A failed API call. The message is the server's plain-language explanation,
+ * fit to show as is; the status and endpoint are kept for code and debugging,
+ * not for the screen.
+ */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly endpoint = '',
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 interface ApiErrorResponse {
   error?: string;
   status?: number;
@@ -84,7 +100,7 @@ interface ApiErrorResponse {
 async function readApiErrorMessage(response: Response): Promise<string> {
   const bodyText = await response.text().catch(() => '');
   if (!bodyText) {
-    return response.statusText || 'Request failed';
+    return `The server could not finish this request (status ${response.status}).`;
   }
 
   try {
@@ -112,9 +128,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const message = await readApiErrorMessage(response);
-    throw new Error(
-      `API ${options?.method ?? 'GET'} ${path} failed (${response.status}): ${message}`,
-    );
+    throw new ApiError(response.status, message, `${options?.method ?? 'GET'} ${path}`);
   }
 
   return response.json() as Promise<T>;
@@ -128,7 +142,7 @@ async function requestFormData<T>(path: string, formData: FormData): Promise<T> 
 
   if (!response.ok) {
     const message = await readApiErrorMessage(response);
-    throw new Error(`API POST ${path} failed (${response.status}): ${message}`);
+    throw new ApiError(response.status, message, `POST ${path}`);
   }
 
   return response.json() as Promise<T>;
@@ -139,21 +153,6 @@ async function requestFormData<T>(path: string, formData: FormData): Promise<T> 
  */
 export async function fetchTransactions(): Promise<TransactionsData> {
   return request<TransactionsData>('/transactions');
-}
-
-/**
- * Apply one or more transaction edits.
- *
- * @param edits - The edits to apply.
- * @returns An object containing the count of affected transactions.
- */
-export async function applyEdits(
-  edits: TransactionEditData[],
-): Promise<{ affectedTransactionsCount: number }> {
-  return request<{ affectedTransactionsCount: number }>('/transaction-edits', {
-    method: 'POST',
-    body: JSON.stringify(edits),
-  });
 }
 
 /**

@@ -22,8 +22,9 @@ transaction IDs. Accepted changes save immediately, and previews save nothing.
 
 - Rules run after relationship matching, in saved order. A later rule wins
   per field.
-- Conditions are tested against **imported** values, never against values an
-  earlier rule produced. This applies on create, edit, delete, quick
+- Conditions are tested against **imported** values (name words come from
+  the imported normalized name), never against values an earlier rule
+  produced. This applies on create, edit, delete, quick
   correction, and rebuild, so a rule can't stop matching itself by changing
   the field it tests.
 - Corrected amount, date, and type drive every total. A date correction moves
@@ -34,12 +35,30 @@ transaction IDs. Accepted changes save immediately, and previews save nothing.
 - Sorting the Rules list never changes execution order. Editing keeps a rule's
   ID and position. Duplicating appends a new rule at the end.
 
+## Everyday edits in the website
+
+- **Set category** (the selection panel, the row menu, or Alt+T) opens a short
+  dialog: type or pick a category and apply it either to **everything from
+  this merchant**, which saves a normalized-name rule that also covers future
+  imports, or only to the selected records, which saves an exact-ID rule. It
+  saves without a preview and offers **Undo**, which deletes that rule.
+  **More options…** opens the full rule editor with preview.
+- **Mark for review** on one record replaces that record's earlier
+  flag-only rule (keeping its ID) rather than adding another, so toggling
+  never piles up rules.
+- Note, other fields, and bulk changes use the full editor with a preview.
+  When the selected records disagree on a field, the editor starts it empty
+  instead of proposing one record's value.
+
 ## Saving safely
 
-Quick corrections post to `POST /api/transaction-edits`. Rule management uses
+The website saves every change through rule management,
+`POST /api/transaction-edits/manage`, with
 `POST /api/transaction-edits/manage` with
 `{ preview, changes: [{ previous, next }], expectedRevision }`. `previous` is
-null to create, and `next` is null to delete. The server:
+null to create, and `next` is null to delete; a replacement keeps the rule ID.
+(`POST /api/transaction-edits` still appends rules for API clients.) The
+server:
 
 1. validates the whole batch, checks `previous` against saved rules, and
    rejects new exact-ID targets that don't exist;
@@ -50,9 +69,10 @@ null to create, and `next` is null to delete. The server:
    JSON files atomically (restoring them on a caught write error), and then
    swaps the copy into memory.
 
-The previous edits file gets a timestamped backup. There is no in-app undo
-button and no per-rule history, so deleting requires a preview and a
-confirmation.
+The previous edits file gets a timestamped backup. Apart from the quick
+category Undo, there is no undo and no per-rule history, so deleting requires
+a preview and a confirmation. A save rejected as stale (409) fetches a fresh
+preview before it can be saved again.
 
 ## Explaining effects (Rules page and transaction details)
 
@@ -88,6 +108,8 @@ draft. **Cancel** saves nothing.
 
 After a rebuild changes transaction IDs, an exact-ID rule is retargeted only
 when exactly one equivalent record exists in both the old and the new graph.
+Equivalent means the same account, imported type, amount to the cent, name,
+and order fields, and the same date (or, failing that, the same calendar day).
 Otherwise the reference stays as it was and is reported as unavailable.
 
 ## Adding an editable field

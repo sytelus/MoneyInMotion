@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import type { ReportBreakdown } from '../../lib/financial-reports.js';
-import { formatCurrency } from '../../lib/utils.js';
+import { countLabel, formatCurrency } from '../../lib/utils.js';
 import { Button } from '../ui/button.js';
 import { ReportPanel } from './ReportPanel.js';
 
@@ -14,6 +14,7 @@ export function BreakdownPanel({
   of,
   href,
   color = 'bg-indigo-500',
+  footer,
 }: {
   title: string;
   description: string;
@@ -23,12 +24,15 @@ export function BreakdownPanel({
   of: string;
   href: (row: ReportBreakdown) => string;
   color?: string;
+  /** Shown under the rows, e.g. a call to action. */
+  footer?: React.ReactNode;
 }) {
   const [shown, setShown] = useState(6);
   const visible = rows.slice(0, shown);
   const total = rows.reduce((sum, row) => sum + row[measure], 0);
   return (
     <ReportPanel title={title} description={description}>
+      {footer}
       {rows.length === 0 ? (
         <p className="py-6 text-sm text-muted-foreground">No matching activity in this scope.</p>
       ) : (
@@ -57,7 +61,7 @@ export function BreakdownPanel({
                 />
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {row.count.toLocaleString()} items ·{' '}
+                {countLabel(row.count, 'item')} ·{' '}
                 {total ? ((row[measure] / total) * 100).toFixed(1) : 0}% of {of}
               </p>
             </Link>

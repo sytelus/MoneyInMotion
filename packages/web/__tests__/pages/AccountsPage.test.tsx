@@ -34,6 +34,7 @@ vi.mock('../../src/api/imports.js', () => ({
 
 vi.mock('../../src/api/hooks.js', () => ({
   useAccounts: () => useAccountsMock(),
+  useConfig: () => ({ data: { activeUserDataPath: '/tmp/mim-data' }, error: null }),
   useUploadStatementFolder: () => useUploadStatementFolderMock(),
   useRebuildSnapshot: () => ({
     mutate: vi.fn(),

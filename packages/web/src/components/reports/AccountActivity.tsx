@@ -5,7 +5,7 @@ import type { Transactions } from '@moneyinmotion/core';
 import type { FinancialReport } from '../../lib/financial-reports.js';
 import { reportDay } from '../../lib/financial-reports.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
-import { formatCurrency, formatDate } from '../../lib/utils.js';
+import { countLabel, formatCurrency, formatDate } from '../../lib/utils.js';
 import { Button } from '../ui/button.js';
 import { ReportPanel } from './ReportPanel.js';
 
@@ -69,7 +69,7 @@ export function AccountActivity({
                         {account.label}
                       </Link>
                       <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                        {account.count.toLocaleString()} items
+                        {countLabel(account.count, 'item')}
                       </span>
                     </th>
                     <td className="whitespace-nowrap p-2 text-right">

@@ -30,13 +30,21 @@ import {
   financialReportCsv,
   monthBounds,
   reportCoverage,
+  type ReportBreakdown,
 } from '../lib/financial-reports.js';
 import { parseTransactionScope, transactionsHref } from '../lib/transaction-navigation.js';
 import { downloadText } from '../lib/download.js';
-import { formatCurrency, formatDate } from '../lib/utils.js';
+import { countLabel, formatCurrency, formatDate, formatPeriodKey } from '../lib/utils.js';
 import '../components/reports/reports.css';
 
 /** Keep loading/error/empty states outside the fully initialized report view. */
+/** Fraction of spending in the "Uncategorized" row. */
+function uncategorizedShare(categories: ReportBreakdown[]): number {
+  const total = categories.reduce((sum, row) => sum + row.spending, 0);
+  const uncategorized = categories.find((row) => row.key === 'Uncategorized')?.spending ?? 0;
+  return total > 0 ? uncategorized / total : 0;
+}
+
 export function ReportsPage() {
   const { data, isLoading, error, refetch } = useTransactions();
   const transactions = useMemo(() => (data ? Transactions.fromData(data) : null), [data]);
@@ -243,11 +251,14 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
               value={period}
               onChange={(event) => changePeriod(event.target.value)}
               options={[
-                { value: 'latest', label: `Latest available month · ${latest}` },
-                { value: 'year', label: `Latest available year · ${latest.slice(0, 4)}` },
-                { value: 'all', label: 'All recorded dates' },
+                { value: 'latest', label: `Latest month · ${formatPeriodKey(latest)}` },
+                { value: 'year', label: `Latest year · ${latest.slice(0, 4)}` },
+                { value: 'all', label: 'All dates' },
                 { value: 'custom', label: 'Custom dates' },
-                ...coverage.months.map((month) => ({ value: month, label: month })),
+                ...coverage.months.map((month) => ({
+                  value: month,
+                  label: formatPeriodKey(month),
+                })),
               ]}
             />
           </label>
@@ -353,7 +364,7 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
           {cash.undecidedCount > 0 && (
             <Notice tone="warning" title="Some credits need your decision">
               <p>
-                {cash.undecidedCount.toLocaleString()} credits totaling{' '}
+                {countLabel(cash.undecidedCount, 'credit')} totaling{' '}
                 {formatCurrency(cash.undecidedAmount)} could be income or could offset spending (for
                 example card statement credits, PayPal receipts, or reward points). They are left
                 out of the figures above until you decide.{' '}
@@ -406,6 +417,27 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
               of="spending"
               href={(row) =>
                 transactionsHref({ ...scope, category: row.key, flow: 'spending', view: 'list' })
+              }
+              footer={
+                uncategorizedShare(report.categories) > 0.25 && (
+                  <div className="mb-4 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950">
+                    <p>
+                      Most spending here has no category yet. Pick one per merchant and future
+                      imports follow.
+                    </p>
+                    <Link
+                      className={buttonClassName({ size: 'sm', className: 'mt-2' })}
+                      to={transactionsHref({
+                        ...scope,
+                        category: 'Uncategorized',
+                        flow: 'spending',
+                        view: 'list',
+                      })}
+                    >
+                      Categorize spending
+                    </Link>
+                  </div>
+                )
               }
             />
             <BreakdownPanel

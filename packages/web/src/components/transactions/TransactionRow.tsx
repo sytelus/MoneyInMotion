@@ -155,13 +155,10 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       </span>
 
       {/* Context menu button - visible on hover or when row is selected */}
-      <div
-        role="gridcell"
-        className={cn('opacity-100 transition-opacity', isSelected && 'opacity-100')}
-      >
+      <div role="gridcell">
         {hasEditActions ? (
           <TransactionContextMenuButton
-            title="Transaction actions"
+            label={`Actions for ${transaction.displayEntityNameNormalized}`}
             onEditCategory={() => onEditCategory?.(transaction)}
             onEditNote={() => onEditNote?.(transaction)}
             onEditAttributes={() => onEditAttributes?.(transaction)}

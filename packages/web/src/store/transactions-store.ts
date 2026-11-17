@@ -38,6 +38,25 @@ function matchesFlow(tx: Transaction, flow: string, kindOf: (tx: Transaction) =>
   }
 }
 
+/**
+ * The navigation period a date range covers exactly: a whole month or a whole
+ * year. The URL stores periods as `from`/`to`, so this restores the selected
+ * month in the sidebar after a reload or Back.
+ */
+export function periodFromRange(
+  from: string,
+  to: string,
+): { year: string; month: string | null } | null {
+  const match = /^(\d{4})-(\d{2})-01$/.exec(from);
+  if (!match) return null;
+  const year = match[1]!;
+  const month = match[2]!;
+  const lastDay = (m: number) => new Date(Date.UTC(Number(year), m, 0)).toISOString().slice(0, 10);
+  if (month === '01' && to === `${year}-12-31`) return { year, month: null };
+  if (to === lastDay(Number(month))) return { year, month };
+  return null;
+}
+
 export interface TransactionFilters {
   search: string;
   account: string;
@@ -111,6 +130,13 @@ export interface TransactionsState {
   /** Return transactions filtered by the current year/month selection. */
   getFilteredTransactions(): Transaction[];
 }
+
+/**
+ * The last filter result and the state it came from. Selecting a row or
+ * expanding a group changes the store without changing the filter inputs, so
+ * the list is not re-filtered (which matters with tens of thousands of rows).
+ */
+let filterCache: { inputs: unknown[]; result: Transaction[] } | null = null;
 
 /**
  * The main transactions store instance.
@@ -200,6 +226,11 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     for (const key of Object.keys(filters) as (keyof TransactionFilters)[]) {
       filters[key] = scope[key] ?? '';
     }
+    const period = periodFromRange(filters.from, filters.to);
+    if (period) {
+      filters.from = '';
+      filters.to = '';
+    }
     const basis =
       scope.basis ??
       (scope.source || scope.rule || scope.transaction || scope.ids?.length
@@ -215,8 +246,8 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
           ? new Set([scope.transaction])
           : null,
       selectedTransactionIds: new Set(scope.transaction ? [scope.transaction] : []),
-      selectedYear: null,
-      selectedMonth: null,
+      selectedYear: period?.year ?? null,
+      selectedMonth: period?.month ?? null,
       expandedGroupIds: new Set(),
     });
   },
@@ -290,6 +321,18 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
       dateIndex,
     } = state;
     if (!transactions) return [];
+    const inputs = [
+      transactions,
+      selectedYear,
+      selectedMonth,
+      filters,
+      basis,
+      scopedIds,
+      reporting,
+    ];
+    if (filterCache?.inputs.every((value, index) => value === inputs[index])) {
+      return filterCache.result;
+    }
 
     const words = filters.search.toLowerCase().trim().split(/\s+/).filter(Boolean);
     const kindOf = cashFlowContext(transactions).kindOf;
@@ -299,7 +342,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
       filters.flow === 'spending'
         ? (tx: Transaction) => spendingCategory(transactions, tx)
         : transactionCategory;
-    return (basis === 'records' ? records : reporting).filter((tx) => {
+    const result = (basis === 'records' ? records : reporting).filter((tx) => {
       // Transaction dates are stored as UTC ISO-8601 strings, and the
       // YearMonthNav also partitions by UTC. Using UTC methods here keeps
       // the two consistent regardless of the user's local timezone — a
@@ -329,11 +372,13 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
               ? transactionBucket(tx) === 'Unmatched'
               : filters.review === 'incomplete'
                 ? tx.hasMissingChild && Object.keys(tx.children ?? {}).length > 0
-                : !tx.categoryPath.length && !tx.toData().providerCategoryName)) &&
+                : !tx.categoryPath.length && !tx.providerCategoryName)) &&
         (filters.min === '' || tx.correctedAmount >= Number(filters.min)) &&
         (filters.max === '' || tx.correctedAmount <= Number(filters.max)) &&
         words.every((word) => searchIndex.get(tx.id)?.includes(word))
       );
     });
+    filterCache = { inputs, result };
+    return result;
   },
 }));

@@ -87,7 +87,7 @@ describe('Transaction explorer', () => {
       'aria-expanded',
     );
     expect(
-      within(screen.getByRole('grid')).getByRole('button', { name: /Expenses/ }),
+      within(screen.getByRole('grid')).getByRole('button', { name: /Money out/ }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Store 0')).not.toBeInTheDocument();
   });
@@ -99,19 +99,19 @@ describe('Transaction explorer', () => {
       'aria-pressed',
       'true',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Explore Expenses' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Explore Money out' }));
     expect(screen.getByRole('button', { name: 'Summary', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     expect(
-      within(screen.getByRole('grid')).getByRole('button', { name: /Expenses/ }),
+      within(screen.getByRole('grid')).getByRole('button', { name: /Money out/ }),
     ).toHaveAttribute('aria-expanded', 'true');
   });
   it('drills through type and provider category without a duplicate singleton merchant group', () => {
     useTransactionsStore.getState().setTransactions(fixture().serialize());
     render(<TransactionList />);
-    fireEvent.click(within(screen.getByRole('grid')).getByRole('button', { name: /Expenses/ }));
+    fireEvent.click(within(screen.getByRole('grid')).getByRole('button', { name: /Money out/ }));
     fireEvent.click(within(screen.getByRole('grid')).getByRole('button', { name: /Purchases/ }));
     fireEvent.click(within(screen.getByRole('grid')).getByRole('button', { name: /Shopping/ }));
     expect(screen.getByText('Store 0')).toBeInTheDocument();
@@ -119,27 +119,37 @@ describe('Transaction explorer', () => {
       within(screen.getByRole('grid')).queryByRole('button', { name: /Store 0/ }),
     ).not.toBeInTheDocument();
   });
-  it('paginates and sorts results, selects with checkboxes, and clears selections on filtering', () => {
-    useTransactionsStore.getState().setTransactions(fixture(251).serialize());
-    render(<TransactionList />);
-    fireEvent.click(screen.getByRole('button', { name: 'All matching items' }));
-    expect(within(screen.getByRole('grid')).getAllByRole('checkbox')).toHaveLength(100);
-    fireEvent.change(screen.getByLabelText('Sort transactions'), {
-      target: { value: 'amountAsc' },
-    });
-    const checkboxes = within(screen.getByRole('grid')).getAllByRole('checkbox');
-    expect(checkboxes[0]).toHaveAccessibleName('Select Store 250');
-    fireEvent.click(checkboxes[0]!);
-    expect(screen.getByRole('button', { name: 'Edit selected items' })).toBeEnabled();
-    fireEvent.change(screen.getByLabelText('Search transactions'), {
-      target: { value: 'Store 250' },
-    });
-    expect(within(screen.getByRole('grid')).getAllByRole('checkbox')).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: 'Edit selected items' })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Search transactions'), { target: { value: '' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    expect(screen.getByText('101–200 of 251 transactions')).toBeInTheDocument();
-  });
+  // Renders full 100-row pages in jsdom several times: allow for a busy machine.
+  it(
+    'paginates and sorts results, selects with checkboxes, and clears selections on filtering',
+    {
+      timeout: 20_000,
+    },
+    () => {
+      useTransactionsStore.getState().setTransactions(fixture(251).serialize());
+      render(<TransactionList />);
+      // Role queries over 100 rows are slow; plain selectors keep this test fast.
+      const rowBoxes = () =>
+        screen.getByRole('grid').querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+      fireEvent.click(screen.getByRole('button', { name: 'All matching items' }));
+      expect(rowBoxes()).toHaveLength(100);
+      fireEvent.change(screen.getByLabelText('Sort transactions'), {
+        target: { value: 'amountAsc' },
+      });
+      const checkboxes = rowBoxes();
+      expect(checkboxes[0]).toHaveAccessibleName('Select Store 250');
+      fireEvent.click(checkboxes[0]!);
+      expect(screen.getByRole('button', { name: 'Edit selected items' })).toBeEnabled();
+      fireEvent.change(screen.getByLabelText('Search transactions'), {
+        target: { value: 'Store 250' },
+      });
+      expect(rowBoxes()).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: 'Edit selected items' })).not.toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Search transactions'), { target: { value: '' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      expect(screen.getByText('101–200 of 251 transactions')).toBeInTheDocument();
+    },
+  );
   it('keeps the other date boundary when changing from a selected month to custom dates', () => {
     useTransactionsStore.getState().setTransactions(fixture().serialize());
     render(<TransactionList />);

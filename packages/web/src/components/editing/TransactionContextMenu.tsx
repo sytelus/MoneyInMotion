@@ -47,15 +47,15 @@ const MenuItem: React.FC<{
  * Dropdown button ("...") that opens the action menu on click.
  */
 export const TransactionContextMenuButton: React.FC<
-  TransactionContextMenuActions & { title?: string }
-> = ({ onEditCategory, onEditNote, onEditAttributes, onToggleFlag, onRemoveFlag, title }) => {
+  TransactionContextMenuActions & { label?: string }
+> = ({ onEditCategory, onEditNote, onEditAttributes, onToggleFlag, onRemoveFlag, label }) => {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
           className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors focus:outline-none"
-          aria-label="Transaction actions"
-          title={title ?? 'Transaction actions'}
+          aria-label={label ?? 'Transaction actions'}
+          title={label ?? 'Transaction actions'}
           onClick={(e) => e.stopPropagation()}
         >
           <MoreHorizontal className="h-4 w-4" />
@@ -71,19 +71,19 @@ export const TransactionContextMenuButton: React.FC<
           <MenuItem
             onSelect={onEditCategory}
             icon={<Tag className="h-4 w-4" />}
-            label="Edit Category"
+            label="Set category"
             shortcut="Alt+T"
           />
           <MenuItem
             onSelect={onEditNote}
             icon={<StickyNote className="h-4 w-4" />}
-            label="Edit Note"
+            label="Add or edit note"
             shortcut="Alt+N"
           />
           <MenuItem
             onSelect={onEditAttributes}
             icon={<Wrench className="h-4 w-4" />}
-            label="Fix Attributes"
+            label="Change other details"
             shortcut="Alt+E"
           />
 

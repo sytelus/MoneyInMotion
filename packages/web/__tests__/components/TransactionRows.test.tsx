@@ -1,8 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { Transaction, TransactionAggregator, TransactionReason } from '@moneyinmotion/core';
-import { TransactionGroup } from '../../src/components/transactions/TransactionGroup.js';
+import { Transaction, TransactionReason } from '@moneyinmotion/core';
 import { TransactionRow } from '../../src/components/transactions/TransactionRow.js';
 
 function makeTransaction(): Transaction {
@@ -26,19 +25,5 @@ describe('transaction grid rows', () => {
 
     fireEvent.keyDown(row, { key: 'Enter' });
     expect(onClick).toHaveBeenCalledWith(transaction.id);
-  });
-
-  it('exposes a group as one spanning cell with its expanded state', () => {
-    const aggregator = new TransactionAggregator({ name: 'Expenses' });
-    aggregator.add(makeTransaction());
-    const onToggle = vi.fn();
-    render(<TransactionGroup aggregator={aggregator} isExpanded={true} onToggle={onToggle} />);
-
-    const row = screen.getByRole('row');
-    expect(row).toHaveAttribute('aria-expanded', 'true');
-    expect(within(row).getAllByRole('gridcell')).toHaveLength(1);
-
-    fireEvent.keyDown(row, { key: ' ' });
-    expect(onToggle).toHaveBeenCalledWith(aggregator.groupId);
   });
 });

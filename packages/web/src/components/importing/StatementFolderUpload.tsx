@@ -25,6 +25,7 @@ import { Button, buttonClassName } from '../ui/button.js';
 import { MissingRuleTargets } from '../editing/MissingRuleTargets.js';
 import { preflightFolder } from '../../lib/import-preflight.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
+import { formatBytes } from '../../lib/utils.js';
 
 interface StatementFolderUploadProps {
   accounts: AccountSummary[];
@@ -84,6 +85,7 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
             <Button
               type="button"
               size="lg"
+              variant={canUpload ? 'outline' : 'default'}
               onClick={() => inputRef.current?.click()}
               disabled={upload.isPending}
             >
@@ -94,7 +96,6 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
               <Button
                 type="button"
                 size="lg"
-                variant="outline"
                 disabled={upload.isPending || !canUpload}
                 onClick={() => upload.mutate(folderPreflight.eligible)}
               >
@@ -146,8 +147,8 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
                 </div>
               )}
               <p className="mt-2 text-xs text-muted-foreground">
-                {(folderPreflight.totalBytes / 1024 / 1024).toFixed(2)} MiB selected for upload.
-                Limits: 200 files, 20 MiB per file, 100 MiB per request.
+                {formatBytes(folderPreflight.totalBytes)} selected for upload. Limits: 200 files, 20
+                MiB per file, 100 MiB per request.
               </p>
               {folderPreflight.errors.length > 0 && (
                 <div
@@ -259,22 +260,22 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
                   ? `; ${result.rebuild.totalTransactions} transactions rebuilt with ${result.rebuild.appliedEdits} saved rules.`
                   : `; ${result.rebuild.failedFiles.length} statement files need attention before a safe rebuild.`}
               </p>
-              <p className="mt-1 text-xs opacity-75">
-                Audit manifest: <code>{result.staging.manifestPath}</code>
-              </p>
-              {result.rebuild.committed && (
-                <p className="mt-2 text-sm font-medium">
-                  Snapshot records: {result.rebuild.previousTransactionCount.toLocaleString()} →{' '}
-                  {result.rebuild.totalTransactions.toLocaleString()} (
-                  {result.rebuild.newTransactions >= 0 ? '+' : ''}
-                  {result.rebuild.newTransactions.toLocaleString()} net change).
+              <details className="mt-2 text-xs opacity-90">
+                <summary className="cursor-pointer">Record counts and audit details</summary>
+                {result.rebuild.committed && (
+                  <p className="mt-1">
+                    Snapshot records: {result.rebuild.previousTransactionCount.toLocaleString()} →{' '}
+                    {result.rebuild.totalTransactions.toLocaleString()} (
+                    {result.rebuild.newTransactions >= 0 ? '+' : ''}
+                    {result.rebuild.newTransactions.toLocaleString()} net change). Record counts
+                    include payments and order details, not just reportable items, so a net change
+                    is not a count of brand-new purchases.
+                  </p>
+                )}
+                <p className="mt-1">
+                  Audit manifest: <code>{result.staging.manifestPath}</code>
                 </p>
-              )}
-              <p className="mt-1 max-w-2xl text-xs opacity-90">
-                Record counts include payments and order details, not just reportable items. A net
-                change is not a count of brand-new purchases; matching and account settings can also
-                affect it.
-              </p>
+              </details>
               {result.rebuild.migratedEditTargets > 0 && (
                 <p className="mt-1 text-xs opacity-75">
                   Kept {result.rebuild.migratedEditTargets} rule target
@@ -289,6 +290,11 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
             </Button>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
+            {result.rebuild.committed && (
+              <Link to="/" className={buttonClassName({ size: 'sm' })}>
+                See your overview
+              </Link>
+            )}
             {result.rebuild.committed && (
               <Link
                 to={transactionsHref({ view: 'summary' })}

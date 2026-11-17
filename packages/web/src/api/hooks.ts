@@ -12,17 +12,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchTransactions,
   getAccounts,
-  applyEdits,
+  getConfig,
+  manageRules,
   rebuildSnapshot,
   uploadStatementFolder,
 } from './client.js';
-import type { FolderUploadItem } from './client.js';
-import type { TransactionEditData } from '@moneyinmotion/core';
+import type { FolderUploadItem, RuleChange } from './client.js';
 
 /** Query key constants for cache management. */
 export const queryKeys = {
   transactions: ['transactions'] as const,
   accounts: ['accounts'] as const,
+  config: ['config'] as const,
 } as const;
 
 /**
@@ -45,15 +46,19 @@ export function useAccounts() {
   });
 }
 
-/**
- * Mutation hook to apply transaction edits. Invalidates the transactions
- * cache on success so the UI refreshes automatically.
- */
-export function useApplyEdits() {
-  const queryClient = useQueryClient();
+/** Fetch the saved and active app configuration. */
+export function useConfig() {
+  return useQuery({ queryKey: queryKeys.config, queryFn: getConfig });
+}
 
+/**
+ * Save rule changes (add, replace, or delete with `next: null`) without a
+ * preview, then refresh transactions.
+ */
+export function useManageRules() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (edits: TransactionEditData[]) => applyEdits(edits),
+    mutationFn: (changes: RuleChange[]) => manageRules(changes, false),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.transactions }),
   });
 }

@@ -7,8 +7,7 @@
  */
 
 import React from 'react';
-import { cn } from '../../lib/utils.js';
-import { formatCurrency } from '../../lib/utils.js';
+import { cn, formatCurrency, roundToCents } from '../../lib/utils.js';
 
 export interface AmountDisplayProps {
   /** The numeric amount to display. */
@@ -26,7 +25,7 @@ export const AmountDisplay: React.FC<AmountDisplayProps> = ({ amount, className 
     <span
       className={cn(
         'font-mono tabular-nums',
-        amount < 0 ? 'text-expense' : 'text-income',
+        roundToCents(amount) < 0 ? 'text-expense' : 'text-income',
         className,
       )}
     >

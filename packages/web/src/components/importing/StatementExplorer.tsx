@@ -56,7 +56,8 @@ export function StatementExplorer({ transactions }: { transactions: Transactions
   const selectedFolder = params.get('folder') ?? '';
   const [inventory, setInventory] = useState<StatementInventory | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  /** The server's explanation when the inventory could not be read. */
+  const [error, setError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
   // URL state survives source drill-downs and browser Back without storing config.
   const updateFilter = (key: string, value: string) =>
@@ -89,8 +90,8 @@ export function StatementExplorer({ transactions }: { transactions: Transactions
       .then((value) => {
         if (!cancelled) setInventory(value);
       })
-      .catch(() => {
-        if (!cancelled) setError(true);
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -230,7 +231,7 @@ export function StatementExplorer({ transactions }: { transactions: Transactions
           disabled={loading}
           onClick={() => {
             setLoading(true);
-            setError(false);
+            setError(null);
             setRefresh((value) => value + 1);
           }}
         >
@@ -240,8 +241,11 @@ export function StatementExplorer({ transactions }: { transactions: Transactions
       </div>
       {error && (
         <Notice tone="error" title="Statement files could not be loaded">
-          Check that the server can read the Statements folder, then refresh. If you just updated
-          the app, restart the server first.
+          <p>{error}</p>
+          <p className="mt-1">
+            Fix the file or folder named above, then refresh. If you just updated the app, restart
+            the server first.
+          </p>
         </Notice>
       )}
       {inventory?.truncated && (

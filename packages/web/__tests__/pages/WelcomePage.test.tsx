@@ -2,13 +2,15 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AccountType } from '@moneyinmotion/core';
 import { WelcomePage } from '../../src/pages/WelcomePage.js';
 import type { AccountSummary } from '../../src/api/client.js';
 
 const getConfigMock = vi.fn();
 const getAccountsMock = vi.fn();
-vi.mock('../../src/api/hooks.js', () => ({
+vi.mock('../../src/api/hooks.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/api/hooks.js')>()),
   useRebuildSnapshot: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
@@ -41,10 +43,13 @@ function makeAccount(hasStatementFiles: boolean, transactionCount = 0): AccountS
 }
 
 function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <WelcomePage />
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <WelcomePage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -93,6 +98,8 @@ describe('WelcomePage', () => {
     renderPage();
 
     expect(await screen.findByText(/builds the snapshot automatically/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Choose Statement Folder/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: /Choose Statement Folder/i }),
+    ).toBeInTheDocument();
   });
 });
