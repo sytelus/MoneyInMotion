@@ -5,12 +5,6 @@ a schedule. Add items when real use shows a need.
 
 ## Product goals not yet implemented
 
-- [ ] **Unpaired card payments.** A checking payment to a card with no
-      matching card-side record stays a purchase and counts as spending. That
-      is right when the card's statements for that time aren't imported (the
-      payment is the only record of those purchases) and double counts when
-      they are. Most such payments in real data fall outside card coverage.
-      Show them with the card's coverage so the user can decide.
 - [ ] **Amazon refund/return reports.** `Statements/Amazon-returns` has no
       `AccountConfig.json` and no parser, so those files aren't imported. Card
       refunds are already linked to their charges.

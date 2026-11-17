@@ -20,6 +20,7 @@ import {
   transactionCategory,
 } from './transaction-explorer.js';
 import {
+  cardPaymentsToReview,
   cashFlowClassifier,
   cashFlowTotals,
   linkRefunds,
@@ -105,13 +106,22 @@ function groupRows(
 /** Snapshot-wide derivations, cached per immutable Transactions object. */
 const derivedCache = new WeakMap<
   Transactions,
-  { kindOf: (tx: Transaction) => CashFlowKind; refunds: RefundLinks }
+  {
+    kindOf: (tx: Transaction) => CashFlowKind;
+    refunds: RefundLinks;
+    /** Card payments that may be counted twice: payment ID → card account ID. */
+    cardPayments: Map<string, string>;
+  }
 >();
 export function cashFlowContext(transactions: Transactions) {
   let derived = derivedCache.get(transactions);
   if (!derived) {
     const kindOf = cashFlowClassifier(transactions);
-    derived = { kindOf, refunds: linkRefunds(reportingTransactions(transactions), kindOf) };
+    derived = {
+      kindOf,
+      refunds: linkRefunds(reportingTransactions(transactions), kindOf),
+      cardPayments: cardPaymentsToReview(transactions, kindOf),
+    };
     derivedCache.set(transactions, derived);
   }
   return derived;
@@ -225,7 +235,7 @@ export function buildFinancialReport(transactions: Transactions, scope: ReportSc
   const activity = rows.filter(
     (row) => !['Transfers', 'Unmatched'].includes(transactionBucket(row)),
   );
-  const { kindOf, refunds } = cashFlowContext(transactions);
+  const { kindOf, refunds, cardPayments } = cashFlowContext(transactions);
   const spendingRows = rows.filter((row) => kindOf(row) === 'spending');
   const incomeRows = rows.filter((row) => kindOf(row) === 'income');
   const accountTitle = (id: string) => transactions.getAccountInfo(id).title || id;
@@ -267,6 +277,7 @@ export function buildFinancialReport(transactions: Transactions, scope: ReportSc
       uncategorized: rows.filter((row) => !row.categoryPath.length && !row.providerCategoryName)
         .length,
       undecided: rows.filter((row) => kindOf(row) === 'undecided').length,
+      cardpayments: rows.filter((row) => cardPayments.has(row.id)).length,
     },
     transfers: transferPairs(transactions, scope),
   };

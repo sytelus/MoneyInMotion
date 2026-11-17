@@ -38,7 +38,7 @@ const textKeys = [
   'transaction',
 ] as const;
 const options = {
-  review: ['flagged', 'unmatched', 'uncategorized', 'incomplete'],
+  review: ['flagged', 'unmatched', 'uncategorized', 'incomplete', 'cardpayments'],
   flow: ['income', 'spending', 'undecided', 'cashflow', 'credits', 'debits', 'activity'],
   view: ['list', 'summary'],
   basis: ['reporting', 'records'],

@@ -335,7 +335,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     }
 
     const words = filters.search.toLowerCase().trim().split(/\s+/).filter(Boolean);
-    const kindOf = cashFlowContext(transactions).kindOf;
+    const { kindOf, cardPayments } = cashFlowContext(transactions);
     // Spending drill-downs use the report's category, where an uncategorized
     // refund takes the category of the charge it reverses.
     const categoryOf =
@@ -372,7 +372,9 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
               ? transactionBucket(tx) === 'Unmatched'
               : filters.review === 'incomplete'
                 ? tx.hasMissingChild && Object.keys(tx.children ?? {}).length > 0
-                : !tx.categoryPath.length && !tx.providerCategoryName)) &&
+                : filters.review === 'cardpayments'
+                  ? cardPayments.has(tx.id)
+                  : !tx.categoryPath.length && !tx.providerCategoryName)) &&
         (filters.min === '' || tx.correctedAmount >= Number(filters.min)) &&
         (filters.max === '' || tx.correctedAmount <= Number(filters.max)) &&
         words.every((word) => searchIndex.get(tx.id)?.includes(word))

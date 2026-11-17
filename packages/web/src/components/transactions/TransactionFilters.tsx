@@ -80,7 +80,7 @@ export function TransactionFilters() {
     account: `Account: ${accounts.find((account) => account.value === filters.account)?.label ?? filters.account}`,
     category: `Category: ${filters.category}`,
     reason: `Type: ${transactionReasonTitleLookup[filters.reason] ?? filters.reason}`,
-    review: `Review: ${{ flagged: 'Marked for review', unmatched: 'Unmatched order details', uncategorized: 'Uncategorized', incomplete: 'Incomplete matches' }[filters.review] ?? filters.review}`,
+    review: `Review: ${{ flagged: 'Marked for review', unmatched: 'Unmatched order details', uncategorized: 'Uncategorized', incomplete: 'Incomplete matches', cardpayments: 'Card payments counted twice?' }[filters.review] ?? filters.review}`,
     min: `Amount ≥ ${filters.min}`,
     max: `Amount ≤ ${filters.max}`,
   };
@@ -162,6 +162,7 @@ export function TransactionFilters() {
                 { value: 'unmatched', label: 'Unmatched to a payment' },
                 { value: 'uncategorized', label: 'Uncategorized' },
                 { value: 'incomplete', label: 'Incomplete order matches' },
+                { value: 'cardpayments', label: 'Card payments counted twice?' },
               ]}
               onChange={(e) => setFilters({ review: e.target.value })}
             />

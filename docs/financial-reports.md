@@ -57,6 +57,19 @@ an ordinary saved correction. It can be broadened into a rule (for example, all
 "AMEX STATEMENT CREDIT" rows) or deleted later. Any explicit type correction
 counts as a decision, even one that keeps the same type.
 
+**Card payments that may be counted twice** (derived, never stored). A
+checking or savings payment to a card that transfer matching couldn't pair
+stays a purchase and counts as spending. When the card's statements for that
+time aren't imported, that is right: the payment is the only record of those
+purchases. When they are, the money is likely counted twice. So
+`cardPaymentsToReview` lists a bank debit that counts as spending, has no
+type decision, and has a credit card's name tag at the start of a word in its
+imported name, but only when that card has records in the 40 days up to the
+payment. The Overview queue links to them (`review=cardpayments`). Selecting
+them shows **Count as card payment** (type _Account payment_, excluded like a
+transfer) and **Keep as spending** (type _Purchase_, set explicitly), through
+the same preview-and-save flow.
+
 **Refund links** (derived, never stored). Each spending credit is linked to the
 charge it most likely reverses: same merchant, on or before the refund, within
 180 days, with enough unrefunded amount left. An exact amount wins, then the
@@ -103,8 +116,8 @@ range, so a partial-month view does not silently widen its dates.
 Flags and incomplete/unmatched record queues inspect the **full source graph**,
 including parent records replaced by details in reporting. Their links use
 `basis=records`. Source-record counts are not financial totals. The uncategorized
-queue uses the reporting population and `basis=reporting` so its count agrees
-with the visible items needing categorization.
+and card-payment queues use the reporting population and `basis=reporting` so
+their counts agree with the visible items.
 
 Transfer interactions use only existing `relatedTransferId` relationships; this
 view does not infer or persist a new match. A pair is deduplicated by its sorted

@@ -47,7 +47,8 @@ These goals decide what gets built and how. The behavior docs under
 
 - **Connect related records.** Transfers between accounts are not income or
   spending, a card payment matched to the card's statement is not an expense
-  (an unmatched one stands in for the card's purchases), and Amazon or Etsy order lines
+  (an unmatched one stands in for the card's purchases, and is listed for
+  review when those purchases are imported too), and Amazon or Etsy order lines
   replace the card charge they explain. Duplicate statement rows are merged.
 - **Income, spending, savings.** The Overview reports earned **Income**,
   **Spending** with refunds and discounts subtracted from the purchases they

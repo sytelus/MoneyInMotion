@@ -18,6 +18,7 @@ import { NetInterAccount, TransactionReason, intersects } from './transaction-re
 import { AccountType } from './account-info.js';
 import { isSupportedAccountType, normalizeInstituteName } from './account-config.js';
 import { parseDate } from '../utils/date-utils.js';
+import { containsWordStart } from '../utils/string-utils.js';
 import { deserializeDictionary } from '../utils/collection-utils.js';
 import type { ParentChildMatch } from '../matching/parent-child-match.js';
 import { GenericTxParentChildMatcher } from '../matching/generic-tx-matcher.js';
@@ -32,15 +33,6 @@ const MS_PER_DAY = 86_400_000;
  * Tuesday after a Monday holiday.
  */
 const PAYMENT_DAY_TOLERANCE = 5;
-
-/** True when `tag` occurs in `text` at the start of a word. Both lowercase. */
-function containsWordStart(text: string, tag: string): boolean {
-  if (!tag) return false;
-  for (let at = text.indexOf(tag); at !== -1; at = text.indexOf(tag, at + 1)) {
-    if (at === 0 || !/[\p{L}\p{N}]/u.test(text[at - 1]!)) return true;
-  }
-  return false;
-}
 
 /** An exact-ID edit referenced transactions that are absent from a snapshot. */
 export class TransactionEditTargetError extends Error {
@@ -627,9 +619,7 @@ export class Transactions {
 
       const unmatchedTime = timeOf.get(unmatchedTx)!;
       const nameTags = enableNameTagFilter
-        ? (this.getAccountInfo(unmatchedTx.accountId).interAccountNameTags ?? []).map((tag) =>
-            tag.toLowerCase(),
-          )
+        ? (this.getAccountInfo(unmatchedTx.accountId).interAccountNameTags ?? [])
         : [];
 
       let best: Transaction | undefined;
@@ -646,8 +636,7 @@ export class Transactions {
           continue;
         }
         if (nameTags.length > 0) {
-          const name = candidate.entityName.toLowerCase();
-          if (!nameTags.some((tag) => containsWordStart(name, tag))) continue;
+          if (!nameTags.some((tag) => containsWordStart(candidate.entityName, tag))) continue;
         }
         best = candidate;
         bestDistance = distance;

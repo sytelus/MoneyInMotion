@@ -62,3 +62,18 @@ export function splitWhitespace(str: string): string[] {
 export function isNullOrWhitespace(str: string | null | undefined): boolean {
   return str == null || str.trim().length === 0;
 }
+
+/**
+ * Test whether `word` occurs in `text` at the start of a word, ignoring case.
+ * Account name tags use this, so the tag "chase" matches "CHASE EPAY" but not
+ * "POS PURCHASE".
+ */
+export function containsWordStart(text: string, word: string): boolean {
+  if (!word) return false;
+  const haystack = text.toLowerCase();
+  const needle = word.toLowerCase();
+  for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
+    if (at === 0 || !/[\p{L}\p{N}]/u.test(haystack[at - 1]!)) return true;
+  }
+  return false;
+}

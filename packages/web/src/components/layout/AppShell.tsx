@@ -37,6 +37,7 @@ import { ExistingStatements } from '../importing/ExistingStatements.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 import { IncomeDecisionBar } from '../transactions/IncomeDecisionBar.js';
+import { CardPaymentDecisionBar } from '../transactions/CardPaymentDecisionBar.js';
 import { cashFlowContext } from '../../lib/financial-reports.js';
 
 /** `categoryPath` opens the quick category dialog; `categoryAdvanced` the full rule editor. */
@@ -129,12 +130,17 @@ export const AppShell: React.FC = () => {
   }, [transactions, selectedIds]);
   const selectedTransaction = selectedTransactions.length === 1 ? selectedTransactions[0] : null;
   const flowFilter = useTransactionsStore((s) => s.filters.flow);
-  const undecidedSelected = useMemo(() => {
-    if (!transactions) return [];
-    const { kindOf } = cashFlowContext(transactions);
-    return selectedTransactions.filter((tx) => kindOf(tx) === 'undecided');
+  const reviewFilter = useTransactionsStore((s) => s.filters.review);
+  const { undecidedSelected, cardPaymentsSelected } = useMemo(() => {
+    if (!transactions) return { undecidedSelected: [], cardPaymentsSelected: [] };
+    const { kindOf, cardPayments } = cashFlowContext(transactions);
+    return {
+      undecidedSelected: selectedTransactions.filter((tx) => kindOf(tx) === 'undecided'),
+      cardPaymentsSelected: selectedTransactions.filter((tx) => cardPayments.has(tx.id)),
+    };
   }, [transactions, selectedTransactions]);
-  const decideIncome = useCallback((targets: Transaction[], reason: number) => {
+  /** An income or card-payment decision: the type edit flow with the type preset. */
+  const decideType = useCallback((targets: Transaction[], reason: number) => {
     setEditingTransactions(targets);
     setEditDefaults({ transactionReason: editValue(reason) });
     setActiveDialog('transactionReason');
@@ -379,7 +385,12 @@ export const AppShell: React.FC = () => {
             <IncomeDecisionBar
               undecided={undecidedSelected}
               showHint={flowFilter === 'undecided'}
-              onDecide={decideIncome}
+              onDecide={decideType}
+            />
+            <CardPaymentDecisionBar
+              payments={cardPaymentsSelected}
+              showHint={reviewFilter === 'cardpayments'}
+              onDecide={decideType}
             />
             <div className="flex-1 min-h-0">
               <TransactionList

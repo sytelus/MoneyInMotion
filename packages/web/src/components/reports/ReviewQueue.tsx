@@ -1,5 +1,13 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Flag, Tags, Unlink, ArrowRight, HelpCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CreditCard,
+  Flag,
+  HelpCircle,
+  Tags,
+  Unlink,
+} from 'lucide-react';
 import type { FinancialReport } from '../../lib/financial-reports.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { ReportPanel } from './ReportPanel.js';
@@ -11,6 +19,14 @@ export function ReviewQueue({ report }: { report: FinancialReport }) {
       label: 'Income or refund?',
       description: 'Credits MiM cannot classify; left out of income and spending until you decide.',
       Icon: HelpCircle,
+      basis: 'reporting',
+    },
+    {
+      key: 'cardpayments',
+      label: 'Card payments counted twice?',
+      description:
+        'Bank payments to a card whose purchases are also imported, with no matching payment on the card. Counted as spending until you decide.',
+      Icon: CreditCard,
       basis: 'reporting',
     },
     {
