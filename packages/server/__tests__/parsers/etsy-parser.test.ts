@@ -43,6 +43,22 @@ describe('EtsyBuyerParser', () => {
     expect(values[0]!.lineItemType).toBe(LineItemType.ItemSubtotal);
   });
 
+  it('multiplies an item price by its quantity', () => {
+    const content = JSON.stringify([
+      {
+        receipt_id: 'R100',
+        transaction_id: 'T201',
+        title: 'Magnet set',
+        price: '18.90',
+        quantity: 3,
+        paid_tsz: '1700000000',
+        buyer_user_id: 'buyer123',
+      },
+    ]);
+    const values = new EtsyBuyerParser(content).getTransactionImportedValues();
+    expect(values[0]!.amount).toBe(-56.7);
+  });
+
   it('converts Unix timestamps to ISO dates for order rows', () => {
     // 1700000000 seconds = 2023-11-14T22:13:20.000Z
     const content = JSON.stringify([

@@ -72,8 +72,13 @@ export class EtsyBuyerParser extends StatementParserBase {
 
       importedValues.entityName = `Etsy Order# ${attrs['order_id'] ?? ''}`;
     } else {
-      // Item-level row
-      importedValues.amount = this.parseAmount(attrs['price'] ?? '0') * -1;
+      // Item-level row: `price` is per unit.
+      const quantity = Number((attrs['quantity'] ?? '1').trim() || '1');
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        throw new Error(`Etsy quantity must be a positive whole number: "${attrs['quantity']}"`);
+      }
+      importedValues.amount =
+        Math.round(this.parseAmount(attrs['price'] ?? '0') * quantity * -100) / 100;
       importedValues.lineItemType = LineItemType.ItemSubtotal;
 
       importedValues.instituteReference = attrs['transaction_id'] ?? null;

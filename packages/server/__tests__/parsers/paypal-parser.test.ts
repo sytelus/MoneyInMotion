@@ -180,7 +180,24 @@ describe('PayPalParser', () => {
   });
 
   describe('ignorable activity filtering', () => {
-    it.each(['Denied', 'Removed', 'Placed', 'Canceled', 'Cleared', 'Failed', 'Refunded'])(
+    it.each(['Cleared', 'Refunded'])('keeps a real payment with status "%s"', (status) => {
+      const csv = buildPayPalCsv([
+        {
+          date: '02/08/2005',
+          time: '09:12:06',
+          'time zone': 'PST',
+          name: 'SomeSeller',
+          type: 'eBay Payment Sent',
+          status,
+          amount: '-25.00',
+        },
+      ]);
+      const values = new PayPalParser(csv, ContentType.Csv).getTransactionImportedValues();
+      expect(values).toHaveLength(1);
+      expect(values[0]!.transactionReason).toBe(TransactionReason.Purchase);
+    });
+
+    it.each(['Denied', 'Removed', 'Placed', 'Canceled', 'Failed'])(
       'filters out transactions with status "%s"',
       (status) => {
         const csv = buildPayPalCsv([
@@ -260,66 +277,25 @@ describe('PayPalParser', () => {
     });
   });
 
-  describe('date+time+timezone assembly', () => {
-    it('assembles date, time, and timezone into a valid ISO date', () => {
+  describe('dates', () => {
+    it('keeps the statement date for evening activity instead of the next UTC day', () => {
       const csv = buildPayPalCsv([
         {
-          date: '03/15/2024',
-          time: '14:30:00',
-          'time zone': 'PST',
+          date: '6/30/2014',
+          time: '22:00:57',
+          'time zone': 'PDT',
           name: 'TestVendor',
           type: 'Payment Sent',
           status: 'Completed',
           amount: '-10.00',
         },
       ]);
-
-      const parser = new PayPalParser(csv, ContentType.Csv);
-      const values = parser.getTransactionImportedValues();
-
-      expect(values).toHaveLength(1);
-      expect(values[0]!.transactionDate).toBeTruthy();
-      // The date should parse to a valid ISO string
-      const parsedDate = new Date(values[0]!.transactionDate);
-      expect(parsedDate.getTime()).not.toBeNaN();
+      const values = new PayPalParser(csv, ContentType.Csv).getTransactionImportedValues();
+      expect(values[0]!.transactionDate).toBe('2014-06-30T00:00:00.000Z');
+      expect(values[0]!.providerAttributes).toMatchObject({ time: '22:00:57', 'time zone': 'PDT' });
     });
 
-    it('handles EDT timezone', () => {
-      const csv = buildPayPalCsv([
-        {
-          date: '06/15/2024',
-          time: '08:00:00',
-          'time zone': 'EDT',
-          name: 'TestVendor',
-          type: 'Payment Sent',
-          status: 'Completed',
-          amount: '-10.00',
-        },
-      ]);
-
-      const parser = new PayPalParser(csv, ContentType.Csv);
-      const values = parser.getTransactionImportedValues();
-
-      expect(values).toHaveLength(1);
-      expect(values[0]!.transactionDate).toBeTruthy();
-    });
-
-    it('rejects unknown time zones and invalid dates', () => {
-      const unknownZone = buildPayPalCsv([
-        {
-          date: '06/15/2024',
-          time: '08:00:00',
-          'time zone': 'XYZ',
-          name: 'TestVendor',
-          type: 'Payment Sent',
-          status: 'Completed',
-          amount: '-10.00',
-        },
-      ]);
-      expect(() =>
-        new PayPalParser(unknownZone, ContentType.Csv).getTransactionImportedValues(),
-      ).toThrow(/Unsupported PayPal time zone/i);
-
+    it('rejects invalid dates', () => {
       const invalidDate = buildPayPalCsv([
         {
           date: 'not-a-date',

@@ -8,28 +8,11 @@
  */
 
 import type { ImportedValues } from '@moneyinmotion/core';
-import { TransactionReason, isNullOrWhitespace } from '@moneyinmotion/core';
+import { TransactionReason, isNullOrWhitespace, parseDate } from '@moneyinmotion/core';
 import { getMD5HashString } from '@moneyinmotion/core';
 import type { ParsedRow } from '../file-format/types.js';
 import { ContentType, createFileFormatParser } from '../file-format/index.js';
 import { StatementParserBase, StatementColumnType } from './statement-parser-base.js';
-
-// ---------------------------------------------------------------------------
-// Timezone abbreviation to UTC offset mapping (subset)
-// ---------------------------------------------------------------------------
-
-const timezoneOffsets: Record<string, string> = {
-  PST: '-08:00',
-  PDT: '-07:00',
-  MST: '-07:00',
-  MDT: '-06:00',
-  CST: '-06:00',
-  CDT: '-05:00',
-  EST: '-05:00',
-  EDT: '-04:00',
-  GMT: '+00:00',
-  UTC: '+00:00',
-};
 
 export class PayPalParser extends StatementParserBase {
   private parsedRows: ParsedRow[];
@@ -65,23 +48,15 @@ export class PayPalParser extends StatementParserBase {
 
     const attrs = importedValues.providerAttributes ?? {};
 
-    // Assemble date+time+timezone
+    // The statement's own calendar date, like every other statement. The time
+    // and time zone stay in the provider attributes; converting them to UTC
+    // moved evening activity to the next day (and sometimes the next month).
     const dateString = attrs['date'] ?? '';
-    const timeZoneAbbreviation = attrs['time zone'] ?? '';
-    let timeZoneHoursString = '';
-    if (!isNullOrWhitespace(timeZoneAbbreviation)) {
-      const normalizedTimeZone = timeZoneAbbreviation.trim().toUpperCase();
-      timeZoneHoursString = timezoneOffsets[normalizedTimeZone] ?? '';
-      if (!timeZoneHoursString) {
-        throw new Error(`Unsupported PayPal time zone: "${timeZoneAbbreviation}"`);
-      }
-    }
-    const timeString = attrs['time'] ?? '';
-
-    const dateTimeString = `${dateString} ${timeString} ${timeZoneHoursString}`.trim();
-    const parsed = new Date(dateTimeString);
-    if (isNaN(parsed.getTime())) {
-      throw new Error(`Cannot parse PayPal transaction date: "${dateTimeString}"`);
+    let parsed: Date;
+    try {
+      parsed = parseDate(dateString);
+    } catch {
+      throw new Error(`Cannot parse PayPal transaction date: "${dateString}"`);
     }
     importedValues.transactionDate = parsed.toISOString();
 
@@ -129,7 +104,8 @@ function setPayPalTransactionReason(importedValues: ImportedValues, payPalType: 
   const attrs = importedValues.providerAttributes ?? {};
   let ignorableActivity = false;
 
-  // Check status
+  // Check status. "Cleared" (a completed eCheck) and "Refunded" (a payment
+  // that was later refunded in its own "Refund" row) are real payments.
   const status = (attrs['status'] ?? '').trim().toLowerCase();
   switch (status) {
     case 'denied':
@@ -137,9 +113,7 @@ function setPayPalTransactionReason(importedValues: ImportedValues, payPalType: 
     case 'placed':
     case 'canceled':
     case 'cancelled':
-    case 'cleared':
     case 'failed':
-    case 'refunded':
       ignorableActivity = true;
       break;
   }

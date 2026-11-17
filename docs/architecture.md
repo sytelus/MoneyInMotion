@@ -150,8 +150,8 @@ hurts.
 - **No history journal:** rules are current state, not a revision log.
   First-import times are not recorded. Staging receipts are never expired.
 - **One writer:** never run two server processes against the same data root.
-- **Time zone:** some statement date formats without a zone (PayPal rows
-  without one, `MM/DD/YY`, dates with times) are read in the server's local
+- **Time zone:** some statement date formats without a zone (`MM/DD/YY`,
+  dates with times) are read in the server's local
   time zone, and those dates feed transaction IDs. The existing data was built
   in US Pacific time, on WSL and Windows alike. Running the server in another
   time zone would change those IDs and orphan exact-ID rules. Pin the zone

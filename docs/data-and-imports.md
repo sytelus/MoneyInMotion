@@ -119,15 +119,15 @@ restored.
 
 ## Supported sources
 
-| Source                | Inputs     | Specialized behavior                              |
-| --------------------- | ---------- | ------------------------------------------------- |
-| Generic bank/card     | CSV        | Header/column discovery, debit/credit conversion  |
-| American Express      | CSV        | Amex columns, phone and category metadata         |
-| Barclaycard           | CSV        | Banner lines before the header                    |
-| PayPal                | CSV or IIF | Time zones; filters non-transaction activity rows |
-| Amazon orders         | CSV        | Order-line synthesis and charge matching          |
-| Etsy buyer history    | JSON       | Receipt and item reconciliation                   |
-| QuickBooks-compatible | IIF        | Transactions and splits                           |
+| Source                | Inputs     | Specialized behavior                                                                                           |
+| --------------------- | ---------- | -------------------------------------------------------------------------------------------------------------- |
+| Generic bank/card     | CSV        | Header/column discovery, debit/credit conversion                                                               |
+| American Express      | CSV        | Amex columns, phone and category metadata                                                                      |
+| Barclaycard           | CSV        | Banner lines before the header                                                                                 |
+| PayPal                | CSV or IIF | Statement date (time kept as an attribute); skips holds, authorizations, and denied, cancelled, or failed rows |
+| Amazon orders         | CSV        | Order-line synthesis and charge matching                                                                       |
+| Etsy buyer history    | JSON       | Receipt and item reconciliation; item amount is price × quantity                                               |
+| QuickBooks-compatible | IIF        | Transactions and splits                                                                                        |
 
 Excel files must be exported to CSV first. Parsing is strict: duplicate or
 ambiguous columns, non-empty overflow cells, numbers with trailing text, and
