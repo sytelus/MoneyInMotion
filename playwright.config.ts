@@ -3,7 +3,8 @@
  *
  * Every run gets a fresh temporary home folder (config + backups) and data
  * root, so the tests can never read or change real financial data. Run with
- * `npm run test:e2e`, which builds first.
+ * `npm run test:e2e`, which builds first (`npx playwright test` reuses the
+ * existing build).
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -30,7 +31,9 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // No retries: the serial journey shares one data root, so a retry would
+  // start from a half-finished state and fail for the wrong reason.
+  retries: 0,
   reporter: process.env.CI ? 'github' : 'list',
   globalTeardown: './e2e/teardown.ts',
   use: {

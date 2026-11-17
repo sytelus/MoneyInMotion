@@ -32,7 +32,6 @@
     "source.fixAll.eslint": "explicit"
   },
   "search.exclude": {
-    "legacy/**": true,
     "**/node_modules": true,
     "**/dist": true
   }

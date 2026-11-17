@@ -1,63 +1,47 @@
 #!/usr/bin/env bash
-# Install a reproducible MoneyInMotion checkout.
+# Production install for the optional Linux VM (docs/deployment.md).
 #
-# Usage:
-#   ./install.sh                 Production VM install (default)
-#   ./install.sh --development   Keep compilers and test tools for development
+#   cd /opt/moneyinmotion && ./install.sh
 #
-# Browser users install nothing.
+# Installs the exact dependency graph, type-checks, builds, then prunes
+# development packages. On your own computer use run.bat or ./run.sh instead;
+# they install and rebuild as needed and keep the development tools.
 
 set -euo pipefail
 
-# shellcheck source=scripts/lib.sh
-source "$(dirname "$0")/scripts/lib.sh"
+info() { echo "[info]  $*"; }
+fail() {
+    echo "[error] $*" >&2
+    exit 1
+}
 
-ensure_project_root
-ensure_node_version
-
-if ! command -v python3 >/dev/null 2>&1; then
-    warn "Python 3.9+ is needed for Settings backup/restore. Install python3 before using those controls."
+# Run from the checkout so a stray invocation can't install somewhere else.
+if [ ! -f package.json ] || ! grep -q '"moneyinmotion"' package.json; then
+    fail "run ./install.sh from the MoneyInMotion folder."
 fi
+command -v node >/dev/null 2>&1 || fail "Node.js 24 or newer is required: https://nodejs.org/"
+command -v npm >/dev/null 2>&1 || fail "npm is required (it ships with Node.js)."
+node_major="$(node -p 'process.versions.node.split(".")[0]')"
+[ "$node_major" -ge 24 ] || fail "Node.js $(node --version) found; Node.js 24 or newer is required."
+command -v python3 >/dev/null 2>&1 ||
+    echo "[warn]  Python 3.9+ is needed for Settings backup and restore."
 
-install_mode="${1:---production}"
-case "$install_mode" in
-    --production|--development) ;;
-    *) fail "usage: ./install.sh [--production|--development]" ;;
-esac
-
-info "Installing the exact dependency graph from package-lock.json..."
-# Build tools are required even when the service environment sets NODE_ENV to
-# production. Prune them only after compilation has succeeded.
+info "Installing dependencies from package-lock.json..."
+# Build tools are needed even when the service environment sets
+# NODE_ENV=production; they are pruned only after the build succeeds.
 npm ci --include=dev --no-audit --no-fund
-ok "Dependencies installed."
 
-info "Type-checking the monorepo..."
-# Force emission as well as checking: an interrupted cleanup may have removed
-# dist while leaving TypeScript's incremental metadata behind.
+info "Type-checking..."
+# --force re-emits everything, in case an interrupted cleanup removed dist but
+# left TypeScript's incremental metadata behind.
 npm run typecheck --silent -- --force
-ok "Type check passed."
 
-info "Building the production website and API..."
+info "Building the website and API..."
 npm run build --silent
-ok "Production build complete."
 
-if [ "$install_mode" = "--production" ]; then
-    info "Removing build and test dependencies from the VM runtime..."
-    npm prune --omit=dev --no-audit --no-fund
-    ok "Production dependencies ready."
-fi
+info "Removing development packages..."
+npm prune --omit=dev --no-audit --no-fund
 
 echo ""
-echo -e "${C_BOLD}MoneyInMotion server installation is ready.${C_NC}"
-echo ""
-echo "  Production:  ./run.sh                 (URL and configured port print at startup)"
-if [ "$install_mode" = "--development" ]; then
-    echo "  Development: ./run.sh dev             (http://localhost:5173)"
-    echo "  Tests:       npm test"
-else
-    echo "  Development: ./install.sh --development"
-fi
-echo "  Config:      ~/.moneyinmotion/config.json"
-echo "  Data root:   ~/mim_root/<username>     (configurable in Settings)"
-echo ""
-echo "Remote browser users only need the production URL; no local software is required."
+echo "MoneyInMotion is installed. Start it with systemd (docs/deployment.md)"
+echo "or in the foreground with ./run.sh, which prints the URL to open."

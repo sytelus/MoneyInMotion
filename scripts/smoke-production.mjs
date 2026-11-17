@@ -18,7 +18,7 @@ const serverEntry = path.join(repositoryRoot, 'packages/server/dist/index.js');
 const webEntry = path.join(repositoryRoot, 'packages/web/dist/index.html');
 
 if (!fs.existsSync(serverEntry) || !fs.existsSync(webEntry)) {
-  throw new Error('Production artifacts are missing. Run ./install.sh or npm run build first.');
+  throw new Error('Production build is missing. Run npm run build (or run.bat / ./run.sh) first.');
 }
 
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mim-production-smoke-'));
@@ -87,11 +87,20 @@ async function startServer(port) {
     if (child.exitCode != null) {
       throw new Error(`Production server exited early (${child.exitCode}).\n${output.join('')}`);
     }
-    try {
-      const response = await fetch(healthUrl, { signal: AbortSignal.timeout(1_000) });
-      if (response.ok) return { child, output };
-    } catch {
+    const healthy = await fetch(healthUrl, { signal: AbortSignal.timeout(1_000) }).then(
+      (response) => response.ok,
       // The listener may still be starting; retry until the bounded deadline.
+      () => false,
+    );
+    if (healthy) {
+      // run.bat and run.sh rely on the server to print the URL to open.
+      // The default host is 127.0.0.1, so that is the address it prints.
+      const url = `http://127.0.0.1:${port}`;
+      const printDeadline = Date.now() + 2_000;
+      while (!output.join('').includes(url) && Date.now() < printDeadline) await delay(50);
+      if (output.join('').includes(url)) return { child, output };
+      await stopServer(child);
+      throw new Error(`The server did not print the URL to open (${url}).\n${output.join('')}`);
     }
     await delay(100);
   }

@@ -25,10 +25,11 @@ when it disagrees with the code.
 ## Working conventions
 
 - Commit and push often, straight to `master`, once tests and lint pass.
-- Before calling work done, run `npm run typecheck`, `npm run lint`,
-  `npm run format:check`, and `npm test`. For server or build changes, also
-  run `npm run build`, `npm run smoke:production`, and `npx playwright test`. To check the real app,
-  start `run.bat` and open `http://localhost:3001`.
+- Before calling work done, run the **Before committing** checks in
+  [docs/development.md](docs/development.md#commands). To check the real app,
+  start `run.bat` and open the URL it prints (`http://localhost:3001`).
+  Don't start a second server on the live data; use a temporary `HOME` and
+  `USERPROFILE` and another port for experiments.
 - Windows is the primary platform; keep Linux working too (CI runs both).
   Prefer Node scripts over shell-specific scripts.
 - Keep docs lean: one place per fact, updated in the same change as the code.

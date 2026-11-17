@@ -20,7 +20,8 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: python3 --version
-      - run: bash -n install.sh build.sh run.sh scripts/lib.sh
+      - run: bash -n install.sh run.sh
+      - run: ./run.sh --help
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
@@ -46,6 +47,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci --no-audit --no-fund
+      - run: run.bat --help
+        shell: cmd
       - run: npm run typecheck
       - run: npm test
       - run: npm run build

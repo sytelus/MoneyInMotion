@@ -136,16 +136,17 @@ ZIP backups from Settings.
 
 ## Commands
 
-| Command                                 | Purpose                                                   |
-| --------------------------------------- | --------------------------------------------------------- |
-| `run.bat` / `./run.sh`                  | Install if needed, rebuild if stale, start production     |
-| `run.bat dev` / `./run.sh dev`          | API plus Vite website with hot reload                     |
-| `npm test`                              | Full test suite                                           |
-| `npm run test:e2e`                      | Build, then Playwright browser journeys on synthetic data |
-| `npm run typecheck` / `lint` / `format` | Static checks                                             |
-| `npm run build`                         | Build core, server, and website                           |
-| `npm run smoke:production`              | Start the built server against a throwaway data root      |
-| `./install.sh` / `./build.sh`           | Linux VM install (prunes dev tools) / full verified build |
+| Command                                 | Purpose                                                  |
+| --------------------------------------- | -------------------------------------------------------- |
+| `run.bat` / `./run.sh`                  | Install if needed, rebuild if stale, start production    |
+| `run.bat dev` / `./run.sh dev`          | API plus Vite website with hot reload                    |
+| `npm test`                              | Unit and integration tests (Vitest)                      |
+| `npm run test:e2e`                      | Build, then the Playwright journey on synthetic data     |
+| `npm run typecheck` / `lint` / `format` | Static checks                                            |
+| `./install.sh`                          | Linux VM install: build, then prune development packages |
+
+[docs/development.md](docs/development.md) lists every command and what the
+launcher does.
 
 ## Repository layout
 
@@ -154,19 +155,22 @@ packages/core/    Domain model, matching, aggregation, rules, serialization
 packages/server/  Express API, parsers, filesystem storage, uploads, rebuilds, backups
 packages/web/     React website
 scripts/          run.mjs launcher, backup ZIP helper, smoke test
+e2e/              Playwright browser journey
 deploy/           Optional systemd unit for a Linux VM
 docs/             How the system works (see below)
 ```
 
+The [code map](docs/architecture.md#code-map) goes one level deeper.
+
 ## Documentation
 
-- [Architecture](docs/architecture.md): packages, runtime, persistence, limits
+- [Architecture](docs/architecture.md): packages, code map, runtime, persistence, limits
 - [Data and imports](docs/data-and-imports.md): storage layout, accounts, uploads, rebuilds, parsers
 - [Domain rules](docs/domain-rules.md): parsing, matching, and aggregation invariants
 - [Edits and rules](docs/edits-and-rules.md): how corrections work and are explained
 - [Financial reports](docs/financial-reports.md): Overview calculations and exports
 - [Backup and restore](docs/backup-and-restore.md)
-- [Development](docs/development.md): setup, conventions, testing, common changes
+- [Development](docs/development.md): setup, commands, tests, common changes
 - [UX guidelines](docs/ux-guidelines.md): how the interface should behave
 - [HTTP API](docs/api.md) and [optional VM deployment](docs/deployment.md)
 - [TODO](todo.md) and [Security](SECURITY.md)

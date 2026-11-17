@@ -6,7 +6,7 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "packages/server/src/index.ts"],
+      "runtimeArgs": ["tsx", "--conditions=source", "packages/server/src/index.ts"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "env": {

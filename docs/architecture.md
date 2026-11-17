@@ -37,6 +37,42 @@ The three npm workspaces are real runtime boundaries, not services:
 Dependencies point one way: web → core and server → core. Core never imports
 either. In production all three build into one website served by one process.
 
+## Code map
+
+```text
+packages/core/src/          no Node, React, or filesystem (ESLint enforces)
+  models/                   Transaction, Transactions graph, edits and scopes, account and import info
+  matching/                 order lines (Amazon, Etsy) to the card charges they explain
+  aggregation/              grouping and totals used by the reports
+  normalization/            merchant-name cleanup
+packages/server/src/
+  index.ts, app.ts          startup (restore recovery, config, listen); every router is mounted in app.ts
+  config.ts                 ~/.moneyinmotion/config.json: defaults, validation, save
+  routes/                   one Express router per /api area (docs/api.md)
+  middleware/               same-origin checks for mutations, JSON error responses
+  validation/               Zod schema for edit requests
+  parsers/file-format/      CSV, JSON, and IIF readers
+  parsers/statement/        institution parsers; getStatementParser() in index.ts chooses one
+  storage/                  FileRepository, atomic JSON writes, AccountConfig codec, path safety
+  cache/                    TransactionCache: the live graph, rebuilds, the edit queue, rule management
+  services/                 folder upload, statement inventory, import history, backups, reconnection
+packages/web/src/
+  App.tsx                   routes, one lazy-loaded page each; navigation is in components/layout/Header.tsx
+  pages/                    Overview (ReportsPage), Imports, Accounts, Rules, Settings, Welcome
+  components/               by area; /transactions is components/layout/AppShell.tsx
+  api/                      client.ts (HTTP + response types) and hooks.ts (TanStack Query)
+  lib/                      pure, tested calculations: cash-flow (income/spending/savings),
+                            financial-reports (Overview), rules, rule-effects, import-preflight, ...
+  store/                    Zustand view state
+scripts/                    run.mjs launcher, smoke test, clean, backup-archive.py (used by backups)
+e2e/                        Playwright journey on synthetic statements
+```
+
+Tests mirror this layout under each package's `__tests__/`. Vite and Vitest
+read core from source through an alias, and the development API server reads
+it through the `source` export condition, so only production needs
+`packages/core/dist`.
+
 ## Runtime lifecycle
 
 At startup the server:
