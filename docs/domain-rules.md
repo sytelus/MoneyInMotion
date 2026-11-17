@@ -64,18 +64,22 @@ silently normalize a scope that claims exact matching.
 
 ## Relationship matching
 
-Order-history accounts set `requiresParent`. Their line items are not ordinary
+Order-history accounts set `requiresParent`. Their records are not ordinary
 top-level cash flow; they are matched beneath card or payment transactions.
-Amazon and Etsy matchers use order identifiers where supplied, configured
-merchant tags, amount, and date proximity. A financial transaction may parent
-only one order candidate during a matching pass. More than one exact eligible
-parent is treated as ambiguous rather than attached arbitrarily, and a parent
-or child already participating in a relationship is not reused.
+Each order-history account gets its own Amazon or Etsy matcher, chosen by
+institution name compared as parser selection does (ignoring case and
+punctuation), and using that account's own name tags.
 
-For non-line-item order matches, exact amount-and-date pairs are settled
-first, for all orders. The fallback then tolerates an amount difference of at
-most one currency unit and a date difference of at most two days, and rejects
-parents that already have children. It ranks every candidate pair across all
+- A line item attaches to the order record in the same account with the same
+  order identifier. More than one such order record is an error.
+- An order attaches to a charge in a non-order account whose name contains one
+  of the order account's name tags. A charge parents at most one order, and a
+  charge that already has children is not reused.
+
+Exact amount-and-date pairs are settled first, for all orders; when several
+charges match an order exactly, the first in import order wins. The fallback
+then tolerates an amount difference of at most one currency unit and a date
+difference of at most two days. It ranks every candidate pair across all
 remaining orders by amount difference, then date distance, then IDs, and
 assigns the best pair first, so the order in which orders are seen never
 decides the match.
@@ -85,20 +89,30 @@ rounding-adjustment children. The residual is tolerable only when it is below
 two percent of the parent's absolute amount (rounded to cents) or below 0.50 in
 absolute currency units. Synthetic imports have stable source IDs.
 
-Generic matching also recognizes candidate inter-account movements through
-account tags, opposing signs/compatible amounts, and date proximity. Transfers
-belong in their own net group rather than inflating income and expense. Each
-transaction can participate in at most one transfer pair.
+Transfer matching runs next, over top-level records outside order-history
+accounts. A record pairs with the closest-dated unpaired record in another
+account that has exactly the opposite imported amount, in two passes:
+
+1. Account payments, transfers, and other credits, within 3 days. If the
+   record's account has name tags, the counterpart's name must contain one.
+2. Records whose name contains "transfer", within half a day, with a
+   counterpart at the same institution whose name also contains "transfer".
+
+Both records then get the Transfer type unless they are already an account
+payment or transfer, so they land in their own net group rather than
+inflating income and expense. Each record is in at most one pair.
 
 ## Aggregation and presentation
 
-- Transactions are grouped into income, expenses, and inter-account movements,
-  followed by reason, normalized entity, category, and transaction rows as the
-  configured aggregator requests.
+- The explorer summary (`NetAggregator`) groups reporting items into Income
+  (every incoming type, so returns and discounts too), Expenses, Transfers,
+  and Unmatched order records, then by first category segment, then by
+  corrected name. The Overview's income/spending split is different; see
+  [Overview and financial reports](financial-reports.md).
 - Every displayed group counts transactions, accumulates its effective net
   amount, and counts effective transaction reasons for its summary label.
-- Group ordering is deterministic: semantic top-level order is explicit and
-  lower groups use stable totals/names.
+- Group ordering is deterministic: top-level groups have a fixed order and
+  lower groups are ordered by total, ties keeping first-seen order.
 - Parent/child display preserves hierarchy; top-level counts and all-node counts
   answer different questions and must be labeled accordingly.
 - Month navigation is derived from effective transaction dates. A date edit can
@@ -106,17 +120,8 @@ transaction can participate in at most one transfer pair.
 
 ## Corrections
 
-Rules apply only after relationship matching. Filters within one edit compose
-as an intersection; multiple parameter values within a filter form the allowed
-set for that dimension. Later edits win per changed field. A null/absent field
-means no change, while a present voided field reverts that field to its imported
-state. See [Edits and rules](edits-and-rules.md).
-
-The Rules page derives recorded matches and current field effects from saved
-applied-edit IDs where available; matches are not necessarily effective changes.
-Deleting a rule replays the remaining set against imported values. Restoring an
-imported field is a separate explicit correction, not deletion or an inverse of
-the selected rule. See [Edits and rules](edits-and-rules.md).
+Corrections are rules replayed over the imported values after relationship
+matching. See [Edits and rules](edits-and-rules.md).
 
 ## Failure policy
 

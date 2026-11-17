@@ -49,11 +49,19 @@ export interface AccountConfig {
   readonly scanSubFolders: boolean;
 }
 
+/**
+ * Institution name as parser and matcher selection compare it: letters and
+ * digits only, lowercase, so "Amazon", "amazon" and "AMAZON" are the same.
+ */
+export function normalizeInstituteName(instituteName: string): string {
+  return instituteName.replace(/[^a-z0-9]+/gi, '').toLowerCase();
+}
+
 /** Return why a structurally valid account is unsupported, or `null`. */
 export function validateAccountConfigSupport(config: AccountConfig): string | null {
   if (config.accountInfo.type !== AccountType.OrderHistory) return null;
 
-  const institution = config.accountInfo.instituteName.replace(/[^a-z0-9]+/gi, '').toLowerCase();
+  const institution = normalizeInstituteName(config.accountInfo.instituteName);
   if (institution !== 'amazon' && institution !== 'etsy') {
     return 'Order History accounts currently support only Amazon and Etsy.';
   }

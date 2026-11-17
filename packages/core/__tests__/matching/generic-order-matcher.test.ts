@@ -207,6 +207,54 @@ describe('GenericOrderMatcher.getParents — non-line items', () => {
     expect(results[0]!.parent.id).toBe(ccParent.id);
   });
 
+  it('chooses the order matcher with the same institution-name spelling rules as import', () => {
+    const orderAcct = makeOrderAccount({ instituteName: 'amazon' });
+    const ccAcct = makeCreditCardAccount();
+    const imp = makeImportInfo();
+    const txns = new Transactions('test');
+    const charge = makeTransaction('acct-chase', 'import-001', { amount: -55 });
+    const order = Transaction.create('import-001', 'acct-amazon', true, {
+      amount: -55,
+      transactionDate: '2024-03-15',
+      entityName: 'Amazon Order #456',
+      transactionReason: TransactionReason.Purchase,
+    });
+    txns.addNew(charge, ccAcct, imp, false);
+    txns.addNew(order, orderAcct, imp, true);
+
+    txns.matchTransactions();
+
+    expect(order.parentId).toBe(charge.id);
+  });
+
+  it('matches each order-history account with its own name tags', () => {
+    const first = makeOrderAccount({ id: 'amazon-1', interAccountNameTags: ['AMAZON'] });
+    const second = makeOrderAccount({ id: 'amazon-2', interAccountNameTags: ['AMZN'] });
+    const imp = makeImportInfo();
+    const txns = new Transactions('test');
+    const order = (accountId: string, amount: number) =>
+      Transaction.create('import-001', accountId, true, {
+        amount,
+        transactionDate: '2024-03-15',
+        entityName: `Order ${accountId}`,
+        transactionReason: TransactionReason.Purchase,
+      });
+    const charge = makeTransaction('acct-chase', 'import-001', {
+      amount: -20,
+      entityName: 'AMZN MKTP US',
+    });
+    const firstOrder = order('amazon-1', -10);
+    const secondOrder = order('amazon-2', -20);
+    txns.addNew(charge, makeCreditCardAccount(), imp, false);
+    txns.addNew(firstOrder, first, imp, true);
+    txns.addNew(secondOrder, second, imp, true);
+
+    txns.matchTransactions();
+
+    expect(secondOrder.parentId).toBe(charge.id);
+    expect(firstOrder.parentId).toBeNull();
+  });
+
   it('should fuzzy match non-line-item children when exact match fails', () => {
     const orderAcct = makeOrderAccount();
     const ccAcct = makeCreditCardAccount();

@@ -38,12 +38,12 @@ DOM, or store access. Both use the explorer's grain:
 
 `cash-flow.ts` classifies each reporting item:
 
-| Kind      | Rule                                                                                                                                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Spending  | Any expense-type record: purchase, fee, check, ATM, loan payment, cash advance. Returns, discounts, and match-adjustment credits are expense types with positive amounts, so they **reduce** spending. |
-| Income    | Interest, plus deposits (other credit, check or payment received, credit adjustment) into a **checking or savings** account. Any income-type record whose type the user set explicitly.                |
-| Undecided | Other income-type credits, such as card statement credits, PayPal receipts, or reward points. They are excluded from both totals and listed for the user to decide.                                    |
-| Excluded  | Transfers and account payments (inter-account types), and unmatched order details.                                                                                                                     |
+| Kind      | Rule                                                                                                                                                                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Spending  | Any expense-type record: purchase, fee, check, ATM, loan payment, cash advance. Returns, discounts, and match-adjustment credits are expense types with positive amounts, so they **reduce** spending.                                    |
+| Income    | Interest, plus deposits (other credit, check or payment received, credit adjustment) into a **checking or savings** account. Any income-type record whose type the user set explicitly, or whose amount is zero or negative (a reversal). |
+| Undecided | Other income-type credits, such as card statement credits, PayPal receipts, or reward points. They are excluded from both totals and listed for the user to decide.                                                                       |
+| Excluded  | Transfers and account payments (inter-account types), and unmatched order details.                                                                                                                                                        |
 
 **Income** is the sum of income items. **Spending** is gross spending minus the
 offsets (refunds, returns, discounts). **Savings** (shown as **Deficit** when

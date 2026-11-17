@@ -50,28 +50,27 @@ describe('validateScopeFilter', () => {
     expect(errTooMany).not.toBe('');
   });
 
-  it('should accept parameters for EntityName', () => {
-    expect(validateScopeFilter(ScopeType.EntityName, ['Walmart'])).toBe('');
+  it.each([
+    [ScopeType.EntityName, ['Walmart']],
+    [ScopeType.EntityNameNormalized, ['walmart']],
+    [ScopeType.EntityNameAnyTokens, ['wal', 'mart']],
+    [ScopeType.EntityNameAllTokens, ['wal']],
+    [ScopeType.AccountId, ['acct-1']],
+    [ScopeType.TransactionReason, ['2']],
+  ])('should accept parameters for scope type %i', (type, params) => {
+    expect(validateScopeFilter(type, params)).toBe('');
   });
 
-  it('should accept parameters for EntityNameNormalized', () => {
-    expect(validateScopeFilter(ScopeType.EntityNameNormalized, ['walmart'])).toBe('');
-  });
-
-  it('should accept parameters for EntityNameAnyTokens', () => {
-    expect(validateScopeFilter(ScopeType.EntityNameAnyTokens, ['wal', 'mart'])).toBe('');
-  });
-
-  it('should accept parameters for EntityNameAllTokens', () => {
-    expect(validateScopeFilter(ScopeType.EntityNameAllTokens, ['wal'])).toBe('');
-  });
-
-  it('should accept parameters for AccountId', () => {
-    expect(validateScopeFilter(ScopeType.AccountId, ['acct-1'])).toBe('');
-  });
-
-  it('should accept parameters for TransactionReason', () => {
-    expect(validateScopeFilter(ScopeType.TransactionReason, ['2'])).toBe('');
+  it.each([
+    [ScopeType.EntityName, [' ']],
+    [ScopeType.TransactionReason, ['1.5']],
+    [ScopeType.TransactionReason, ['-2']],
+    [ScopeType.AmountRange, ['-1', '5']],
+    [ScopeType.AmountRange, ['10', '5']],
+    [ScopeType.AmountRange, ['1', 'abc']],
+    [ScopeType.AmountRange, ['1', '5', 'outgoing']],
+  ])('should reject invalid parameter values for scope type %i: %j', (type, params) => {
+    expect(validateScopeFilter(type, params)).not.toBe('');
   });
 });
 

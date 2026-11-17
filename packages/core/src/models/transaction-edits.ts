@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { TransactionEditData, ScopeFilter } from './transaction-edit.js';
+import type { EditedValues, TransactionEditData, ScopeFilter } from './transaction-edit.js';
 import { ScopeType, createScopeFilter, editValue, voidedEditValue } from './transaction-edit.js';
 import { createAuditInfo } from './audit-info.js';
 import { createUUID } from '../utils/hash.js';
@@ -74,18 +74,9 @@ export class TransactionEdits {
    * @returns The newly created edit.
    */
   createEditIsUserFlagged(txIds: string[], isUserFlagged: boolean | null): TransactionEditData {
-    const scopeFilter = createScopeFilter(ScopeType.TransactionId, txIds);
-    const edit: TransactionEditData = {
-      id: createUUID(),
-      auditInfo: createAuditInfo(),
-      scopeFilters: [scopeFilter],
-      values: {
-        isFlagged: isUserFlagged != null ? editValue(isUserFlagged) : voidedEditValue<boolean>(),
-      },
-      sourceId: this.sourceId,
-    };
-    this.add(edit);
-    return edit;
+    return this.addNewEdit([createScopeFilter(ScopeType.TransactionId, txIds)], {
+      isFlagged: isUserFlagged != null ? editValue(isUserFlagged) : voidedEditValue<boolean>(),
+    });
   }
 
   /**
@@ -100,17 +91,9 @@ export class TransactionEdits {
     scopeFilters: ScopeFilter[],
     categoryPath: string[] | null,
   ): TransactionEditData {
-    const edit: TransactionEditData = {
-      id: createUUID(),
-      auditInfo: createAuditInfo(),
-      scopeFilters,
-      values: {
-        categoryPath: categoryPath != null ? editValue(categoryPath) : voidedEditValue<string[]>(),
-      },
-      sourceId: this.sourceId,
-    };
-    this.add(edit);
-    return edit;
+    return this.addNewEdit(scopeFilters, {
+      categoryPath: categoryPath != null ? editValue(categoryPath) : voidedEditValue<string[]>(),
+    });
   }
 
   /**
@@ -121,14 +104,17 @@ export class TransactionEdits {
    * @returns The newly created edit.
    */
   createEditNote(txIds: string[], note: string | null): TransactionEditData {
-    const scopeFilter = createScopeFilter(ScopeType.TransactionId, txIds);
+    return this.addNewEdit([createScopeFilter(ScopeType.TransactionId, txIds)], {
+      note: note != null ? editValue(note) : voidedEditValue<string>(),
+    });
+  }
+
+  private addNewEdit(scopeFilters: ScopeFilter[], values: EditedValues): TransactionEditData {
     const edit: TransactionEditData = {
       id: createUUID(),
       auditInfo: createAuditInfo(),
-      scopeFilters: [scopeFilter],
-      values: {
-        note: note != null ? editValue(note) : voidedEditValue<string>(),
-      },
+      scopeFilters,
+      values,
       sourceId: this.sourceId,
     };
     this.add(edit);
@@ -140,7 +126,8 @@ export class TransactionEdits {
   // -----------------------------------------------------------------------
 
   /**
-   * Merge all edits from `other` into this collection (deep-copied).
+   * Append deep copies of `other`'s edits. An edit whose ID is already here
+   * is skipped when identical and rejected when different.
    */
   merge(other: TransactionEdits): void {
     for (const edit of other) {
@@ -161,10 +148,7 @@ export class TransactionEdits {
   /** Deep-copy this collection via JSON round-trip. */
   clone(): TransactionEdits {
     const copy = new TransactionEdits(this.sourceId);
-    for (const edit of this.edits) {
-      const cloned = JSON.parse(JSON.stringify(edit)) as TransactionEditData;
-      copy.add(cloned);
-    }
+    copy.merge(this);
     return copy;
   }
 

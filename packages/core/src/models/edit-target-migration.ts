@@ -3,9 +3,10 @@
  *
  * A transaction ID hashes its imported fields, so a parser fix can give the
  * same purchase a new ID. During a rebuild, a rule target that no longer
- * exists is matched against the previous snapshot: if exactly one rebuilt
- * transaction has the same account, reason, amount, date, and name, the rule
- * is retargeted to it and saved as an ordinary edit.
+ * exists is looked up in the previous snapshot: if it is the only previous
+ * transaction, and exactly one rebuilt transaction, with its account, reason,
+ * amount, date, and name, the rule is retargeted to that rebuilt transaction
+ * and saved as an ordinary edit.
  *
  * @module
  */
@@ -63,14 +64,23 @@ function calendarSemanticIdentity(transaction: Transaction): string {
   return semanticIdentity(transaction, calendarDate);
 }
 
-function addToIndex(
-  index: Map<string, Transaction[]>,
-  key: string,
-  transaction: Transaction,
-): void {
-  const values = index.get(key) ?? [];
-  values.push(transaction);
-  index.set(key, values);
+/** Index a graph by both identities. */
+function indexByIdentity(transactions: Transactions): {
+  exact: Map<string, Transaction[]>;
+  calendar: Map<string, Transaction[]>;
+} {
+  const exact = new Map<string, Transaction[]>();
+  const calendar = new Map<string, Transaction[]>();
+  const add = (index: Map<string, Transaction[]>, key: string, tx: Transaction) => {
+    const values = index.get(key);
+    if (values) values.push(tx);
+    else index.set(key, [tx]);
+  };
+  for (const tx of transactions.allParentChildTransactions) {
+    add(exact, semanticIdentity(tx), tx);
+    add(calendar, calendarSemanticIdentity(tx), tx);
+  }
+  return { exact, calendar };
 }
 
 /**
@@ -84,15 +94,25 @@ export function migrateEditTargets(
   previous: Transactions,
   rebuilt: Transactions,
 ): EditTargetMigrationResult {
-  const rebuiltIds = new Set(
-    [...rebuilt.allParentChildTransactions].map((transaction) => transaction.id),
-  );
-  const rebuiltBySemanticIdentity = new Map<string, Transaction[]>();
-  const rebuiltByCalendarIdentity = new Map<string, Transaction[]>();
-  for (const transaction of rebuilt.allParentChildTransactions) {
-    addToIndex(rebuiltBySemanticIdentity, semanticIdentity(transaction), transaction);
-    addToIndex(rebuiltByCalendarIdentity, calendarSemanticIdentity(transaction), transaction);
-  }
+  const rebuiltIndex = indexByIdentity(rebuilt);
+  let previousIndex: ReturnType<typeof indexByIdentity> | undefined;
+
+  /** The single rebuilt record equivalent to a single previous record, if any. */
+  const uniqueEquivalent = (previousTransaction: Transaction): Transaction | undefined => {
+    previousIndex ??= indexByIdentity(previous);
+    for (const kind of ['exact', 'calendar'] as const) {
+      const key =
+        kind === 'exact'
+          ? semanticIdentity(previousTransaction)
+          : calendarSemanticIdentity(previousTransaction);
+      const candidates = rebuiltIndex[kind].get(key) ?? [];
+      if (candidates.length === 0) continue;
+      // Ambiguous on either side: keep the old ID rather than guess.
+      const twins = previousIndex[kind].get(key) ?? [];
+      return candidates.length === 1 && twins.length === 1 ? candidates[0] : undefined;
+    }
+    return undefined;
+  };
 
   const migratedEdits = new TransactionEdits(edits.sourceId);
   let migratedTargetCount = 0;
@@ -106,22 +126,16 @@ export function migrateEditTargets(
       }
 
       const migratedParameters = scopeFilter.parameters.map((targetId) => {
-        if (rebuiltIds.has(targetId)) {
+        if (rebuilt.getTransaction(targetId) != null) {
           return targetId;
         }
 
         const previousTransaction = previous.getTransaction(targetId);
-        let candidates =
-          previousTransaction == null
-            ? []
-            : (rebuiltBySemanticIdentity.get(semanticIdentity(previousTransaction)) ?? []);
-        if (candidates.length === 0 && previousTransaction != null) {
-          candidates =
-            rebuiltByCalendarIdentity.get(calendarSemanticIdentity(previousTransaction)) ?? [];
-        }
-        if (candidates.length === 1) {
+        const equivalent =
+          previousTransaction == null ? undefined : uniqueEquivalent(previousTransaction);
+        if (equivalent != null) {
           migratedTargetCount += 1;
-          return candidates[0]!.id;
+          return equivalent.id;
         }
 
         unresolvedTargetCount += 1;

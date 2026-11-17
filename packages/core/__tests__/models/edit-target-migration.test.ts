@@ -96,6 +96,19 @@ describe('migrateEditTargets', () => {
     expect(result.unresolvedTargetCount).toBe(1);
   });
 
+  it('retains an old ID whose equivalent record was not unique in the old graph', () => {
+    const previous = new Transactions('old');
+    const rebuilt = new Transactions('new');
+    addTransaction(previous, 'old-id-1');
+    addTransaction(previous, 'old-id-2');
+    addTransaction(rebuilt, 'modern-id');
+
+    const result = migrateEditTargets(oneEdit('old-id-1'), previous, rebuilt);
+
+    expect([...result.edits][0]?.scopeFilters[0]?.parameters).toEqual(['old-id-1']);
+    expect(result.unresolvedTargetCount).toBe(1);
+  });
+
   it('leaves an ID that already exists in the rebuilt graph unchanged', () => {
     const previous = new Transactions('old');
     const rebuilt = new Transactions('new');

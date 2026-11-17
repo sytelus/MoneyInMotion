@@ -27,7 +27,8 @@ import {
 import { LineItemType } from './line-item-type.js';
 import { getMD5HashString } from '../utils/hash.js';
 import { formatDateUtc, parseDate } from '../utils/date-utils.js';
-import { isNullOrWhitespace } from '../utils/string-utils.js';
+import { isNullOrWhitespace, splitWhitespace } from '../utils/string-utils.js';
+import { deserializeDictionary } from '../utils/collection-utils.js';
 import { normalize } from '../normalization/entity-name-normalizer.js';
 
 // ---------------------------------------------------------------------------
@@ -101,15 +102,6 @@ export interface TransactionData {
   combinedFromId?: string | null;
   combinedToId?: string | null;
   relatedTransferId?: string | null;
-}
-
-/** Copy a persisted dictionary into a null-prototype object. */
-function normalizeDictionary<T>(value: unknown): Record<string, T> | null {
-  if (value == null) return null;
-  if (typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Dictionary value must be an object or null');
-  }
-  return Object.assign(Object.create(null) as Record<string, T>, value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -376,8 +368,12 @@ export class Transaction {
     if (!isRecord(data)) {
       throw new Error('Transaction data must be an object.');
     }
-    const providerAttributes = normalizeDictionary<string>(data.providerAttributes);
-    const rawChildren = normalizeDictionary<TransactionData>(data.children);
+    const providerAttributes =
+      data.providerAttributes == null
+        ? null
+        : deserializeDictionary<string>(data.providerAttributes);
+    const rawChildren =
+      data.children == null ? null : deserializeDictionary<TransactionData>(data.children);
     const children: Record<string, TransactionData> | null =
       rawChildren == null
         ? null
@@ -843,11 +839,15 @@ export class Transaction {
     return this._cachedCorrectedTransactionDate!;
   }
 
-  /** Whitespace-split tokens of {@link displayEntityNameNormalized}. */
+  /**
+   * Words of the imported normalized name (not a corrected name), as tested
+   * by the any-word and all-words rule conditions.
+   */
   get entityNameTokens(): string[] {
     if (this._cachedEntityNameTokens === undefined) {
-      const name = this.displayEntityNameNormalized ?? '';
-      this._cachedEntityNameTokens = name.trim().length > 0 ? name.trim().split(/\s+/) : [];
+      this._cachedEntityNameTokens = splitWhitespace(
+        this.data.entityNameNormalized ?? this.data.entityName,
+      );
     }
     return this._cachedEntityNameTokens;
   }
@@ -986,7 +986,6 @@ export class Transaction {
     if (!isStringBetter(this.data.entityName, other.data.entityName)) {
       this.data.entityName = other.data.entityName;
       this.data.entityNameNormalized = other.data.entityNameNormalized;
-      this._cachedEntityNameTokens = undefined;
     }
     if (!isDateBetter(this.data.transactionDate, other.data.transactionDate)) {
       this.data.transactionDate = other.data.transactionDate;

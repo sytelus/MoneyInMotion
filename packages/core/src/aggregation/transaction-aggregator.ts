@@ -96,7 +96,7 @@ export class TransactionAggregator {
     this.groupId =
       options.groupId ?? (options.parent ? options.parent.groupId : '') + '.' + options.name;
 
-    this.transactionReasonCounter = new KeyCounter<number>((key) => key);
+    this.transactionReasonCounter = new KeyCounter<number>();
   }
 
   // -----------------------------------------------------------------------

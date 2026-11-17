@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  toTitleCase,
-  splitWhitespace,
-  isNullOrEmpty,
-  isNullOrWhitespace,
-  compareStringsInsensitive,
-} from '../../src/utils/string-utils.js';
+import { toTitleCase, splitWhitespace, isNullOrWhitespace } from '../../src/utils/string-utils.js';
 
 describe('toTitleCase', () => {
   it('should convert uppercase words to title case', () => {
@@ -63,28 +57,6 @@ describe('splitWhitespace', () => {
   });
 });
 
-describe('isNullOrEmpty', () => {
-  it('should return true for null', () => {
-    expect(isNullOrEmpty(null)).toBe(true);
-  });
-
-  it('should return true for undefined', () => {
-    expect(isNullOrEmpty(undefined)).toBe(true);
-  });
-
-  it('should return true for empty string', () => {
-    expect(isNullOrEmpty('')).toBe(true);
-  });
-
-  it('should return false for whitespace string', () => {
-    expect(isNullOrEmpty(' ')).toBe(false);
-  });
-
-  it('should return false for non-empty string', () => {
-    expect(isNullOrEmpty('hello')).toBe(false);
-  });
-});
-
 describe('isNullOrWhitespace', () => {
   it('should return true for null', () => {
     expect(isNullOrWhitespace(null)).toBe(true);
@@ -112,30 +84,5 @@ describe('isNullOrWhitespace', () => {
 
   it('should return false for string with leading/trailing whitespace', () => {
     expect(isNullOrWhitespace('  hello  ')).toBe(false);
-  });
-});
-
-describe('compareStringsInsensitive', () => {
-  it('should return 0 for identical strings', () => {
-    expect(compareStringsInsensitive('hello', 'hello')).toBe(0);
-  });
-
-  it('should return 0 for case-different strings', () => {
-    expect(compareStringsInsensitive('Hello', 'hello')).toBe(0);
-    expect(compareStringsInsensitive('HELLO', 'hello')).toBe(0);
-  });
-
-  it('should return negative when first sorts before second', () => {
-    expect(compareStringsInsensitive('apple', 'banana')).toBeLessThan(0);
-  });
-
-  it('should return positive when first sorts after second', () => {
-    expect(compareStringsInsensitive('banana', 'apple')).toBeGreaterThan(0);
-  });
-
-  it('should be usable as a sort comparator', () => {
-    const arr = ['Banana', 'apple', 'Cherry'];
-    arr.sort(compareStringsInsensitive);
-    expect(arr).toEqual(['apple', 'Banana', 'Cherry']);
   });
 });

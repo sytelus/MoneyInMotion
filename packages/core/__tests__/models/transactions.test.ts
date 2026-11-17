@@ -592,6 +592,39 @@ describe('Transactions.apply', () => {
     expect(txns.editsCount).toBe(0);
   });
 
+  it('tests conditions against imported values, not earlier corrections', () => {
+    const { txns, tx1 } = makePopulatedTransactions();
+    txns.apply(
+      makeEdit({
+        scopeFilters: [createScopeFilter(ScopeType.TransactionId, [tx1.id])],
+        values: {
+          amount: editValue(-100),
+          transactionReason: editValue(TransactionReason.Fee),
+          entityName: editValue('Grocer'),
+        },
+      }),
+    );
+    const matches = (type: ScopeType, parameters: string[]) =>
+      Transactions.filterTransaction(createScopeFilter(type, parameters), tx1);
+
+    expect(matches(ScopeType.AmountRange, ['20', '30', 'true'])).toBe(true);
+    expect(matches(ScopeType.TransactionReason, [String(TransactionReason.Purchase)])).toBe(true);
+    expect(matches(ScopeType.EntityNameAnyTokens, ['whole'])).toBe(true);
+  });
+
+  it('finds name-scoped matches, including records added after an earlier lookup', () => {
+    const { txns, tx1 } = makePopulatedTransactions();
+    const byName = makeEdit({
+      scopeFilters: [createScopeFilter(ScopeType.EntityName, ['whole foods mkt 10234'])],
+    });
+    expect(txns.filterTransactions(byName).map((tx) => tx.id)).toEqual([tx1.id]);
+
+    const later = makeTransaction({ transactionDate: '2024-04-01' });
+    txns.addNew(later, makeAccountInfo(), makeImportInfo(), false);
+
+    expect(txns.filterTransactions(byName).map((tx) => tx.id)).toEqual([tx1.id, later.id]);
+  });
+
   it('should increment editsCount', () => {
     const { txns, tx1 } = makePopulatedTransactions();
     expect(txns.editsCount).toBe(0);
@@ -978,6 +1011,32 @@ describe('Inter-account transfer matching', () => {
     expect(transactions[0]!.relatedTransferId).toBe(transactions[1]!.id);
     expect(transactions[1]!.relatedTransferId).toBe(transactions[0]!.id);
     expect(transactions[2]!.relatedTransferId).toBeNull();
+  });
+
+  it('pairs same-institution "transfer" purchases and retypes both as transfers', () => {
+    const txns = new Transactions('test');
+    const imp = makeImportInfo();
+    const accounts = [
+      makeAccountInfo({ id: 'checking', instituteName: 'Chase', interAccountNameTags: [] }),
+      makeAccountInfo({ id: 'other-bank', instituteName: 'Other', interAccountNameTags: [] }),
+      makeAccountInfo({ id: 'savings', instituteName: 'CHASE', interAccountNameTags: [] }),
+    ];
+    const [out, elsewhere, into] = accounts.map((account, index) =>
+      Transaction.create('import-001', account.id, false, {
+        amount: index === 0 ? -100 : 100,
+        transactionDate: '2024-03-15',
+        entityName: `Online Transfer ${index}`,
+        transactionReason: TransactionReason.Purchase,
+      }),
+    );
+    [out, elsewhere, into].forEach((tx, index) => txns.addNew(tx!, accounts[index]!, imp, true));
+
+    txns.matchTransactions();
+
+    expect(out!.relatedTransferId).toBe(into!.id);
+    expect(elsewhere!.relatedTransferId).toBeNull();
+    expect(out!.transactionReason).toBe(TransactionReason.InterAccountTransfer);
+    expect(into!.transactionReason).toBe(TransactionReason.InterAccountTransfer);
   });
 });
 

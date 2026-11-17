@@ -89,44 +89,23 @@ function nameSubAggregator(
 // Header group factories
 // ---------------------------------------------------------------------------
 
-function makeIncomeAgg(parent: TransactionAggregator): TransactionAggregator {
-  const agg = new TransactionAggregator({
-    name: 'Income',
-    parent,
-    subAggregateFn: categoryOrNameSubAggregator,
-  });
-  agg.sortOrder = 0;
-  return agg;
-}
+/** Display order of the header groups. */
+const HEADER_SORT_ORDER = { Income: 0, Expenses: 1, Transfers: 3, Unmatched: 4 } as const;
 
-function makeExpenseAgg(parent: TransactionAggregator): TransactionAggregator {
-  const agg = new TransactionAggregator({
-    name: 'Expenses',
-    parent,
-    subAggregateFn: categoryOrNameSubAggregator,
+/** Create (or retrieve) one of the header groups under the root. */
+function headerGroup(
+  root: TransactionAggregator,
+  name: keyof typeof HEADER_SORT_ORDER,
+): TransactionAggregator {
+  return root.getOrCreateSub(name, (parent) => {
+    const agg = new TransactionAggregator({
+      name,
+      parent,
+      subAggregateFn: categoryOrNameSubAggregator,
+    });
+    agg.sortOrder = HEADER_SORT_ORDER[name];
+    return agg;
   });
-  agg.sortOrder = 1;
-  return agg;
-}
-
-function makeTransfersAgg(parent: TransactionAggregator): TransactionAggregator {
-  const agg = new TransactionAggregator({
-    name: 'Transfers',
-    parent,
-    subAggregateFn: categoryOrNameSubAggregator,
-  });
-  agg.sortOrder = 3;
-  return agg;
-}
-
-function makeUnmatchedAgg(parent: TransactionAggregator): TransactionAggregator {
-  const agg = new TransactionAggregator({
-    name: 'Unmatched',
-    parent,
-    subAggregateFn: categoryOrNameSubAggregator,
-  });
-  agg.sortOrder = 4;
-  return agg;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,22 +121,12 @@ function headerSubAggregator(
   tx: Transaction,
 ): TransactionAggregator | undefined {
   // Unmatched: requires a parent but doesn't have one.
-  if (tx.requiresParent && !tx.parentId) {
-    return parentAggregator.getOrCreateSub('Unmatched', makeUnmatchedAgg);
-  }
+  if (tx.requiresParent && !tx.parentId) return headerGroup(parentAggregator, 'Unmatched');
 
   const reason = tx.correctedTransactionReason;
-
-  if (isIncoming(reason)) {
-    return parentAggregator.getOrCreateSub('Income', makeIncomeAgg);
-  }
-
-  if (isInterAccount(reason)) {
-    return parentAggregator.getOrCreateSub('Transfers', makeTransfersAgg);
-  }
-
-  // Default: outgoing / expense.
-  return parentAggregator.getOrCreateSub('Expenses', makeExpenseAgg);
+  if (isIncoming(reason)) return headerGroup(parentAggregator, 'Income');
+  if (isInterAccount(reason)) return headerGroup(parentAggregator, 'Transfers');
+  return headerGroup(parentAggregator, 'Expenses');
 }
 
 /**
@@ -191,9 +160,9 @@ function traverseChildren(tx: Transaction, onLeaf: (tx: Transaction) => void): v
   if (children == null || Object.keys(children).length === 0 || tx.hasMissingChild) {
     onLeaf(tx);
   } else {
+    // Children inside a loaded graph are already validated; wrap, don't copy.
     for (const childData of Object.values(children)) {
-      const childTx = Transaction.fromData(childData);
-      traverseChildren(childTx, onLeaf);
+      traverseChildren(Transaction.fromNormalizedDataReference(childData), onLeaf);
     }
   }
 }

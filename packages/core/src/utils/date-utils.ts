@@ -57,50 +57,16 @@ export function formatDateUtc(date: Date): string {
 export function parseDate(value: string): Date {
   const trimmed = value.trim();
 
-  function invalidDate(): never {
-    throw new Error(`Invalid date string: "${value}"`);
-  }
-
-  function utcDate(year: number, month: number, day: number): Date {
-    if (month < 1 || month > 12 || day < 1 || day > 31) {
-      return invalidDate();
-    }
-
-    // `Date.UTC` treats years 0 through 99 as 1900 through 1999. Setting the
-    // full year explicitly preserves the literal input and lets validation
-    // reject only genuinely impossible calendar dates.
-    const date = new Date(0);
-    date.setUTCHours(0, 0, 0, 0);
-    date.setUTCFullYear(year, month - 1, day);
-    if (
-      Number.isNaN(date.getTime()) ||
-      date.getUTCFullYear() !== year ||
-      date.getUTCMonth() !== month - 1 ||
-      date.getUTCDate() !== day
-    ) {
-      return invalidDate();
-    }
-    return date;
-  }
-
   // Date.UTC silently normalizes impossible dates (for example February 30),
   // so date-only formats share strict component validation.
   const usMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
   if (usMatch) {
-    return utcDate(
-      Number.parseInt(usMatch[3]!, 10),
-      Number.parseInt(usMatch[1]!, 10),
-      Number.parseInt(usMatch[2]!, 10),
-    );
+    return utcDate(value, Number(usMatch[3]), Number(usMatch[1]), Number(usMatch[2]));
   }
 
   const isoDateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
   if (isoDateOnly) {
-    return utcDate(
-      Number.parseInt(isoDateOnly[1]!, 10),
-      Number.parseInt(isoDateOnly[2]!, 10),
-      Number.parseInt(isoDateOnly[3]!, 10),
-    );
+    return utcDate(value, Number(isoDateOnly[1]), Number(isoDateOnly[2]), Number(isoDateOnly[3]));
   }
 
   // The built-in timestamp parser normalizes some impossible calendar dates
@@ -108,17 +74,39 @@ export function parseDate(value: string): Date {
   // prefix ourselves before delegating its time and offset parsing.
   const isoTimestamp = /^(\d{4})-(\d{2})-(\d{2})[T ]/.exec(trimmed);
   if (isoTimestamp) {
-    utcDate(
-      Number.parseInt(isoTimestamp[1]!, 10),
-      Number.parseInt(isoTimestamp[2]!, 10),
-      Number.parseInt(isoTimestamp[3]!, 10),
-    );
+    utcDate(value, Number(isoTimestamp[1]), Number(isoTimestamp[2]), Number(isoTimestamp[3]));
   }
 
   // Fall through to the built-in parser for timestamp formats.
   const date = new Date(trimmed);
   if (Number.isNaN(date.getTime())) {
-    return invalidDate();
+    return invalidDate(value);
+  }
+  return date;
+}
+
+function invalidDate(value: string): never {
+  throw new Error(`Invalid date string: "${value}"`);
+}
+
+/** UTC midnight of a calendar date, rejecting impossible dates such as Feb 30. */
+function utcDate(value: string, year: number, month: number, day: number): Date {
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return invalidDate(value);
+  }
+
+  // `Date.UTC` treats years 0 through 99 as 1900 through 1999. Setting the
+  // full year explicitly preserves the literal input and lets validation
+  // reject only genuinely impossible calendar dates.
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return invalidDate(value);
   }
   return date;
 }

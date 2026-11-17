@@ -344,9 +344,8 @@ describe('Display properties', () => {
     expect(tx.correctedTransactionDate).toBe('2024-04-01');
   });
 
-  it('entityNameTokens splits displayEntityNameNormalized', () => {
+  it('entityNameTokens splits the imported normalized name', () => {
     const tx = makeTransaction();
-    // displayEntityNameNormalized is "Whole Foods Mkt"
     expect(tx.entityNameTokens).toEqual(['Whole', 'Foods', 'Mkt']);
   });
 });

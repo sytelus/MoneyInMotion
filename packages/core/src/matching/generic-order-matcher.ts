@@ -136,6 +136,10 @@ export class GenericOrderMatcher implements ParentChildMatch {
     // Pass 2: amount within 1 and date within 2 days, best pair first across
     // all remaining orders: smallest amount difference, then nearest date,
     // then IDs, so the result doesn't depend on which order is seen first.
+    const fuzzyParents = [...nonLineitemParents.values()]
+      .flat()
+      .filter(isAvailable)
+      .map((parent) => ({ parent, date: parseDate(parent.transactionDate) }));
     const candidates: Array<{
       order: Transaction;
       parent: Transaction;
@@ -144,14 +148,12 @@ export class GenericOrderMatcher implements ParentChildMatch {
     }> = [];
     for (const order of unmatchedOrders) {
       const orderDate = parseDate(order.transactionDate);
-      for (const txArray of nonLineitemParents.values()) {
-        for (const parent of txArray) {
-          if (!isAvailable(parent)) continue;
-          const amountDelta = Math.abs(parent.amount - order.amount);
-          const daysDelta = daysBetween(parseDate(parent.transactionDate), orderDate);
-          if (amountDelta <= 1 && daysDelta <= 2) {
-            candidates.push({ order, parent, amountDelta, daysDelta });
-          }
+      for (const { parent, date } of fuzzyParents) {
+        const amountDelta = Math.abs(parent.amount - order.amount);
+        if (amountDelta > 1) continue;
+        const daysDelta = daysBetween(date, orderDate);
+        if (daysDelta <= 2) {
+          candidates.push({ order, parent, amountDelta, daysDelta });
         }
       }
     }

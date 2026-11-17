@@ -16,7 +16,9 @@ import { TransactionEdits } from './transaction-edits.js';
 import { Transaction, type TransactionData } from './transaction.js';
 import { NetInterAccount, TransactionReason, intersects } from './transaction-reason.js';
 import { AccountType } from './account-info.js';
+import { isSupportedAccountType, normalizeInstituteName } from './account-config.js';
 import { parseDate } from '../utils/date-utils.js';
+import { deserializeDictionary } from '../utils/collection-utils.js';
 import type { ParentChildMatch } from '../matching/parent-child-match.js';
 import { GenericTxParentChildMatcher } from '../matching/generic-tx-matcher.js';
 import { AmazonOrderMatcher } from '../matching/amazon-order-matcher.js';
@@ -34,25 +36,7 @@ export class TransactionEditTargetError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helper: read a persisted dictionary
-// ---------------------------------------------------------------------------
-
-/**
- * Copy a persisted `Record<string, T>` into a null-prototype object, so even
- * special keys such as "__proto__" stay ordinary data.
- *
- * @param data - A plain object, or `null`/`undefined` for an empty dictionary.
- */
-export function deserializeDictionary<T>(data: unknown): Record<string, T> {
-  if (data == null) {
-    return {};
-  }
-  if (typeof data !== 'object' || Array.isArray(data)) {
-    throw new Error('Dictionary value must be an object or null');
-  }
-  return Object.assign(Object.create(null) as Record<string, T>, data);
-}
+export { deserializeDictionary };
 
 // ---------------------------------------------------------------------------
 // TransactionsData — serialised JSON shape
@@ -102,15 +86,8 @@ function optionalString(value: unknown, label: string): string | null {
 function normalizeAccountInfo(value: unknown): AccountInfo {
   const raw = asRecord(value, 'AccountInfo');
   const { type, requiresParent, interAccountNameTags: tags } = raw;
-  const validAccountTypes = new Set<number>([
-    AccountType.CreditCard,
-    AccountType.BankChecking,
-    AccountType.BankSavings,
-    AccountType.OrderHistory,
-    AccountType.EPayment,
-  ]);
 
-  if (typeof type !== 'number' || !validAccountTypes.has(type)) {
+  if (typeof type !== 'number' || !isSupportedAccountType(type)) {
     throw new Error(`AccountInfo.type is not a supported AccountType: ${String(type)}`);
   }
   if (typeof requiresParent !== 'boolean') {
@@ -189,6 +166,63 @@ function flattenTransactions(transactions: Iterable<Transaction>): Transaction[]
   return result;
 }
 
+/**
+ * Compile a scope filter into a predicate over imported values. Name
+ * conditions are case-insensitive; amount ranges are magnitudes, with the
+ * optional third parameter `"true"` selecting outgoing (negative) amounts.
+ */
+function scopePredicate(scopeFilter: ScopeFilter): (tx: Transaction) => boolean {
+  const lowered = () => new Set(scopeFilter.parameters.map((p) => p.toLowerCase()));
+  switch (scopeFilter.type) {
+    case ScopeType.All:
+      return () => true;
+    case ScopeType.None:
+      return () => false;
+    case ScopeType.TransactionId: {
+      const ids = new Set(scopeFilter.parameters);
+      return (tx) => ids.has(tx.id);
+    }
+    case ScopeType.EntityName: {
+      const names = lowered();
+      return (tx) => names.has(tx.entityName.toLowerCase());
+    }
+    case ScopeType.EntityNameNormalized: {
+      const names = lowered();
+      return (tx) => names.has((tx.entityNameNormalized ?? '').toLowerCase());
+    }
+    case ScopeType.EntityNameAnyTokens: {
+      const words = lowered();
+      return (tx) => tx.entityNameTokens.some((token) => words.has(token.toLowerCase()));
+    }
+    case ScopeType.EntityNameAllTokens: {
+      const words = lowered();
+      return (tx) => {
+        const tokens = new Set(tx.entityNameTokens.map((token) => token.toLowerCase()));
+        return [...words].every((word) => tokens.has(word));
+      };
+    }
+    case ScopeType.AccountId: {
+      const accountIds = new Set(scopeFilter.parameters);
+      return (tx) => accountIds.has(tx.accountId);
+    }
+    case ScopeType.TransactionReason: {
+      const reasons = new Set(scopeFilter.parameters.map(Number));
+      return (tx) => reasons.has(tx.transactionReason);
+    }
+    case ScopeType.AmountRange: {
+      const minimum = Number(scopeFilter.parameters[0]);
+      const maximum = Number(scopeFilter.parameters[1]);
+      if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return () => false;
+      const outgoing = scopeFilter.parameters[2]?.toLowerCase() === 'true';
+      return outgoing
+        ? (tx) => tx.amount <= -minimum && tx.amount >= -maximum
+        : (tx) => tx.amount >= minimum && tx.amount <= maximum;
+    }
+    default:
+      throw new Error(`Unsupported ScopeType: ${String(scopeFilter.type)}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Transactions class
 // ---------------------------------------------------------------------------
@@ -207,6 +241,11 @@ export class Transactions {
   private accountInfos: Map<string, AccountInfo>;
   private importInfos: Map<string, ImportInfo>;
   private edits: TransactionEdits;
+  /** Built on demand by {@link scopeCandidates}; reset when records are added. */
+  private nameIndex?: {
+    imported: Map<string, Transaction[]>;
+    normalized: Map<string, Transaction[]>;
+  };
 
   // -----------------------------------------------------------------------
   // Constructor
@@ -506,44 +545,38 @@ export class Transactions {
   // Matching
   // -----------------------------------------------------------------------
 
-  /** Run all matching algorithms (parent-child + inter-account). */
+  /** Run order matching, then the two transfer-matching passes. */
   matchTransactions(): void {
     this.matchParentChild();
 
-    // Cross-institute transfer matching
+    // Account payments, transfers and credits, recognized by name tags.
     this.matchInterAccountTransfer((tx) =>
       intersects(tx.transactionReason, NetInterAccount | TransactionReason.OtherCredit),
     );
 
-    // Inter-institute transfer matching
+    // "Transfer" rows between two accounts at the same institution.
+    const institute = (tx: Transaction) =>
+      this.getAccountInfo(tx.accountId).instituteName.toLowerCase();
+    const mentionsTransfer = (tx: Transaction) => tx.entityName.toLowerCase().includes('transfer');
     this.matchInterAccountTransfer(
-      (tx) => tx.entityName.toLowerCase().includes('transfer'),
-      (unmatchedTx, candidateTx) => {
-        const unmatchedInstitute = this.getAccountInfo(unmatchedTx.accountId).instituteName;
-        const candidateInstitute = this.getAccountInfo(candidateTx.accountId).instituteName;
-        return (
-          unmatchedInstitute != null &&
-          unmatchedInstitute.toLowerCase() === candidateInstitute?.toLowerCase() &&
-          candidateTx.entityName.toLowerCase().includes('transfer')
-        );
-      },
+      mentionsTransfer,
+      (unmatchedTx, candidateTx) =>
+        institute(unmatchedTx) === institute(candidateTx) && mentionsTransfer(candidateTx),
       0.5,
       false,
     );
   }
 
   /**
-   * Match inter-account transfers using a two-pass algorithm.
+   * Pair unmatched transfers with their counterpart in another account.
    *
-   * First pass identifies unmatched transfers using `unmatchedFilter`.
-   * For each unmatched transfer, find candidates with opposite amount,
-   * different account, within `dayTolerance` days, optionally filtered by
-   * `matchedFilter` and name tags.
-   *
-   * @param unmatchedFilter      - Predicate selecting unmatched transfer candidates.
-   * @param matchedFilter        - Optional secondary filter for candidate matches.
-   * @param dayTolerance         - Number of days tolerance for date matching (default 3).
-   * @param enableNameTagFilter  - Whether to check interAccountNameTags (default true).
+   * Each top-level record selected by `unmatchedFilter` is paired with the
+   * closest-dated record that has exactly the opposite imported amount, is in
+   * a different account, lies within `dayTolerance` days, passes
+   * `matchedFilter`, and (when `enableNameTagFilter` and the first account
+   * has tags) has a name containing one of the first account's
+   * `interAccountNameTags`. Order-history records and records already paired
+   * never take part. Ties keep collection order.
    */
   matchInterAccountTransfer(
     unmatchedFilter: (tx: Transaction) => boolean,
@@ -551,62 +584,56 @@ export class Transactions {
     dayTolerance: number = 3,
     enableNameTagFilter: boolean = true,
   ): void {
-    const txs = [...this.topLevelTransactions];
-
-    // Find unmatched transfers
-    const unmatchedTransfers = txs.filter(
-      (tx) =>
-        unmatchedFilter(tx) &&
-        tx.relatedTransferId == null &&
-        !this.getAccountInfo(tx.accountId).requiresParent,
+    const eligible = [...this.topLevelTransactions].filter(
+      (tx) => !this.getAccountInfo(tx.accountId).requiresParent,
     );
-
+    // Index by amount: the exact-opposite-amount condition is the most
+    // selective, and scanning every record per transfer is quadratic.
+    const byAmount = new Map<number, Transaction[]>();
+    const timeOf = new Map<Transaction, number>();
+    for (const tx of eligible) {
+      const sameAmount = byAmount.get(tx.amount);
+      if (sameAmount) sameAmount.push(tx);
+      else byAmount.set(tx.amount, [tx]);
+      timeOf.set(tx, parseDate(tx.transactionDate).getTime());
+    }
+    const unmatchedTransfers = eligible.filter(
+      (tx) => tx.relatedTransferId == null && unmatchedFilter(tx),
+    );
     const toleranceMs = dayTolerance * MS_PER_DAY;
 
     for (const unmatchedTx of unmatchedTransfers) {
-      // The candidate list was captured before matching began. A transaction
-      // paired earlier in this loop is no longer unmatched and must not be
-      // considered again as the left-hand side of another relationship.
+      // Paired earlier in this loop as somebody's counterpart.
       if (unmatchedTx.relatedTransferId != null) continue;
 
-      const searchAmount = unmatchedTx.amount * -1;
-      const unmatchedDate = parseDate(unmatchedTx.transactionDate);
-      const searchDateMin = unmatchedDate.getTime() - toleranceMs;
-      const searchDateMax = unmatchedDate.getTime() + toleranceMs;
-      const nameTags = this.getAccountInfo(unmatchedTx.accountId).interAccountNameTags ?? [];
+      const unmatchedTime = timeOf.get(unmatchedTx)!;
+      const nameTags = enableNameTagFilter
+        ? (this.getAccountInfo(unmatchedTx.accountId).interAccountNameTags ?? []).map((tag) =>
+            tag.toLowerCase(),
+          )
+        : [];
 
-      // Find candidates sorted by date proximity
-      const candidates = txs
-        .filter((ctx) => {
-          if (ctx.amount !== searchAmount) return false;
-          if (ctx.accountId === unmatchedTx.accountId) return false;
-          if (matchedFilter && !matchedFilter(unmatchedTx, ctx)) return false;
-
-          const ctxDate = parseDate(ctx.transactionDate);
-          if (ctxDate.getTime() < searchDateMin || ctxDate.getTime() > searchDateMax) return false;
-
-          if (ctx.relatedTransferId != null) return false;
-          if (this.getAccountInfo(ctx.accountId).requiresParent) return false;
-
-          if (enableNameTagFilter && nameTags.length > 0) {
-            const entityLower = ctx.entityName.toLowerCase();
-            if (!nameTags.some((nt) => entityLower.includes(nt.toLowerCase()))) {
-              return false;
-            }
-          }
-
-          return true;
-        })
-        .sort((a, b) => {
-          const aDiff = Math.abs(parseDate(a.transactionDate).getTime() - unmatchedDate.getTime());
-          const bDiff = Math.abs(parseDate(b.transactionDate).getTime() - unmatchedDate.getTime());
-          return aDiff - bDiff;
-        });
-
-      const matchedTx = candidates[0];
-      if (matchedTx) {
-        unmatchedTx.matchInterAccount(matchedTx);
+      let best: Transaction | undefined;
+      let bestDistance = Infinity;
+      for (const candidate of byAmount.get(-unmatchedTx.amount) ?? []) {
+        const distance = Math.abs(timeOf.get(candidate)! - unmatchedTime);
+        if (
+          distance > toleranceMs ||
+          distance >= bestDistance ||
+          candidate.accountId === unmatchedTx.accountId ||
+          candidate.relatedTransferId != null ||
+          (matchedFilter && !matchedFilter(unmatchedTx, candidate))
+        ) {
+          continue;
+        }
+        if (nameTags.length > 0) {
+          const name = candidate.entityName.toLowerCase();
+          if (!nameTags.some((tag) => name.includes(tag))) continue;
+        }
+        best = candidate;
+        bestDistance = distance;
       }
+      if (best) unmatchedTx.matchInterAccount(best);
     }
   }
 
@@ -665,47 +692,39 @@ export class Transactions {
     }
   }
 
-  /** Cache of parent-child matchers keyed by "instituteName|AccountType". */
-  private parentChildMatchers = new Map<string, ParentChildMatch>();
+  /** Order matchers by order-history account ID (each uses its own account's tags). */
+  private orderMatchers = new Map<string, ParentChildMatch>();
 
-  /** The shared generic matcher instance (used for handleIncompleteParent only). */
+  /** Stateless matcher that only adds small adjustment children. */
   private static readonly genericMatcher = new GenericTxParentChildMatcher();
 
   /**
-   * Resolve the parent-child matcher for a transaction based on its account.
-   *
-   * @param tx                  - The transaction to get a matcher for.
-   * @param allowGenericMatcher - When `true`, falls back to the generic matcher
-   *                              instead of throwing for unknown account types.
+   * Resolve the parent-child matcher for a transaction's account: the Amazon
+   * or Etsy order matcher for an order-history account, otherwise the generic
+   * matcher when `allowGenericMatcher` is set.
    */
   private getParentChildMatcher(
     tx: Transaction,
     allowGenericMatcher: boolean = false,
   ): ParentChildMatch {
     const accountInfo = this.getAccountInfo(tx.accountId);
-    const key = `${accountInfo.instituteName}|${AccountType[accountInfo.type]}`;
+    let matcher = this.orderMatchers.get(accountInfo.id);
+    if (matcher != null) return matcher;
 
-    let existing = this.parentChildMatchers.get(key);
-    if (existing != null) {
-      return existing;
+    const institution = normalizeInstituteName(accountInfo.instituteName);
+    if (accountInfo.type === AccountType.OrderHistory && institution === 'amazon') {
+      matcher = new AmazonOrderMatcher(accountInfo);
+    } else if (accountInfo.type === AccountType.OrderHistory && institution === 'etsy') {
+      matcher = new EtsyOrderMatcher(accountInfo);
+    } else if (allowGenericMatcher) {
+      return Transactions.genericMatcher;
+    } else {
+      throw new Error(
+        `No parent matcher for ${accountInfo.instituteName} ${AccountType[accountInfo.type]} account ${accountInfo.id}`,
+      );
     }
-
-    switch (key) {
-      case 'Amazon|OrderHistory':
-        existing = new AmazonOrderMatcher(accountInfo);
-        break;
-      case 'Etsy|OrderHistory':
-        existing = new EtsyOrderMatcher(accountInfo);
-        break;
-      default:
-        if (!allowGenericMatcher) {
-          throw new Error(`ParentChildMatcher for the key ${key} is not supported`);
-        }
-        return Transactions.genericMatcher;
-    }
-
-    this.parentChildMatchers.set(key, existing);
-    return existing;
+    this.orderMatchers.set(accountInfo.id, matcher);
+    return matcher;
   }
 
   // -----------------------------------------------------------------------
@@ -735,76 +754,64 @@ export class Transactions {
   // -----------------------------------------------------------------------
 
   /**
-   * Filter all transactions by the scope filters of an edit.
-   * Filters are ANDed: a transaction must pass every scope filter.
-   *
-   * @param edit - The edit whose scope filters to apply.
-   * @returns An array of matching transactions.
+   * Transactions (parents and children) that pass every scope filter of an
+   * edit. Conditions test imported values, never earlier corrections, so a
+   * rule matches the same records whatever other rules exist.
    */
   filterTransactions(edit: TransactionEditData): Transaction[] {
-    let filtered = [...this.allParentChildTransactions];
-    for (const scopeFilter of edit.scopeFilters) {
-      filtered = filtered.filter((t) => Transactions.filterTransaction(scopeFilter, t));
+    const predicates = edit.scopeFilters.map(scopePredicate);
+    const result: Transaction[] = [];
+    for (const tx of this.scopeCandidates(edit.scopeFilters)) {
+      if (predicates.every((matches) => matches(tx))) result.push(tx);
     }
-    return filtered;
+    return result;
   }
 
   /**
-   * Evaluate a single scope filter against a transaction.
-   *
-   * @param scopeFilter - The filter to evaluate.
-   * @param transaction - The transaction to test.
-   * @returns `true` if the transaction matches the filter.
+   * A superset of the records an edit can match. Replay runs every rule over
+   * the whole graph, so exact-ID and exact-name rules (the common kinds) look
+   * their records up instead of scanning every transaction per rule.
    */
-  static filterTransaction(scopeFilter: ScopeFilter, transaction: Transaction): boolean {
-    switch (scopeFilter.type) {
-      case ScopeType.All:
-        return true;
-      case ScopeType.None:
-        return false;
-      case ScopeType.EntityName:
-        return scopeFilter.parameters.some(
-          (p) => transaction.entityName.toLowerCase() === p.toLowerCase(),
-        );
-      case ScopeType.EntityNameNormalized:
-        return scopeFilter.parameters.some(
-          (p) => (transaction.entityNameNormalized ?? '').toLowerCase() === p.toLowerCase(),
-        );
-      case ScopeType.TransactionId:
-        return scopeFilter.parameters.some((p) => transaction.id === p);
-      case ScopeType.EntityNameAnyTokens:
-        return scopeFilter.parameters.some((p) =>
-          transaction.entityNameTokens.some((t) => t.toLowerCase() === p.toLowerCase()),
-        );
-      case ScopeType.EntityNameAllTokens:
-        return scopeFilter.parameters.every((p) =>
-          transaction.entityNameTokens.some((t) => t.toLowerCase() === p.toLowerCase()),
-        );
-      case ScopeType.AccountId:
-        return scopeFilter.parameters.some((p) => transaction.accountId === p);
-      case ScopeType.TransactionReason:
-        return scopeFilter.parameters.some(
-          (p) => Number(p) === transaction.correctedTransactionReason,
-        );
-      case ScopeType.AmountRange: {
-        const minVal = Number(scopeFilter.parameters[0]);
-        const maxVal = Number(scopeFilter.parameters[1]);
-        if (!Number.isFinite(minVal) || !Number.isFinite(maxVal)) {
-          return false;
-        }
-        const isNegative =
-          scopeFilter.parameters.length > 2 && scopeFilter.parameters[2]?.toLowerCase() === 'true';
-        if (isNegative) {
-          return (
-            transaction.correctedAmount <= minVal * -1 && transaction.correctedAmount >= maxVal * -1
-          );
-        } else {
-          return transaction.correctedAmount >= minVal && transaction.correctedAmount <= maxVal;
-        }
-      }
-      default:
-        throw new Error(`Unsupported ScopeType: ${scopeFilter.type}`);
+  private scopeCandidates(scopeFilters: readonly ScopeFilter[]): Iterable<Transaction> {
+    const idScope = scopeFilters.find((scope) => scope.type === ScopeType.TransactionId);
+    if (idScope) {
+      return [...new Set(idScope.parameters)].flatMap((id) => this.allItemsById.get(id) ?? []);
     }
+    const nameScope = scopeFilters.find(
+      (scope) =>
+        scope.type === ScopeType.EntityName || scope.type === ScopeType.EntityNameNormalized,
+    );
+    if (nameScope) {
+      this.nameIndex ??= this.buildNameIndex();
+      const index =
+        nameScope.type === ScopeType.EntityName
+          ? this.nameIndex.imported
+          : this.nameIndex.normalized;
+      const names = new Set(nameScope.parameters.map((name) => name.toLowerCase()));
+      return [...names].flatMap((name) => index.get(name) ?? []);
+    }
+    return this.allItemsById.values();
+  }
+
+  /** Lowercased imported names → records. Edits never change imported names. */
+  private buildNameIndex(): NonNullable<Transactions['nameIndex']> {
+    const imported = new Map<string, Transaction[]>();
+    const normalized = new Map<string, Transaction[]>();
+    const add = (index: Map<string, Transaction[]>, key: string, tx: Transaction) => {
+      const list = index.get(key);
+      if (list) list.push(tx);
+      else index.set(key, [tx]);
+    };
+    for (const tx of this.allItemsById.values()) {
+      add(imported, tx.entityName.toLowerCase(), tx);
+      add(normalized, (tx.entityNameNormalized ?? '').toLowerCase(), tx);
+    }
+    return { imported, normalized };
+  }
+
+  /** Whether one scope filter matches a transaction's imported values. */
+  static filterTransaction(scopeFilter: ScopeFilter, transaction: Transaction): boolean {
+    return scopePredicate(scopeFilter)(transaction);
   }
 
   /**
@@ -818,11 +825,7 @@ export class Transactions {
    */
   apply(edit: TransactionEditData, ignoreMissingIds: boolean = true): Transaction[] {
     const filtered = this.prepareEdit(edit, ignoreMissingIds);
-
-    // Validate duplicate IDs before mutating either the edit collection or
-    // any transaction. This keeps rejected requests side-effect free.
-    const proposedEdits = this.edits.clone();
-    proposedEdits.add(edit);
+    // Throws on a conflicting duplicate ID before any transaction changes.
     this.edits.add(edit);
     this.applyPreparedEdit(edit, filtered);
     return filtered;
@@ -1035,6 +1038,7 @@ export class Transactions {
    * Update content hash tracking for newly added flattened transactions.
    */
   private updateStateForFlattenedTransactions(transactions: Transaction[]): void {
+    this.nameIndex = undefined;
     for (const tx of transactions) {
       const existing = this.uniqueContentHashes.get(tx.contentHash) ?? [];
       existing.push(tx.id);
