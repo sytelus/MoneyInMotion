@@ -986,6 +986,51 @@ describe('Inter-account transfer matching', () => {
     expect(tx2.relatedTransferId).toBeNull();
   });
 
+  it('pairs a card payment that posts across a long weekend, but needs the tag to start a word', () => {
+    const txns = new Transactions('test');
+    const imp = makeImportInfo();
+    const checking = makeAccountInfo({
+      id: 'checking',
+      instituteName: 'Bank',
+      interAccountNameTags: [],
+    });
+    const card = makeAccountInfo({
+      id: 'card',
+      instituteName: 'Chase',
+      interAccountNameTags: ['chase'],
+    });
+    const credit = (amount: number, date: string) =>
+      Transaction.create('import-001', 'card', false, {
+        amount,
+        transactionDate: date,
+        entityName: 'AUTOPAY PAYMENT - THANK YOU',
+        transactionReason: TransactionReason.InterAccountPayment,
+      });
+    const debit = (amount: number, date: string, entityName: string) =>
+      Transaction.create('import-001', 'checking', false, {
+        amount,
+        transactionDate: date,
+        entityName,
+        transactionReason: TransactionReason.Purchase,
+      });
+    // Friday credit, Tuesday debit after a Monday holiday: 4 days apart.
+    const holidayCredit = credit(82.02, '2024-08-30');
+    const holidayDebit = debit(-82.02, '2024-09-03', 'CHASE EPAY 123');
+    // "Purchase" contains "chase", but not at the start of a word.
+    const credit2 = credit(50, '2024-10-01');
+    const posPurchase = debit(-50, '2024-10-01', 'POS PURCHASE GROCERY');
+    txns.addNew(holidayCredit, card, imp, false);
+    txns.addNew(holidayDebit, checking, imp, false);
+    txns.addNew(credit2, card, imp, false);
+    txns.addNew(posPurchase, checking, imp, true);
+
+    txns.matchTransactions();
+
+    expect(holidayCredit.relatedTransferId).toBe(holidayDebit.id);
+    expect(credit2.relatedTransferId).toBeNull();
+    expect(posPurchase.relatedTransferId).toBeNull();
+  });
+
   it('does not try to match a transaction again after it was paired earlier in the pass', () => {
     const txns = new Transactions('test');
     const imp = makeImportInfo();

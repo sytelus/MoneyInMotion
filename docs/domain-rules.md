@@ -93,8 +93,10 @@ Transfer matching runs next, over top-level records outside order-history
 accounts. A record pairs with the closest-dated unpaired record in another
 account that has exactly the opposite imported amount, in two passes:
 
-1. Account payments, transfers, and other credits, within 3 days. If the
-   record's account has name tags, the counterpart's name must contain one.
+1. Account payments, transfers, and other credits, within 5 days (a bank
+   debit can post after a long weekend). If the record's account has name
+   tags, the counterpart's name must contain one at the start of a word, so
+   the tag "chase" doesn't match "POS Purchase".
 2. Records whose name contains "transfer", within half a day, with a
    counterpart at the same institution whose name also contains "transfer".
 

@@ -26,6 +26,22 @@ import { EtsyOrderMatcher } from '../matching/etsy-order-matcher.js';
 
 const MS_PER_DAY = 86_400_000;
 
+/**
+ * Days allowed between the two sides of an account payment. A bank debit can
+ * post several days after the card credit, for example from a Friday to the
+ * Tuesday after a Monday holiday.
+ */
+const PAYMENT_DAY_TOLERANCE = 5;
+
+/** True when `tag` occurs in `text` at the start of a word. Both lowercase. */
+function containsWordStart(text: string, tag: string): boolean {
+  if (!tag) return false;
+  for (let at = text.indexOf(tag); at !== -1; at = text.indexOf(tag, at + 1)) {
+    if (at === 0 || !/[\p{L}\p{N}]/u.test(text[at - 1]!)) return true;
+  }
+  return false;
+}
+
 /** An exact-ID edit referenced transactions that are absent from a snapshot. */
 export class TransactionEditTargetError extends Error {
   constructor(expected: number, actual: number) {
@@ -550,8 +566,10 @@ export class Transactions {
     this.matchParentChild();
 
     // Account payments, transfers and credits, recognized by name tags.
-    this.matchInterAccountTransfer((tx) =>
-      intersects(tx.transactionReason, NetInterAccount | TransactionReason.OtherCredit),
+    this.matchInterAccountTransfer(
+      (tx) => intersects(tx.transactionReason, NetInterAccount | TransactionReason.OtherCredit),
+      undefined,
+      PAYMENT_DAY_TOLERANCE,
     );
 
     // "Transfer" rows between two accounts at the same institution.
@@ -575,13 +593,14 @@ export class Transactions {
    * a different account, lies within `dayTolerance` days, passes
    * `matchedFilter`, and (when `enableNameTagFilter` and the first account
    * has tags) has a name containing one of the first account's
-   * `interAccountNameTags`. Order-history records and records already paired
-   * never take part. Ties keep collection order.
+   * `interAccountNameTags` at the start of a word (so "chase" doesn't match
+   * "purchase"). Order-history records and records already paired never take
+   * part. Ties keep collection order.
    */
   matchInterAccountTransfer(
     unmatchedFilter: (tx: Transaction) => boolean,
     matchedFilter?: (unmatchedTx: Transaction, candidateTx: Transaction) => boolean,
-    dayTolerance: number = 3,
+    dayTolerance: number = PAYMENT_DAY_TOLERANCE,
     enableNameTagFilter: boolean = true,
   ): void {
     const eligible = [...this.topLevelTransactions].filter(
@@ -628,7 +647,7 @@ export class Transactions {
         }
         if (nameTags.length > 0) {
           const name = candidate.entityName.toLowerCase();
-          if (!nameTags.some((tag) => name.includes(tag))) continue;
+          if (!nameTags.some((tag) => containsWordStart(name, tag))) continue;
         }
         best = candidate;
         bestDistance = distance;
