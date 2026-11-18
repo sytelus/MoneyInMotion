@@ -20,14 +20,16 @@ import { TransactionProvenance } from './TransactionProvenance.js';
 import { transactionProvenance } from '../../lib/transaction-provenance.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { cashFlowContext } from '../../lib/financial-reports.js';
+import type { CashFlowKind } from '../../lib/cash-flow.js';
 
-const CASH_FLOW_LABELS = {
+const CASH_FLOW_LABELS: Record<CashFlowKind, string> = {
   income: 'Income',
   spending: 'Spending',
   undecided: 'Needs your decision (income or refund?)',
+  investment: 'Investment transfer (neither income nor spending)',
   transfer: 'Transfer between accounts (not counted)',
   unmatched: 'Unmatched order detail (not counted)',
-} as const;
+};
 
 /** Derived refund link: never stored, recalculated from the loaded history. */
 const RefundLinks: React.FC<{ transaction: Transaction }> = ({ transaction }) => {

@@ -11,6 +11,7 @@ import {
 } from '@moneyinmotion/core';
 import {
   INCOME_DECISION_REASON,
+  INVESTMENT_DECISION_REASON,
   KEEP_SPENDING_DECISION_REASON,
   SPENDING_DECISION_REASON,
   cardPaymentsToReview,
@@ -125,6 +126,37 @@ describe('cash-flow classification', () => {
     const kindOf = cashFlowClassifier(collection);
     expect(kindOf(collection.getTransaction(kept.id)!)).toBe('income');
     expect(kindOf(collection.getTransaction(offset.id)!)).toBe('spending');
+  });
+
+  it('keeps investment transfers out of income and spending, and totals them both ways', () => {
+    const { collection, add, setType } = fixture();
+    add(3000, { reason: TransactionReason.OtherCredit, name: 'Employer' });
+    add(-2500, { name: 'Contractor' });
+    const withdrawal = add(10000, { reason: TransactionReason.OtherCredit, name: 'Brokerage' });
+    const contribution = add(-400, { name: 'Brokerage' });
+    setType(withdrawal, INVESTMENT_DECISION_REASON);
+    setType(contribution, INVESTMENT_DECISION_REASON);
+    const kindOf = cashFlowClassifier(collection);
+    expect(kindOf(collection.getTransaction(withdrawal.id)!)).toBe('investment');
+    expect(kindOf(collection.getTransaction(contribution.id)!)).toBe('investment');
+    const report = buildFinancialReport(collection, {
+      from: '2024-03-01',
+      to: '2024-03-31',
+      account: '',
+    });
+    expect(report.cashFlow).toMatchObject({
+      income: 3000,
+      spending: 2500,
+      savings: 500,
+      fromInvestments: 10000,
+      toInvestments: 400,
+      investmentCount: 2,
+    });
+    expect(report.months).toEqual([expect.objectContaining({ income: 3000, spending: 2500 })]);
+    expect(report.review.cardpayments).toBe(0);
+    expect(financialReportCsv(report)).toContain(
+      '"Investment transfers: in from and out to investments (not in the figures above)","2","10000","400"',
+    );
   });
 });
 

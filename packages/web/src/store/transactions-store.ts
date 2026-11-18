@@ -25,6 +25,7 @@ function matchesFlow(tx: Transaction, flow: string, kindOf: (tx: Transaction) =>
     case 'income':
     case 'spending':
     case 'undecided':
+    case 'investment':
       return kind === flow;
     case 'cashflow':
       return kind === 'income' || kind === 'spending';

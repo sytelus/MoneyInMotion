@@ -10,7 +10,10 @@
  * - Undecided: other income-type credits, such as statement credits on a card,
  *   PayPal receipts, or reward points. MiM can't tell whether they are earnings
  *   or offsets, so the user decides by setting the type explicitly.
- * - Transfers and unmatched order details stay outside all three.
+ * - Investment transfers: money the user moved between these accounts and an
+ *   investment or other account that isn't imported. Neither income nor
+ *   spending; shown on its own, in and out.
+ * - Transfers and unmatched order details stay outside all of these.
  * - A bank payment to a card with no matching card record stays spending. When
  *   the card's own purchases for that time are imported it is listed for
  *   review (`cardPaymentsToReview`), since it is then likely counted twice.
@@ -26,7 +29,8 @@ import {
   type Transactions,
 } from '@moneyinmotion/core';
 
-export type CashFlowKind = 'income' | 'spending' | 'undecided' | 'transfer' | 'unmatched';
+export type CashFlowKind =
+  'income' | 'spending' | 'undecided' | 'investment' | 'transfer' | 'unmatched';
 
 /** Type set when the user says "count as income" or "count against spending". */
 export const INCOME_DECISION_REASON = TransactionReason.OtherCredit;
@@ -34,6 +38,8 @@ export const SPENDING_DECISION_REASON = TransactionReason.Return;
 /** Types set when the user says a card payment is a payment, or real spending. */
 export const CARD_PAYMENT_DECISION_REASON = TransactionReason.InterAccountPayment;
 export const KEEP_SPENDING_DECISION_REASON = TransactionReason.Purchase;
+/** Type set when the user says money came from (or went to) their investments. */
+export const INVESTMENT_DECISION_REASON = TransactionReason.InvestmentTransfer;
 
 const BANK_DEPOSIT_REASONS = new Set<number>([
   TransactionReason.OtherCredit,
@@ -51,6 +57,7 @@ export function hasUserSetType(tx: Transaction): boolean {
 export function cashFlowKind(tx: Transaction, accountType: AccountType | null): CashFlowKind {
   if (tx.requiresParent && !tx.parentId) return 'unmatched';
   const reason = tx.correctedTransactionReason;
+  if (reason & TransactionReason.InvestmentTransfer) return 'investment';
   if (isInterAccount(reason)) return 'transfer';
   const category = transactionReasonCategoryLookup[String(reason)];
   if (category === 'Expense') return 'spending';
@@ -85,6 +92,10 @@ export interface CashFlowTotals {
   spendingCount: number;
   undecidedCount: number;
   undecidedAmount: number;
+  /** Money moved in from, and out to, investments: neither income nor spending. */
+  fromInvestments: number;
+  toInvestments: number;
+  investmentCount: number;
 }
 
 export function cashFlowTotals(
@@ -101,6 +112,9 @@ export function cashFlowTotals(
     spendingCount: 0,
     undecidedCount: 0,
     undecidedAmount: 0,
+    fromInvestments: 0,
+    toInvestments: 0,
+    investmentCount: 0,
   };
   for (const tx of rows) {
     const amount = tx.correctedAmount;
@@ -118,6 +132,11 @@ export function cashFlowTotals(
       case 'undecided':
         totals.undecidedAmount += amount;
         totals.undecidedCount++;
+        break;
+      case 'investment':
+        if (amount > 0) totals.fromInvestments += amount;
+        else totals.toInvestments -= amount;
+        totals.investmentCount++;
         break;
       default:
         break;

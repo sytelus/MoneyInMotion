@@ -57,6 +57,12 @@ export const TransactionReason = {
   PaymentRecieved: 1 << 16, // 65536
   /** Cash advance. */
   CashAdvance: 1 << 17, // 131072
+  /**
+   * Money moved between a tracked account and the user's own investment or
+   * other account that isn't imported (for example a brokerage withdrawal
+   * that pays for a large purchase). Set by the user, never by a parser.
+   */
+  InvestmentTransfer: 1 << 18, // 262144
 } as const;
 
 /** The numeric type produced by any single TransactionReason value. */
@@ -98,7 +104,9 @@ export const NetIncoming: number =
 
 /** Mask covering inter-account movements. */
 export const NetInterAccount: number =
-  TransactionReason.InterAccountPayment | TransactionReason.InterAccountTransfer;
+  TransactionReason.InterAccountPayment |
+  TransactionReason.InterAccountTransfer |
+  TransactionReason.InvestmentTransfer;
 
 // ---------------------------------------------------------------------------
 // Bitwise helpers
@@ -305,6 +313,13 @@ export const transactionReasonInfo: readonly TransactionReasonInfo[] = [
     title: 'Cash Advance',
     pluralTitle: 'Cash Advances',
     category: 'Expense',
+  },
+  {
+    key: 'InvestmentTransfer',
+    value: TransactionReason.InvestmentTransfer,
+    title: 'Investment Transfer',
+    pluralTitle: 'Investment Transfers',
+    category: 'InterAccount',
   },
 ] as const;
 

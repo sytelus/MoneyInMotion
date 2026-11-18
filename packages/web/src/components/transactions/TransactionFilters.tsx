@@ -14,6 +14,7 @@ const FLOW_OPTIONS = [
   { value: 'income', label: 'Income' },
   { value: 'spending', label: 'Spending (refunds reduce it)' },
   { value: 'undecided', label: 'Credits awaiting an income decision' },
+  { value: 'investment', label: 'Investment transfers (not income or spending)' },
   { value: 'activity', label: 'Recorded credits and debits (no transfers)' },
   { value: 'credits', label: 'Recorded credits' },
   { value: 'debits', label: 'Recorded debits' },

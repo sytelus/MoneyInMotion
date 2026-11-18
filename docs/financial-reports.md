@@ -38,16 +38,24 @@ DOM, or store access. Both use the explorer's grain:
 
 `cash-flow.ts` classifies each reporting item:
 
-| Kind      | Rule                                                                                                                                                                                                                                      |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Spending  | Any expense-type record: purchase, fee, check, ATM, loan payment, cash advance. Returns, discounts, and match-adjustment credits are expense types with positive amounts, so they **reduce** spending.                                    |
-| Income    | Interest, plus deposits (other credit, check or payment received, credit adjustment) into a **checking or savings** account. Any income-type record whose type the user set explicitly, or whose amount is zero or negative (a reversal). |
-| Undecided | Other income-type credits, such as card statement credits, PayPal receipts, or reward points. They are excluded from both totals and listed for the user to decide.                                                                       |
-| Excluded  | Transfers and account payments (inter-account types), and unmatched order details.                                                                                                                                                        |
+| Kind       | Rule                                                                                                                                                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Spending   | Any expense-type record: purchase, fee, check, ATM, loan payment, cash advance. Returns, discounts, and match-adjustment credits are expense types with positive amounts, so they **reduce** spending.                                    |
+| Income     | Interest, plus deposits (other credit, check or payment received, credit adjustment) into a **checking or savings** account. Any income-type record whose type the user set explicitly, or whose amount is zero or negative (a reversal). |
+| Undecided  | Other income-type credits, such as card statement credits, PayPal receipts, or reward points. They are excluded from both totals and listed for the user to decide.                                                                       |
+| Investment | Any record whose type is _Investment transfer_: money the user moved between these accounts and an investment or other account that isn't imported. Shown on its own, in and out, outside all three totals.                               |
+| Excluded   | Transfers and account payments (inter-account types), and unmatched order details.                                                                                                                                                        |
 
 **Income** is the sum of income items. **Spending** is gross spending minus the
 offsets (refunds, returns, discounts). **Savings** (shown as **Deficit** when
 negative) is income minus spending. None of these is an account balance.
+
+**Investment transfers.** Earnings that were later invested were counted as
+income when they arrived, so money brought back from investments is neither
+income nor spending, and money sent to them is not spending. No parser sets
+this type; the user sets it on a record or through a rule. The Overview then
+shows the amount in from and out to investments (`flow=investment`), and a
+period funded by investments may show a deficit, which is correct.
 
 **Deciding unclear credits.** The Overview shows how many credits are undecided
 and links to them (`flow=undecided`). Selecting them shows **Count as income**
@@ -85,7 +93,7 @@ links are used to:
 **Breakdowns.** Category and merchant panels show spending net of refunds;
 groups whose net spending is zero or negative are hidden. "Where income comes
 from" groups income by payer. Every figure links to the transaction list with
-the same population (`flow=income|spending|undecided|cashflow`), and a spending
+the same population (`flow=income|spending|undecided|investment|cashflow`), and a spending
 drill-down by category uses the same inherited refund category.
 
 **Recorded credits and debits.** The older measures remain available in the
@@ -134,7 +142,8 @@ the mere existence of a relationship. The transfer panel explains that condition
 ## Export and print
 
 `financialReportCsv()` exports clearly labeled sections: the cash-flow summary
-(income, spending with its gross and refund parts, savings, undecided credits),
+(income, spending with its gross and refund parts, savings, undecided credits,
+investment transfers),
 months and days (income, spending, savings), spending categories and merchants,
 income sources, credit types, and source-account activity.
 Each row includes the selected UTC dates and source-account scope. Rows in

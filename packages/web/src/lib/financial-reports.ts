@@ -337,6 +337,12 @@ export function financialReportCsv(report: FinancialReport): string {
       cash.undecidedAmount,
       0,
     ),
+    cashRow(
+      'Investment transfers: in from and out to investments (not in the figures above)',
+      cash.investmentCount,
+      cash.fromInvestments,
+      cash.toInvestments,
+    ),
     row('Summary', 'Recorded activity; excludes transfers and unmatched items', report.totals),
     ...report.months.map((item) =>
       cashRow(`Month ${item.key}`, item.count, item.income, item.spending),

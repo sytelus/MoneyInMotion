@@ -54,7 +54,9 @@ These goals decide what gets built and how. The behavior docs under
   **Spending** with refunds and discounts subtracted from the purchases they
   offset (refunds are linked to their original charge), and the difference as
   **Savings / deficit**. When it isn't clear whether a credit is income, MiM
-  asks you to decide rather than guessing. See
+  asks you to decide rather than guessing. Money you move to or from
+  investments you don't import (an **Investment transfer**) is shown on its
+  own, as neither income nor spending. See
   [docs/financial-reports.md](docs/financial-reports.md).
 - **USD, with foreign-currency support planned.** Amounts are USD. For a
   foreign-currency transaction, the goal is to use the conversion the

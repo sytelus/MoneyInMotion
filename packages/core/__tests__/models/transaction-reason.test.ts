@@ -40,10 +40,11 @@ describe('TransactionReason numeric values', () => {
     expect(TransactionReason.MatchAdjustmentDebit).toBe(32768);
     expect(TransactionReason.PaymentRecieved).toBe(65536);
     expect(TransactionReason.CashAdvance).toBe(131072);
+    expect(TransactionReason.InvestmentTransfer).toBe(262144);
   });
 
-  it('should have exactly 19 primitive members', () => {
-    expect(Object.keys(TransactionReason)).toHaveLength(19);
+  it('should have exactly 20 primitive members', () => {
+    expect(Object.keys(TransactionReason)).toHaveLength(20);
   });
 });
 
@@ -86,11 +87,13 @@ describe('compound groups', () => {
     expect(NetIncoming).toBe(expected);
   });
 
-  it('NetInterAccount should combine InterAccountPayment | InterAccountTransfer', () => {
+  it('NetInterAccount should combine account payments, transfers, and investment transfers', () => {
     expect(NetInterAccount).toBe(
-      TransactionReason.InterAccountPayment | TransactionReason.InterAccountTransfer,
+      TransactionReason.InterAccountPayment |
+        TransactionReason.InterAccountTransfer |
+        TransactionReason.InvestmentTransfer,
     );
-    expect(NetInterAccount).toBe(4 | 16);
+    expect(NetInterAccount).toBe(4 | 16 | 262144);
   });
 });
 

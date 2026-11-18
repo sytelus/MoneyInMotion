@@ -379,6 +379,23 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
               </p>
             </Notice>
           )}
+          {cash.investmentCount > 0 && (
+            <Notice tone="info" title="Investment transfers">
+              <p>
+                {formatCurrency(cash.fromInvestments)} came in from your investments and{' '}
+                {formatCurrency(cash.toInvestments)} went out to them (
+                {countLabel(cash.investmentCount, 'transaction')}). This is your own money moving,
+                so it is neither income nor spending, and savings above stays income minus spending.{' '}
+                <Link
+                  className="font-semibold underline"
+                  to={transactionsHref({ ...scope, flow: 'investment', view: 'list' })}
+                >
+                  View them
+                </Link>
+                .
+              </p>
+            </Notice>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Info aria-hidden className="h-4 w-4 shrink-0" />
             <span>
@@ -392,6 +409,11 @@ function FinancialOverview({ transactions }: { transactions: Transactions }) {
                 <strong>Spending</strong> is purchases, fees, checks, ATM withdrawals, and loan
                 payments, minus refunds, returns, and discounts. Account transfers and card payments
                 are neither.
+              </p>
+              <p>
+                Money moved to or from an investment account you don&apos;t import, such as a
+                brokerage withdrawal that pays for a large purchase, is neither too: set its type to{' '}
+                <strong>Investment Transfer</strong> and it is shown on its own.
               </p>
               <p>
                 Other credits, such as card statement credits or PayPal receipts, wait for your
