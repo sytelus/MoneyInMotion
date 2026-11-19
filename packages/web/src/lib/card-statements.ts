@@ -1,18 +1,20 @@
 /**
  * Card statements: the level between a bank payment to a card and the card's
- * own line items. Derived on load, never persisted.
+ * own lines. Derived on load, never persisted.
  *
- * Money that leaves a bank account to pay a card is the spending; the card's
- * line items for the billing period it paid are its details, and order
- * details (Amazon, Etsy) sit under those. Any level may be missing:
+ * Lines give the timing and the categories; payments check that the lines are
+ * complete. Spending is counted from the lines on their own dates whenever
+ * they exist, and a payment to a card is a transfer. Where lines are missing,
+ * the missing amount is spread evenly over the billing period as daily
+ * "estimated" records, so any period, from a few days to years, shows a
+ * reasonable figure, and importing the lines later replaces the estimate.
  *
- * - A payment whose period has no card lines counts as spending itself.
- * - When lines exist they count instead of the payment. If they don't add up
- *   to what was paid, an "Unexplained difference" record makes up the gap, so
- *   totals still equal what was paid, and the statement is flagged.
- * - Lines with no payment in the imported data count on their own.
+ * Statements are reconciled with a running balance, as the issuer does it
+ * (see `classify`), so refunds that reduce an autopay, lines posted a day
+ * later than a hand-made file says, and early payments show as timing rather
+ * than as errors. Only differences that persist are flagged for review.
  *
- * Statement periods are rebuilt from the data: each card has a closing day,
+ * Billing periods are rebuilt from the data: each card has a closing day,
  * learned as the day of month that lets the most payments equal their
  * period's lines exactly. A closing may move up to {@link SLACK_DAYS} days to
  * make a period add up, and a payment pays the latest period that closed in
@@ -28,35 +30,32 @@ import {
   Transactions,
   type TransactionsData,
 } from '@moneyinmotion/core';
+import { duplicateRowsOf, rememberDuplicateRows } from './duplicates.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SLACK_DAYS = 5;
 const PAY_WINDOW_DAYS = 50;
+/** A payment pays a statement that closed at least this many days before it. */
+const MIN_PAY_LAG_DAYS = 14;
+/** For a card with no imported lines at all: its statement closed this long before the payment. */
+const ASSUMED_PAY_LAG_DAYS = 25;
 /** An unlinked bank payment and card payment of the same amount this close are one payment. */
 const PAIR_DAYS = 7;
 
-/** Import ID of the derived "Unexplained difference" records. */
+/** Import ID of the derived records (daily estimates). */
 export const DERIVED_IMPORT_ID = 'mim-statement-check';
 
 export type CardStatementStatus =
-  /** Lines add up to the payment. */
-  | 'reconciled'
-  /** Lines don't add up to the payment; a difference record makes up the gap. */
-  | 'difference'
-  /** A payment, but no lines imported for its period: the payment counts. */
-  | 'no-lines'
-  /** Lines between paid periods, but no payment found for them. */
-  | 'missing-payment'
-  /** Lines with no payment in the imported data (usually at the end of the data). */
-  | 'unpaid';
+  'reconciled' | 'timing' | 'shortfall' | 'excess' | 'missing-payment' | 'no-lines' | 'unpaid';
 
 export interface CardStatement {
   /** `<card account ID>:<closing date>` */
   id: string;
   accountId: string;
-  /** Closing date of the period, YYYY-MM-DD. */
+  /** First and last day of the billing period, YYYY-MM-DD. */
+  opening: string;
   closing: string;
-  /** Card line items (top-level card records, not payments), oldest first. */
+  /** Card lines (top-level card records, not payments or duplicate rows), oldest first. */
   itemIds: string[];
   /** Bank payments, or card-side payment records when the bank side isn't imported. */
   paymentIds: string[];
@@ -65,24 +64,25 @@ export interface CardStatement {
   /** Owed for the period: charges minus credits, in dollars. */
   charges: number;
   paid: number;
-  /** Paid minus charges; zero when the statement adds up. */
-  difference: number;
-  /** Amount of the derived difference record as spending (positive = more spent). */
-  unexplained: number;
+  /** Refunds posted after the closing but before the payment; autopay collects that much less. */
+  creditsBeforePayment: number;
+  /** For `shortfall` and `excess`: paid minus lines that the next statements don't make up for. */
+  unresolved: number;
+  /** Estimated spending added where lines are missing (dollars, positive). */
+  estimated: number;
+  estimateIds: string[];
   status: CardStatementStatus;
-  /** The derived "Unexplained difference" record, when there is one. */
-  differenceId: string | null;
 }
 
 export interface CardStatementIndex {
   statements: CardStatement[];
   byId: Map<string, CardStatement>;
-  /** Any record that belongs to a statement (line, payment, difference) → statement ID. */
+  /** Any record that belongs to a statement (line, payment, estimate) → statement ID. */
   statementOf: Map<string, string>;
-  /** Bank payments to a card with no card lines for their period: they count as spending. */
-  standalonePayments: Set<string>;
-  /** Bank and card payment records that pay a statement with lines: transfers. */
+  /** Bank and card payment records to cards: transfers, explained by lines or estimates. */
   statementPayments: Set<string>;
+  /** Derived daily estimates, added to the snapshot on load. */
+  estimates: TransactionData[];
 }
 
 interface PaymentUnit {
@@ -101,7 +101,26 @@ const isoDay = (day: number) => new Date(day * DAY_MS).toISOString().slice(0, 10
 const statementDay = (tx: Transaction) => dayOf(tx.postedDate || tx.correctedTransactionDate);
 const isDerived = (tx: Transaction) => tx.importId === DERIVED_IMPORT_ID;
 
-/** True for the derived "Unexplained difference" records, which can't be edited. */
+/** The same day of the month, a month earlier. */
+function monthBefore(day: number): number {
+  const date = new Date(day * DAY_MS);
+  return Math.floor(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, date.getUTCDate()) / DAY_MS,
+  );
+}
+
+/** The latest closing on `closingDay` of a month, on or before `day`. */
+function latestClosingBefore(closingDay: number, day: number): number {
+  const date = new Date(day * DAY_MS);
+  const thisMonth = Math.floor(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), closingDay) / DAY_MS,
+  );
+  return thisMonth <= day
+    ? thisMonth
+    : Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, closingDay) / DAY_MS);
+}
+
+/** True for derived records (daily estimates), which can't be edited. */
 export function isDerivedRecord(tx: Transaction): boolean {
   return isDerived(tx);
 }
@@ -262,17 +281,20 @@ function periodsFor(
       start = end;
     }
   }
-  // Other payments pay the latest period that closed shortly before them.
+  // Other payments pay the latest period that closed shortly before them,
+  // preferring one that isn't paid exactly yet (an extra payment still goes
+  // to a paid one; the running balance then shows it as timing).
   for (const unit of units) {
     if (used.has(unit.id)) continue;
-    const period = [...periods]
+    const near = [...periods]
       .reverse()
-      .find(
+      .filter(
         (candidate) =>
-          !candidate.exact &&
-          candidate.closing < unit.day &&
-          unit.day <= candidate.closing + PAY_WINDOW_DAYS,
+          candidate.closing < unit.day && unit.day <= candidate.closing + PAY_WINDOW_DAYS,
       );
+    const period =
+      near.find((candidate) => !candidate.exact) ??
+      near.find((candidate) => candidate.end > candidate.start);
     if (period) {
       period.units.push(unit);
       used.add(unit.id);
@@ -303,24 +325,31 @@ export function buildCardStatements(transactions: Transactions): CardStatementIn
     statements: [],
     byId: new Map(),
     statementOf: new Map(),
-    standalonePayments: new Set(),
     statementPayments: new Set(),
+    estimates: [],
   };
+  const duplicates = duplicateRowsOf(transactions).duplicateOf;
   const cardIds = new Set<string>();
   const lines = new Map<string, Transaction[]>();
+  const lastDay = new Map<string, number>();
   for (const tx of transactions.topLevelTransactions) {
+    if (isDerived(tx)) continue;
+    const day = dayOf(tx.correctedTransactionDate);
+    lastDay.set(tx.accountId, Math.max(lastDay.get(tx.accountId) ?? day, day));
     if (transactions.getAccountInfo(tx.accountId).type !== AccountType.CreditCard) continue;
     cardIds.add(tx.accountId);
-    if (isDerived(tx) || isCardPaymentRecord(tx)) continue;
+    if (isCardPaymentRecord(tx) || duplicates.has(tx.id)) continue;
     lines.set(tx.accountId, [...(lines.get(tx.accountId) ?? []), tx]);
   }
   const unitsByCard = paymentUnits(transactions, cardIds);
   for (const cardId of [...cardIds].sort()) {
+    const title = transactions.getAccountInfo(cardId).title || cardId;
     const units = unitsByCard.get(cardId) ?? [];
     const items = (lines.get(cardId) ?? [])
       .map((tx) => ({ tx, day: statementDay(tx), cents: -cents(tx.correctedAmount) }))
       .sort((a, b) => a.day - b.day || a.tx.id.localeCompare(b.tx.id));
     let periods: Period[] = [];
+    let closingDay = 0;
     if (items.length) {
       const days = items.map((item) => item.day);
       const prefix = [0];
@@ -332,114 +361,223 @@ export function buildCardStatements(transactions: Transactions): CardStatementIn
         if (score > bestScore) {
           bestScore = score;
           periods = candidate;
+          closingDay = day;
         }
       }
     }
+    // The bank data that pays this card ends here: later statements aren't "missing" a payment.
+    const bankEnd = Math.max(
+      -Infinity,
+      ...units.flatMap((unit) =>
+        unit.bank ? [lastDay.get(unit.bank.accountId) ?? -Infinity] : [],
+      ),
+    );
+    const drafts: Draft[] = [];
+    periods.forEach((period, position) => {
+      const periodItems = items.slice(period.start, period.end);
+      if (!periodItems.length && !period.units.length) return;
+      const previous = position > 0 ? periods[position - 1]!.closing : monthBefore(period.closing);
+      drafts.push({
+        closing: period.closing,
+        opening: previous + 1,
+        items: periodItems,
+        units: period.units,
+        nextItems: items.slice(period.end),
+      });
+    });
+    // Bank payments with no card lines anywhere near: a statement of their own, with no lines.
     const placed = new Set(periods.flatMap((period) => period.units.map((unit) => unit.id)));
     for (const unit of units) {
       if (placed.has(unit.id)) continue;
-      // No card lines anywhere near this payment: the payment is the spending.
-      if (unit.bank) index.standalonePayments.add(unit.bank.id);
-      else if (unit.card) index.statementPayments.add(unit.card.id);
-    }
-    const paidPeriods = periods
-      .map((period, position) => ({ period, position }))
-      .filter(({ period }) => period.units.length && period.end > period.start)
-      .map(({ position }) => position);
-    periods.forEach((period, position) => {
-      const itemIds = items.slice(period.start, period.end).map((item) => item.tx.id);
-      if (!itemIds.length && !period.units.length) return;
-      const closing = isoDay(period.closing);
-      const id = `${cardId}:${closing}`;
-      const charges = items
-        .slice(period.start, period.end)
-        .reduce((sum, item) => sum + item.cents, 0);
-      const paid = period.units.reduce((sum, unit) => sum + unit.cents, 0);
-      let status: CardStatementStatus;
-      let differenceCents = 0;
-      if (!itemIds.length) {
-        status = 'no-lines';
-        for (const unit of period.units) {
-          if (unit.bank) index.standalonePayments.add(unit.bank.id);
-          else differenceCents += unit.cents;
-        }
-      } else if (!period.units.length) {
-        status =
-          paidPeriods.some((other) => other < position) &&
-          paidPeriods.some((other) => other > position)
-            ? 'missing-payment'
-            : 'unpaid';
-      } else {
-        differenceCents = paid - charges;
-        status = differenceCents === 0 ? 'reconciled' : 'difference';
+      if (!unit.bank) {
+        if (unit.card) index.statementPayments.add(unit.card.id);
+        continue;
       }
-      if (itemIds.length)
-        for (const unit of period.units) {
-          if (unit.bank) index.statementPayments.add(unit.bank.id);
-          if (unit.card) index.statementPayments.add(unit.card.id);
-        }
+      const closing = closingDay
+        ? latestClosingBefore(closingDay, unit.day - MIN_PAY_LAG_DAYS)
+        : unit.day - ASSUMED_PAY_LAG_DAYS;
+      const existing = drafts.find((draft) => draft.closing === closing && !draft.items.length);
+      if (existing) existing.units.push(unit);
       else
-        for (const unit of period.units)
-          if (unit.card && !unit.bank) index.statementPayments.add(unit.card.id);
-      const statement: CardStatement = {
-        id,
-        accountId: cardId,
-        closing,
-        itemIds,
-        paymentIds: period.units.map((unit) => unit.id),
-        cardPaymentIds: period.units.flatMap((unit) => (unit.card ? [unit.card.id] : [])),
-        charges: charges / 100,
-        paid: paid / 100,
-        difference: (paid - charges) / 100,
-        unexplained: differenceCents / 100,
-        status,
-        differenceId: differenceCents ? differenceRecordId(id) : null,
-      };
+        drafts.push({
+          closing,
+          opening: monthBefore(closing) + 1,
+          items: [],
+          units: [unit],
+          nextItems: [],
+        });
+    }
+    drafts.sort((a, b) => a.closing - b.closing);
+    const statements = drafts.map((draft) => toStatement(cardId, draft, bankEnd));
+    classify(statements, drafts);
+    statements.forEach((statement, position) => {
+      const draft = drafts[position]!;
+      const missingCents =
+        statement.status === 'no-lines'
+          ? Math.round(statement.paid * 100)
+          : statement.status === 'shortfall'
+            ? Math.round(statement.unresolved * 100)
+            : 0;
+      if (missingCents > 0) {
+        const records = estimateRecords(
+          statement,
+          title,
+          draft.opening,
+          draft.closing,
+          missingCents,
+        );
+        statement.estimateIds = records.map((record) => record.id);
+        statement.estimated = missingCents / 100;
+        index.estimates.push(...records);
+      }
+      for (const unit of draft.units) {
+        if (unit.bank) index.statementPayments.add(unit.bank.id);
+        if (unit.card) index.statementPayments.add(unit.card.id);
+      }
       index.statements.push(statement);
-      index.byId.set(id, statement);
+      index.byId.set(statement.id, statement);
       for (const recordId of [
-        ...itemIds,
+        ...statement.itemIds,
         ...statement.paymentIds,
         ...statement.cardPaymentIds,
-        ...(statement.differenceId ? [statement.differenceId] : []),
+        ...statement.estimateIds,
       ])
-        index.statementOf.set(recordId, id);
+        index.statementOf.set(recordId, statement.id);
     });
   }
   return index;
 }
 
-const differenceRecordId = (statementId: string) => `statement-difference:${statementId}`;
+interface Draft {
+  closing: number;
+  opening: number;
+  items: { tx: Transaction; day: number; cents: number }[];
+  units: PaymentUnit[];
+  /** Lines after this period, to find refunds posted before this statement's payment. */
+  nextItems: { tx: Transaction; day: number; cents: number }[];
+}
 
-/** The derived "Unexplained difference" records for statements that don't add up. */
-function differenceRecords(
-  transactions: Transactions,
-  index: CardStatementIndex,
+/** Statements with both lines and payments, plus unpaid ones the bank data should cover. */
+function toStatement(cardId: string, draft: Draft, bankEnd: number): CardStatement {
+  const charges = draft.items.reduce((sum, item) => sum + item.cents, 0);
+  const paid = draft.units.reduce((sum, unit) => sum + unit.cents, 0);
+  const lastPayment = Math.max(-Infinity, ...draft.units.map((unit) => unit.day));
+  const credits = draft.nextItems
+    .filter((item) => item.cents < 0 && item.day <= lastPayment)
+    .reduce((sum, item) => sum + item.cents, 0);
+  const closing = isoDay(draft.closing);
+  return {
+    id: `${cardId}:${closing}`,
+    accountId: cardId,
+    opening: isoDay(draft.opening),
+    closing,
+    itemIds: draft.items.map((item) => item.tx.id),
+    paymentIds: draft.units.map((unit) => unit.id),
+    cardPaymentIds: draft.units.flatMap((unit) => (unit.card ? [unit.card.id] : [])),
+    charges: charges / 100,
+    paid: paid / 100,
+    creditsBeforePayment: -credits / 100,
+    unresolved: 0,
+    estimated: 0,
+    estimateIds: [],
+    status: !draft.items.length
+      ? 'no-lines'
+      : draft.units.length || draft.closing + PAY_WINDOW_DAYS <= bankEnd
+        ? 'reconciled'
+        : 'unpaid',
+  };
+}
+
+/**
+ * Reconcile a card's statements the way the issuer does: a running balance.
+ * After the payment for statement k, everything paid so far should equal all
+ * lines up to its closing, less refunds posted after the closing but before
+ * the payment (autopay collects the balance less those). The gap ("residual")
+ * stays constant when everything is consistent. When it moves and comes back
+ * within two statements, a line or payment only landed in a neighbouring
+ * period ("timing"). When it moves for good, something is missing: more paid
+ * than the lines show (lines missing: "shortfall") or the reverse ("excess",
+ * or "missing-payment" when the statement has no payment).
+ */
+function classify(statements: CardStatement[], drafts: Draft[]) {
+  const sequence = statements
+    .map((statement, position) => ({ statement, draft: drafts[position]! }))
+    .filter(({ statement }) => statement.status === 'reconciled');
+  let paid = 0;
+  let owed = 0;
+  const residuals = sequence.map(({ statement }) => {
+    paid += Math.round(statement.paid * 100);
+    owed += Math.round(statement.charges * 100);
+    return paid - owed + Math.round(statement.creditsBeforePayment * 100);
+  });
+  let level = 0;
+  let k = 0;
+  while (k < sequence.length) {
+    if (residuals[k] === level) {
+      k++;
+      continue;
+    }
+    let back = -1;
+    for (let j = k + 1; j <= Math.min(k + 2, sequence.length - 1); j++)
+      if (residuals[j] === level) {
+        back = j;
+        break;
+      }
+    if (back >= 0) {
+      for (let j = k; j < back; j++) sequence[j]!.statement.status = 'timing';
+      k = back;
+      continue;
+    }
+    const end = Math.min(k + 2, sequence.length - 1);
+    const persistent = residuals[end]! - level;
+    const first = sequence[k]!.statement;
+    first.unresolved = persistent / 100;
+    first.status =
+      persistent > 0 ? 'shortfall' : first.paymentIds.length ? 'excess' : 'missing-payment';
+    for (let j = k + 1; j <= end; j++)
+      if (residuals[j] !== residuals[end]) sequence[j]!.statement.status = 'timing';
+    level = residuals[end]!;
+    k = end + 1;
+  }
+}
+
+/** Spread missing spending evenly over a billing period, one record per day. */
+function estimateRecords(
+  statement: CardStatement,
+  title: string,
+  opening: number,
+  closing: number,
+  totalCents: number,
 ): TransactionData[] {
-  return index.statements.flatMap((statement) => {
-    if (!statement.differenceId) return [];
-    const amount = -statement.unexplained;
-    const title = transactions.getAccountInfo(statement.accountId).title || statement.accountId;
-    return [
-      {
-        id: statement.differenceId,
-        transactionReason:
-          amount < 0
-            ? TransactionReason.MatchAdjustmentDebit
-            : TransactionReason.MatchAdjustmentCredit,
-        transactionDate: `${statement.closing}T00:00:00.000Z`,
-        entityName: `Unexplained difference: ${title} statement closing ${statement.closing}`,
-        entityNameNormalized: 'Unexplained card statement difference',
-        providerCategoryName: 'Unexplained difference',
-        amount,
-        contentHash: statement.differenceId,
-        accountId: statement.accountId,
-        importId: DERIVED_IMPORT_ID,
-        auditInfo: { createDate: `${statement.closing}T00:00:00.000Z`, createdBy: 'MoneyInMotion' },
-      } satisfies TransactionData,
-    ];
+  const days = Math.max(1, closing - opening + 1);
+  const base = Math.floor(totalCents / days);
+  const remainder = totalCents - base * days;
+  const reason =
+    statement.status === 'no-lines'
+      ? `No ${title} lines are imported for the statement this payment paid.`
+      : `${title} lines for this statement add up to less than was paid.`;
+  return Array.from({ length: days }, (_, offset) => {
+    const day = isoDay(opening + offset);
+    const id = `estimate:${statement.id}:${day}`;
+    return {
+      id,
+      transactionReason: TransactionReason.Purchase,
+      transactionDate: `${day}T00:00:00.000Z`,
+      entityName: `Estimated ${title} spending`,
+      entityNameNormalized: 'Estimated card spending',
+      providerCategoryName: ESTIMATED_CATEGORY,
+      providerAttributes: { Estimate: reason },
+      amount: -(base + (offset < remainder ? 1 : 0)) / 100,
+      contentHash: id,
+      accountId: statement.accountId,
+      importId: DERIVED_IMPORT_ID,
+      auditInfo: { createDate: `${statement.closing}T00:00:00.000Z`, createdBy: 'MoneyInMotion' },
+    } satisfies TransactionData;
   });
 }
+
+/** Category of estimated card spending. */
+export const ESTIMATED_CATEGORY = 'Card spending (estimated)';
 
 const indexCache = new WeakMap<Transactions, CardStatementIndex>();
 
@@ -454,32 +592,35 @@ export function cardStatementsOf(transactions: Transactions): CardStatementIndex
 }
 
 /**
- * Load a snapshot for the app: the imported records plus a derived
- * "Unexplained difference" record for each card statement that doesn't add
- * up. Use this instead of `Transactions.fromData` wherever totals are shown.
+ * Load a snapshot for the app: the imported records plus derived daily
+ * estimates where card lines are missing. Use this instead of
+ * `Transactions.fromData` wherever totals are shown.
  */
 export function loadTransactions(data: TransactionsData): Transactions {
   const base = Transactions.fromData(data);
   const index = buildCardStatements(base);
-  const extra = differenceRecords(base, index);
-  if (!extra.length) {
+  if (!index.estimates.length) {
     indexCache.set(base, index);
     return base;
   }
   const full = Transactions.fromData({
     ...data,
-    topItems: { ...data.topItems, ...Object.fromEntries(extra.map((tx) => [tx.id, tx])) },
+    topItems: {
+      ...data.topItems,
+      ...Object.fromEntries(index.estimates.map((tx) => [tx.id, tx])),
+    },
     importInfos: {
       ...data.importInfos,
       [DERIVED_IMPORT_ID]: {
         id: DERIVED_IMPORT_ID,
-        portableAddress: 'Card statement check (derived)',
+        portableAddress: 'Estimated card spending (derived)',
         contentHash: DERIVED_IMPORT_ID,
         format: 'derived',
       },
     },
   });
   indexCache.set(full, index);
+  rememberDuplicateRows(full, duplicateRowsOf(base));
   return full;
 }
 
@@ -487,22 +628,30 @@ export function loadTransactions(data: TransactionsData): Transactions {
 export const statementStatusText: Record<CardStatementStatus, { label: string; help: string }> = {
   reconciled: {
     label: 'Adds up',
-    help: 'The lines add up to the payment. The lines count as spending; the payment is a transfer.',
+    help: 'The lines add up to the payment, allowing for refunds that arrived before it. The lines count as spending; the payment is a transfer.',
   },
-  difference: {
-    label: 'Doesn’t add up',
-    help: 'The lines don’t add up to the payment. The lines count, and an “Unexplained difference” makes up the gap, so the total equals what was paid.',
+  timing: {
+    label: 'Adds up with the next statement',
+    help: 'A line or payment landed in a neighbouring period; the two statements add up together. The lines count as spending.',
   },
-  'no-lines': {
-    label: 'No lines imported',
-    help: 'No card lines were imported for the period this paid, so the payment itself counts as spending.',
+  shortfall: {
+    label: 'Lines missing',
+    help: 'More was paid than the lines show, and the next statements don’t make up for it. The lines count, and the rest is estimated spending spread over the period.',
+  },
+  excess: {
+    label: 'More lines than paid',
+    help: 'The lines add up to more than was paid, and the next statements don’t make up for it. Look for a duplicate line or a payment that isn’t imported. The lines count.',
   },
   'missing-payment': {
     label: 'No payment found',
-    help: 'Payments were found for the periods before and after, but not for this one. The lines count as spending.',
+    help: 'Your bank data covers this time, but no payment for these lines was found, and the next payments don’t cover it. The lines count as spending.',
+  },
+  'no-lines': {
+    label: 'No lines imported',
+    help: 'A payment for this period, but no card lines. The payment is spread evenly over the period as estimated spending, until the lines are imported.',
   },
   unpaid: {
-    label: 'Not paid yet',
-    help: 'No payment for these lines is in the imported data. The lines count as spending.',
+    label: 'Payment not imported',
+    help: 'The payment for these lines would be after your imported bank data ends. The lines count as spending.',
   },
 };

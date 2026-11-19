@@ -1,12 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CreditCard } from 'lucide-react';
+import { Copy, CreditCard } from 'lucide-react';
 import type { Transaction, Transactions } from '@moneyinmotion/core';
 import { cardStatementsOf, statementStatusText } from '../../lib/card-statements.js';
+import { duplicateRowsOf } from '../../lib/duplicates.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { countLabel, formatCurrency } from '../../lib/utils.js';
 
-/** The card statement a record belongs to: payment, lines, and whether they add up. */
+const WARN = new Set(['shortfall', 'excess', 'missing-payment']);
+
+/**
+ * Where a record sits in the card's reconciliation: the statement it belongs
+ * to (payment, lines, estimates), or the counted copy when it is a duplicate.
+ */
 export function CardStatementPanel({
   transaction,
   transactions,
@@ -14,27 +20,39 @@ export function CardStatementPanel({
   transaction: Transaction;
   transactions: Transactions;
 }) {
-  const index = cardStatementsOf(transactions);
-  const statementId = index.statementOf.get(transaction.id);
-  const statement = statementId ? index.byId.get(statementId) : undefined;
-  if (!statement) {
-    if (!index.standalonePayments.has(transaction.id)) return null;
+  const keptId = duplicateRowsOf(transactions).duplicateOf.get(transaction.id);
+  if (keptId) {
+    const kept = transactions.getTransaction(keptId);
+    const file = kept ? transactions.getImportInfo(kept.importId).portableAddress : 'another file';
     return (
       <section
-        aria-label="Card statement"
-        className="rounded-lg border border-border bg-muted/30 p-3 text-xs"
+        aria-label="Duplicate row"
+        className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950"
       >
         <h3 className="mb-1 flex items-center gap-2 font-semibold">
-          <CreditCard className="h-4 w-4 text-primary" />
-          Card payment with no statement lines
+          <Copy className="h-4 w-4" />
+          Duplicate row: not counted
         </h3>
-        <p className="text-muted-foreground">{statementStatusText['no-lines'].help}</p>
+        <p>
+          The same row is in {file}, with slightly different text. That copy is counted; this one is
+          left out of every total.
+        </p>
+        <Link
+          className="mt-2 inline-block font-medium underline underline-offset-2"
+          to={transactionsHref({ ids: [keptId, transaction.id], basis: 'records', view: 'list' })}
+        >
+          View both copies
+        </Link>
       </section>
     );
   }
+  const index = cardStatementsOf(transactions);
+  const statementId = index.statementOf.get(transaction.id);
+  const statement = statementId ? index.byId.get(statementId) : undefined;
+  if (!statement) return null;
   const card = transactions.getAccountInfo(statement.accountId).title || statement.accountId;
   const status = statementStatusText[statement.status];
-  const warn = statement.status === 'difference' || statement.status === 'missing-payment';
+  const warn = WARN.has(statement.status);
   return (
     <section
       aria-label="Card statement"
@@ -42,12 +60,14 @@ export function CardStatementPanel({
     >
       <h3 className="mb-2 flex items-center gap-2 font-semibold">
         <CreditCard className="h-4 w-4 text-primary" />
-        {card} statement closing {statement.closing}: {status.label}
+        {card} statement, {statement.opening} to {statement.closing}: {status.label}
       </h3>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 tabular-nums">
         <dt>Lines</dt>
         <dd>
-          {countLabel(statement.itemIds.length, 'line')}, {formatCurrency(statement.charges)}
+          {statement.itemIds.length
+            ? `${countLabel(statement.itemIds.length, 'line')}, ${formatCurrency(statement.charges)}`
+            : 'None imported'}
         </dd>
         <dt>Paid</dt>
         <dd>
@@ -55,13 +75,25 @@ export function CardStatementPanel({
             ? `${countLabel(statement.paymentIds.length, 'payment')}, ${formatCurrency(statement.paid)}`
             : 'No payment found'}
         </dd>
-        {statement.differenceId && (
+        {statement.creditsBeforePayment > 0 && (
+          <>
+            <dt>Refunds before payment</dt>
+            <dd>{formatCurrency(statement.creditsBeforePayment)}, taken off the autopay</dd>
+          </>
+        )}
+        {(statement.status === 'shortfall' || statement.status === 'excess') && (
           <>
             <dt>Difference</dt>
             <dd>
-              {formatCurrency(Math.abs(statement.unexplained))}{' '}
-              {statement.unexplained > 0 ? 'more' : 'less'} paid than the lines show
+              {formatCurrency(Math.abs(statement.unresolved))}{' '}
+              {statement.unresolved > 0 ? 'more' : 'less'} paid than the lines show
             </dd>
+          </>
+        )}
+        {statement.estimated > 0 && (
+          <>
+            <dt>Estimated</dt>
+            <dd>{formatCurrency(statement.estimated)}, spread evenly over the period</dd>
           </>
         )}
       </dl>
@@ -70,7 +102,7 @@ export function CardStatementPanel({
         className="mt-2 inline-block font-medium text-primary underline underline-offset-2"
         to={transactionsHref({ statement: statement.id, basis: 'records', view: 'list' })}
       >
-        View this statement’s payment and lines
+        View this statement’s payments, lines, and estimates
       </Link>
     </section>
   );

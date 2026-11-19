@@ -30,6 +30,7 @@ const CASH_FLOW_LABELS: Record<CashFlowKind, string> = {
   investment: 'Investment transfer (neither income nor spending)',
   transfer: 'Transfer between accounts (not counted)',
   unmatched: 'Unmatched order detail (not counted)',
+  duplicate: 'Duplicate row from an overlapping file (not counted)',
 };
 
 /** Derived refund link: never stored, recalculated from the loaded history. */
@@ -57,14 +58,16 @@ const RefundLinks: React.FC<{ transaction: Transaction }> = ({ transaction }) =>
     <div className="space-y-1 border-t border-border pt-3 text-xs">
       {charge && (
         <p>
-          Likely refund of {link(charge)} (<AmountDisplay amount={charge.correctedAmount} />)
+          Likely refund of {link(charge)} (<AmountDisplay amount={charge.correctedAmount} />
+          ). Reports count it with that purchase, on {formatDate(charge.correctedTransactionDate)}.
         </p>
       )}
       {refundIds.length > 0 && (
         <>
           <p>
             Refunded <AmountDisplay amount={refunded} /> · net cost{' '}
-            <AmountDisplay amount={transaction.correctedAmount + refunded} />
+            <AmountDisplay amount={transaction.correctedAmount + refunded} />, counted on this
+            purchase’s date
           </p>
           <ul className="space-y-1">
             {refundIds.map((id) => {

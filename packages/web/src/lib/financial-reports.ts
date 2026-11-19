@@ -68,8 +68,12 @@ export interface TransferPair {
 export function reportDay(transaction: Transaction): string {
   return parseDate(transaction.correctedTransactionDate).toISOString().slice(0, 10);
 }
-function matchesReportScope(transaction: Transaction, scope: ReportScope): boolean {
-  const day = reportDay(transaction);
+function matchesReportScope(
+  transaction: Transaction,
+  scope: ReportScope,
+  dayOf: (transaction: Transaction) => string = reportDay,
+): boolean {
+  const day = dayOf(transaction);
   return (
     (!scope.from || day >= scope.from) &&
     (!scope.to || day <= scope.to) &&
@@ -124,17 +128,31 @@ export function cashFlowContext(transactions: Transactions) {
   return derived;
 }
 
-/** Category of a card payment whose billing period has no imported card lines. */
-export const CARD_PAYMENT_WITHOUT_LINES = 'Card payment (no statement lines)';
+/**
+ * The record a report counts this one with: for a refund linked to the
+ * purchase it reverses, that purchase. A return months later then lowers the
+ * purchase's month and category instead of making a later month look cheap.
+ */
+export function countedWith(transactions: Transactions, tx: Transaction): Transaction {
+  const chargeId = cashFlowContext(transactions).refunds.chargeOf.get(tx.id);
+  return (chargeId && transactions.getTransaction(chargeId)) || tx;
+}
 
-/** Statements that need a look: lines that don't add up, or no payment found. */
+/** Day a record counts on in reports (see {@link countedWith}). */
+export function countedDay(transactions: Transactions, tx: Transaction): string {
+  return reportDay(countedWith(transactions, tx));
+}
+
+/** Statements that need a look: something missing that the next statements don't make up for. */
 export function statementsToReview(
   transactions: Transactions,
   scope?: ReportScope,
 ): CardStatement[] {
   return cardStatementsOf(transactions).statements.filter(
     (statement) =>
-      (statement.status === 'difference' || statement.status === 'missing-payment') &&
+      (statement.status === 'shortfall' ||
+        statement.status === 'excess' ||
+        statement.status === 'missing-payment') &&
       (!scope ||
         ((!scope.from || statement.closing >= scope.from) &&
           (!scope.to || statement.closing <= scope.to) &&
@@ -154,8 +172,6 @@ export function spendingCategory(
 ) {
   const own = transactionCategory(tx);
   if (own !== 'Uncategorized') return own;
-  if (cardStatementsOf(transactions).standalonePayments.has(tx.id))
-    return CARD_PAYMENT_WITHOUT_LINES;
   const chargeId = refunds.chargeOf.get(tx.id);
   const charge = chargeId ? transactions.getTransaction(chargeId) : undefined;
   return charge ? transactionCategory(charge) : own;
@@ -189,7 +205,7 @@ function cashFlowPeriods(
 }
 export function reportCoverage(transactions: Transactions) {
   const rows = reportingTransactions(transactions);
-  const days = rows.map(reportDay).sort();
+  const days = rows.map((row) => countedDay(transactions, row)).sort();
   return {
     from: days[0] ?? '',
     to: days.at(-1) ?? '',
@@ -245,9 +261,12 @@ function transferPairs(transactions: Transactions, scope: ReportScope): Transfer
 
 /** Compute each panel from one immutable filtered reporting population. */
 export function buildFinancialReport(transactions: Transactions, scope: ReportScope) {
-  const rows = reportingTransactions(transactions).filter((row) => matchesReportScope(row, scope));
+  const dayOf = (row: Transaction) => countedDay(transactions, row);
+  const rows = reportingTransactions(transactions).filter((row) =>
+    matchesReportScope(row, scope, dayOf),
+  );
   const records = [...transactions.allParentChildTransactions].filter((row) =>
-    matchesReportScope(row, scope),
+    matchesReportScope(row, scope, dayOf),
   );
   const activity = rows.filter(
     (row) => !['Transfers', 'Unmatched'].includes(transactionBucket(row)),
@@ -265,8 +284,8 @@ export function buildFinancialReport(transactions: Transactions, scope: ReportSc
     rows,
     totals: activityTotals(activity),
     cashFlow: cashFlowTotals(rows, kindOf),
-    months: cashFlowPeriods(rows, kindOf, (row) => reportDay(row).slice(0, 7)),
-    days: cashFlowPeriods(rows, kindOf, reportDay),
+    months: cashFlowPeriods(rows, kindOf, (row) => dayOf(row).slice(0, 7)),
+    days: cashFlowPeriods(rows, kindOf, dayOf),
     categories: groupRows(spendingRows, (row) => spendingCategory(transactions, row, refunds))
       .filter((row) => row.spending > 0.004)
       .sort(bySpending),

@@ -27,9 +27,17 @@ import {
   type Transactions,
 } from '@moneyinmotion/core';
 import { cardStatementsOf } from './card-statements.js';
+import { duplicateRowsOf } from './duplicates.js';
 
 export type CashFlowKind =
-  'income' | 'spending' | 'undecided' | 'investment' | 'transfer' | 'unmatched';
+  | 'income'
+  | 'spending'
+  | 'undecided'
+  | 'investment'
+  | 'transfer'
+  | 'unmatched'
+  /** A second copy of a row from an overlapping statement file (`duplicates.ts`). */
+  | 'duplicate';
 
 /** Type set when the user says "count as income" or "count against spending". */
 export const INCOME_DECISION_REASON = TransactionReason.OtherCredit;
@@ -71,8 +79,9 @@ export function cashFlowKind(tx: Transaction, accountType: AccountType | null): 
 export function cashFlowClassifier(transactions: Transactions): (tx: Transaction) => CashFlowKind {
   const types = new Map<string, AccountType | null>();
   const statements = cardStatementsOf(transactions);
+  const duplicates = duplicateRowsOf(transactions).duplicateOf;
   return (tx) => {
-    if (statements.standalonePayments.has(tx.id)) return 'spending';
+    if (duplicates.has(tx.id)) return 'duplicate';
     if (statements.statementPayments.has(tx.id)) return 'transfer';
     if (!types.has(tx.accountId)) {
       types.set(tx.accountId, transactions.getAccountInfo(tx.accountId)?.type ?? null);
@@ -153,7 +162,7 @@ export function cashFlowTotals(
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Refunds older than this are not linked to a charge. */
-const REFUND_WINDOW_DAYS = 180;
+const REFUND_WINDOW_DAYS = 730;
 
 export interface RefundLinks {
   /** Refund (or return/discount credit) ID → original charge ID. */
@@ -168,7 +177,7 @@ function merchantKey(tx: Transaction): string {
 
 /**
  * Link each spending credit (refund, return, discount) to the charge it most
- * likely reverses: same merchant, on or before the refund date, within 180
+ * likely reverses: same merchant, on or before the refund date, within two years (730 days)
  * days, with enough remaining amount. Exact amounts win, then the nearest
  * date, then ID, so results are deterministic. Several partial refunds can
  * link to one charge, but never more than the charge's amount in total.

@@ -21,7 +21,7 @@ import {
   transactionBucket,
 } from '../lib/transaction-explorer.js';
 import type { TransactionScope } from '../lib/transaction-navigation.js';
-import { cashFlowContext, spendingCategory } from '../lib/financial-reports.js';
+import { cashFlowContext, spendingCategory, countedWith } from '../lib/financial-reports.js';
 import type { CashFlowKind } from '../lib/cash-flow.js';
 
 /** Same populations as the Overview cards and chart, so drill-down counts agree. */
@@ -177,8 +177,12 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     const records = [...transactions.allParentChildTransactions];
     // Normalize once per snapshot. This also handles date-only values
     // and offset timestamps without doing date parsing on every search keystroke.
+    // A refund linked to its purchase is filed under the purchase's date, as in reports.
     const dateIndex = new Map(
-      records.map((tx) => [tx.id, parseDate(tx.correctedTransactionDate).toISOString()]),
+      records.map((tx) => [
+        tx.id,
+        parseDate(countedWith(transactions, tx).correctedTransactionDate).toISOString(),
+      ]),
     );
     const searchIndex = new Map(
       records.map((tx) => [

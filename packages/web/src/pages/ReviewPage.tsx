@@ -11,11 +11,13 @@ import { Button, buttonClassName } from '../components/ui/button.js';
 import { Notice } from '../components/ui/notice.js';
 import { Pagination } from '../components/ui/pagination.js';
 import {
+  ESTIMATED_CATEGORY,
   cardStatementsOf,
   loadTransactions,
   statementStatusText,
   type CardStatement,
 } from '../lib/card-statements.js';
+import { duplicateRowsOf } from '../lib/duplicates.js';
 import { buildFinancialReport, statementsToReview } from '../lib/financial-reports.js';
 import { diagnoseRules } from '../lib/rule-diagnostics.js';
 import { transactionsHref } from '../lib/transaction-navigation.js';
@@ -72,6 +74,7 @@ function ReviewContent({ transactions }: { transactions: Transactions }) {
     <div className="space-y-5">
       <StoredFilesNotImported />
       <CardStatements transactions={transactions} />
+      <DuplicateRows transactions={transactions} />
       <ReviewQueue
         report={report}
         hide={['statements']}
@@ -102,63 +105,59 @@ function ReviewContent({ transactions }: { transactions: Transactions }) {
   );
 }
 
+const STATUS_COLUMNS: Array<{ label: string; statuses: CardStatement['status'][] }> = [
+  { label: 'Adds up', statuses: ['reconciled', 'timing'] },
+  { label: statementStatusText.shortfall.label, statuses: ['shortfall'] },
+  { label: statementStatusText.excess.label, statuses: ['excess', 'missing-payment'] },
+  { label: statementStatusText['no-lines'].label, statuses: ['no-lines'] },
+  { label: statementStatusText.unpaid.label, statuses: ['unpaid'] },
+];
+
 function CardStatements({ transactions }: { transactions: Transactions }) {
   const index = cardStatementsOf(transactions);
   const [page, setPage] = useState(0);
   const review = useMemo(
     () =>
       statementsToReview(transactions).sort(
-        (a, b) => Math.abs(b.unexplained) - Math.abs(a.unexplained) || a.id.localeCompare(b.id),
+        (a, b) => Math.abs(b.unresolved) - Math.abs(a.unresolved) || a.id.localeCompare(b.id),
       ),
     [transactions],
   );
   const cards = useMemo(() => {
-    const result = new Map<string, Record<CardStatement['status'], number>>();
-    for (const statement of index.statements) {
-      const counts = result.get(statement.accountId) ?? {
-        reconciled: 0,
-        difference: 0,
-        'no-lines': 0,
-        'missing-payment': 0,
-        unpaid: 0,
-      };
-      counts[statement.status]++;
-      result.set(statement.accountId, counts);
-    }
+    const result = new Map<string, CardStatement[]>();
+    for (const statement of index.statements)
+      result.set(statement.accountId, [...(result.get(statement.accountId) ?? []), statement]);
     return [...result];
   }, [index]);
-  const standalone = [...index.standalonePayments].flatMap(
-    (id) => transactions.getTransaction(id) ?? [],
-  );
-  const standaloneTotal = -standalone.reduce((sum, tx) => sum + tx.correctedAmount, 0);
+  const estimated = index.statements.filter((statement) => statement.estimated > 0);
+  const estimatedTotal = estimated.reduce((sum, statement) => sum + statement.estimated, 0);
+  const timing = index.statements.filter((statement) => statement.status === 'timing').length;
   const title = (id: string) => transactions.getAccountInfo(id).title || id;
-  if (!index.statements.length && !standalone.length) return null;
+  if (!index.statements.length) return null;
   return (
     <ReportPanel
       title="Card statements"
-      description="A payment to a card is the spending; the card’s lines for the billing period it paid are its details. When the lines add up, they count instead of the payment. When they don’t, the gap counts as an “Unexplained difference”, so totals always equal what was paid."
+      description="Card lines give the dates and categories of spending; payments check that the lines are complete. Statements are reconciled with a running balance, as your card issuer does, so refunds that reduce an autopay and lines that land in a neighbouring period aren’t errors. Where lines are missing, the missing amount is spread evenly over the billing period as estimated spending."
     >
       <div className="overflow-x-auto">
         <table className="data-table" aria-label="Statements by card">
           <thead>
             <tr>
               <th>Card</th>
-              <th className="text-right">{statementStatusText.reconciled.label}</th>
-              <th className="text-right">{statementStatusText.difference.label}</th>
-              <th className="text-right">{statementStatusText['missing-payment'].label}</th>
-              <th className="text-right">{statementStatusText['no-lines'].label}</th>
-              <th className="text-right">{statementStatusText.unpaid.label}</th>
+              {STATUS_COLUMNS.map((column) => (
+                <th key={column.label} className="text-right">
+                  {column.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {cards.map(([accountId, counts]) => (
+            {cards.map(([accountId, statements]) => (
               <tr key={accountId}>
                 <td>{title(accountId)}</td>
-                {(
-                  ['reconciled', 'difference', 'missing-payment', 'no-lines', 'unpaid'] as const
-                ).map((status) => (
-                  <td key={status} className="text-right tabular-nums">
-                    {counts[status]}
+                {STATUS_COLUMNS.map((column) => (
+                  <td key={column.label} className="text-right tabular-nums">
+                    {statements.filter((s) => column.statuses.includes(s.status)).length}
                   </td>
                 ))}
               </tr>
@@ -166,26 +165,31 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
           </tbody>
         </table>
       </div>
-      {standalone.length > 0 && (
-        <p className="mt-3 text-sm text-muted-foreground">
-          {countLabel(standalone.length, 'bank payment')} to cards (
-          {formatCurrency(standaloneTotal)}) paid billing periods with no imported card lines, so
-          each counts as spending itself.{' '}
-          <Link
-            className="font-medium text-primary underline underline-offset-2"
-            to={transactionsHref({
-              ids: standalone.map((tx) => tx.id),
-              basis: 'records',
-              view: 'list',
-            })}
-          >
-            View them
-          </Link>
-        </p>
-      )}
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+        {timing > 0 && (
+          <li>
+            {countLabel(timing, 'statement')} add up only together with the next one: a refund, a
+            line, or an extra payment landed in a neighbouring period. Nothing to do.
+          </li>
+        )}
+        {estimated.length > 0 && (
+          <li>
+            {formatCurrency(estimatedTotal)} paid to cards over{' '}
+            {countLabel(estimated.length, 'billing period')} has no statement lines; it is spread
+            evenly over each period as estimated spending. Importing those statements replaces the
+            estimates.{' '}
+            <Link
+              className="font-medium text-primary underline underline-offset-2"
+              to={transactionsHref({ category: ESTIMATED_CATEGORY, view: 'summary' })}
+            >
+              View estimated spending
+            </Link>
+          </li>
+        )}
+      </ul>
       {review.length === 0 ? (
         <p className="mt-4 flex items-center gap-2 text-sm text-emerald-800">
-          <CheckCircle2 aria-hidden className="h-4 w-4" /> Every statement with a payment adds up.
+          <CheckCircle2 aria-hidden className="h-4 w-4" /> Every statement adds up.
         </p>
       ) : (
         <>
@@ -193,9 +197,10 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
             {countLabel(review.length, 'statement')} to look at
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Largest differences first. A difference often means a missing or extra line, a statement
-            file that doesn’t cover the whole period, or a line that landed in the next period (then
-            the next statement is off by the opposite amount).
+            Differences that the following statements don’t make up for, largest first. Lines
+            missing: import the statement, or check that the file covers the whole period. More
+            lines than paid: look for a duplicate line, or a payment from an account you don’t
+            import.
           </p>
           <div className="mt-3 overflow-x-auto">
             <table className="data-table" aria-label="Statements to look at">
@@ -214,7 +219,7 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
                   <tr key={statement.id}>
                     <td>
                       <CreditCard aria-hidden className="mr-1 inline h-4 w-4 text-primary" />
-                      {title(statement.accountId)}, closing {statement.closing}
+                      {title(statement.accountId)}, {statement.opening} to {statement.closing}
                     </td>
                     <td title={statementStatusText[statement.status].help}>
                       {statementStatusText[statement.status].label}
@@ -226,7 +231,7 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
                       {statement.paymentIds.length ? formatCurrency(statement.paid) : '—'}
                     </td>
                     <td className="text-right tabular-nums">
-                      {statement.differenceId ? formatCurrency(statement.unexplained) : '—'}
+                      {formatCurrency(statement.unresolved)}
                     </td>
                     <td>
                       <Link
@@ -255,6 +260,43 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
           />
         </>
       )}
+    </ReportPanel>
+  );
+}
+
+function DuplicateRows({ transactions }: { transactions: Transactions }) {
+  const pairs = [...duplicateRowsOf(transactions).duplicateOf].flatMap(([dropId, keepId]) => {
+    const drop = transactions.getTransaction(dropId);
+    const keep = transactions.getTransaction(keepId);
+    return drop && keep ? [{ drop, keep }] : [];
+  });
+  if (!pairs.length) return null;
+  const file = (importId: string) =>
+    transactions.getImportInfo(importId).portableAddress.split('/').at(-1) ?? importId;
+  return (
+    <ReportPanel
+      title="Rows in two files"
+      description="The same row appears in two overlapping statement files with slightly different text. One copy is counted; the other is left out of every total. Your files aren’t changed."
+    >
+      <ul className="space-y-2 text-sm">
+        {pairs.map(({ drop, keep }) => (
+          <li key={drop.id} className="flex flex-wrap items-center gap-x-2">
+            <span className="font-medium">
+              {drop.transactionDate.slice(0, 10)} · {formatCurrency(drop.amount)} ·{' '}
+              {keep.displayEntityNameNormalized}
+            </span>
+            <span className="text-muted-foreground">
+              counted from {file(keep.importId)}, left out of {file(drop.importId)}
+            </span>
+            <Link
+              className="font-medium text-primary underline underline-offset-2"
+              to={transactionsHref({ ids: [keep.id, drop.id], basis: 'records', view: 'list' })}
+            >
+              View both
+            </Link>
+          </li>
+        ))}
+      </ul>
     </ReportPanel>
   );
 }

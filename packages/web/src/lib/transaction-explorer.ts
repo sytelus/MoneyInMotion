@@ -7,16 +7,21 @@ import {
   transactionReasonPluralTitleLookup,
   transactionReasonTitleLookup,
 } from '@moneyinmotion/core';
+import { duplicateRowsOf } from './duplicates.js';
 
-/** Same accounting grain as NetAggregator: completed children replace parents. */
+/**
+ * Same accounting grain as NetAggregator: completed children replace parents.
+ * A second copy of a row from an overlapping file (`duplicates.ts`) is left out.
+ */
 export function reportingTransactions(transactions: Transactions): Transaction[] {
+  const duplicates = duplicateRowsOf(transactions).duplicateOf;
   const result: Transaction[] = [];
   const visit = (tx: Transaction) => {
     const children = Object.keys(tx.children ?? {});
     if (!children.length || tx.hasMissingChild) result.push(tx);
     else for (const id of children) visit(transactions.getTransaction(id)!);
   };
-  for (const tx of transactions.topLevelTransactions) visit(tx);
+  for (const tx of transactions.topLevelTransactions) if (!duplicates.has(tx.id)) visit(tx);
   return result;
 }
 export function transactionCategory(tx: Transaction): string {

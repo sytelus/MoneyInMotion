@@ -45,21 +45,26 @@ These goals decide what gets built and how. The behavior docs under
 
 **Meaning**
 
-- **Start from the money that moved, then drill down.** A payment from a
-  bank account to a card is the spending; the card statement's lines for that
-  billing period are its details, and Amazon or Etsy order lines are details
-  of a card line (receipts may add another level later). Any level may be
-  missing: a payment with no card lines counts by itself. When details exist
-  they must add up to what they explain; when they don't, the gap is shown as
-  an **Unexplained difference** and flagged, so totals always equal what was
-  paid. Transfers between accounts are not income or spending, and duplicate
-  statement rows are merged.
+- **Line items give the timing; payments check them.** You can analyze any
+  period, from a few days to years. Spending is counted from the most
+  detailed records on their own dates: card statement lines, and Amazon or
+  Etsy order lines under a card line (receipts may add another level later). A
+  payment from a bank account to a card checks that the card's lines are
+  complete. Statements are reconciled with a running balance, as the card
+  issuer does, so refunds that reduce an autopay and lines in a neighbouring
+  period aren't errors. Any level may be missing: where card lines are, the
+  payment is spread evenly over its billing period as estimated spending, and
+  a lasting difference is flagged for review. A refund counts with the
+  purchase it reverses, even months later. Transfers between accounts are not
+  income or spending, and duplicate statement rows, including the same row in
+  two overlapping files with different text, count once.
 - **One place to review.** After an import, the Review page lists everything
-  MiM couldn't settle: statements that don't add up, unclear credits,
-  unmatched orders, files it didn't import, and rule problems.
+  MiM couldn't settle: statements that don't add up, rows found in two files,
+  unclear credits, unmatched orders, files it didn't import, and rule problems.
 - **Income, spending, savings.** The Overview reports earned **Income**,
   **Spending** with refunds and discounts subtracted from the purchases they
-  offset (refunds are linked to their original charge), and the difference as
+  offset (refunds are linked to their original charge and counted on its
+  date), and the difference as
   **Savings / deficit**. When it isn't clear whether a credit is income, MiM
   asks you to decide rather than guessing. Money you move to or from
   investments you don't import (an **Investment transfer**) is shown on its

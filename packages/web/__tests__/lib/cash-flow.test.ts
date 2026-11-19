@@ -180,7 +180,7 @@ describe('refund links', () => {
     expect(links.refundsOf.has(tooLate.id)).toBe(false);
   });
 
-  it('never links more refunds to a charge than its amount, and ignores old charges', () => {
+  it('never links more refunds to a charge than its amount, and ignores charges over two years old', () => {
     const { collection, add } = fixture();
     const charge = add(-50, { account: 'card', name: 'Store', date: '2024-01-01' });
     const first = add(30, {
@@ -195,17 +195,50 @@ describe('refund links', () => {
       reason: TransactionReason.Return,
       date: '2024-01-12',
     });
-    add(-10, { account: 'card', name: 'Gym', date: '2023-01-01' });
+    add(-10, { account: 'card', name: 'Gym', date: '2021-01-01' });
     const late = add(10, {
       account: 'card',
       name: 'Gym',
       reason: TransactionReason.Return,
       date: '2024-01-01',
     });
+    // Eleven months later is still a refund of the purchase.
+    const bike = add(-400, { account: 'card', name: 'Bike Shop', date: '2023-02-01' });
+    const bikeRefund = add(400, {
+      account: 'card',
+      name: 'Bike Shop',
+      reason: TransactionReason.Return,
+      date: '2024-01-05',
+    });
     const links = linkRefunds(collection.topLevelTransactions, cashFlowClassifier(collection));
     expect(links.chargeOf.get(first.id)).toBe(charge.id);
     expect(links.chargeOf.has(second.id)).toBe(false);
     expect(links.chargeOf.has(late.id)).toBe(false);
+    expect(links.chargeOf.get(bikeRefund.id)).toBe(bike.id);
+  });
+
+  it('counts a linked refund with its purchase, so a late return lowers the purchase month', () => {
+    const { collection, add } = fixture();
+    add(-400, { account: 'card', name: 'Bike Shop', category: 'Sports', date: '2023-02-01' });
+    add(400, {
+      account: 'card',
+      name: 'Bike Shop',
+      reason: TransactionReason.Return,
+      date: '2023-11-20',
+    });
+    add(-25, { account: 'card', name: 'Cafe', date: '2023-11-21' });
+    const february = buildFinancialReport(collection, {
+      from: '2023-02-01',
+      to: '2023-02-28',
+      account: '',
+    });
+    const november = buildFinancialReport(collection, {
+      from: '2023-11-01',
+      to: '2023-11-30',
+      account: '',
+    });
+    expect(february.cashFlow.spending).toBe(0);
+    expect(november.cashFlow.spending).toBe(25);
   });
 
   it('counts an uncategorized refund against the category of the charge it reverses', () => {

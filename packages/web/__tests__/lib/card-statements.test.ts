@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { AccountType, Transaction, TransactionReason, Transactions } from '@moneyinmotion/core';
 import {
   DERIVED_IMPORT_ID,
+  ESTIMATED_CATEGORY,
   cardStatementsOf,
   isDerivedRecord,
   loadTransactions,
 } from '../../src/lib/card-statements.js';
 import { cashFlowClassifier } from '../../src/lib/cash-flow.js';
+import { duplicateRowsOf } from '../../src/lib/duplicates.js';
 import { buildFinancialReport, spendingCategory } from '../../src/lib/financial-reports.js';
+import { reportingTransactions } from '../../src/lib/transaction-explorer.js';
 import { sourceInventory } from '../../src/lib/import-evidence.js';
 
 function cardFixture() {
@@ -21,14 +24,16 @@ function cardFixture() {
     amount: number,
     date: string,
     name: string,
-    reason: number = TransactionReason.Purchase,
+    options: { reason?: number; posted?: string; file?: string } = {},
   ) {
-    const tx = Transaction.create('statement', account, false, {
+    const file = options.file ?? `${account}/s.csv`;
+    const tx = Transaction.create(file, account, false, {
       amount,
       transactionDate: date,
+      postedDate: options.posted ?? null,
       entityName: name,
       entityNameNormalized: name,
-      transactionReason: reason,
+      transactionReason: options.reason ?? TransactionReason.Purchase,
     });
     collection.addNew(
       tx,
@@ -40,97 +45,147 @@ function cardFixture() {
         interAccountNameTags: info[account].tags,
         requiresParent: false,
       },
-      { id: 'statement', portableAddress: `${account}/s.csv`, contentHash: 'path-id' },
+      { id: file, portableAddress: file, contentHash: file },
       false,
     );
     return tx;
   }
-  return { collection, add };
+  const pay = (amount: number, date: string, name = 'CHASE EPAY') =>
+    add('checking', -amount, date, name);
+  return { collection, add, pay };
 }
 
-/** February lines add up to their payment; March lines are $5 more than was paid. */
-function scenario() {
-  const { collection, add } = cardFixture();
-  const lines = [
-    add('card', -100, '2024-02-03', 'Grocery'),
-    add('card', -50, '2024-02-20', 'Books'),
-    add('card', -70, '2024-03-05', 'Grocery'),
-    add('card', -30, '2024-03-25', 'Fuel'),
-  ];
-  const paid = add('checking', -150, '2024-03-08', 'CHASE EPAY 123');
-  const cardSide = add(
-    'card',
-    150,
-    '2024-03-10',
-    'Payment Thank You',
-    TransactionReason.InterAccountPayment,
-  );
-  const short = add('checking', -95, '2024-04-10', 'CHASE AUTOPAY 456');
-  // No card lines anywhere near: the payment is the only record of that spending.
-  const alone = add('checking', -300, '2023-06-05', 'CHASE AUTOPAY 789');
-  // "Purchase" contains "chase", but not at the start of a word.
-  const pos = add('checking', -40, '2024-04-06', 'POS PURCHASE STORE');
-  return { collection, lines, paid, cardSide, short, alone, pos };
-}
+const statuses = (collection: Transactions) =>
+  cardStatementsOf(collection).statements.map((s) => [s.closing, s.status]);
+const spending = (collection: Transactions, from = '', to = '') =>
+  buildFinancialReport(loadTransactions(collection.serialize()), { from, to, account: '' }).cashFlow
+    .spending;
 
 describe('card statements', () => {
-  it('pairs each payment with the lines of the billing period it paid', () => {
-    const { collection, lines, paid, cardSide, short, alone, pos } = scenario();
-    const index = cardStatementsOf(collection);
-    expect(index.statements.map((s) => [s.status, s.itemIds.length, s.charges, s.paid])).toEqual([
-      ['reconciled', 2, 150, 150],
-      ['difference', 2, 100, 95],
-    ]);
-    const [february, march] = index.statements;
-    expect(february!.itemIds).toEqual([lines[0]!.id, lines[1]!.id]);
-    expect(february!.paymentIds).toEqual([paid.id]);
-    expect(february!.cardPaymentIds).toEqual([cardSide.id]);
-    expect(march!.paymentIds).toEqual([short.id]);
-    expect(march!.unexplained).toBe(-5);
-    expect([...index.standalonePayments]).toEqual([alone.id]);
-    expect(index.statementOf.has(pos.id)).toBe(false);
+  it('counts lines, treats payments as transfers, and allows for refunds that reduce an autopay', () => {
+    const { collection, add, pay } = cardFixture();
+    add('card', -100, '2024-02-03', 'Grocery');
+    add('card', -50, '2024-02-20', 'Books');
+    const paid = pay(150, '2024-03-08');
+    const cardSide = add('card', 150, '2024-03-10', 'Payment Thank You', {
+      reason: TransactionReason.InterAccountPayment,
+    });
+    add('card', -70, '2024-03-05', 'Grocery');
+    add('card', -30, '2024-03-25', 'Fuel');
+    // A refund after the closing but before the autopay: the bank collects $5 less,
+    // and the refund shows on the next statement.
+    add('card', -7, '2024-04-14', 'Cafe');
+    add('card', 5, '2024-04-15', 'Fuel', { reason: TransactionReason.Return });
+    pay(95, '2024-04-25');
+    add('card', -40, '2024-04-28', 'Grocery');
+    pay(47, '2024-05-25');
+    // "Purchase" contains "chase", but not at the start of a word.
+    const pos = add('checking', -40, '2024-04-06', 'POS PURCHASE STORE');
 
+    const index = cardStatementsOf(collection);
+    expect(index.statements.map((s) => [s.status, s.charges, s.paid])).toEqual([
+      ['reconciled', 150, 150],
+      ['reconciled', 100, 95],
+      ['reconciled', 42, 47],
+    ]);
+    expect(index.statements[1]!.creditsBeforePayment).toBe(5);
     const kindOf = cashFlowClassifier(collection);
     expect(kindOf(paid)).toBe('transfer');
     expect(kindOf(cardSide)).toBe('transfer');
-    expect(kindOf(short)).toBe('transfer');
-    expect(kindOf(alone)).toBe('spending');
-    expect(spendingCategory(collection, alone)).toBe('Card payment (no statement lines)');
+    expect(index.statementOf.has(pos.id)).toBe(false);
+    expect(spending(collection)).toBeCloseTo(150 + 100 + 42 + 40);
   });
 
-  it('adds an unexplained difference so spending equals what was paid, and flags it', () => {
-    const { collection } = scenario();
+  it('spreads a payment with no lines evenly over its billing period as estimates', () => {
+    const { collection, add, pay } = cardFixture();
+    add('card', -10, '2024-02-03', 'Grocery');
+    pay(10, '2024-03-08');
+    // Long before the card's first line: the payment is the only record.
+    const alone = pay(300, '2023-06-05', 'CHASE AUTOPAY');
     const loaded = loadTransactions(collection.serialize());
-    const difference = [...loaded.topLevelTransactions].find(isDerivedRecord)!;
-    expect(difference).toMatchObject({
-      accountId: 'card',
-      importId: DERIVED_IMPORT_ID,
-      correctedAmount: 5,
-      correctedTransactionReason: TransactionReason.MatchAdjustmentCredit,
-    });
-    expect(cardStatementsOf(loaded).statementOf.get(difference.id)).toBe(
-      cardStatementsOf(loaded).statements[1]!.id,
+    const statement = cardStatementsOf(loaded).statements.find((s) => s.status === 'no-lines')!;
+    expect(statement).toMatchObject({ estimated: 300, paymentIds: [alone.id] });
+    const estimates = [...loaded.topLevelTransactions].filter(isDerivedRecord);
+    expect(estimates).toHaveLength(statement.estimateIds.length);
+    expect(estimates.length).toBeGreaterThanOrEqual(28);
+    expect(estimates.reduce((sum, tx) => sum - tx.correctedAmount, 0)).toBeCloseTo(300);
+    expect(new Set(estimates.map((tx) => tx.correctedTransactionDate)).size).toBe(estimates.length);
+    expect(estimates[0]).toMatchObject({ importId: DERIVED_IMPORT_ID, accountId: 'card' });
+    expect(spendingCategory(loaded, estimates[0]!)).toBe(ESTIMATED_CATEGORY);
+    expect(cashFlowClassifier(loaded)(loaded.getTransaction(alone.id)!)).toBe('transfer');
+    // A week in the middle of the period gets about a week's share, not the whole payment.
+    const week = spending(
+      collection,
+      statement.opening.slice(0, 8) + '10',
+      statement.opening.slice(0, 8) + '16',
     );
-    const report = buildFinancialReport(loaded, { from: '', to: '', account: '' });
-    // Lines 150 + 100, less the 5 the lines overstate, plus the lone payment and the store.
-    expect(report.cashFlow.spending).toBeCloseTo(150 + 95 + 300 + 40);
-    expect(report.review.statements).toBe(1);
+    expect(week).toBeGreaterThan(60);
+    expect(week).toBeLessThan(80);
     expect(sourceInventory(loaded).some((item) => item.source.id === DERIVED_IMPORT_ID)).toBe(
       false,
     );
   });
 
-  it('counts lines on their own when no payment for them is imported', () => {
-    const { collection, add } = cardFixture();
-    add('card', -20, '2024-02-03', 'Grocery');
+  it('flags lines that stay missing, and estimates the missing amount', () => {
+    const { collection, add, pay } = cardFixture();
+    add('card', -150, '2024-02-03', 'Grocery');
+    pay(150, '2024-03-08');
+    add('card', -100, '2024-03-05', 'Grocery');
+    pay(130, '2024-04-10');
+    add('card', -40, '2024-04-20', 'Grocery');
+    pay(40, '2024-05-10');
+    add('card', -60, '2024-05-20', 'Grocery');
+    pay(60, '2024-06-10');
     const index = cardStatementsOf(collection);
-    expect(index.statements.map((s) => s.status)).toEqual(['unpaid']);
+    expect(index.statements.map((s) => s.status)).toEqual([
+      'reconciled',
+      'shortfall',
+      'reconciled',
+      'reconciled',
+    ]);
+    expect(index.statements[1]).toMatchObject({ unresolved: 30, estimated: 30 });
+    expect(spending(collection)).toBeCloseTo(150 + 100 + 30 + 40 + 60);
     const report = buildFinancialReport(loadTransactions(collection.serialize()), {
       from: '',
       to: '',
       account: '',
     });
-    expect(report.cashFlow.spending).toBe(20);
-    expect(report.review.statements).toBe(0);
+    expect(report.review.statements).toBe(1);
+  });
+
+  it('treats an extra payment that the next one makes up for as timing, not an error', () => {
+    const { collection, add, pay } = cardFixture();
+    add('card', -150, '2024-02-03', 'Grocery');
+    pay(150, '2024-03-08');
+    add('card', -100, '2024-03-05', 'Grocery');
+    pay(110, '2024-04-10');
+    add('card', -40, '2024-04-20', 'Grocery');
+    pay(30, '2024-05-10');
+    expect(statuses(collection).map(([, status]) => status)).toEqual([
+      'reconciled',
+      'timing',
+      'reconciled',
+    ]);
+    expect(spending(collection)).toBeCloseTo(290);
+  });
+
+  it('counts a row exported in two overlapping files once', () => {
+    const { collection, add, pay } = cardFixture();
+    const kept = add('card', -36.5, '2024-02-13', 'SHELL OIL 576', {
+      posted: '2024-02-15',
+      file: 'card/download.csv',
+    });
+    const copy = add('card', -36.5, '2024-02-13', 'SHELL OIL 576 SNOQUALMIE WA', {
+      file: 'card/hand-made.csv',
+    });
+    // Two purchases on one day with similar names in one file: both count.
+    add('card', -5, '2024-02-14', 'Cafe', { file: 'card/download.csv' });
+    add('card', -5, '2024-02-14', 'Cafe Downtown', { file: 'card/download.csv' });
+    pay(46.5, '2024-03-08');
+    expect([...duplicateRowsOf(collection).duplicateOf]).toEqual([[copy.id, kept.id]]);
+    expect(reportingTransactions(collection).some((tx) => tx.id === copy.id)).toBe(false);
+    expect(cashFlowClassifier(collection)(copy)).toBe('duplicate');
+    expect(statuses(collection).map(([, status]) => status)).toEqual(['reconciled']);
+    expect(spending(collection)).toBeCloseTo(46.5);
   });
 });

@@ -43,7 +43,7 @@ function snapshot() {
 }
 
 describe('Review page', () => {
-  it('lists statements that don’t add up with a link to their payment and lines', () => {
+  it('lists statements that don’t add up, and payments spread as estimates', () => {
     useTransactionsMock.mockReturnValue({ data: snapshot(), isLoading: false, error: null });
     render(
       <MemoryRouter>
@@ -53,13 +53,13 @@ describe('Review page', () => {
     const statements = screen.getByRole('region', { name: 'Card statements' });
     expect(within(statements).getByText('1 statement to look at')).toBeInTheDocument();
     const row = within(statements).getByRole('table', { name: 'Statements to look at' });
-    expect(row).toHaveTextContent('Doesn’t add up');
+    expect(row).toHaveTextContent('More lines than paid');
     expect(row).toHaveTextContent('-$10.00');
     expect(
       within(row).getByRole('link', { name: /View Chase card statement closing/ }),
     ).toHaveAttribute('href', expect.stringContaining('statement=card%3A'));
     expect(statements).toHaveTextContent(
-      '1 bank payment to cards ($300.00) paid billing periods with no imported card lines',
+      '$300.00 paid to cards over 1 billing period has no statement lines',
     );
     expect(screen.getByRole('region', { name: 'Records to check' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Rules' })).toBeInTheDocument();
