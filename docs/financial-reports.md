@@ -81,7 +81,7 @@ are complete; a payment is a transfer, never spending itself. Order details
 | Lines missing                   | More was paid than the lines show, for good                                                                              | The lines, plus the rest as estimates |
 | More lines than paid            | The lines exceed the payments, for good (a duplicate line, or a payment from an account that isn't imported)             | The lines                             |
 | No payment found                | Like the above, with no payment at all for the statement although the bank data covers it                                | The lines                             |
-| No lines imported               | A payment, but no card lines for its period (including payments before a card's first statement)                         | The payment, as estimates             |
+| No lines imported               | A payment, but no card lines for its period (including payments before a card's first statement)                         | The payment, as estimates (see below) |
 | Payment not imported            | The payment would fall after the imported bank data ends                                                                 | The lines                             |
 
 **Estimates.** Where lines are missing, the missing amount is spread evenly
@@ -97,8 +97,12 @@ autopay: after paying statement _k_, everything paid so far equals all lines up
 to its closing, less refunds posted after that closing but before the payment
 (the autopay collects that much less, and the refund shows on the next
 statement). The gap stays constant when everything is consistent. Only
-statements that change it for good are flagged; the first statement that
-changes it carries the difference.
+statements that change it for good are flagged. When the change grows over
+neighbouring statements, each one carries its own part; otherwise the first
+statement that changes it carries the difference. A statement with no lines
+owed its payment plus the refunds that reduced it, so that is what its
+estimates add up to, and those refunds (lines of the next statement) don't
+count as a difference there.
 
 **Payments.** A bank debit is a card payment when it is linked to a record in
 a credit card account, or its imported name has a card's name tag at the start

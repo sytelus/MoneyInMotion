@@ -412,9 +412,11 @@ export function buildCardStatements(transactions: Transactions): CardStatementIn
     classify(statements, drafts);
     statements.forEach((statement, position) => {
       const draft = drafts[position]!;
+      // With no lines, the statement's balance is what was paid plus the refunds
+      // that reduced the payment (they show on the next statement's lines).
       const missingCents =
         statement.status === 'no-lines'
-          ? Math.round(statement.paid * 100)
+          ? Math.round((statement.paid + statement.creditsBeforePayment) * 100)
           : statement.status === 'shortfall'
             ? Math.round(statement.unresolved * 100)
             : 0;
@@ -497,17 +499,30 @@ function toStatement(cardId: string, draft: Draft, bankEnd: number): CardStateme
  * within two statements, a line or payment only landed in a neighbouring
  * period ("timing"). When it moves for good, something is missing: more paid
  * than the lines show (lines missing: "shortfall") or the reverse ("excess",
- * or "missing-payment" when the statement has no payment).
+ * or "missing-payment" when the statement has no payment). A difference that
+ * grows over neighbouring statements is flagged on each statement that adds
+ * to it.
+ *
+ * Statements without lines or without payments are left out. A statement
+ * without lines owed what was paid plus the refunds that reduced its payment;
+ * those refunds are lines of the next statement, so they are carried to it.
  */
 function classify(statements: CardStatement[], drafts: Draft[]) {
-  const sequence = statements
-    .map((statement, position) => ({ statement, draft: drafts[position]! }))
-    .filter(({ statement }) => statement.status === 'reconciled');
+  const sequence: { statement: CardStatement; draft: Draft }[] = [];
+  const carried: number[] = [];
+  let carry = 0;
+  statements.forEach((statement, position) => {
+    if (statement.status === 'no-lines') carry += Math.round(statement.creditsBeforePayment * 100);
+    if (statement.status !== 'reconciled') return;
+    sequence.push({ statement, draft: drafts[position]! });
+    carried.push(carry);
+    carry = 0;
+  });
   let paid = 0;
   let owed = 0;
-  const residuals = sequence.map(({ statement }) => {
+  const residuals = sequence.map(({ statement }, position) => {
     paid += Math.round(statement.paid * 100);
-    owed += Math.round(statement.charges * 100);
+    owed += Math.round(statement.charges * 100) + carried[position]!;
     return paid - owed + Math.round(statement.creditsBeforePayment * 100);
   });
   let level = 0;
@@ -530,15 +545,29 @@ function classify(statements: CardStatement[], drafts: Draft[]) {
     }
     const end = Math.min(k + 2, sequence.length - 1);
     const persistent = residuals[end]! - level;
-    const first = sequence[k]!.statement;
-    first.unresolved = persistent / 100;
-    first.status =
-      persistent > 0 ? 'shortfall' : first.paymentIds.length ? 'excess' : 'missing-payment';
-    for (let j = k + 1; j <= end; j++)
-      if (residuals[j] !== residuals[end]) sequence[j]!.statement.status = 'timing';
+    const steps = residuals
+      .slice(k, end + 1)
+      .map((r, i) => r - (i ? residuals[k + i - 1]! : level));
+    const growing = steps.every((step) => step === 0 || Math.sign(step) === Math.sign(persistent));
+    if (growing) {
+      // Each statement that adds to the difference carries its own part.
+      steps.forEach((step, i) => {
+        if (step) flag(sequence[k + i]!.statement, step);
+      });
+    } else {
+      flag(sequence[k]!.statement, persistent);
+      for (let j = k + 1; j <= end; j++)
+        if (residuals[j] !== residuals[end]) sequence[j]!.statement.status = 'timing';
+    }
     level = residuals[end]!;
     k = end + 1;
   }
+}
+
+function flag(statement: CardStatement, cents: number) {
+  statement.unresolved = cents / 100;
+  statement.status =
+    cents > 0 ? 'shortfall' : statement.paymentIds.length ? 'excess' : 'missing-payment';
 }
 
 /** Spread missing spending evenly over a billing period, one record per day. */

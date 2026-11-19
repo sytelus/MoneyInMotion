@@ -9,7 +9,11 @@ import {
 } from '../../src/lib/card-statements.js';
 import { cashFlowClassifier } from '../../src/lib/cash-flow.js';
 import { duplicateRowsOf } from '../../src/lib/duplicates.js';
-import { buildFinancialReport, spendingCategory } from '../../src/lib/financial-reports.js';
+import {
+  buildFinancialReport,
+  spendingCategory,
+  statementsToReview,
+} from '../../src/lib/financial-reports.js';
 import { reportingTransactions } from '../../src/lib/transaction-explorer.js';
 import { sourceInventory } from '../../src/lib/import-evidence.js';
 
@@ -167,6 +171,47 @@ describe('card statements', () => {
       'reconciled',
     ]);
     expect(spending(collection)).toBeCloseTo(290);
+  });
+
+  it('counts refunds that reduced the autopay of a statement with no lines', () => {
+    const { collection, add, pay } = cardFixture();
+    // Lines on Feb 3 and Feb 29 and on May 3 pin the closing day to the 1st or 2nd.
+    add('card', -100, '2024-02-03', 'Grocery');
+    add('card', -50, '2024-02-29', 'Grocery');
+    pay(150, '2024-03-08');
+    // No lines for the next statement ($210 owed); its autopay was $10 less because of a
+    // refund that shows on the statement after it, so that one collects the $10.
+    pay(200, '2024-04-25');
+    add('card', 10, '2024-04-15', 'Fuel', { reason: TransactionReason.Return });
+    add('card', -70, '2024-04-20', 'Grocery');
+    pay(70, '2024-05-25');
+    add('card', -40, '2024-05-03', 'Grocery');
+    pay(40, '2024-06-25');
+    const index = cardStatementsOf(collection);
+    expect(index.statements.map((s) => s.status)).toEqual([
+      'reconciled',
+      'no-lines',
+      'reconciled',
+      'reconciled',
+    ]);
+    expect(index.statements[1]).toMatchObject({ creditsBeforePayment: 10, estimated: 210 });
+    expect(spending(collection)).toBeCloseTo(150 + 210 + 60 + 40);
+    expect(statementsToReview(loadTransactions(collection.serialize()))).toEqual([]);
+  });
+
+  it('flags each statement of a difference that grows over two statements', () => {
+    const { collection, add, pay } = cardFixture();
+    add('card', -150, '2024-02-03', 'Grocery');
+    pay(150, '2024-03-08');
+    add('card', -100, '2024-03-05', 'Grocery');
+    pay(75, '2024-04-10');
+    add('card', -40, '2024-04-20', 'Grocery');
+    pay(15, '2024-05-10');
+    expect(cardStatementsOf(collection).statements.map((s) => [s.status, s.unresolved])).toEqual([
+      ['reconciled', 0],
+      ['excess', -25],
+      ['excess', -25],
+    ]);
   });
 
   it('counts a row exported in two overlapping files once', () => {
