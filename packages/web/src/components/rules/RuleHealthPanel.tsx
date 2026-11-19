@@ -53,7 +53,7 @@ export function RuleHealthPanel({
             <span className="mt-1 block text-2xl font-semibold tabular-nums text-slate-900">
               {count.toLocaleString()}
             </span>
-            <span className="block text-xs">{unit}</span>
+            <span className="block text-xs">{count === 1 ? unit.slice(0, -1) : unit}</span>
           </button>
         );
       })}
