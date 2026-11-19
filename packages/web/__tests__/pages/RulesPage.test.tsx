@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -276,6 +276,69 @@ describe('RulesPage', () => {
     });
     expect(screen.getByRole('option', { name: 'Checking' })).toBeInTheDocument();
     expect(screen.getByText(/Could not load configured accounts/)).toBeInTheDocument();
+  });
+  it('shows rule health, filters to one issue, and previews each fix before saving', async () => {
+    const data = makeTransactionsData();
+    const base = data.edits[0]!;
+    base.scopeFilters = [createScopeFilter(ScopeType.EntityNameNormalized, ['Amazon'])];
+    data.topItems['txn-2'] = {
+      ...data.topItems['txn-1']!,
+      id: 'txn-2',
+      contentHash: 'hash-2',
+      appliedEditIdsDescending: ['edit-1'],
+    };
+    data.topItems['txn-1']!.appliedEditIdsDescending = ['edit-2', 'edit-1'];
+    data.edits.push(
+      {
+        ...base,
+        id: 'edit-2',
+        scopeFilters: [createScopeFilter(ScopeType.TransactionId, ['txn-1', 'gone'])],
+        values: { categoryPath: { value: ['Books'], isVoided: false } },
+      },
+      {
+        ...base,
+        id: 'edit-3',
+        scopeFilters: [createScopeFilter(ScopeType.EntityNameNormalized, ['Nowhere'])],
+      },
+    );
+    useTransactionsMock.mockReturnValue({ data, isLoading: false, error: null });
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Rule Studio' })).toBeInTheDocument();
+    const health = screen.getByRole('region', { name: 'Rule health' });
+
+    fireEvent.click(within(health).getByRole('button', { name: /No matches/ }));
+    expect(screen.getAllByRole('checkbox', { name: /Select rule/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete 1 rule' }));
+    await waitFor(() => expect(manageRulesMock).toHaveBeenCalledTimes(1));
+    expect(manageRulesMock.mock.calls[0]?.[0]).toEqual([
+      { previous: expect.objectContaining({ id: 'edit-3' }), next: null },
+    ]);
+    expect(manageRulesMock.mock.calls[0]?.[1]).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(within(health).getByRole('button', { name: /Category conflict/ }));
+    const conflicts = screen.getByRole('region', { name: 'Category conflicts' });
+    expect(conflicts).toHaveTextContent('Shopping / Online');
+    fireEvent.click(
+      within(conflicts).getByRole('button', { name: 'Use Books for all Amazon records' }),
+    );
+    await waitFor(() => expect(manageRulesMock).toHaveBeenCalledTimes(2));
+    const added = manageRulesMock.mock.calls[1]?.[0][0];
+    expect(added.previous).toBeNull();
+    expect(added.next.scopeFilters[0].parameters).toEqual(['Amazon']);
+    expect(added.next.values.categoryPath.value).toEqual(['Books']);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(within(conflicts).getByRole('button', { name: 'Open rule 2' }));
+    const dialog = screen.getByRole('dialog', { name: 'Rule 2 · results & details' });
+    expect(within(dialog).getByRole('region', { name: 'Diagnosis' })).toHaveTextContent(
+      'It replaces values from earlier rules: rule #1 on 1 record',
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove unavailable references' }));
+    await waitFor(() => expect(manageRulesMock).toHaveBeenCalledTimes(3));
+    const trimmed = manageRulesMock.mock.calls[2]?.[0][0];
+    expect(trimmed.previous.id).toBe('edit-2');
+    expect(trimmed.next.scopeFilters[0].parameters).toEqual(['txn-1']);
   });
   it('exports filtered or selected saved rules locally without calling the mutation API', () => {
     renderPage();

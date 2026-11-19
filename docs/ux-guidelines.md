@@ -90,7 +90,9 @@ not a review process.
   offer categorizing. Empty pages say what to do and have the button for it.
 - **Rules are explainable**: conditions, matched records, fields this rule
   controls, fields that later rules override, and unavailable targets
-  explained with the next steps.
+  explained with the next steps. Rule Studio names each kind of problem
+  (no matches, overridden, duplicate, unavailable references, category
+  conflicts) and offers its fix, always through a preview.
 
 ## Checking your work
 

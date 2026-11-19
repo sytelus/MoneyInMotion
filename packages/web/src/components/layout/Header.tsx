@@ -28,7 +28,7 @@ const navItems = [
   { to: '/transactions', label: 'Transactions', icon: CircleDollarSign },
   { to: '/imports', label: 'Imports', icon: UploadCloud },
   { to: '/accounts', label: 'Accounts', icon: CreditCard },
-  { to: '/rules', label: 'Rules', icon: History },
+  { to: '/rules', label: 'Rule Studio', icon: History },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const;
 

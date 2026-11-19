@@ -134,8 +134,9 @@ ZIP backups from Settings.
    its transactions.
 4. **Transactions:** search, filter, and inspect records. Correct one, several,
    or all filtered records, or turn a correction into a reusable rule.
-5. **Rules:** find, inspect, bulk-edit, or delete saved corrections and see
-   which records each one affects.
+5. **Rule Studio:** write, find, inspect, bulk-edit, or delete rules, see
+   which records each one affects, and fix rules that do nothing, repeat
+   another, point at missing records, or disagree about a category.
 6. **Settings:** configuration, rebuild, full backup, and restore.
 
 ## Commands

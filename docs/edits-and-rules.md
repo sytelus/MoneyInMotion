@@ -74,7 +74,7 @@ category Undo, there is no undo and no per-rule history, so deleting requires
 a preview and a confirmation. A save rejected as stale (409) fetches a fresh
 preview before it can be saved again.
 
-## Explaining effects (Rules page and transaction details)
+## Explaining effects (Rule Studio and transaction details)
 
 `lib/rule-effects.ts` derives explanations from each transaction's
 `appliedEditIdsDescending`. It never changes any data.
@@ -90,9 +90,32 @@ A match is not proof that a value changed, and match counts include order
 parents, so they are not money totals. **Purpose** is derived, not stored:
 rules with exact IDs are corrections, rules with neither exact IDs nor a
 no-match condition are automations, and the remaining rules have a no-match
-condition. The Rules page is a compact table with search, filters, impact
-sorting, bulk edit and delete (up to 1,000), JSON export, and
-`/rules?rule=<id>` for a read-only list of matched records.
+condition. Rule Studio (`/rules`) is a compact table with search, filters,
+impact sorting, bulk edit and delete (up to 1,000), JSON export, and
+`/rules?rule=<id>` for a rule's details and matched records.
+
+**Rule health** (`lib/rule-diagnostics.ts`, derived, never stored) walks the
+same chains once. For each rule it counts matches, the records where it
+writes the winning value of a field ("wins"), and which later rules replace
+its values and which earlier ones it replaces. A rule can have these issues,
+each a card at the top of the studio that filters the table:
+
+| Issue                  | Meaning                                                                     | Fix offered                          |
+| ---------------------- | --------------------------------------------------------------------------- | ------------------------------------ |
+| No matches             | Matches no record (an automation may still match future imports)            | Delete                               |
+| Overridden             | Matches records, but later rules replace every value it sets on all of them | Delete, or **Make this rule win**    |
+| Duplicate              | Same conditions and changes as an earlier rule                              | Delete this copy                     |
+| Unavailable references | Exact IDs not in the loaded history; the rule saved no description of them  | Remove them (or delete if none left) |
+| Category conflict      | A merchant's records get different winning categories from different rules  | **Use for all**, or keep it          |
+
+A rule with none of these is "working as expected". Deleting no-match or
+overridden rules changes no value, because no winning value comes from them.
+**Make this rule win** deletes the rule and appends an identical one with a
+new ID, so it runs last. **Use for all** appends a normalized-name rule for
+the merchant (imported normalized name), which also covers future imports;
+the older rules then show as overridden. Conflicts can be intended, so
+nothing is changed automatically. Every fix goes through the same preview and
+confirmation as any rule change.
 
 Transaction details show current and imported values, related records, the
 statement source (path, format, row, institution reference), and the

@@ -1,6 +1,6 @@
 import React, { useDeferredValue, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Copy, Pencil } from 'lucide-react';
+import { ArrowUpRight, Copy, Pencil, Trash2 } from 'lucide-react';
 import { ScopeType, type TransactionEditData, type Transactions } from '@moneyinmotion/core';
 import { Dialog, DialogContent, DialogFooter } from '../ui/dialog.js';
 import { Button } from '../ui/button.js';
@@ -16,6 +16,9 @@ import { ruleChangesLabel, scopeLabel } from '../../lib/rules.js';
 import { provenanceTimestamp } from '../../lib/transaction-provenance.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { formatCurrency, formatDate } from '../../lib/utils.js';
+import type { RuleChange } from '../../api/client.js';
+import type { RuleDiagnosis } from '../../lib/rule-diagnostics.js';
+import { RuleDiagnosisPanel } from '../rules/RuleDiagnosisPanel.js';
 
 /** Inspect observed applications without editing or replaying financial data. */
 export function RuleInspectionDialog({
@@ -25,6 +28,11 @@ export function RuleInspectionDialog({
   onClose,
   onEdit,
   onDuplicate,
+  diagnosis,
+  diagnoses,
+  onOpenRule,
+  onChanges,
+  onShowConflicts,
 }: {
   rule: TransactionEditData;
   transactions: Transactions;
@@ -32,6 +40,11 @@ export function RuleInspectionDialog({
   onClose: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
+  diagnosis?: RuleDiagnosis;
+  diagnoses?: Map<string, RuleDiagnosis>;
+  onOpenRule?: (id: string) => void;
+  onChanges?: (changes: RuleChange[]) => void;
+  onShowConflicts?: () => void;
 }) {
   const [query, setQuery] = useState('');
   const search = useDeferredValue(query.trim().toLowerCase());
@@ -86,6 +99,17 @@ export function RuleInspectionDialog({
               {rule.scopeFilters.map(scopeLabel).join(' AND ')}
             </p>
           </div>
+          {diagnosis && diagnoses && onOpenRule && onChanges && onShowConflicts && (
+            <RuleDiagnosisPanel
+              rule={rule}
+              diagnosis={diagnosis}
+              diagnoses={diagnoses}
+              totalRules={rules.length}
+              onOpenRule={onOpenRule}
+              onChanges={onChanges}
+              onShowConflicts={onShowConflicts}
+            />
+          )}
           <dl className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="flex flex-col rounded-md bg-muted p-3">
               <dt>Recorded matches</dt>
@@ -235,6 +259,16 @@ export function RuleInspectionDialog({
           </details>
         </div>
         <DialogFooter>
+          {onChanges && (
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => onChanges([{ previous: rule, next: null }])}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Delete
+            </Button>
+          )}
           <Button variant="outline" onClick={onDuplicate}>
             <Copy className="mr-1 h-4 w-4" />
             Duplicate

@@ -35,10 +35,18 @@ import { Notice } from '../components/ui/notice.js';
 import { RuleEditor } from '../components/editing/RuleEditor.js';
 import { RuleChangePreview } from '../components/editing/RuleChangePreview.js';
 import { ruleChangesLabel, ruleFields, scopeLabel } from '../lib/rules.js';
-import { formatDate } from '../lib/utils.js';
+import { countLabel, formatDate } from '../lib/utils.js';
 import { ruleKind, summarizeRuleEffects, type RuleEffectSummary } from '../lib/rule-effects.js';
 import { RuleInspectionDialog } from '../components/editing/RuleInspectionDialog.js';
 import { downloadText } from '../lib/download.js';
+import {
+  diagnoseRules,
+  issueText,
+  removeMissingReferences,
+  type RuleIssue,
+} from '../lib/rule-diagnostics.js';
+import { RuleHealthPanel } from '../components/rules/RuleHealthPanel.js';
+import { CategoryConflicts } from '../components/rules/CategoryConflicts.js';
 
 const PAGE_SIZE = 50;
 /** The server accepts at most this many rule changes in one request. */
@@ -76,11 +84,13 @@ export const RulesPage: React.FC = () => {
       transactions ? summarizeRuleEffects(transactions) : new Map<string, RuleEffectSummary>(),
     [transactions],
   );
+  const health = useMemo(() => (transactions ? diagnoseRules(transactions) : null), [transactions]);
   const rules = useMemo(() => {
     if (!transactions) return [];
     return [...transactions.getClonedEdits()].map((edit, order) => ({
       edit,
       order,
+      diagnosis: health?.rules.get(edit.id),
       count: effects.get(edit.id)?.matches.length ?? 0,
       kind: ruleKind(edit),
       accounts: new Set([
@@ -103,7 +113,7 @@ export const RulesPage: React.FC = () => {
         ),
       changes: ruleChangesLabel(edit.values),
     }));
-  }, [transactions, effects]);
+  }, [transactions, effects, health]);
   const accountOptions = useMemo(
     () =>
       [...new Set(rules.flatMap((rule) => [...rule.accounts]))]
@@ -122,11 +132,11 @@ export const RulesPage: React.FC = () => {
           (kind === 'all' || rule.kind === kind) &&
           (account === 'all' || rule.accounts.has(account)) &&
           (status === 'all' ||
-            (status === 'attention'
-              ? rule.missing > 0
-              : status === 'unapplied'
-                ? rule.count === 0
-                : rule.count > 0)) &&
+            (status === 'applied'
+              ? rule.count > 0
+              : status === 'healthy'
+                ? !rule.diagnosis?.issues.length
+                : rule.diagnosis?.issues.includes(status as RuleIssue))) &&
           words.every((word) =>
             `${rule.scope} ${rule.targets.join(' ')} ${rule.changes} ${rule.edit.id} ${rule.edit.sourceId} ${rule.edit.auditInfo.createdBy} ${rule.edit.scopeFilters.flatMap((s) => [...s.parameters]).join(' ')}`
               .toLowerCase()
@@ -187,6 +197,36 @@ export const RulesPage: React.FC = () => {
     setPage(0);
     setSelected(new Set());
   };
+  const showStatus = (value: string) => {
+    setStatus(value);
+    setQuery('');
+    setField('all');
+    setKind('all');
+    setAccount('all');
+    resetSelection();
+  };
+  const openRule = (id: string) => setParams({ rule: id });
+  const showChanges = (next: RuleChange[]) => {
+    setEditor(null);
+    setDuplicate(null);
+    setChanges(next);
+  };
+  /** One-step fixes for every rule in the current issue filter, saved only after a preview. */
+  const bulkFix =
+    status === 'missing'
+      ? {
+          label: `Remove unavailable references from ${countLabel(filtered.length, 'rule')}`,
+          changes: () =>
+            filtered.map((rule) =>
+              removeMissingReferences(rule.edit, rule.diagnosis?.missingIds ?? []),
+            ),
+        }
+      : status === 'unmatched' || status === 'overridden' || status === 'duplicate'
+        ? {
+            label: `Delete ${countLabel(filtered.length, 'rule')}`,
+            changes: () => filtered.map((rule) => ({ previous: rule.edit, next: null })),
+          }
+        : null;
   const toggle = (id: string) =>
     setSelected((previous) => {
       const next = new Set(previous);
@@ -200,9 +240,10 @@ export const RulesPage: React.FC = () => {
       <main className="workspace">
         <div className="workspace-heading">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Rules</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Rule Studio</h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Automate recurring changes and manage individual transaction corrections.
+              Write and edit rules, see what each one changes, and find rules that do nothing,
+              repeat another, point at missing records, or disagree about a category.
             </p>
           </div>
           <Button disabled={!transactions} onClick={() => openEditor([])}>
@@ -214,22 +255,6 @@ export const RulesPage: React.FC = () => {
           <span>
             <strong>{rules.length.toLocaleString()}</strong> saved rules
           </span>
-          {rules.some((r) => r.missing) && (
-            <button
-              className="inline-flex items-center gap-1 text-amber-800 underline underline-offset-4"
-              onClick={() => {
-                setStatus('attention');
-                setQuery('');
-                setField('all');
-                setKind('all');
-                setAccount('all');
-                resetSelection();
-              }}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              {rules.filter((r) => r.missing).length} need attention
-            </button>
-          )}
           <span className="inline-flex items-center">
             How rules work
             <HelpHint title="Rule order and review marks">
@@ -296,6 +321,42 @@ export const RulesPage: React.FC = () => {
         )}
         {!isLoading && !error && rules.length > 0 && (
           <>
+            {health && <RuleHealthPanel health={health} active={status} onSelect={showStatus} />}
+            {status === 'conflict' && health && (
+              <CategoryConflicts
+                conflicts={health.conflicts}
+                diagnoses={health.rules}
+                onOpenRule={openRule}
+                onChanges={showChanges}
+              />
+            )}
+            {status in issueText && status !== 'conflict' && filtered.length > 0 && (
+              <Notice
+                tone="warning"
+                title={issueText[status as RuleIssue].label}
+                actions={
+                  bulkFix && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={filtered.length > MAX_RULE_CHANGES}
+                      onClick={() => showChanges(bulkFix.changes())}
+                    >
+                      {bulkFix.label}
+                    </Button>
+                  )
+                }
+              >
+                {issueText[status as RuleIssue].help}{' '}
+                {status === 'duplicate'
+                  ? 'Deleting a copy can change values when another rule runs between the copies.'
+                  : status === 'missing'
+                    ? 'A rule left with no references is deleted.'
+                    : 'Deleting these rules changes no values.'}{' '}
+                Nothing is saved until you confirm the preview, which lists every value that
+                changes.
+              </Notice>
+            )}
             <nav aria-label="Rule types" className="flex flex-wrap gap-2">
               {[
                 { value: 'all', label: 'All rules' },
@@ -384,9 +445,12 @@ export const RulesPage: React.FC = () => {
                     }}
                     options={[
                       { value: 'all', label: 'All rules' },
-                      { value: 'attention', label: 'Needs attention' },
                       { value: 'applied', label: 'Applied to transactions' },
-                      { value: 'unapplied', label: 'No recorded matches' },
+                      { value: 'healthy', label: 'Working as expected' },
+                      ...(Object.keys(issueText) as RuleIssue[]).map((issue) => ({
+                        value: issue,
+                        label: issueText[issue].label,
+                      })),
                     ]}
                   />
                 </label>
@@ -686,6 +750,21 @@ export const RulesPage: React.FC = () => {
                               <p className="mt-1 line-clamp-2 text-xs text-muted-foreground md:hidden">
                                 {rule.targets[0] || rule.scope}
                               </p>
+                              {rule.diagnosis?.issues.some((issue) => issue !== 'missing') && (
+                                <span className="mt-1 flex flex-wrap gap-1">
+                                  {rule.diagnosis.issues
+                                    .filter((issue) => issue !== 'missing')
+                                    .map((issue) => (
+                                      <Badge
+                                        key={issue}
+                                        variant="warning"
+                                        title={issueText[issue].help}
+                                      >
+                                        {issueText[issue].label}
+                                      </Badge>
+                                    ))}
+                                </span>
+                              )}
                               {rule.missing > 0 && (
                                 <span className="mt-1 flex items-center text-xs text-warning-foreground">
                                   <AlertTriangle className="mr-1 h-3.5 w-3.5 shrink-0" />
@@ -736,6 +815,16 @@ export const RulesPage: React.FC = () => {
                               >
                                 {rule.count.toLocaleString()}
                               </button>
+                              {rule.diagnosis &&
+                                rule.count > 0 &&
+                                rule.diagnosis.controls !== rule.count && (
+                                  <span
+                                    className="block text-xs text-muted-foreground"
+                                    title="Records where this rule sets the winning value"
+                                  >
+                                    wins {rule.diagnosis.controls.toLocaleString()}
+                                  </span>
+                                )}
                             </td>
                             <td className="hidden sm:table-cell">
                               <div className="flex">
@@ -878,6 +967,7 @@ export const RulesPage: React.FC = () => {
             onBack={editor ? () => setChanges(null) : undefined}
             onSaved={(result) => {
               closeEditor();
+              closeInspection();
               setSelected(new Set());
               setSuccess(
                 `Saved. ${result.affectedTransactionsCount.toLocaleString()} transaction values changed; ${result.totalRules.toLocaleString()} rules remain.`,
@@ -896,6 +986,14 @@ export const RulesPage: React.FC = () => {
               closeInspection();
             }}
             onDuplicate={() => duplicateRule(inspected.edit)}
+            diagnosis={inspected.diagnosis}
+            diagnoses={health?.rules}
+            onOpenRule={openRule}
+            onChanges={showChanges}
+            onShowConflicts={() => {
+              closeInspection();
+              showStatus('conflict');
+            }}
           />
         )}
       </main>
