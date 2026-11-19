@@ -53,6 +53,7 @@ export {
   editValue,
   voidedEditValue,
   type EditedValues,
+  type StatementCheck,
   mergeEditedValues,
   type TransactionEditData,
 } from './transaction-edit.js';

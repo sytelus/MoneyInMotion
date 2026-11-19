@@ -1,13 +1,15 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AccountType, Transaction, TransactionReason, Transactions } from '@moneyinmotion/core';
 import { ReviewPage } from '../../src/pages/ReviewPage.js';
 
 const useTransactionsMock = vi.fn();
+const mutate = vi.fn();
 vi.mock('../../src/api/hooks.js', () => ({
   useTransactions: () => useTransactionsMock(),
+  useManageRules: () => ({ mutate, isPending: false }),
   useStatementInventory: () => ({ data: { entries: [], truncated: false, unreadableFolders: 0 } }),
 }));
 
@@ -63,5 +65,28 @@ describe('Review page', () => {
     );
     expect(screen.getByRole('region', { name: 'Records to check' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Rules' })).toBeInTheDocument();
+  });
+
+  it('marks a statement as checked with a note', () => {
+    useTransactionsMock.mockReturnValue({ data: snapshot(), isLoading: false, error: null });
+    render(
+      <MemoryRouter>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Mark Chase card statement closing .* as checked/ }),
+    );
+    fireEvent.change(screen.getByLabelText('What did you find? (optional)'), {
+      target: { value: 'Cash refund at the store' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as checked' }));
+    expect(mutate).toHaveBeenCalledOnce();
+    const [[change]] = mutate.mock.calls[0]!;
+    expect(change.previous).toBeNull();
+    expect(change.next.values.statementCheck).toEqual({
+      value: { difference: -10, note: 'Cash refund at the store' },
+      isVoided: false,
+    });
   });
 });

@@ -19,7 +19,7 @@ import {
   transactionBucket,
   transactionCategory,
 } from './transaction-explorer.js';
-import { cardStatementsOf, type CardStatement } from './card-statements.js';
+import { FLAGGED, cardStatementsOf, type CardStatement } from './card-statements.js';
 import {
   cashFlowClassifier,
   cashFlowTotals,
@@ -150,9 +150,8 @@ export function statementsToReview(
 ): CardStatement[] {
   return cardStatementsOf(transactions).statements.filter(
     (statement) =>
-      (statement.status === 'shortfall' ||
-        statement.status === 'excess' ||
-        statement.status === 'missing-payment') &&
+      FLAGGED.has(statement.status) &&
+      !statement.check?.current &&
       (!scope ||
         ((!scope.from || statement.closing >= scope.from) &&
           (!scope.to || statement.closing <= scope.to) &&

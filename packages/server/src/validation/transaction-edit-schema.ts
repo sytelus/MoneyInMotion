@@ -102,6 +102,9 @@ function buildEditedValuesSchema(allowEmptyValues: boolean) {
       isFlagged: editValueSchema(z.boolean()),
       note: editValueSchema(editableString),
       categoryPath: editValueSchema(categoryPath),
+      statementCheck: editValueSchema(
+        z.object({ difference: z.number().finite(), note: z.string().max(10_000) }).strict(),
+      ),
     })
     .strict();
 

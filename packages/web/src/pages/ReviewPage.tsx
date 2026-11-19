@@ -7,6 +7,7 @@ import { Header } from '../components/layout/Header.js';
 import { ReportPanel } from '../components/reports/ReportPanel.js';
 import { ReviewQueue } from '../components/reports/ReviewQueue.js';
 import { StoredFilesNotImported } from '../components/importing/UnrecognizedFiles.js';
+import { StatementCheck } from '../components/transactions/StatementCheck.js';
 import { Button, buttonClassName } from '../components/ui/button.js';
 import { Notice } from '../components/ui/notice.js';
 import { Pagination } from '../components/ui/pagination.js';
@@ -116,6 +117,7 @@ const STATUS_COLUMNS: Array<{ label: string; statuses: CardStatement['status'][]
 function CardStatements({ transactions }: { transactions: Transactions }) {
   const index = cardStatementsOf(transactions);
   const [page, setPage] = useState(0);
+  const [checking, setChecking] = useState<string | null>(null);
   const review = useMemo(
     () =>
       statementsToReview(transactions).sort(
@@ -129,6 +131,7 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
       result.set(statement.accountId, [...(result.get(statement.accountId) ?? []), statement]);
     return [...result];
   }, [index]);
+  const checked = index.statements.filter((statement) => statement.check?.current);
   const estimated = index.statements.filter((statement) => statement.estimated > 0);
   const estimatedTotal = estimated.reduce((sum, statement) => sum + statement.estimated, 0);
   const timing = index.statements.filter((statement) => statement.status === 'timing').length;
@@ -189,7 +192,10 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
       </ul>
       {review.length === 0 ? (
         <p className="mt-4 flex items-center gap-2 text-sm text-emerald-800">
-          <CheckCircle2 aria-hidden className="h-4 w-4" /> Every statement adds up.
+          <CheckCircle2 aria-hidden className="h-4 w-4" />
+          {checked.length
+            ? 'Nothing left to look at: every statement adds up or is checked.'
+            : 'Every statement adds up.'}
         </p>
       ) : (
         <>
@@ -216,37 +222,63 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
               </thead>
               <tbody>
                 {review.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((statement) => (
-                  <tr key={statement.id}>
-                    <td>
-                      <CreditCard aria-hidden className="mr-1 inline h-4 w-4 text-primary" />
-                      {title(statement.accountId)}, {statement.opening} to {statement.closing}
-                    </td>
-                    <td title={statementStatusText[statement.status].help}>
-                      {statementStatusText[statement.status].label}
-                    </td>
-                    <td className="text-right tabular-nums">
-                      {formatCurrency(statement.charges)} ({statement.itemIds.length})
-                    </td>
-                    <td className="text-right tabular-nums">
-                      {statement.paymentIds.length ? formatCurrency(statement.paid) : '—'}
-                    </td>
-                    <td className="text-right tabular-nums">
-                      {formatCurrency(statement.unresolved)}
-                    </td>
-                    <td>
-                      <Link
-                        className={buttonClassName({ variant: 'outline', size: 'sm' })}
-                        to={transactionsHref({
-                          statement: statement.id,
-                          basis: 'records',
-                          view: 'list',
-                        })}
-                        aria-label={`View ${title(statement.accountId)} statement closing ${statement.closing}`}
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
+                  <React.Fragment key={statement.id}>
+                    <tr>
+                      <td>
+                        <CreditCard aria-hidden className="mr-1 inline h-4 w-4 text-primary" />
+                        {title(statement.accountId)}, {statement.opening} to {statement.closing}
+                      </td>
+                      <td title={statementStatusText[statement.status].help}>
+                        {statementStatusText[statement.status].label}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {formatCurrency(statement.charges)} ({statement.itemIds.length})
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {statement.paymentIds.length ? formatCurrency(statement.paid) : '—'}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {formatCurrency(statement.unresolved)}
+                      </td>
+                      <td>
+                        <Link
+                          className={buttonClassName({ variant: 'outline', size: 'sm' })}
+                          to={transactionsHref({
+                            statement: statement.id,
+                            basis: 'records',
+                            view: 'list',
+                          })}
+                          aria-label={`View ${title(statement.accountId)} statement closing ${statement.closing}`}
+                        >
+                          View
+                        </Link>{' '}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-expanded={checking === statement.id}
+                          aria-label={`Mark ${title(statement.accountId)} statement closing ${statement.closing} as checked`}
+                          onClick={() =>
+                            setChecking(checking === statement.id ? null : statement.id)
+                          }
+                        >
+                          Checked…
+                        </Button>
+                      </td>
+                    </tr>
+                    {(checking === statement.id || statement.check) && (
+                      <tr>
+                        <td colSpan={6} className="border-t-0 pt-0">
+                          <StatementCheck
+                            key={`${statement.id}:${checking === statement.id}`}
+                            statement={statement}
+                            transactions={transactions}
+                            startEditing={checking === statement.id}
+                            onClose={() => setChecking(null)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -258,6 +290,34 @@ function CardStatements({ transactions }: { transactions: Transactions }) {
             noun="statements"
             onChange={setPage}
           />
+        </>
+      )}
+      {checked.length > 0 && (
+        <>
+          <h3 className="mt-5 text-sm font-semibold">
+            {countLabel(checked.length, 'checked statement')}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Differences you looked at and accepted. A statement comes back to the list above if a
+            later import changes its difference.
+          </p>
+          <ul className="mt-2 space-y-3" aria-label="Checked statements">
+            {checked.map((statement) => (
+              <li key={statement.id} className="rounded-lg border border-border p-3 text-sm">
+                <CreditCard aria-hidden className="mr-1 inline h-4 w-4 text-primary" />
+                {title(statement.accountId)}, {statement.opening} to {statement.closing} ·{' '}
+                {statementStatusText[statement.status].label} ·{' '}
+                <span className="tabular-nums">{formatCurrency(statement.unresolved)}</span>{' '}
+                <Link
+                  className="text-xs font-medium text-primary underline underline-offset-2"
+                  to={transactionsHref({ statement: statement.id, basis: 'records', view: 'list' })}
+                >
+                  View
+                </Link>
+                <StatementCheck statement={statement} transactions={transactions} />
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </ReportPanel>

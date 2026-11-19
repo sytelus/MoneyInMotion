@@ -8,7 +8,11 @@ import {
 } from '@moneyinmotion/core';
 import { formatCurrency, formatDate } from './utils.js';
 
-export const ruleFields: Array<{ key: keyof EditedValues; label: string }> = [
+/**
+ * Every field a rule can set. `readOnly` fields are set elsewhere (a statement
+ * check on the Review page) and only shown in the rule editor.
+ */
+export const ruleFields: Array<{ key: keyof EditedValues; label: string; readOnly?: true }> = [
   { key: 'categoryPath', label: 'Category' },
   { key: 'note', label: 'Note' },
   { key: 'isFlagged', label: 'Mark for review' },
@@ -16,6 +20,7 @@ export const ruleFields: Array<{ key: keyof EditedValues; label: string }> = [
   { key: 'amount', label: 'Amount' },
   { key: 'transactionDate', label: 'Date' },
   { key: 'transactionReason', label: 'Transaction type' },
+  { key: 'statementCheck', label: 'Card statement checked', readOnly: true },
 ];
 export const scopeNames: Record<ScopeType, string> = {
   [ScopeType.None]: 'No transactions',
@@ -53,6 +58,10 @@ export function ruleChangesLabel(values: EditedValues | null): string {
         if (key === 'isFlagged') value = field.value ? 'Yes' : 'No';
         if (key === 'amount') value = formatCurrency(field.value as number);
         if (key === 'transactionDate') value = formatDate(field.value as string);
+        if (key === 'statementCheck') {
+          const check = field.value as { difference: number; note: string };
+          value = `${formatCurrency(check.difference)} difference accepted${check.note ? ` (${check.note})` : ''}`;
+        }
         if (key === 'transactionReason')
           value = transactionReasonTitleLookup[String(field.value)] ?? value;
         if (value === '') return `${label}: clear value`;

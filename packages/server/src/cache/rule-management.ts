@@ -38,6 +38,7 @@ function effectiveValues(tx: Transaction) {
     category: tx.categoryPath,
     note: tx.note,
     flagged: tx.isUserFlagged,
+    statementCheck: tx.statementCheck,
   };
 }
 

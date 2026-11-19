@@ -5,7 +5,7 @@ import {
   transactionReasonTitleLookup,
   type EditedValues,
 } from '@moneyinmotion/core';
-import { ruleFields } from '../../lib/rules.js';
+import { ruleChangesLabel, ruleFields } from '../../lib/rules.js';
 import { Select } from '../ui/select.js';
 import { Input } from '../ui/input.js';
 import { HelpHint } from '../ui/help-hint.js';
@@ -25,8 +25,20 @@ export function RuleValuesEditor({
   return (
     <fieldset className="grid gap-3 sm:grid-cols-2">
       <legend className="mb-2 font-semibold">Changes to make</legend>
-      {ruleFields.map(({ key, label }) => {
+      {ruleFields.map(({ key, label, readOnly }) => {
         const field = values[key];
+        if (readOnly) {
+          if (field == null) return null;
+          return (
+            <div key={key} className="space-y-1 rounded-md border border-border p-3 text-sm">
+              <p className="font-medium">{label}</p>
+              <p className="text-muted-foreground">
+                {ruleChangesLabel({ [key]: field }).replace(`${label}: `, '')}. Change it on the
+                Review page.
+              </p>
+            </div>
+          );
+        }
         const mode = field == null ? 'keep' : field.isVoided ? 'reset' : 'set';
         return (
           <div key={key} className="space-y-1 rounded-md border border-border p-3">

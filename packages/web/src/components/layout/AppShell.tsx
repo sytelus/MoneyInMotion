@@ -149,7 +149,7 @@ export const AppShell: React.FC = () => {
       const targets = chosen.filter((target) => !isDerivedRecord(target));
       if (targets.length < chosen.length)
         setQuickEditError(
-          'An unexplained statement difference is calculated, not imported, so it can’t be edited. Open its statement to see the lines and payment.',
+          'Estimated card spending is calculated, not imported, so it can’t be edited. Open its statement to see the lines and payments.',
         );
       if (!targets.length) return;
       setEditingTransactions(targets);
@@ -172,9 +172,7 @@ export const AppShell: React.FC = () => {
     (target: Transaction, value: EditValue<boolean>, message: string) => {
       if (manageRules.isPending) return;
       if (isDerivedRecord(target)) {
-        setQuickEditError(
-          'An unexplained statement difference is calculated, so it can’t be marked.',
-        );
+        setQuickEditError('Estimated card spending is calculated, so it can’t be marked.');
         return;
       }
       const saved = Array.isArray(data?.edits) ? data.edits : (data?.edits?.edits ?? []);

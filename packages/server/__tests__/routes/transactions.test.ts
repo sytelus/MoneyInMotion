@@ -809,6 +809,32 @@ describe('transaction edit routes', () => {
     expect(cache.applyEdits).not.toHaveBeenCalled();
   });
 
+  it('accepts a statement check and rejects one without a numeric difference', async () => {
+    const cache = createMockCache();
+    (cache.applyEdits as ReturnType<typeof vi.fn>).mockResolvedValue({
+      affectedTransactionsCount: 1,
+    });
+    const app = createTestApp(createTestConfig(), cache);
+    const edit = (statementCheck: unknown) => ({
+      id: 'edit-check',
+      auditInfo: createAuditInfo(),
+      scopeFilters: [createScopeFilter(ScopeType.TransactionId, ['tx-1'])],
+      values: { statementCheck },
+      sourceId: 'test',
+    });
+
+    const good = await request(app)
+      .post('/api/transaction-edits')
+      .send([edit(editValue({ difference: -25, note: 'A credit missing from the export' }))]);
+    const bad = await request(app)
+      .post('/api/transaction-edits')
+      .send([edit(editValue({ difference: '-25', note: '' }))]);
+
+    expect(good.status).toBe(200);
+    expect(bad.status).toBe(400);
+    expect(cache.applyEdits).toHaveBeenCalledOnce();
+  });
+
   it('rejects an invalid scope hash and an empty edited-values object', async () => {
     const cache = createMockCache();
     const app = createTestApp(createTestConfig(), cache);

@@ -258,6 +258,24 @@ export interface EditedValues {
 
   /** Override for the category path (array of path segments). */
   categoryPath?: EditValue<string[]> | null;
+
+  /**
+   * The user checked a card statement that doesn't add up and accepts its
+   * difference. Set on one line of the statement; see {@link StatementCheck}.
+   */
+  statementCheck?: EditValue<StatementCheck> | null;
+}
+
+/**
+ * A card statement difference the user has checked. It holds only while the
+ * statement's difference is still `difference`; a new import that changes it
+ * flags the statement again.
+ */
+export interface StatementCheck {
+  /** The accepted difference: paid minus lines, in currency units. */
+  difference: number;
+  /** What the user found. */
+  note: string;
 }
 
 /**
@@ -304,6 +322,7 @@ export function mergeEditedValues(
   mergeField('isFlagged');
   mergeField('note');
   mergeField('categoryPath');
+  mergeField('statementCheck');
 
   return target;
 }

@@ -18,7 +18,7 @@ import { RuleChangePreview } from './RuleChangePreview.js';
  * value for all of them.
  */
 function defaultValues(transactions: Transaction[], field?: keyof EditedValues): EditedValues {
-  if (!field) return {};
+  if (!field || field === 'statementCheck') return {};
   const current = (tx: Transaction): string | number | boolean | string[] => {
     switch (field) {
       case 'categoryPath':

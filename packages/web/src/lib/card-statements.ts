@@ -42,6 +42,13 @@ const ASSUMED_PAY_LAG_DAYS = 25;
 /** An unlinked bank payment and card payment of the same amount this close are one payment. */
 const PAIR_DAYS = 7;
 
+/** Statuses with a lasting difference: the ones to review. */
+export const FLAGGED: ReadonlySet<CardStatementStatus> = new Set([
+  'shortfall',
+  'excess',
+  'missing-payment',
+]);
+
 /** Import ID of the derived records (daily estimates). */
 export const DERIVED_IMPORT_ID = 'mim-statement-check';
 
@@ -72,6 +79,12 @@ export interface CardStatement {
   estimated: number;
   estimateIds: string[];
   status: CardStatementStatus;
+  /**
+   * The user's check of this statement's difference, saved on one of its lines.
+   * `current` while the difference is still the one checked; a statement whose
+   * check is current needs no review.
+   */
+  check: { lineId: string; difference: number; note: string; current: boolean } | null;
 }
 
 export interface CardStatementIndex {
@@ -411,6 +424,21 @@ export function buildCardStatements(transactions: Transactions): CardStatementIn
     const statements = drafts.map((draft) => toStatement(cardId, draft, bankEnd));
     classify(statements, drafts);
     statements.forEach((statement, position) => {
+      for (const { tx } of drafts[position]!.items) {
+        const check = tx.statementCheck;
+        if (!check) continue;
+        statement.check = {
+          lineId: tx.id,
+          difference: check.difference,
+          note: check.note,
+          current:
+            FLAGGED.has(statement.status) &&
+            cents(check.difference) === cents(statement.unresolved),
+        };
+        break;
+      }
+    });
+    statements.forEach((statement, position) => {
       const draft = drafts[position]!;
       // With no lines, the statement's balance is what was paid plus the refunds
       // that reduced the payment (they show on the next statement's lines).
@@ -482,6 +510,7 @@ function toStatement(cardId: string, draft: Draft, bankEnd: number): CardStateme
     unresolved: 0,
     estimated: 0,
     estimateIds: [],
+    check: null,
     status: !draft.items.length
       ? 'no-lines'
       : draft.units.length || draft.closing + PAY_WINDOW_DAYS <= bankEnd

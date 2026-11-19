@@ -142,6 +142,15 @@ the flagged ones first (largest difference first), rows found in two files, the
 Overview's review queue for all dates, and Rule Studio's issue count. The
 import and rebuild results link to it.
 
+**Checked statements.** A flagged statement can be marked as checked, with a
+note on what you found (a credit missing from the export, say). The check is a
+rule on one of the statement's lines that holds the accepted difference. While
+the statement's difference is still that amount, it leaves the review list and
+the Overview's count, and the Review page lists it under checked statements,
+where the note can be changed or the check undone. If a later import changes
+the difference, the statement is flagged again and shows the earlier note.
+Checking changes no totals.
+
 **Refund links** (derived, never stored). Each spending credit is linked to the
 charge it most likely reverses: same merchant, on or before the refund, within
 two years, with enough unrefunded amount left. An exact amount wins, then the

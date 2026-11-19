@@ -13,7 +13,7 @@
 
 import type { AuditInfo } from './audit-info.js';
 import { createAuditInfo, updateAuditInfo } from './audit-info.js';
-import type { EditedValues, TransactionEditData } from './transaction-edit.js';
+import type { EditedValues, StatementCheck, TransactionEditData } from './transaction-edit.js';
 import { mergeEditedValues } from './transaction-edit.js';
 import {
   TransactionReason,
@@ -131,6 +131,11 @@ function validateMergedEdit(value: unknown, errors: string[]): void {
     entityName: (candidate) => typeof candidate === 'string',
     isFlagged: (candidate) => typeof candidate === 'boolean',
     note: (candidate) => typeof candidate === 'string',
+    statementCheck: (candidate) =>
+      isRecord(candidate) &&
+      typeof candidate.difference === 'number' &&
+      Number.isFinite(candidate.difference) &&
+      typeof candidate.note === 'string',
     categoryPath: (candidate) =>
       Array.isArray(candidate) && candidate.every((part) => typeof part === 'string'),
   };
@@ -812,6 +817,12 @@ export class Transaction {
       this._cachedNote = ev && !ev.isVoided ? ev.value : null;
     }
     return this._cachedNote;
+  }
+
+  /** A checked card statement difference from merged edits, or `null`. */
+  get statementCheck(): StatementCheck | null {
+    const ev = this.data.mergedEdit?.statementCheck;
+    return ev && !ev.isVoided ? ev.value : null;
   }
 
   /** The category path from merged edits, or an empty array. */

@@ -2,12 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, CreditCard } from 'lucide-react';
 import type { Transaction, Transactions } from '@moneyinmotion/core';
-import { cardStatementsOf, statementStatusText } from '../../lib/card-statements.js';
+import { FLAGGED, cardStatementsOf, statementStatusText } from '../../lib/card-statements.js';
 import { duplicateRowsOf } from '../../lib/duplicates.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { countLabel, formatCurrency } from '../../lib/utils.js';
-
-const WARN = new Set(['shortfall', 'excess', 'missing-payment']);
+import { StatementCheck } from './StatementCheck.js';
 
 /**
  * Where a record sits in the card's reconciliation: the statement it belongs
@@ -52,7 +51,7 @@ export function CardStatementPanel({
   if (!statement) return null;
   const card = transactions.getAccountInfo(statement.accountId).title || statement.accountId;
   const status = statementStatusText[statement.status];
-  const warn = WARN.has(statement.status);
+  const warn = FLAGGED.has(statement.status) && !statement.check?.current;
   return (
     <section
       aria-label="Card statement"
@@ -98,6 +97,7 @@ export function CardStatementPanel({
         )}
       </dl>
       <p className="mt-2">{status.help}</p>
+      <StatementCheck key={statement.id} statement={statement} transactions={transactions} />
       <Link
         className="mt-2 inline-block font-medium text-primary underline underline-offset-2"
         to={transactionsHref({ statement: statement.id, basis: 'records', view: 'list' })}

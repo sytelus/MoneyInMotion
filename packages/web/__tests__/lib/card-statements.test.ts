@@ -9,6 +9,7 @@ import {
 } from '../../src/lib/card-statements.js';
 import { cashFlowClassifier } from '../../src/lib/cash-flow.js';
 import { duplicateRowsOf } from '../../src/lib/duplicates.js';
+import { statementCheckChange } from '../../src/lib/statement-checks.js';
 import {
   buildFinancialReport,
   spendingCategory,
@@ -212,6 +213,50 @@ describe('card statements', () => {
       ['excess', -25],
       ['excess', -25],
     ]);
+  });
+
+  it('takes a checked statement off the review list while its difference is unchanged', () => {
+    const { collection, add, pay } = cardFixture();
+    add('card', -150, '2024-02-03', 'Grocery');
+    pay(150, '2024-03-08');
+    add('card', -100, '2024-03-05', 'Grocery');
+    pay(75, '2024-04-10');
+    add('card', -40, '2024-04-20', 'Grocery');
+    pay(40, '2024-05-10');
+    const flagged = cardStatementsOf(collection).statements[1]!;
+    expect(flagged).toMatchObject({ status: 'excess', unresolved: -25, check: null });
+
+    const change = statementCheckChange(collection, flagged, ' A credit missing from the export ')!;
+    expect(change.previous).toBeNull();
+    const edits = collection.getClonedEdits();
+    edits.add(change.next!);
+    const checked = collection.withReplayedEdits(edits);
+    const statement = cardStatementsOf(checked).statements[1]!;
+    expect(statement.check).toEqual({
+      lineId: flagged.itemIds.at(-1),
+      difference: -25,
+      note: 'A credit missing from the export',
+      current: true,
+    });
+    expect(statementsToReview(checked)).toEqual([]);
+    expect(buildFinancialReport(checked, { from: '', to: '', account: '' }).review.statements).toBe(
+      0,
+    );
+
+    // Changing the note replaces the same rule; undoing removes it.
+    const renote = statementCheckChange(checked, statement, 'Found it')!;
+    expect(renote.previous?.id).toBe(change.next!.id);
+    expect(renote.next?.id).toBe(change.next!.id);
+    expect(statementCheckChange(checked, statement, null)).toEqual({
+      previous: renote.previous,
+      next: null,
+    });
+
+    // A later import changes the difference: the statement needs another look.
+    add('card', -5, '2024-03-20', 'Cafe');
+    const changed = collection.withReplayedEdits(edits);
+    expect(cardStatementsOf(changed).statements[1]!.check?.current).toBe(false);
+    expect(statementsToReview(changed)).toHaveLength(1);
   });
 
   it('counts a row exported in two overlapping files once', () => {

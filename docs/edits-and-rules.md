@@ -17,6 +17,11 @@ transaction IDs. Accepted changes save immediately, and previews save nothing.
   reminder and doesn't affect totals. Each field can be left alone, set,
   cleared, or **restored to the imported value**. Restoring is an explicit
   marker that cancels earlier rules for that field.
+- A **statement check** (`statementCheck: { difference, note }`) records that
+  you looked at a card statement that doesn't add up and accept its
+  difference. It is set from the Review page or a statement's details on one
+  line of the statement, and Rule Studio shows it without editing it. See
+  [Card statements](financial-reports.md#card-statements).
 
 ## How replay works
 
@@ -54,7 +59,6 @@ transaction IDs. Accepted changes save immediately, and previews save nothing.
 
 The website saves every change through rule management,
 `POST /api/transaction-edits/manage`, with
-`POST /api/transaction-edits/manage` with
 `{ preview, changes: [{ previous, next }], expectedRevision }`. `previous` is
 null to create, and `next` is null to delete; a replacement keeps the rule ID.
 (`POST /api/transaction-edits` still appends rules for API clients.) The
