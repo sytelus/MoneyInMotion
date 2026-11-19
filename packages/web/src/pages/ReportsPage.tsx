@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Transactions } from '@moneyinmotion/core';
+import { loadTransactions } from '../lib/card-statements.js';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -47,7 +48,7 @@ function uncategorizedShare(categories: ReportBreakdown[]): number {
 
 export function ReportsPage() {
   const { data, isLoading, error, refetch } = useTransactions();
-  const transactions = useMemo(() => (data ? Transactions.fromData(data) : null), [data]);
+  const transactions = useMemo(() => (data ? loadTransactions(data) : null), [data]);
   return (
     <div className="reports-page min-h-screen bg-slate-50/70">
       <Header />

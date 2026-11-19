@@ -37,7 +37,7 @@ import { ExistingStatements } from '../importing/ExistingStatements.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts.js';
 import { IncomeDecisionBar } from '../transactions/IncomeDecisionBar.js';
-import { CardPaymentDecisionBar } from '../transactions/CardPaymentDecisionBar.js';
+import { isDerivedRecord } from '../../lib/card-statements.js';
 import { cashFlowContext } from '../../lib/financial-reports.js';
 
 /** `categoryPath` opens the quick category dialog; `categoryAdvanced` the full rule editor. */
@@ -130,16 +130,12 @@ export const AppShell: React.FC = () => {
   }, [transactions, selectedIds]);
   const selectedTransaction = selectedTransactions.length === 1 ? selectedTransactions[0] : null;
   const flowFilter = useTransactionsStore((s) => s.filters.flow);
-  const reviewFilter = useTransactionsStore((s) => s.filters.review);
-  const { undecidedSelected, cardPaymentsSelected } = useMemo(() => {
-    if (!transactions) return { undecidedSelected: [], cardPaymentsSelected: [] };
-    const { kindOf, cardPayments } = cashFlowContext(transactions);
-    return {
-      undecidedSelected: selectedTransactions.filter((tx) => kindOf(tx) === 'undecided'),
-      cardPaymentsSelected: selectedTransactions.filter((tx) => cardPayments.has(tx.id)),
-    };
+  const undecidedSelected = useMemo(() => {
+    if (!transactions) return [];
+    const { kindOf } = cashFlowContext(transactions);
+    return selectedTransactions.filter((tx) => kindOf(tx) === 'undecided');
   }, [transactions, selectedTransactions]);
-  /** An income or card-payment decision: the type edit flow with the type preset. */
+  /** An income decision: the type edit flow with the type preset. */
   const decideType = useCallback((targets: Transaction[], reason: number) => {
     setEditingTransactions(targets);
     setEditDefaults({ transactionReason: editValue(reason) });
@@ -149,7 +145,12 @@ export const AppShell: React.FC = () => {
   // Edit dialog openers
   const openEditDialog = useCallback(
     (dialog: EditDialog, tx?: Transaction) => {
-      const targets = tx ? [tx] : selectedTransactions;
+      const chosen = tx ? [tx] : selectedTransactions;
+      const targets = chosen.filter((target) => !isDerivedRecord(target));
+      if (targets.length < chosen.length)
+        setQuickEditError(
+          'An unexplained statement difference is calculated, not imported, so it can’t be edited. Open its statement to see the lines and payment.',
+        );
       if (!targets.length) return;
       setEditingTransactions(targets);
       setEditDefaults(undefined);
@@ -170,6 +171,12 @@ export const AppShell: React.FC = () => {
   const saveFlag = useCallback(
     (target: Transaction, value: EditValue<boolean>, message: string) => {
       if (manageRules.isPending) return;
+      if (isDerivedRecord(target)) {
+        setQuickEditError(
+          'An unexplained statement difference is calculated, so it can’t be marked.',
+        );
+        return;
+      }
       const saved = Array.isArray(data?.edits) ? data.edits : (data?.edits?.edits ?? []);
       const previous =
         saved.find(
@@ -385,11 +392,6 @@ export const AppShell: React.FC = () => {
             <IncomeDecisionBar
               undecided={undecidedSelected}
               showHint={flowFilter === 'undecided'}
-              onDecide={decideType}
-            />
-            <CardPaymentDecisionBar
-              payments={cardPaymentsSelected}
-              showHint={reviewFilter === 'cardpayments'}
               onDecide={decideType}
             />
             <div className="flex-1 min-h-0">

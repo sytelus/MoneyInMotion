@@ -45,11 +45,18 @@ These goals decide what gets built and how. The behavior docs under
 
 **Meaning**
 
-- **Connect related records.** Transfers between accounts are not income or
-  spending, a card payment matched to the card's statement is not an expense
-  (an unmatched one stands in for the card's purchases, and is listed for
-  review when those purchases are imported too), and Amazon or Etsy order lines
-  replace the card charge they explain. Duplicate statement rows are merged.
+- **Start from the money that moved, then drill down.** A payment from a
+  bank account to a card is the spending; the card statement's lines for that
+  billing period are its details, and Amazon or Etsy order lines are details
+  of a card line (receipts may add another level later). Any level may be
+  missing: a payment with no card lines counts by itself. When details exist
+  they must add up to what they explain; when they don't, the gap is shown as
+  an **Unexplained difference** and flagged, so totals always equal what was
+  paid. Transfers between accounts are not income or spending, and duplicate
+  statement rows are merged.
+- **One place to review.** After an import, the Review page lists everything
+  MiM couldn't settle: statements that don't add up, unclear credits,
+  unmatched orders, files it didn't import, and rule problems.
 - **Income, spending, savings.** The Overview reports earned **Income**,
   **Spending** with refunds and discounts subtracted from the purchases they
   offset (refunds are linked to their original charge), and the difference as
@@ -134,10 +141,12 @@ ZIP backups from Settings.
    its transactions.
 4. **Transactions:** search, filter, and inspect records. Correct one, several,
    or all filtered records, or turn a correction into a reusable rule.
-5. **Rule Studio:** write, find, inspect, bulk-edit, or delete rules, see
+5. **Review:** what needs a look after an import, each item linking to the
+   records behind it.
+6. **Rule Studio:** write, find, inspect, bulk-edit, or delete rules, see
    which records each one affects, and fix rules that do nothing, repeat
    another, point at missing records, or disagree about a category.
-6. **Settings:** configuration, rebuild, full backup, and restore.
+7. **Settings:** configuration, rebuild, full backup, and restore.
 
 ## Commands
 

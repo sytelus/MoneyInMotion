@@ -13,6 +13,7 @@ import { transactionReasonTitleLookup } from '@moneyinmotion/core';
 import { cn, formatDate } from '../../lib/utils.js';
 import { AmountDisplay } from './AmountDisplay.js';
 import { TransactionContextMenuButton } from '../editing/TransactionContextMenu.js';
+import { isDerivedRecord } from '../../lib/card-statements.js';
 import { useTransactionsStore } from '../../store/transactions-store.js';
 import { transactionCategory } from '../../lib/transaction-explorer.js';
 
@@ -64,7 +65,9 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       ? transaction.accountId.slice(0, 12) + '...'
       : transaction.accountId;
 
-  const hasEditActions = onEditCategory || onEditNote || onEditAttributes;
+  // A derived statement difference isn't a record: there is nothing to edit.
+  const hasEditActions =
+    !isDerivedRecord(transaction) && (onEditCategory || onEditNote || onEditAttributes);
 
   return (
     <div

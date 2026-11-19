@@ -68,6 +68,14 @@ export const ExistingStatements: React.FC<{ accounts: AccountSummary[] }> = ({ a
           )}
           {result.committed && (
             <p>
+              <Link to="/review" className="font-medium text-primary underline underline-offset-2">
+                Review what needs a look
+              </Link>{' '}
+              : statements that don’t add up, unclear credits, and unmatched orders.
+            </p>
+          )}
+          {result.committed && (
+            <p>
               {result.previousTransactionCount.toLocaleString()} →{' '}
               {result.totalTransactions.toLocaleString()} snapshot records (
               {result.newTransactions >= 0 ? '+' : ''}

@@ -58,7 +58,7 @@ packages/server/src/
   services/                 folder upload, statement inventory, import history, backups, reconnection
 packages/web/src/
   App.tsx                   routes, one lazy-loaded page each; navigation is in components/layout/Header.tsx
-  pages/                    Overview (ReportsPage), Imports, Accounts, Rule Studio (RulesPage), Settings, Welcome
+  pages/                    Overview (ReportsPage), Imports, Review (ReviewPage), Accounts, Rule Studio (RulesPage), Settings, Welcome
   components/               by area; /transactions is components/layout/AppShell.tsx
   api/                      client.ts (HTTP + response types) and hooks.ts (TanStack Query)
   lib/                      pure, tested calculations: cash-flow (income/spending/savings),

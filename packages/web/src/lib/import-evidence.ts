@@ -1,5 +1,6 @@
 /** Derived evidence only: this module never interprets file dates as import events. */
 import { parseDate, type ImportInfo, type Transactions } from '@moneyinmotion/core';
+import { DERIVED_IMPORT_ID } from './card-statements.js';
 
 export interface SourceInventoryItem {
   source: ImportInfo;
@@ -13,6 +14,7 @@ export interface SourceInventoryItem {
 export function sourceInventory(transactions: Transactions): SourceInventoryItem[] {
   const items = new Map<string, SourceInventoryItem>();
   for (const transaction of transactions.allParentChildTransactions) {
+    if (transaction.importId === DERIVED_IMPORT_ID) continue;
     let item = items.get(transaction.importId);
     if (!item) {
       item = {

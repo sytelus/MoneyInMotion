@@ -17,6 +17,7 @@ import {
   History,
   Settings,
   UploadCloud,
+  ListChecks,
 } from 'lucide-react';
 import { Button } from '../ui/button.js';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog.js';
@@ -27,6 +28,7 @@ const navItems = [
   { to: '/', label: 'Overview', icon: ChartNoAxesCombined },
   { to: '/transactions', label: 'Transactions', icon: CircleDollarSign },
   { to: '/imports', label: 'Imports', icon: UploadCloud },
+  { to: '/review', label: 'Review', icon: ListChecks },
   { to: '/accounts', label: 'Accounts', icon: CreditCard },
   { to: '/rules', label: 'Rule Studio', icon: History },
   { to: '/settings', label: 'Settings', icon: Settings },

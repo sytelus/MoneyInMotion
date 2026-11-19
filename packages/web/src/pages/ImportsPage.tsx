@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Transactions } from '@moneyinmotion/core';
+import { loadTransactions } from '../lib/card-statements.js';
 import { ArrowUpRight, FileText, FolderTree, History, UploadCloud } from 'lucide-react';
 import { useAccounts, useTransactions } from '../api/hooks.js';
 import { Header } from '../components/layout/Header.js';
@@ -27,7 +27,7 @@ export function ImportsPage() {
   const accounts = useAccounts();
   const snapshot = useTransactions();
   const transactions = useMemo(
-    () => (snapshot.data ? Transactions.fromData(snapshot.data) : null),
+    () => (snapshot.data ? loadTransactions(snapshot.data) : null),
     [snapshot.data],
   );
   const [searchParams, setSearchParams] = useSearchParams();

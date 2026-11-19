@@ -29,7 +29,8 @@ DOM, or store access. Both use the explorer's grain:
 1. Start with top-level records.
 2. For a complete payment/order hierarchy, use the children instead of the
    parent, so nothing is counted twice. For an incomplete one, count the parent
-   payment once.
+   payment once. Card statements (below) add the level above: a bank payment
+   to a card, whose details are the card's lines for the period it paid.
 3. Use corrected dates, amounts, types, categories, and names.
 4. Compare UTC calendar days against the inclusive selected range, and filter by
    the item's source `accountId` if one is selected.
@@ -65,18 +66,55 @@ an ordinary saved correction. It can be broadened into a rule (for example, all
 "AMEX STATEMENT CREDIT" rows) or deleted later. Any explicit type correction
 counts as a decision, even one that keeps the same type.
 
-**Card payments that may be counted twice** (derived, never stored). A
-checking or savings payment to a card that transfer matching couldn't pair
-stays a purchase and counts as spending. When the card's statements for that
-time aren't imported, that is right: the payment is the only record of those
-purchases. When they are, the money is likely counted twice. So
-`cardPaymentsToReview` lists a bank debit that counts as spending, has no
-type decision, and has a credit card's name tag at the start of a word in its
-imported name, but only when that card has records in the 40 days up to the
-payment. The Overview queue links to them (`review=cardpayments`). Selecting
-them shows **Count as card payment** (type _Account payment_, excluded like a
-transfer) and **Keep as spending** (type _Purchase_, set explicitly), through
-the same preview-and-save flow.
+## Card statements
+
+`lib/card-statements.ts` (derived on load, never stored). Money that leaves a
+bank account to pay a card is the spending. The card's lines for the billing
+period it paid are its details, and order details (Amazon, Etsy) sit under
+those lines. Any level may be missing, and totals stay right:
+
+| Statement status | Meaning                                                      | Counted                                                                |
+| ---------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Adds up          | The lines add up to the payment                              | The lines; the payment is a transfer                                   |
+| Doesn't add up   | Lines and payment differ                                     | The lines plus an **Unexplained difference** record                    |
+| No lines         | A payment, but no card lines imported for its period         | The bank payment itself (category "Card payment (no statement lines)") |
+| No payment found | Lines between paid periods, but no payment found for them    | The lines                                                              |
+| Not paid yet     | Lines with no payment in the imported data (end of the data) | The lines                                                              |
+
+So totals always equal what was paid when a payment is imported, and the
+lines give the categories. A bank payment with no card lines near it at all
+(for example, before the card's first imported statement) also counts as
+spending itself. The user's type on a card payment doesn't change this.
+
+**Payments.** A bank debit is a card payment when it is linked to a record in
+a credit card account, or its imported name has a card's name tag at the start
+of a word. A card record with a positive amount and an inter-account type is
+the card side of a payment ("Payment, thank you"). An unlinked bank payment and
+card-side payment of the same amount within 7 days are one payment. When the
+bank side isn't imported, the card side stands for the payment.
+
+**Billing periods.** Lines are ordered by post date (transaction date when
+there is none). Each card's closing day is learned: the day of the month that
+lets the most payments equal their period's lines exactly. A closing may move
+up to 5 days to make a period add up, and a payment pays the latest period
+that closed in the 50 days before it (card-side date when known). When two
+neighbouring periods are off by opposite amounts, the cut between them moves if
+that makes both add up.
+
+**Unexplained difference** records are derived, not imported (import ID
+`mim-statement-check`): one per statement that doesn't add up, dated on the
+closing day, in the card's account, with category "Unexplained difference"
+and type _Match adjustment_ (debit when more was paid than the lines show,
+credit when less). They can't be edited or marked, and the statement explorer
+and source inventory leave them out. A statement's details panel shows its
+lines, payments, and difference, and links to all of them
+(`statement=<card>:<closing>` in the transaction list).
+
+**Review.** The Review page (`/review`) lists what needs a look after an
+import: statement files that aren't imported, card statements that don't add
+up or have no payment (largest difference first), the Overview's review queue
+for all dates, and Rule Studio's issue count. The import and rebuild results
+link to it.
 
 **Refund links** (derived, never stored). Each spending credit is linked to the
 charge it most likely reverses: same merchant, on or before the refund, within

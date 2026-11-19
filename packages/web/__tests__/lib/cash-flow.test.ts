@@ -12,9 +12,7 @@ import {
 import {
   INCOME_DECISION_REASON,
   INVESTMENT_DECISION_REASON,
-  KEEP_SPENDING_DECISION_REASON,
   SPENDING_DECISION_REASON,
-  cardPaymentsToReview,
   cashFlowClassifier,
   cashFlowTotals,
   linkRefunds,
@@ -153,76 +151,10 @@ describe('cash-flow classification', () => {
       investmentCount: 2,
     });
     expect(report.months).toEqual([expect.objectContaining({ income: 3000, spending: 2500 })]);
-    expect(report.review.cardpayments).toBe(0);
+    expect(report.review.statements).toBe(0);
     expect(financialReportCsv(report)).toContain(
       '"Investment transfers: in from and out to investments (not in the figures above)","2","10000","400"',
     );
-  });
-});
-
-describe('card payments that may be counted twice', () => {
-  function cardFixture() {
-    const collection = new Transactions('card-payments');
-    const info = {
-      checking: { type: AccountType.BankChecking, tags: [] as string[] },
-      card: { type: AccountType.CreditCard, tags: ['chase'] },
-    };
-    function add(account: keyof typeof info, amount: number, date: string, name: string) {
-      const tx = Transaction.create('statement', account, false, {
-        amount,
-        transactionDate: date,
-        entityName: name,
-        entityNameNormalized: name,
-        transactionReason: TransactionReason.Purchase,
-      });
-      collection.addNew(
-        tx,
-        {
-          id: account,
-          instituteName: 'Generic',
-          title: account,
-          type: info[account].type,
-          interAccountNameTags: info[account].tags,
-          requiresParent: false,
-        },
-        { id: 'statement', portableAddress: `${account}/s.csv`, contentHash: 'path-id' },
-        false,
-      );
-      return tx;
-    }
-    return { collection, add };
-  }
-
-  it('lists unmatched payments only when the card’s own purchases cover that time', () => {
-    const { collection, add } = cardFixture();
-    add('card', -120, '2024-03-10', 'Grocery');
-    const covered = add('checking', -120, '2024-04-05', 'CHASE EPAY 123');
-    // No card records in the 40 days before: the payment is the only record.
-    const uncovered = add('checking', -300, '2023-06-05', 'CHASE AUTOPAY');
-    // "Purchase" contains "chase", but not at the start of a word.
-    add('checking', -40, '2024-04-06', 'POS PURCHASE STORE');
-    const flagged = cardPaymentsToReview(collection, cashFlowClassifier(collection));
-    expect([...flagged]).toEqual([[covered.id, 'card']]);
-    expect(flagged.has(uncovered.id)).toBe(false);
-
-    const report = buildFinancialReport(collection, { from: '', to: '', account: '' });
-    expect(report.review.cardpayments).toBe(1);
-  });
-
-  it('drops a payment from the list once the user decides its type', () => {
-    const { collection, add } = cardFixture();
-    add('card', -120, '2024-03-10', 'Grocery');
-    const payment = add('checking', -120, '2024-04-05', 'CHASE EPAY 123');
-    collection.apply({
-      id: 'keep',
-      auditInfo: createAuditInfo('test'),
-      scopeFilters: [createScopeFilter(ScopeType.TransactionId, [payment.id])],
-      values: { transactionReason: editValue(KEEP_SPENDING_DECISION_REASON) },
-      sourceId: 'test',
-    });
-    const kindOf = cashFlowClassifier(collection);
-    expect(kindOf(collection.getTransaction(payment.id)!)).toBe('spending');
-    expect(cardPaymentsToReview(collection, kindOf).size).toBe(0);
   });
 });
 

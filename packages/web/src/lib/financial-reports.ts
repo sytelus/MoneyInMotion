@@ -19,8 +19,8 @@ import {
   transactionBucket,
   transactionCategory,
 } from './transaction-explorer.js';
+import { cardStatementsOf, type CardStatement } from './card-statements.js';
 import {
-  cardPaymentsToReview,
   cashFlowClassifier,
   cashFlowTotals,
   linkRefunds,
@@ -109,8 +109,6 @@ const derivedCache = new WeakMap<
   {
     kindOf: (tx: Transaction) => CashFlowKind;
     refunds: RefundLinks;
-    /** Card payments that may be counted twice: payment ID → card account ID. */
-    cardPayments: Map<string, string>;
   }
 >();
 export function cashFlowContext(transactions: Transactions) {
@@ -120,11 +118,28 @@ export function cashFlowContext(transactions: Transactions) {
     derived = {
       kindOf,
       refunds: linkRefunds(reportingTransactions(transactions), kindOf),
-      cardPayments: cardPaymentsToReview(transactions, kindOf),
     };
     derivedCache.set(transactions, derived);
   }
   return derived;
+}
+
+/** Category of a card payment whose billing period has no imported card lines. */
+export const CARD_PAYMENT_WITHOUT_LINES = 'Card payment (no statement lines)';
+
+/** Statements that need a look: lines that don't add up, or no payment found. */
+export function statementsToReview(
+  transactions: Transactions,
+  scope?: ReportScope,
+): CardStatement[] {
+  return cardStatementsOf(transactions).statements.filter(
+    (statement) =>
+      (statement.status === 'difference' || statement.status === 'missing-payment') &&
+      (!scope ||
+        ((!scope.from || statement.closing >= scope.from) &&
+          (!scope.to || statement.closing <= scope.to) &&
+          (!scope.account || statement.accountId === scope.account))),
+  );
 }
 
 /**
@@ -139,6 +154,8 @@ export function spendingCategory(
 ) {
   const own = transactionCategory(tx);
   if (own !== 'Uncategorized') return own;
+  if (cardStatementsOf(transactions).standalonePayments.has(tx.id))
+    return CARD_PAYMENT_WITHOUT_LINES;
   const chargeId = refunds.chargeOf.get(tx.id);
   const charge = chargeId ? transactions.getTransaction(chargeId) : undefined;
   return charge ? transactionCategory(charge) : own;
@@ -235,7 +252,7 @@ export function buildFinancialReport(transactions: Transactions, scope: ReportSc
   const activity = rows.filter(
     (row) => !['Transfers', 'Unmatched'].includes(transactionBucket(row)),
   );
-  const { kindOf, refunds, cardPayments } = cashFlowContext(transactions);
+  const { kindOf, refunds } = cashFlowContext(transactions);
   const spendingRows = rows.filter((row) => kindOf(row) === 'spending');
   const incomeRows = rows.filter((row) => kindOf(row) === 'income');
   const accountTitle = (id: string) => transactions.getAccountInfo(id).title || id;
@@ -277,7 +294,7 @@ export function buildFinancialReport(transactions: Transactions, scope: ReportSc
       uncategorized: rows.filter((row) => !row.categoryPath.length && !row.providerCategoryName)
         .length,
       undecided: rows.filter((row) => kindOf(row) === 'undecided').length,
-      cardpayments: rows.filter((row) => cardPayments.has(row.id)).length,
+      statements: statementsToReview(transactions, scope).length,
     },
     transfers: transferPairs(transactions, scope),
   };

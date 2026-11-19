@@ -15,11 +15,11 @@ import {
 } from 'lucide-react';
 import {
   ScopeType,
-  Transactions,
   type EditedValues,
   type ScopeFilter,
   type TransactionEditData,
 } from '@moneyinmotion/core';
+import { loadTransactions } from '../lib/card-statements.js';
 import { useTransactions } from '../api/hooks.js';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import type { RuleChange } from '../api/client.js';
@@ -58,7 +58,7 @@ export const RulesPage: React.FC = () => {
   const showKind = useMediaQuery('(min-width: 1280px)');
   const columnCount = 4 + Number(showActions) + Number(showScope) + Number(showKind);
   const { data, isLoading, error, refetch } = useTransactions();
-  const transactions = useMemo(() => (data ? Transactions.fromData(data) : null), [data]);
+  const transactions = useMemo(() => (data ? loadTransactions(data) : null), [data]);
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const [field, setField] = useState('all');

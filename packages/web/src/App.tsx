@@ -35,6 +35,9 @@ const ReportsPage = lazy(() =>
 const ImportsPage = lazy(() =>
   import('./pages/ImportsPage.js').then((module) => ({ default: module.ImportsPage })),
 );
+const ReviewPage = lazy(() =>
+  import('./pages/ReviewPage.js').then((module) => ({ default: module.ReviewPage })),
+);
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -97,6 +100,7 @@ export const App: React.FC = () => {
               <Route path="/reports" element={<Navigate to="/" replace />} />
               <Route path="/transactions" element={<AppShell />} />
               <Route path="/imports" element={<ImportsPage />} />
+              <Route path="/review" element={<ReviewPage />} />
               <Route path="/welcome" element={<WelcomePage />} />
               <Route path="/accounts" element={<AccountsPage />} />
               <Route path="/rules" element={<RulesPage />} />

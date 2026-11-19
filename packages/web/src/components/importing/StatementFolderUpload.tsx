@@ -291,7 +291,12 @@ export const StatementFolderUpload: React.FC<StatementFolderUploadProps> = ({ ac
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {result.rebuild.committed && (
-              <Link to="/" className={buttonClassName({ size: 'sm' })}>
+              <Link to="/review" className={buttonClassName({ size: 'sm' })}>
+                Review what needs a look
+              </Link>
+            )}
+            {result.rebuild.committed && (
+              <Link to="/" className={buttonClassName({ size: 'sm', variant: 'outline' })}>
                 See your overview
               </Link>
             )}

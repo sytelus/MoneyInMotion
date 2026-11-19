@@ -8,7 +8,13 @@
  */
 
 import { create } from 'zustand';
-import { Transactions, Transaction, parseDate, type TransactionsData } from '@moneyinmotion/core';
+import {
+  Transaction,
+  parseDate,
+  type TransactionsData,
+  type Transactions,
+} from '@moneyinmotion/core';
+import { cardStatementsOf, loadTransactions } from '../lib/card-statements.js';
 import {
   reportingTransactions,
   transactionCategory,
@@ -71,6 +77,7 @@ export interface TransactionFilters {
   merchant: string;
   source: string;
   rule: string;
+  statement: string;
   flow: string;
 }
 export const emptyFilters: TransactionFilters = {
@@ -86,6 +93,7 @@ export const emptyFilters: TransactionFilters = {
   merchant: '',
   source: '',
   rule: '',
+  statement: '',
   flow: '',
 };
 
@@ -164,7 +172,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
   expandedGroupIds: new Set<string>(),
 
   setTransactions(data: TransactionsData) {
-    const transactions = Transactions.fromData(data);
+    const transactions = loadTransactions(data);
     const reporting = reportingTransactions(transactions);
     const records = [...transactions.allParentChildTransactions];
     // Normalize once per snapshot. This also handles date-only values
@@ -234,7 +242,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     }
     const basis =
       scope.basis ??
-      (scope.source || scope.rule || scope.transaction || scope.ids?.length
+      (scope.source || scope.rule || scope.statement || scope.transaction || scope.ids?.length
         ? 'records'
         : 'reporting');
     set({
@@ -336,7 +344,8 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     }
 
     const words = filters.search.toLowerCase().trim().split(/\s+/).filter(Boolean);
-    const { kindOf, cardPayments } = cashFlowContext(transactions);
+    const { kindOf } = cashFlowContext(transactions);
+    const statementOf = cardStatementsOf(transactions).statementOf;
     // Spending drill-downs use the report's category, where an uncategorized
     // refund takes the category of the charge it reverses.
     const categoryOf =
@@ -365,6 +374,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
         (!filters.merchant || tx.displayEntityNameNormalized === filters.merchant) &&
         (!filters.source || tx.importId === filters.source) &&
         (!filters.rule || tx.appliedEditIdsDescending?.includes(filters.rule)) &&
+        (!filters.statement || statementOf.get(tx.id) === filters.statement) &&
         (!filters.flow || matchesFlow(tx, filters.flow, kindOf)) &&
         (!filters.review ||
           (filters.review === 'flagged'
@@ -373,9 +383,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
               ? transactionBucket(tx) === 'Unmatched'
               : filters.review === 'incomplete'
                 ? tx.hasMissingChild && Object.keys(tx.children ?? {}).length > 0
-                : filters.review === 'cardpayments'
-                  ? cardPayments.has(tx.id)
-                  : !tx.categoryPath.length && !tx.providerCategoryName)) &&
+                : !tx.categoryPath.length && !tx.providerCategoryName)) &&
         (filters.min === '' || tx.correctedAmount >= Number(filters.min)) &&
         (filters.max === '' || tx.correctedAmount <= Number(filters.max)) &&
         words.every((word) => searchIndex.get(tx.id)?.includes(word))

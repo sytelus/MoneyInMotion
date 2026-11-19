@@ -12,7 +12,17 @@ import type { FinancialReport } from '../../lib/financial-reports.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { ReportPanel } from './ReportPanel.js';
 
-export function ReviewQueue({ report }: { report: FinancialReport }) {
+export function ReviewQueue({
+  report,
+  title = 'Your review queue',
+  description = 'Counts follow the selected dates and source account. Flags and matching queues count source records, including hidden parent/detail records; the category queue counts reporting items. They can differ from the reporting totals above. A flag alone never changes totals.',
+  hide = [],
+}: {
+  report: FinancialReport;
+  title?: string;
+  description?: string;
+  hide?: string[];
+}) {
   const items = [
     {
       key: 'undecided',
@@ -22,12 +32,12 @@ export function ReviewQueue({ report }: { report: FinancialReport }) {
       basis: 'reporting',
     },
     {
-      key: 'cardpayments',
-      label: 'Card payments counted twice?',
+      key: 'statements',
+      label: 'Card statements that don’t add up',
       description:
-        'Bank payments to a card whose purchases are also imported, with no matching payment on the card. Counted as spending until you decide.',
+        'Card lines that don’t add up to the payment for their billing period, or lines with no payment found. Totals still equal what was paid.',
       Icon: CreditCard,
-      basis: 'reporting',
+      basis: 'records',
     },
     {
       key: 'flagged',
@@ -59,40 +69,43 @@ export function ReviewQueue({ report }: { report: FinancialReport }) {
     },
   ] as const;
   return (
-    <ReportPanel
-      title="Your review queue"
-      description="Counts follow the selected dates and source account. Flags and matching queues count source records, including hidden parent/detail records; the category queue counts reporting items. They can differ from the reporting totals above. A flag alone never changes totals."
-    >
+    <ReportPanel title={title} description={description}>
       <div className="grid gap-2 sm:grid-cols-2">
-        {items.map(({ key, label, description, Icon, basis }) => (
-          <Link
-            key={key}
-            to={transactionsHref(
-              key === 'undecided'
-                ? { ...report.scope, flow: 'undecided', basis, view: 'list' }
-                : { ...report.scope, review: key, basis, view: 'list' },
-            )}
-            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
-            title={`${label}: ${report.review[key]}. ${description}`}
-          >
-            <span className="rounded-lg bg-amber-50 p-2 text-amber-800">
-              <Icon aria-hidden className="h-4 w-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-xl font-semibold tabular-nums">
-                {report.review[key].toLocaleString()}
+        {items
+          .filter((item) => !hide.includes(item.key))
+          .map(({ key, label, description, Icon, basis }) => (
+            <Link
+              key={key}
+              to={
+                key === 'statements'
+                  ? '/review'
+                  : transactionsHref(
+                      key === 'undecided'
+                        ? { ...report.scope, flow: 'undecided', basis, view: 'list' }
+                        : { ...report.scope, review: key, basis, view: 'list' },
+                    )
+              }
+              className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
+              title={`${label}: ${report.review[key]}. ${description}`}
+            >
+              <span className="rounded-lg bg-amber-50 p-2 text-amber-800">
+                <Icon aria-hidden className="h-4 w-4" />
               </span>
-              <span className="block text-sm font-medium">{label}</span>
-              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                {description}
+              <span className="min-w-0 flex-1">
+                <span className="block text-xl font-semibold tabular-nums">
+                  {report.review[key].toLocaleString()}
+                </span>
+                <span className="block text-sm font-medium">{label}</span>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                  {description}
+                </span>
               </span>
-            </span>
-            <ArrowRight
-              aria-hidden
-              className="mt-1 h-4 w-4 shrink-0 text-slate-500 group-hover:text-indigo-700"
-            />
-          </Link>
-        ))}
+              <ArrowRight
+                aria-hidden
+                className="mt-1 h-4 w-4 shrink-0 text-slate-500 group-hover:text-indigo-700"
+              />
+            </Link>
+          ))}
       </div>
     </ReportPanel>
   );

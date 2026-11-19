@@ -16,6 +16,8 @@ export interface TransactionScope {
   max?: string;
   source?: string;
   rule?: string;
+  /** A card statement (`<card account>:<closing date>`): its payments, lines, and difference. */
+  statement?: string;
   transaction?: string;
   ids?: string[];
   /**
@@ -43,10 +45,11 @@ const textKeys = [
   'merchant',
   'source',
   'rule',
+  'statement',
   'transaction',
 ] as const;
 const options = {
-  review: ['flagged', 'unmatched', 'uncategorized', 'incomplete', 'cardpayments'],
+  review: ['flagged', 'unmatched', 'uncategorized', 'incomplete'],
   flow: [
     'income',
     'spending',

@@ -73,6 +73,12 @@ export function TransactionFilters() {
         .toISOString()
         .slice(0, 10)
     : '';
+  const statementLabel = (id: string) => {
+    const split = id.lastIndexOf(':');
+    const account = id.slice(0, split);
+    const title = accounts.find((option) => option.value === account)?.label ?? account;
+    return `${title}, closing ${id.slice(split + 1)}`;
+  };
   const chipLabels = {
     source: `Source file: ${sourceLabel}`,
     rule: matchedRuleLabel,
@@ -81,7 +87,8 @@ export function TransactionFilters() {
     account: `Account: ${accounts.find((account) => account.value === filters.account)?.label ?? filters.account}`,
     category: `Category: ${filters.category}`,
     reason: `Type: ${transactionReasonTitleLookup[filters.reason] ?? filters.reason}`,
-    review: `Review: ${{ flagged: 'Marked for review', unmatched: 'Unmatched order details', uncategorized: 'Uncategorized', incomplete: 'Incomplete matches', cardpayments: 'Card payments counted twice?' }[filters.review] ?? filters.review}`,
+    review: `Review: ${{ flagged: 'Marked for review', unmatched: 'Unmatched order details', uncategorized: 'Uncategorized', incomplete: 'Incomplete matches' }[filters.review] ?? filters.review}`,
+    statement: `Card statement: ${statementLabel(filters.statement)}`,
     min: `Amount ≥ ${filters.min}`,
     max: `Amount ≤ ${filters.max}`,
   };
@@ -163,7 +170,6 @@ export function TransactionFilters() {
                 { value: 'unmatched', label: 'Unmatched to a payment' },
                 { value: 'uncategorized', label: 'Uncategorized' },
                 { value: 'incomplete', label: 'Incomplete order matches' },
-                { value: 'cardpayments', label: 'Card payments counted twice?' },
               ]}
               onChange={(e) => setFilters({ review: e.target.value })}
             />

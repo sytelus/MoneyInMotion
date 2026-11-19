@@ -17,6 +17,7 @@ import { useTransactionsStore } from '../../store/transactions-store.js';
 import { HelpHint } from '../ui/help-hint.js';
 import { Button } from '../ui/button.js';
 import { TransactionProvenance } from './TransactionProvenance.js';
+import { CardStatementPanel } from './CardStatementPanel.js';
 import { transactionProvenance } from '../../lib/transaction-provenance.js';
 import { transactionsHref } from '../../lib/transaction-navigation.js';
 import { cashFlowContext } from '../../lib/financial-reports.js';
@@ -237,6 +238,7 @@ const SingleDetail: React.FC<{ transaction: Transaction }> = ({ transaction }) =
       {transaction.providerAttributes && (
         <ProviderAttributes attributes={transaction.providerAttributes} />
       )}
+      {transactions && <CardStatementPanel transaction={transaction} transactions={transactions} />}
       {transactions && (
         <TransactionProvenance transaction={transaction} transactions={transactions} />
       )}

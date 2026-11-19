@@ -14,20 +14,19 @@
  *   investment or other account that isn't imported. Neither income nor
  *   spending; shown on its own, in and out.
  * - Transfers and unmatched order details stay outside all of these.
- * - A bank payment to a card with no matching card record stays spending. When
- *   the card's own purchases for that time are imported it is listed for
- *   review (`cardPaymentsToReview`), since it is then likely counted twice.
+ * - Card payments follow the card statements (`card-statements.ts`): a bank
+ *   payment whose billing period has card lines is a transfer, and the lines
+ *   count; one with no card lines for its period is spending itself.
  */
 import {
   AccountType,
   TransactionReason,
-  containsWordStart,
   isInterAccount,
-  parseDate,
   transactionReasonCategoryLookup,
   type Transaction,
   type Transactions,
 } from '@moneyinmotion/core';
+import { cardStatementsOf } from './card-statements.js';
 
 export type CashFlowKind =
   'income' | 'spending' | 'undecided' | 'investment' | 'transfer' | 'unmatched';
@@ -35,9 +34,6 @@ export type CashFlowKind =
 /** Type set when the user says "count as income" or "count against spending". */
 export const INCOME_DECISION_REASON = TransactionReason.OtherCredit;
 export const SPENDING_DECISION_REASON = TransactionReason.Return;
-/** Types set when the user says a card payment is a payment, or real spending. */
-export const CARD_PAYMENT_DECISION_REASON = TransactionReason.InterAccountPayment;
-export const KEEP_SPENDING_DECISION_REASON = TransactionReason.Purchase;
 /** Type set when the user says money came from (or went to) their investments. */
 export const INVESTMENT_DECISION_REASON = TransactionReason.InvestmentTransfer;
 
@@ -68,10 +64,16 @@ export function cashFlowKind(tx: Transaction, accountType: AccountType | null): 
   return bank && BANK_DEPOSIT_REASONS.has(reason) ? 'income' : 'undecided';
 }
 
-/** Classifier bound to a snapshot, so callers don't repeat account lookups. */
+/**
+ * Classifier bound to a snapshot, so callers don't repeat account lookups.
+ * Card payments follow the card statements rather than their type.
+ */
 export function cashFlowClassifier(transactions: Transactions): (tx: Transaction) => CashFlowKind {
   const types = new Map<string, AccountType | null>();
+  const statements = cardStatementsOf(transactions);
   return (tx) => {
+    if (statements.standalonePayments.has(tx.id)) return 'spending';
+    if (statements.statementPayments.has(tx.id)) return 'transfer';
     if (!types.has(tx.accountId)) {
       types.set(tx.accountId, transactions.getAccountInfo(tx.accountId)?.type ?? null);
     }
@@ -147,75 +149,9 @@ export function cashFlowTotals(
 }
 
 // ---------------------------------------------------------------------------
-// Card payments that may be counted twice (derived, never persisted)
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-/** A card's records in this many days before a payment mean its purchases are imported. */
-const CARD_COVERAGE_DAYS = 40;
-
-/**
- * Bank payments to a card that still count as spending although the card's
- * own purchases for that time are imported, so the money is likely counted
- * twice. Returns payment ID → card account ID.
- *
- * A candidate is a checking or savings debit classified as spending, with no
- * type decision by the user, whose imported name contains one of a credit
- * card account's name tags at the start of a word (matched payments are
- * already transfers). It is listed only when that card has records in the
- * 40 days up to the payment. A payment outside the card's records is the only
- * record of those purchases, so it rightly counts as spending and isn't listed.
- */
-export function cardPaymentsToReview(
-  transactions: Transactions,
-  kindOf: (tx: Transaction) => CashFlowKind,
-): Map<string, string> {
-  const result = new Map<string, string>();
-  const accountIds = new Set<string>();
-  for (const tx of transactions.topLevelTransactions) accountIds.add(tx.accountId);
-  const cards = [...accountIds].flatMap((id) => {
-    const info = transactions.getAccountInfo(id);
-    const tags = info?.type === AccountType.CreditCard ? (info.interAccountNameTags ?? []) : [];
-    return tags.length ? [{ id, tags, times: [] as number[] }] : [];
-  });
-  if (!cards.length) return result;
-  const cardById = new Map(cards.map((card) => [card.id, card]));
-  const time = (tx: Transaction) => parseDate(tx.correctedTransactionDate).getTime();
-  for (const tx of transactions.topLevelTransactions)
-    cardById.get(tx.accountId)?.times.push(time(tx));
-  for (const card of cards) card.times.sort((a, b) => a - b);
-
-  for (const tx of transactions.topLevelTransactions) {
-    const type = transactions.getAccountInfo(tx.accountId)?.type;
-    if (type !== AccountType.BankChecking && type !== AccountType.BankSavings) continue;
-    if (tx.correctedAmount >= 0 || tx.relatedTransferId || hasUserSetType(tx)) continue;
-    if (kindOf(tx) !== 'spending') continue;
-    const card = cards.find((candidate) =>
-      candidate.tags.some((tag) => containsWordStart(tx.entityName, tag)),
-    );
-    if (!card) continue;
-    const paidAt = time(tx);
-    if (hasTimeBetween(card.times, paidAt - CARD_COVERAGE_DAYS * DAY_MS, paidAt)) {
-      result.set(tx.id, card.id);
-    }
-  }
-  return result;
-}
-
-/** True when the sorted `times` has a value in [from, to]. */
-function hasTimeBetween(times: readonly number[], from: number, to: number): boolean {
-  let low = 0;
-  let high = times.length;
-  while (low < high) {
-    const middle = (low + high) >> 1;
-    if (times[middle]! < from) low = middle + 1;
-    else high = middle;
-  }
-  return low < times.length && times[low]! <= to;
-}
-
-// ---------------------------------------------------------------------------
 // Refund links (derived, never persisted)
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 /** Refunds older than this are not linked to a charge. */
 const REFUND_WINDOW_DAYS = 180;
 
