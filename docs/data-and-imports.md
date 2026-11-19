@@ -149,6 +149,14 @@ history**. Keep these distinctions in mind:
 | Upload time, SHA-256, outcome | Staging manifest                           | That browser upload only; copied-in files have none |
 | `ImportInfo.contentHash`      | Derived from the path                      | **Not** a content checksum                          |
 
+A file that the folder's `fileFilters` leave out is `ignored` when it is a
+sync or system file, another format of a file that is imported (same name,
+different extension, such as `Export 2014.QFX` next to `Export 2014.CSV`), or
+a known export or document type (OFX, QFX, QBO, QIF, PDF, XLS and similar).
+Anything else is `unrecognized`: it may be a statement someone renamed, so the
+Imports page and the explorer warn about it ("N stored files are not
+imported") and list it. The check uses names only, never file contents.
+
 First-import times and past rebuild outcomes were never recorded, and the UI
 says so rather than inventing them. The statement explorer lists at most
 20,000 entries and 40 folder levels, and says so when it is truncated.

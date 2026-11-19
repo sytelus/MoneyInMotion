@@ -63,6 +63,7 @@ export interface StatementEntry {
     | 'eligible'
     | 'ignored'
     | 'unsupported'
+    | 'unrecognized'
     | 'unconfigured'
     | 'configuration'
     | 'symlink'

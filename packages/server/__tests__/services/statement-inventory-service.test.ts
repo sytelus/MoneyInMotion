@@ -69,6 +69,33 @@ describe('read-only statement explorer inventory', () => {
     ).toBe(JSON.stringify(settings));
   });
 
+  it('says why a file is not imported, and flags only unknown types that may be renamed statements', () => {
+    write('bank/AccountConfig.json', JSON.stringify({ ...settings, fileFilters: ['*.csv'] }));
+    write('bank/Export 2024.CSV');
+    write('bank/Export 2024.qfx');
+    write('bank/Export 2024.scCSV2');
+    write('bank/Statement.pdf');
+    write('bank/Export 2023.newc-sv');
+    write('bank/Export 2024.CSVcom.dropbox.attrs');
+    const reason = (name: string) =>
+      readStatementInventory(config).entries.find((item) => item.path === `bank/${name}`);
+    expect(reason('Export 2024.qfx')).toMatchObject({
+      status: 'ignored',
+      reason: 'Not imported. Another format of Export 2024.CSV, which is imported.',
+    });
+    expect(reason('Export 2024.scCSV2')).toMatchObject({ status: 'ignored' });
+    expect(reason('Statement.pdf')).toMatchObject({
+      status: 'ignored',
+      reason: 'Not imported: this folder imports only *.csv.',
+    });
+    expect(reason('Export 2024.CSVcom.dropbox.attrs')).toMatchObject({
+      status: 'ignored',
+      reason: 'Sync or system file; not a statement.',
+    });
+    expect(reason('Export 2023.newc-sv')).toMatchObject({ status: 'unrecognized' });
+    expect(reason('Export 2023.newc-sv')!.reason).toContain('“.newc-sv”');
+  });
+
   it('shows nested files as ignored when the account disables subfolders', () => {
     write('bank/AccountConfig.json', JSON.stringify({ ...settings, scanSubFolders: false }));
     write('bank/current.csv');

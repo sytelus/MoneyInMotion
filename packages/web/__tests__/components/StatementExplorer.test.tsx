@@ -127,4 +127,27 @@ describe('Statement explorer', () => {
     expect(await screen.findByRole('table')).toBeInTheDocument();
     expect(inventoryMock).toHaveBeenCalledTimes(2);
   });
+  it('warns about stored files of an unknown type and filters to them', async () => {
+    inventoryMock.mockResolvedValue({
+      entries: [
+        ...entries,
+        entry('Bank/Export 2012.newc-sv', {
+          status: 'unrecognized',
+          reason: 'Not imported. MoneyInMotion doesn’t recognize the “.newc-sv” file type.',
+        }),
+      ],
+      truncated: false,
+      unreadableFolders: 0,
+    });
+    show();
+    await screen.findByRole('table');
+    expect(screen.getByText('1 stored file is not imported')).toBeInTheDocument();
+    expect(screen.getByText('Bank/Export 2012.newc-sv')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show only these' }));
+    expect(screen.getByRole('combobox', { name: 'File status' })).toHaveValue('unrecognized');
+    expect(screen.queryByText('1 stored file is not imported')).not.toBeInTheDocument();
+    const table = screen.getByRole('table', { name: 'Stored statement files' });
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    expect(within(table).getByText('Unknown type')).toBeInTheDocument();
+  });
 });

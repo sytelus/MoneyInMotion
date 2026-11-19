@@ -18,12 +18,14 @@ import {
   uploadStatementFolder,
 } from './client.js';
 import type { FolderUploadItem, RuleChange } from './client.js';
+import { getStatementInventory } from './imports.js';
 
 /** Query key constants for cache management. */
 export const queryKeys = {
   transactions: ['transactions'] as const,
   accounts: ['accounts'] as const,
   config: ['config'] as const,
+  statementInventory: ['statement-inventory'] as const,
 } as const;
 
 /**
@@ -44,6 +46,11 @@ export function useAccounts() {
     queryKey: queryKeys.accounts,
     queryFn: getAccounts,
   });
+}
+
+/** Files in the statement folders and whether a rebuild reads each one (metadata only). */
+export function useStatementInventory() {
+  return useQuery({ queryKey: queryKeys.statementInventory, queryFn: getStatementInventory });
 }
 
 /** Fetch the saved and active app configuration. */
@@ -76,6 +83,7 @@ export function useRebuildSnapshot() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.transactions }),
         queryClient.invalidateQueries({ queryKey: queryKeys.accounts }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.statementInventory }),
       ]),
   });
 }
@@ -93,6 +101,7 @@ export function useUploadStatementFolder() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.transactions }),
         queryClient.invalidateQueries({ queryKey: queryKeys.accounts }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.statementInventory }),
       ]),
   });
 }

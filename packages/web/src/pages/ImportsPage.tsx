@@ -11,6 +11,7 @@ import { SourceInventory } from '../components/importing/SourceInventory.js';
 import { UploadHistory } from '../components/importing/UploadHistory.js';
 import { Notice } from '../components/ui/notice.js';
 import { StatementExplorer } from '../components/importing/StatementExplorer.js';
+import { StoredFilesNotImported } from '../components/importing/UnrecognizedFiles.js';
 import { Select } from '../components/ui/select.js';
 
 const workspaceTabs = [
@@ -99,6 +100,7 @@ export function ImportsPage() {
             )}
             {accounts.data && (
               <>
+                <StoredFilesNotImported />
                 <StatementFolderUpload accounts={accounts.data} />
                 <ExistingStatements accounts={accounts.data} />
               </>

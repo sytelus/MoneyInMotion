@@ -25,6 +25,7 @@ import { Input } from '../ui/input.js';
 import { Select } from '../ui/select.js';
 import { Pagination } from '../ui/pagination.js';
 import { Notice } from '../ui/notice.js';
+import { UnrecognizedFilesNotice } from './UnrecognizedFiles.js';
 
 const PAGE_SIZE = 50;
 const parentPath = (value: string) =>
@@ -33,6 +34,7 @@ const labels: Record<StatementEntry['status'], string> = {
   eligible: 'Eligible',
   ignored: 'Ignored',
   unsupported: 'Unsupported format',
+  unrecognized: 'Unknown type',
   unconfigured: 'Needs account settings',
   configuration: 'Account settings',
   symlink: 'Not followed',
@@ -260,6 +262,30 @@ export function StatementExplorer({ transactions }: { transactions: Transactions
           check their permissions on the server.
         </Notice>
       )}
+      {inventory && !error && status !== 'unrecognized' && (
+        <UnrecognizedFilesNotice
+          entries={entries}
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setParams(
+                  (previous) => {
+                    const next = new URLSearchParams(previous);
+                    for (const key of ['folder', 'fileSearch', 'filePage']) next.delete(key);
+                    next.set('fileStatus', 'unrecognized');
+                    return next;
+                  },
+                  { replace: true },
+                )
+              }
+            >
+              Show only these
+            </Button>
+          }
+        />
+      )}
       {loading && (
         <p role="status" className="text-sm text-muted-foreground">
           Reading statement folders…
@@ -418,9 +444,12 @@ export function StatementExplorer({ transactions }: { transactions: Transactions
                                 variant={
                                   entry.status === 'eligible'
                                     ? 'success'
-                                    : ['unconfigured', 'unsupported', 'unreadable'].includes(
-                                          entry.status,
-                                        )
+                                    : [
+                                          'unconfigured',
+                                          'unsupported',
+                                          'unrecognized',
+                                          'unreadable',
+                                        ].includes(entry.status)
                                       ? 'warning'
                                       : 'secondary'
                                 }

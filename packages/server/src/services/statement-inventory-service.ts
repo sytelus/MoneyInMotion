@@ -12,6 +12,7 @@ type FileStatus =
   | 'eligible'
   | 'ignored'
   | 'unsupported'
+  | 'unrecognized'
   | 'unconfigured'
   | 'configuration'
   | 'symlink'
@@ -28,6 +29,63 @@ interface StatementEntry {
   /** Descendant statement files; excludes AccountConfig.json and symbolic links. */
   fileCount: number;
   eligibleCount: number;
+}
+
+const READABLE_FORMATS = new Set(['.csv', '.json', '.iif']);
+/** Other exports and documents that banks offer next to CSV; expected in statement folders. */
+const KNOWN_OTHER_FORMATS = new Set([
+  ...READABLE_FORMATS,
+  '.ofx',
+  '.qfx',
+  '.qbo',
+  '.qif',
+  '.pdf',
+  '.xls',
+  '.xlsx',
+  '.doc',
+  '.docx',
+  '.txt',
+  '.htm',
+  '.html',
+  '.xml',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.zip',
+]);
+/** Files that sync tools and operating systems leave next to statements. */
+const isSystemFile = (name: string) =>
+  /com\.dropbox\.attrs$|^\.ds_store$|^thumbs\.db$|^desktop\.ini$|^~\$|^\._/i.test(name);
+const stem = (name: string) => name.slice(0, name.length - path.extname(name).length).toLowerCase();
+
+/**
+ * Why a file that the folder settings leave out is not imported. Only a file
+ * of an unknown type that isn't another format of an imported file is
+ * `unrecognized`: it may be a statement someone renamed.
+ */
+function excludedFile(
+  name: string,
+  filters: readonly string[],
+  importedStems: Map<string, string>,
+) {
+  const extension = path.extname(name).toLowerCase();
+  const sibling = importedStems.get(stem(name));
+  if (isSystemFile(name))
+    return { status: 'ignored' as const, reason: 'Sync or system file; not a statement.' };
+  if (sibling)
+    return {
+      status: 'ignored' as const,
+      reason: `Not imported. Another format of ${sibling}, which is imported.`,
+    };
+  if (KNOWN_OTHER_FORMATS.has(extension))
+    return {
+      status: 'ignored' as const,
+      reason: `Not imported: this folder imports only ${filters.join(', ')}.`,
+    };
+  return {
+    status: 'unrecognized' as const,
+    reason: `Not imported. MoneyInMotion doesn't recognize the ${extension ? `“${extension}”` : 'missing'} file type, and this folder imports only ${filters.join(', ')}. If the file holds statement rows in a layout MoneyInMotion reads, rename it to match and rebuild; otherwise leave it.`,
+  };
 }
 
 /** Read account settings and metadata, never statement bodies; bound traversal and disclose limits. */
@@ -64,6 +122,17 @@ export function readStatementInventory(
     children.sort(
       (a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name),
     );
+    // Names of files here that a rebuild reads, by name without extension.
+    const folderAccount = relative ? accounts.get(relative.split('/')[0]!) : undefined;
+    const importedStems = new Map<string, string>();
+    if (folderAccount && (depth <= 1 || folderAccount.scanSubFolders))
+      for (const child of children)
+        if (
+          child.isFile() &&
+          matchesFileFilters(child.name, folderAccount.fileFilters) &&
+          READABLE_FORMATS.has(path.extname(child.name).toLowerCase())
+        )
+          importedStems.set(stem(child.name), child.name);
     for (const child of children) {
       if (entries.length >= limits.maxEntries) {
         result.truncated = true;
@@ -146,16 +215,12 @@ export function readStatementInventory(
       }
       files += 1;
       if (entry.status === 'unreadable' || !account) continue;
-      if (
-        (depth > 1 && !account.scanSubFolders) ||
-        !matchesFileFilters(child.name, account.fileFilters)
-      ) {
+      if (depth > 1 && !account.scanSubFolders) {
         entry.status = 'ignored';
-        entry.reason =
-          depth > 1 && !account.scanSubFolders
-            ? 'Subfolders are disabled for this account.'
-            : `Does not match ${account.fileFilters.join(', ')}.`;
-      } else if (!['.csv', '.json', '.iif'].includes(path.extname(child.name).toLowerCase())) {
+        entry.reason = 'Subfolders are disabled for this account.';
+      } else if (!matchesFileFilters(child.name, account.fileFilters)) {
+        Object.assign(entry, excludedFile(child.name, account.fileFilters, importedStems));
+      } else if (!READABLE_FORMATS.has(path.extname(child.name).toLowerCase())) {
         entry.status = 'unsupported';
         entry.reason =
           'Matches the filename settings, but this format cannot be read. Export as CSV, JSON or IIF before rebuilding.';

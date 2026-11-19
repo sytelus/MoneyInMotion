@@ -213,8 +213,8 @@ Returns a read-only inventory of the active Statements directory:
 Each entry has `path` (relative POSIX path), `name`, `kind` (`folder`, `file`,
 `symlink`), `accountId`, `status`, `reason`, nullable `sizeBytes`/`modifiedAt`,
 and descendant `fileCount`/`eligibleCount` for folders. Status is `eligible`,
-`ignored`, `unsupported`, `unconfigured`, `configuration`, `symlink`, or
-`unreadable`. Folder counts exclude `AccountConfig.json` and links.
+`ignored`, `unsupported`, `unrecognized`, `unconfigured`, `configuration`,
+`symlink`, or `unreadable`. Folder counts exclude `AccountConfig.json` and links.
 
 Uses only top-level account settings and filesystem metadata; does not read
 statement bodies, follow links, write files, or create import history.
